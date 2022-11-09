@@ -21,9 +21,6 @@ type EventProcessor struct {
     workerQueue map[string]IWorker
 
     logger *log.Logger
-
-    // output model
-    isHex bool
 }
 
 func (this *EventProcessor) GetLogger() *log.Logger {
@@ -109,11 +106,10 @@ func (this *EventProcessor) Close() error {
     return nil
 }
 
-func NewEventProcessor(logger *log.Logger, isHex bool) *EventProcessor {
+func NewEventProcessor(logger *log.Logger) *EventProcessor {
     var ep *EventProcessor
     ep = &EventProcessor{}
     ep.logger = logger
-    ep.isHex = isHex
     ep.init()
     return ep
 }

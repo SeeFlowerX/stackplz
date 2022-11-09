@@ -4,13 +4,11 @@ type IConfig interface {
     Check() error //检测配置合法性
     GetPid() uint64
     GetUid() uint64
-    GetHex() bool
     GetDebug() bool
     GetUnwindStack() bool
     GetShowRegs() bool
     SetPid(uint64)
     SetUid(uint64)
-    SetHex(bool)
     SetDebug(bool)
     SetUnwindStack(bool)
     SetShowRegs(bool)
@@ -19,7 +17,6 @@ type IConfig interface {
 type eConfig struct {
     Pid         uint64
     Uid         uint64
-    IsHex       bool
     Debug       bool
     UnwindStack bool
     ShowRegs    bool
@@ -35,10 +32,6 @@ func (this *eConfig) GetUid() uint64 {
 
 func (this *eConfig) GetDebug() bool {
     return this.Debug
-}
-
-func (this *eConfig) GetHex() bool {
-    return this.IsHex
 }
 
 func (this *eConfig) GetUnwindStack() bool {
@@ -59,10 +52,6 @@ func (this *eConfig) SetUid(uid uint64) {
 
 func (this *eConfig) SetDebug(debug bool) {
     this.Debug = debug
-}
-
-func (this *eConfig) SetHex(isHex bool) {
-    this.IsHex = isHex
 }
 
 func (this *eConfig) SetUnwindStack(unwindStack bool) {

@@ -2,7 +2,6 @@ package module
 
 import (
     "context"
-    "edemo/pkg/event_processor"
     "edemo/user/config"
     "edemo/user/event"
     "errors"
@@ -60,14 +59,14 @@ type Module struct {
 
     conf config.IConfig
 
-    processor *event_processor.EventProcessor
+    // processor *event_processor.EventProcessor
 }
 
 // Init 对象初始化
 func (this *Module) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) {
     this.ctx = ctx
     this.logger = logger
-    this.processor = event_processor.NewEventProcessor(logger, conf.GetHex())
+    // this.processor = event_processor.NewEventProcessor(logger)
 
 }
 
@@ -105,9 +104,9 @@ func (this *Module) Run() error {
     }()
 
     // 在一端不断接收readEvents所传递的数据
-    go func() {
-        this.processor.Serve()
-    }()
+    // go func() {
+    //     this.processor.Serve()
+    // }()
 
     // 不断读取内核传递过来的事件
     err = this.readEvents()
@@ -281,8 +280,8 @@ func (this *Module) Dispatcher(e event.IEventStruct) {
     switch e.EventType() {
     case event.EventTypeOutput:
         this.logger.Println(e.String())
-    case event.EventTypeEventProcessor:
-        this.processor.Write(e)
+    // case event.EventTypeEventProcessor:
+    //     this.processor.Write(e)
     case event.EventTypeModuleData:
         // Save to cache
         this.child.Dispatcher(e)
@@ -296,6 +295,7 @@ func (this *Module) Close() error {
             return err
         }
     }
-    err := this.processor.Close()
-    return err
+    // err := this.processor.Close()
+    // return err
+    return nil
 }
