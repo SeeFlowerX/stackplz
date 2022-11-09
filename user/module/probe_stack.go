@@ -27,13 +27,6 @@ type MStackProbe struct {
     eventFuncMaps     map[*ebpf.Map]event.IEventStruct
     eventMaps         []*ebpf.Map
 
-    // pid[fd:Addr]
-    pidConns map[uint32]map[uint32]string
-
-    startTime uint64
-    bootTime  uint64
-
-    bpfFileKey  string
     hookBpfMap  map[string]string
     hookBpfFile string
 }
@@ -54,7 +47,6 @@ func (this *MStackProbe) Init(ctx context.Context, logger *log.Logger, conf conf
     this.Module.SetChild(this)
     this.eventMaps = make([]*ebpf.Map, 0, 2)
     this.eventFuncMaps = make(map[*ebpf.Map]event.IEventStruct)
-    this.pidConns = make(map[uint32]map[uint32]string)
     this.hookBpfMap = map[string]string{
         "default": "stack.o",
     }
