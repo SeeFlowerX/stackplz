@@ -2,12 +2,10 @@ package config
 
 type IConfig interface {
     Check() error //检测配置合法性
-    GetPid() uint64
     GetUid() uint64
     GetDebug() bool
     GetUnwindStack() bool
     GetShowRegs() bool
-    SetPid(uint64)
     SetUid(uint64)
     SetDebug(bool)
     SetUnwindStack(bool)
@@ -20,10 +18,6 @@ type eConfig struct {
     Debug       bool
     UnwindStack bool
     ShowRegs    bool
-}
-
-func (this *eConfig) GetPid() uint64 {
-    return this.Pid
 }
 
 func (this *eConfig) GetUid() uint64 {
@@ -40,10 +34,6 @@ func (this *eConfig) GetUnwindStack() bool {
 
 func (this *eConfig) GetShowRegs() bool {
     return this.ShowRegs
-}
-
-func (this *eConfig) SetPid(pid uint64) {
-    this.Pid = pid
 }
 
 func (this *eConfig) SetUid(uid uint64) {

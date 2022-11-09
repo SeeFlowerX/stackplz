@@ -76,9 +76,8 @@ func init() {
     var globalFlags = GlobalFlags{}
     rootCmd.PersistentFlags().BoolVarP(&globalFlags.Prepare, "prepare", "", false, "prepare libs")
     rootCmd.PersistentFlags().BoolVarP(&globalFlags.UnwindStack, "unwindstack", "", false, "enable unwindstack")
-    rootCmd.PersistentFlags().BoolVarP(&globalFlags.ShowRegs, "show-regs", "", false, "show regs")
+    rootCmd.PersistentFlags().BoolVarP(&globalFlags.ShowRegs, "regs", "", false, "show regs")
     rootCmd.PersistentFlags().BoolVarP(&globalFlags.Debug, "debug", "d", false, "enable debug logging")
-    rootCmd.PersistentFlags().Uint64VarP(&globalFlags.Pid, "pid", "p", defaultPid, "if pid is 0 then we target all pids")
     rootCmd.PersistentFlags().Uint64VarP(&globalFlags.Uid, "uid", "u", defaultUid, "if uid is 0 then we target all users")
     rootCmd.PersistentFlags().StringVarP(&globalFlags.loggerFile, "log-file", "l", "", "-l save the packets to file")
     rootCmd.PersistentFlags().BoolVarP(&globalFlags.Quiet, "quiet", "", false, "use with --log-file, wont logging to terminal when used")

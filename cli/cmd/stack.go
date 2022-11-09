@@ -32,6 +32,7 @@ func init() {
     stackCmd.PersistentFlags().StringVar(&stack_config.Libpath, "libpath", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
     stackCmd.PersistentFlags().StringVar(&stack_config.Symbol, "symbol", "", "lib symbol")
     stackCmd.PersistentFlags().Uint64Var(&stack_config.Offset, "offset", 0, "lib hook offset")
+    stackCmd.PersistentFlags().StringVar(&stack_config.Config, "config", "", "hook config file")
     rootCmd.AddCommand(stackCmd)
 }
 
@@ -49,9 +50,7 @@ func stackCommandFunc(command *cobra.Command, args []string) {
     if gConf.Prepare {
         os.Exit(0)
     }
-    if gConf.Pid != 0 {
-        logger.Fatal("not support filter by pid now")
-    }
+
     if gConf.Uid == 0 {
         logger.Fatal("must set uid which not 0")
     }
@@ -110,7 +109,6 @@ func stackCommandFunc(command *cobra.Command, args []string) {
             break
         }
 
-        conf.SetPid(gConf.Pid)
         conf.SetUid(gConf.Uid)
         conf.SetDebug(gConf.Debug)
         conf.SetUnwindStack(gConf.UnwindStack)

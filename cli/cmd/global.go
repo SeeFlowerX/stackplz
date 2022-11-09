@@ -12,16 +12,11 @@ type GlobalFlags struct {
     Prepare     bool
     UnwindStack bool
     Debug       bool
-    Pid         uint64 // PID
-    Uid         uint64 // UID
-    loggerFile  string // save file
+    Uid         uint64
+    loggerFile  string
 }
 
 func getGlobalConf(command *cobra.Command) (conf GlobalFlags, err error) {
-    conf.Pid, err = command.Flags().GetUint64("pid")
-    if err != nil {
-        return
-    }
 
     conf.Uid, err = command.Flags().GetUint64("uid")
     if err != nil {
@@ -53,7 +48,7 @@ func getGlobalConf(command *cobra.Command) (conf GlobalFlags, err error) {
         return
     }
 
-    conf.ShowRegs, err = command.Flags().GetBool("show-regs")
+    conf.ShowRegs, err = command.Flags().GetBool("regs")
     if err != nil {
         return
     }
