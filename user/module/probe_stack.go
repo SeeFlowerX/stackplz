@@ -27,7 +27,6 @@ type MStackProbe struct {
     eventFuncMaps     map[*ebpf.Map]event.IEventStruct
     eventMaps         []*ebpf.Map
 
-    hookBpfMap  map[string]string
     hookBpfFile string
 }
 
@@ -47,23 +46,7 @@ func (this *MStackProbe) Init(ctx context.Context, logger *log.Logger, conf conf
     this.Module.SetChild(this)
     this.eventMaps = make([]*ebpf.Map, 0, 2)
     this.eventFuncMaps = make(map[*ebpf.Map]event.IEventStruct)
-    this.hookBpfMap = map[string]string{
-        "default": "stack.o",
-    }
-    return nil
-}
-
-func (this *MStackProbe) getBpfFile(bpf_key string) error {
-    if bpf_key != "" {
-        bpfFile, found := this.hookBpfMap[bpf_key]
-        if found {
-            this.hookBpfFile = bpfFile
-            return nil
-        } else {
-            this.hookBpfFile = this.hookBpfMap["default"]
-        }
-    }
-
+    this.hookBpfFile = "stack.o"
     return nil
 }
 
@@ -73,11 +56,6 @@ func (this *MStackProbe) setupManagersUprobe() error {
     libOffset := this.conf.(*config.StackConfig).Offset
 
     _, err := os.Stat(libPath)
-    if err != nil {
-        return err
-    }
-
-    err = this.getBpfFile(libPath)
     if err != nil {
         return err
     }
