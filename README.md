@@ -109,13 +109,44 @@ git clone https://github.com/SeeFlowerX/stackplz
 ./build_env.sh
 ```
 
-然后下载ndk并解压，我这里选的是`android-ndk-r25b`
+然后下载ndk并解压，我这里选的是`android-ndk-r25b`，解压后修改`build.sh`中的`NDK_ROOT`路径
 
-然后修改`build.sh`中的`NDK_ROOT`路径，执行下面的命令即可完成编译，产物在`bin`目录下
+本项目还需要使用golang，版本要求为`1.18`，建议通过snap安装，**或者**使用如下方法安装
 
 ```bash
-./build.sh
+wget "https://golang.org/dl/go1.18.7.linux-amd64.tar.gz"
+tar -C /usr/local -xvf "go1.18.7.linux-amd64.tar.gz"
 ```
+
+设置环境变量
+
+```bash
+nano ~/.bashrc
+```
+
+在末尾添加如下内容
+
+```bash
+export GOPATH=$HOME/go
+export PATH=/usr/local/go/bin:$PATH:$GOPATH/bin
+export GOPROXY=https://goproxy.cn,direct
+export GO111MODULE=on
+```
+
+对单个项目来说，似乎要用下面的命令手动操作下，再重新用vscode打开才不会报错
+
+```bash
+go env -w GO111MODULE=on
+go env -w GOPROXY=https://goproxy.cn,direct
+```
+
+使环境变量立即生效
+
+```bash
+source ~/.bashrc
+```
+
+执行`./build.sh`即可完成编译，产物在`bin`目录下
 
 将可执行文件推送到手机上后就可以开始使用了
 
