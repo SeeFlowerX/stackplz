@@ -51,10 +51,10 @@ dumpsys package com.sfx.ebpf | grep userId=
 **简单使用**：`--libpath`默认为`/apex/com.android.runtime/lib64/bionic/libc.so`，所以下面的命令是针对uid为10245的进程，hook对应libc.so的`open`函数，这里是通过uid过滤的，即使是多进程也不影响，另外还可以输出hook时的完整寄存器信息！
 
 ```bash
-./stackplz stack --uid 10224 --symbol open --unwindstack --show-regs
+./stackplz stack --uid 10224 --symbol open --unwindstack --regs
 ```
 
-![](./images/Snipaste_2022-11-09_19-35-43.png)
+![](./images/Snipaste_2022-11-10_00-11-12.png)
 
 
 **复杂使用**：指定偏移，对任意的APP三方库进行hook追踪，记得uid要对应

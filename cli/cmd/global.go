@@ -14,10 +14,10 @@ type GlobalFlags struct {
     Debug       bool
     Uid         uint64
     loggerFile  string
+    Config      string
 }
 
 func getGlobalConf(command *cobra.Command) (conf GlobalFlags, err error) {
-
     conf.Uid, err = command.Flags().GetUint64("uid")
     if err != nil {
         return
@@ -49,6 +49,11 @@ func getGlobalConf(command *cobra.Command) (conf GlobalFlags, err error) {
     }
 
     conf.ShowRegs, err = command.Flags().GetBool("regs")
+    if err != nil {
+        return
+    }
+
+    conf.Config, err = command.Flags().GetString("config")
     if err != nil {
         return
     }

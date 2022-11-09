@@ -6,10 +6,12 @@ type IConfig interface {
     GetDebug() bool
     GetUnwindStack() bool
     GetShowRegs() bool
+    GetConfig() string
     SetUid(uint64)
     SetDebug(bool)
     SetUnwindStack(bool)
     SetShowRegs(bool)
+    SetConfig(string)
 }
 
 type eConfig struct {
@@ -18,6 +20,7 @@ type eConfig struct {
     Debug       bool
     UnwindStack bool
     ShowRegs    bool
+    Config      string
 }
 
 func (this *eConfig) GetUid() uint64 {
@@ -36,6 +39,10 @@ func (this *eConfig) GetShowRegs() bool {
     return this.ShowRegs
 }
 
+func (this *eConfig) GetConfig() string {
+    return this.Config
+}
+
 func (this *eConfig) SetUid(uid uint64) {
     this.Uid = uid
 }
@@ -50,4 +57,8 @@ func (this *eConfig) SetUnwindStack(unwindStack bool) {
 
 func (this *eConfig) SetShowRegs(show_regs bool) {
     this.ShowRegs = show_regs
+}
+
+func (this *eConfig) SetConfig(config string) {
+    this.Config = config
 }

@@ -50,7 +50,12 @@ func (this *MStackProbe) Init(ctx context.Context, logger *log.Logger, conf conf
     return nil
 }
 
-func (this *MStackProbe) setupManagersUprobe() error {
+func (this *MStackProbe) setupManagerWithConfig() error {
+    return errors.New("hook with --config has not been implement yet")
+}
+
+func (this *MStackProbe) setupManager() error {
+
     libPath := this.conf.(*config.StackConfig).Libpath
     libSymbol := this.conf.(*config.StackConfig).Symbol
     libOffset := this.conf.(*config.StackConfig).Offset
@@ -94,6 +99,21 @@ func (this *MStackProbe) setupManagersUprobe() error {
                 Name: "stack_events",
             },
         },
+    }
+    return nil
+}
+
+func (this *MStackProbe) setupManagersUprobe() error {
+    if this.conf.(*config.StackConfig).Config == "" {
+        err := this.setupManager()
+        if err != nil {
+            return err
+        }
+    } else {
+        err := this.setupManagerWithConfig()
+        if err != nil {
+            return err
+        }
     }
 
     this.bpfManagerOptions = manager.Options{

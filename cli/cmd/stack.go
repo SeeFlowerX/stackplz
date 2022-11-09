@@ -113,6 +113,7 @@ func stackCommandFunc(command *cobra.Command, args []string) {
         conf.SetDebug(gConf.Debug)
         conf.SetUnwindStack(gConf.UnwindStack)
         conf.SetShowRegs(gConf.ShowRegs)
+        conf.SetConfig(gConf.Config)
 
         err = conf.Check()
 

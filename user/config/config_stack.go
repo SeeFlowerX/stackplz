@@ -5,6 +5,7 @@ type StackConfig struct {
     Libpath string
     Symbol  string
     Offset  uint64
+    Config  string
 }
 
 func NewStackConfig() *StackConfig {
