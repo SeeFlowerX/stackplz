@@ -48,21 +48,13 @@ chmod +x /data/local/tmp/stackplz
 dumpsys package com.sfx.ebpf | grep userId=
 ```
 
-**简单使用**：`--libpath`默认为`/apex/com.android.runtime/lib64/bionic/libc.so`，所以下面的命令是针对uid为10245的进程，hook对应libc.so的`open`函数，这里是通过uid过滤的，即使是多进程也不影响
-
-```bash
-./stackplz stack --uid 10224 --symbol open --unwindstack
-```
-
-![](./images/Snipaste_2022-11-09_15-32-03.png)
-
-还可以显示hook时的完整寄存器信息
+**简单使用**：`--libpath`默认为`/apex/com.android.runtime/lib64/bionic/libc.so`，所以下面的命令是针对uid为10245的进程，hook对应libc.so的`open`函数，这里是通过uid过滤的，即使是多进程也不影响，另外还可以输出hook时的完整寄存器信息！
 
 ```bash
 ./stackplz stack --uid 10224 --symbol open --unwindstack --show-regs
 ```
 
-![](./images/Snipaste_2022-11-09_16-47-16.png)
+![](./images/Snipaste_2022-11-09_19-35-43.png)
 
 
 **复杂使用**：指定偏移，对任意的APP三方库进行hook追踪，记得uid要对应
@@ -83,7 +75,7 @@ eBPF hook需要提供完整的库文件路径，所以我们需要先查看要ho
 
 ![](./images/Snipaste_2022-11-09_15-28-12.png)
 
-查看跟单帮助信息使用如下命令：
+查看更多帮助信息使用如下命令：
 
 - `/data/local/tmp/stackplz -h`
 - `/data/local/tmp/stackplz stack -h`
@@ -94,9 +86,24 @@ eBPF hook需要提供完整的库文件路径，所以我们需要先查看要ho
 
 # 编译
 
-在linux x86_64环境下编译
+本项目依赖于[ehids/ebpfmanager](https://github.com/ehids/ebpfmanager)和[cilium/ebpf](https://github.com/cilium/ebpf)，但是做出了一些修改
 
-首先准备必要的外部代码，记得挂全局代理或者使用`proxychains`等工具
+所以目前编译需要使用我修改过的版本，三个项目需要放在同一目录下
+
+```bash
+git clone https://github.com/SeeFlowerX/ebpf
+git clone https://github.com/SeeFlowerX/ebpfmanager
+```
+
+然后是本项目的代码
+
+```bash
+git clone https://github.com/SeeFlowerX/stackplz
+```
+
+本项目在linux x86_64环境下编译，编译时先进入本项目根目录
+
+准备必要的外部代码，记得挂全局代理或者使用`proxychains`等工具
 
 ```bash
 ./build_env.sh
