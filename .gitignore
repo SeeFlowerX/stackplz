@@ -1,0 +1,4 @@
+bin/
+external
+user/bytecode/*.o
+user/bytecode/*.d
