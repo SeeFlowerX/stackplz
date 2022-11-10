@@ -17,7 +17,7 @@ replace github.com/ehids/ebpfmanager => ../ebpfmanager
 require (
 	github.com/avast/retry-go v3.0.0+incompatible // indirect
 	github.com/florianl/go-tc v0.4.0 // indirect
-	github.com/google/go-cmp v0.5.6 // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
@@ -28,5 +28,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/vishvananda/netlink v1.1.0 // indirect
 	github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df // indirect
+	golang.org/x/exp v0.0.0-20221109205753-fc8884afc316 // indirect
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
 )

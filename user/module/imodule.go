@@ -1,17 +1,17 @@
 package module
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"log"
-	"os"
-	"stackplz/user/config"
-	"stackplz/user/event"
+    "context"
+    "errors"
+    "fmt"
+    "log"
+    "os"
+    "stackplz/user/config"
+    "stackplz/user/event"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/perf"
-	"github.com/cilium/ebpf/ringbuf"
+    "github.com/cilium/ebpf"
+    "github.com/cilium/ebpf/perf"
+    "github.com/cilium/ebpf/ringbuf"
 )
 
 type IModule interface {
@@ -164,7 +164,7 @@ func (this *Module) readEvents() error {
 func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     // 这里对原ebpf包代码做了修改 以此控制是否让内核发生栈空间数据和寄存器数据
     // 用于进行堆栈回溯 以后可以细分栈数据与寄存器数据
-    rd, err := perf.NewReader(em, os.Getpagesize()*64, this.conf.GetUnwindStack())
+    rd, err := perf.NewReader(em, os.Getpagesize()*64, this.conf.GetUnwindStack(), this.conf.GetShowRegs())
     if err != nil {
         errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)
         return
@@ -185,6 +185,8 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
             // 根据预设的flag决定以何种方式读取事件数据
             if this.conf.GetUnwindStack() {
                 record, err = rd.ReadWithUnwindStack()
+            } else if this.conf.GetShowRegs() {
+                record, err = rd.ReadWithRegs()
             } else {
                 record, err = rd.Read()
             }
@@ -267,7 +269,7 @@ func (this *Module) Decode(em *ebpf.Map, b []byte) (event event.IEventStruct, er
     // 注意这里会设置好 event_type 后续上报数据需要根据这个类型判断使用何种上报方式
     te := es.Clone()
     // 正式解析，传入是否进行堆栈回溯的标志
-    err = te.Decode(b, this.conf.GetUnwindStack())
+    err = te.Decode(b, this.conf.GetUnwindStack(), this.conf.GetShowRegs())
     if err != nil {
         return nil, err
     }

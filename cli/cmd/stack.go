@@ -5,18 +5,18 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"context"
-	"io"
-	"log"
-	"os"
-	"os/signal"
-	"path"
-	"stackplz/user/config"
-	"stackplz/user/module"
-	"sync"
-	"syscall"
+    "context"
+    "io"
+    "log"
+    "os"
+    "os/signal"
+    "path"
+    "stackplz/user/config"
+    "stackplz/user/module"
+    "sync"
+    "syscall"
 
-	"github.com/spf13/cobra"
+    "github.com/spf13/cobra"
 )
 
 var stack_config = config.NewStackConfig()
@@ -32,7 +32,7 @@ func init() {
     stackCmd.PersistentFlags().StringVar(&stack_config.Libpath, "libpath", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
     stackCmd.PersistentFlags().StringVar(&stack_config.Symbol, "symbol", "", "lib symbol")
     stackCmd.PersistentFlags().Uint64Var(&stack_config.Offset, "offset", 0, "lib hook offset")
-    stackCmd.PersistentFlags().StringVar(&stack_config.Config, "config", "", "hook config file")
+    stackCmd.PersistentFlags().StringVar(&stack_config.ConfigFile, "config", "", "hook config file")
     rootCmd.AddCommand(stackCmd)
 }
 
@@ -113,7 +113,6 @@ func stackCommandFunc(command *cobra.Command, args []string) {
         conf.SetDebug(gConf.Debug)
         conf.SetUnwindStack(gConf.UnwindStack)
         conf.SetShowRegs(gConf.ShowRegs)
-        conf.SetConfig(gConf.Config)
 
         err = conf.Check()
 

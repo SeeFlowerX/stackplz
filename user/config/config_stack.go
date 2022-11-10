@@ -2,10 +2,10 @@ package config
 
 type StackConfig struct {
     eConfig
-    Libpath string
-    Symbol  string
-    Offset  uint64
-    Config  string
+    Libpath    string
+    Symbol     string
+    Offset     uint64
+    ConfigFile string
 }
 
 func NewStackConfig() *StackConfig {

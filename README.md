@@ -84,6 +84,29 @@ eBPF hook需要提供完整的库文件路径，所以我们需要先查看要ho
 
 只输出到日志，不输出到终端再加一个`--quiet`即可
 
+# 批量hook
+
+准备好`stackplz`和`config.json`，推送到手机
+
+```bash
+adb push stackplz /data/local/tmp
+adb push config.json /data/local/tmp
+```
+
+参考下面的命令，目前可以仅使用`--regs`表示输出寄存器信息，但是现在还没有把批量hook的点和结果对应...所以请耐心等待完善
+
+```bash
+./stackplz stack -u 10245 --config config.json --unwindstack --regs --log-file tmp.log
+```
+
+效果如图：
+
+![](./images/Snipaste_2022-11-10_23-13-11.png)
+
+有的时候可能丢失了部分信息，后续尝试完善，或者减少系统函数的hook点位
+
+![](./images/Snipaste_2022-11-10_23-14-05.png)
+
 # 编译
 
 本项目依赖于[ehids/ebpfmanager](https://github.com/ehids/ebpfmanager)和[cilium/ebpf](https://github.com/cilium/ebpf)，但是做出了一些修改
@@ -178,6 +201,14 @@ adb push bin/stackplz /data/local/tmp
 2. `preload_libs`里面的库怎么编译的？
 
 参见：[unwinddaemon](https://github.com/SeeFlowerX/unwinddaemon)
+
+3. perf event ring buffer full, dropped 9 samples
+
+待完善，wating plz...
+
+3. 仅使用`--regs`不知道对应哪个hook点
+
+待完善，wating plz...
 
 # 交流
 

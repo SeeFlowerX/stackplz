@@ -7,19 +7,13 @@
                 {
                     "unwindstack": true,
                     "regs": true,
-                    "symbols": ["open", "read", "write"],
-                    "offsets": ["0x3755", "0x3555"]
+                    "symbols": ["open", "read"],
+                    "offsets": []
                 },
                 {
                     "unwindstack": true,
                     "regs": false,
                     "symbols": ["pread", "pwrite"],
-                    "offsets": []
-                },
-                {
-                    "unwindstack": false,
-                    "regs": true,
-                    "symbols": ["send", "recv"],
                     "offsets": []
                 },
                 {
@@ -31,7 +25,7 @@
             ]
         },
         {
-            "path": "/data/app/~~d6FTHd4woitjnG95rjCv1w==/com.sfx.ebpf-YyPF9u5v8CBZD6OOfV4XQg==/lib/arm64/libnative-lib.so",
+            "path": "/data/app/~~t-iSPdaqQLZBOa9bm4keLA==/com.sfx.ebpf-C_ceI-EXetM4Ma7GVPORow==/lib/arm64/libnative-lib.so",
             "configs": [
                 {
                     "unwindstack": true,

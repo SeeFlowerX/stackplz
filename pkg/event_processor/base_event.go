@@ -1,10 +1,10 @@
 package event_processor
 
 import (
-	"bytes"
-	"encoding/binary"
-	"fmt"
-	"stackplz/user/event"
+    "bytes"
+    "encoding/binary"
+    "fmt"
+    "stackplz/user/event"
 )
 
 const MAX_DATA_SIZE = 1024 * 4
@@ -24,7 +24,7 @@ type BaseEvent struct {
 
 // 默认事件实现 暂时没有用到 暂且保留作为参考
 
-func (this *BaseEvent) Decode(payload []byte, unwind_stack bool) (err error) {
+func (this *BaseEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
     buf := bytes.NewBuffer(payload)
     if err = binary.Read(buf, binary.LittleEndian, &this.DataType); err != nil {
         return

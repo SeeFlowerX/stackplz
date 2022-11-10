@@ -14,7 +14,7 @@ const (
 )
 
 type IEventStruct interface {
-    Decode(payload []byte, unwind_stack bool) (err error)
+    Decode(payload []byte, unwind_stack, regs bool) (err error)
     String() string
     Clone() IEventStruct
     EventType() EventType
