@@ -4,7 +4,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 */
 package cli
 
-import "edemo/cli/cmd"
+import "stackplz/cli/cmd"
 
 func Start() {
     cmd.Execute()

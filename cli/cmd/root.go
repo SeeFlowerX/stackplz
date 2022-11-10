@@ -5,12 +5,12 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-    "edemo/assets"
-    "fmt"
-    "os"
-    "path"
+	"fmt"
+	"os"
+	"path"
+	"stackplz/assets"
 
-    "github.com/spf13/cobra"
+	"github.com/spf13/cobra"
 )
 
 const (

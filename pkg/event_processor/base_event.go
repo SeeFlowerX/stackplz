@@ -1,10 +1,10 @@
 package event_processor
 
 import (
-    "bytes"
-    "edemo/user/event"
-    "encoding/binary"
-    "fmt"
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"stackplz/user/event"
 )
 
 const MAX_DATA_SIZE = 1024 * 4

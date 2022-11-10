@@ -1,4 +1,4 @@
-module edemo
+module stackplz
 
 go 1.18
 

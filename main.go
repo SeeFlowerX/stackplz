@@ -1,11 +1,11 @@
 package main
 
 import (
-    "edemo/cli"
-    "edemo/pkg/ebpf"
-    "log"
+	"log"
+	"stackplz/cli"
+	"stackplz/pkg/ebpf"
 
-    _ "github.com/shuLhan/go-bindata" // add for bindata in Makefile
+	_ "github.com/shuLhan/go-bindata" // add for bindata in Makefile
 )
 
 func main() {

@@ -1,5 +1,5 @@
-#ifndef EDEMO_COMMON_H
-#define EDEMO_COMMON_H
+#ifndef STACKPLZ_COMMON_H
+#define STACKPLZ_COMMON_H
 
 #include <linux/bpf.h>
 #include <linux/ptrace.h>

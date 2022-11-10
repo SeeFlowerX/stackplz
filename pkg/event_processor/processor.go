@@ -1,10 +1,10 @@
 package event_processor
 
 import (
-    "edemo/user/event"
-    "fmt"
-    "log"
-    "sync"
+	"fmt"
+	"log"
+	"stackplz/user/event"
+	"sync"
 )
 
 const (

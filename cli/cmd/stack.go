@@ -5,18 +5,18 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-    "context"
-    "edemo/user/config"
-    "edemo/user/module"
-    "io"
-    "log"
-    "os"
-    "os/signal"
-    "path"
-    "sync"
-    "syscall"
+	"context"
+	"io"
+	"log"
+	"os"
+	"os/signal"
+	"path"
+	"stackplz/user/config"
+	"stackplz/user/module"
+	"sync"
+	"syscall"
 
-    "github.com/spf13/cobra"
+	"github.com/spf13/cobra"
 )
 
 var stack_config = config.NewStackConfig()

@@ -1,9 +1,9 @@
 package event_processor
 
 import (
-    "edemo/user/event"
-    "fmt"
-    "time"
+	"fmt"
+	"stackplz/user/event"
+	"time"
 )
 
 type IWorker interface {

@@ -1,17 +1,17 @@
 package module
 
 import (
-    "context"
-    "edemo/user/config"
-    "edemo/user/event"
-    "errors"
-    "fmt"
-    "log"
-    "os"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"stackplz/user/config"
+	"stackplz/user/event"
 
-    "github.com/cilium/ebpf"
-    "github.com/cilium/ebpf/perf"
-    "github.com/cilium/ebpf/ringbuf"
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/perf"
+	"github.com/cilium/ebpf/ringbuf"
 )
 
 type IModule interface {

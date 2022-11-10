@@ -1,23 +1,23 @@
 package module
 
 import (
-    "bytes"
-    "context"
-    "edemo/assets"
-    "edemo/user/config"
-    "edemo/user/event"
-    "encoding/binary"
-    "errors"
-    "fmt"
-    "log"
-    "math"
-    "math/rand"
-    "os"
-    "path/filepath"
+	"bytes"
+	"context"
+	"encoding/binary"
+	"errors"
+	"fmt"
+	"log"
+	"math"
+	"math/rand"
+	"os"
+	"path/filepath"
+	"stackplz/assets"
+	"stackplz/user/config"
+	"stackplz/user/event"
 
-    "github.com/cilium/ebpf"
-    manager "github.com/ehids/ebpfmanager"
-    "golang.org/x/sys/unix"
+	"github.com/cilium/ebpf"
+	manager "github.com/ehids/ebpfmanager"
+	"golang.org/x/sys/unix"
 )
 
 type MStackProbe struct {
