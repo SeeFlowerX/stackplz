@@ -26,7 +26,7 @@ func GetAllModules() map[string]IModule {
 func GetModuleByName(modName string) IModule {
     m, f := modules[modName]
     if f {
-        return m
+        return m.Clone()
     }
     return nil
 }

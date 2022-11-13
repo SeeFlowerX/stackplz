@@ -23,6 +23,7 @@ type HookDataEvent struct {
     UnwindBuffer UnwindBuf
     UnwindStack  bool
     ShowRegs     bool
+    UUID         string
 }
 
 type UnwindBuf struct {
@@ -94,13 +95,13 @@ func (this *HookDataEvent) EventType() EventType {
     return this.event_type
 }
 
-func (this *HookDataEvent) GetUUID() string {
-    return fmt.Sprintf("%d_%d_%s", this.Pid, this.Tid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")))
+func (this *HookDataEvent) SetUUID(uuid string) {
+    this.UUID = uuid
 }
 
 func (this *HookDataEvent) String() string {
     var s string
-    s = fmt.Sprintf("PID:%d, Comm:%s, TID:%d", this.Pid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")), this.Tid)
+    s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d", this.UUID, this.Pid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")), this.Tid)
     if this.ShowRegs {
         var tmp_regs [33]uint64
         if this.UnwindStack {

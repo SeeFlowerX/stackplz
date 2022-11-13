@@ -42,70 +42,97 @@ chmod +x /data/local/tmp/stackplz
 
 3. 参考下列命令示例进行hook
 
-**必须指定目标进程的uid**，通过包名获取uid的命令如下
+通过**指定uid**，对`/apex/com.android.runtime/lib64/bionic/libc.so`的`open`函数进行hook
 
 ```bash
-dumpsys package com.sfx.ebpf | grep userId=
+./stackplz --uid 10245 stack --symbol open --unwindstack --regs
 ```
 
-**简单使用**：`--libpath`默认为`/apex/com.android.runtime/lib64/bionic/libc.so`，所以下面的命令是针对uid为10245的进程，hook对应libc.so的`open`函数，这里是通过uid过滤的，即使是多进程也不影响，另外还可以输出hook时的完整寄存器信息！
+![](./images/Snipaste_2022-11-13_14-10-18.png)
+
+通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook
 
 ```bash
-./stackplz stack --uid 10224 --symbol open --unwindstack --regs
+./stackplz --name com.sfx.ebpf stack --library libnative-lib.so --symbol _Z5func1v --unwindstack --regs
 ```
 
-![](./images/Snipaste_2022-11-10_00-11-12.png)
+![](./images/Snipaste_2022-11-13_14-11-03.png)
 
-
-**复杂使用**：指定偏移，对任意的APP三方库进行hook追踪，记得uid要对应
+通过**指定包名和配置文件**进行批量hook
 
 ```bash
-./stackplz stack --uid 10224 --libpath /data/app/~~d6FTHd4woitjnG95rjCv1w==/com.sfx.ebpf-YyPF9u5v8CBZD6OOfV4XQg==/lib/arm64/libnative-lib.so --offset 0xF37C --unwindstack
+./stackplz --name com.sfx.ebpf stack --config config.json
 ```
 
-eBPF hook需要提供完整的库文件路径，所以我们需要先查看要hook的库具体是啥路径
+![](./images/Snipaste_2022-11-13_14-12-00.png)
 
-最准确的做法是当程序运行时，查看程序的`/proc/{pid}/maps`内容，这里的路径是啥就是啥
+配置文件示例如下
 
-![](./images/Snipaste_2022-11-09_15-23-31.png)
+```json
+{
+    "library_dirs": [
+        "/apex/com.android.runtime/lib64"
+    ],
+    "libs": [
+        {
+            "library": "bionic/libc.so",
+            "disable": false,
+            "configs": [
+                {
+                    "unwindstack": true,
+                    "regs": true,
+                    "symbols": ["open"],
+                    "offsets": []
+                },
+                {
+                    "unwindstack": false,
+                    "regs": true,
+                    "symbols": ["read", "send", "recv"],
+                    "offsets": []
+                }
+            ]
+        },
+        {
+            "library": "libnative-lib.so",
+            "disable": false,
+            "configs": [
+                {
+                    "unwindstack": true,
+                    "regs": true,
+                    "symbols": ["_Z5func1v"],
+                    "offsets": ["0xF37C"]
+                }
+            ]
+        }
+    ]
+}
+```
 
-路径看起来有些随机字符，但是APP安装后这个是不会变的，所以获取一次就行
+字段说明：
 
-效果如图：
+- `library_dirs` 目标库的搜索路径，可以设置多个
+- `libs` 目标多个库的hook配置
+    - `library` 库名、完整库路径或者与搜索路径拼接后存在的路径
+    - `disable` 是否启用hook
+    - `configs` 目标库的多个hook点配置，按输出需要进行配置
+        - 即输出堆栈与输出寄存器信息的组合，每一种组合都可以设定多个符号和多个偏移
 
-![](./images/Snipaste_2022-11-09_15-28-12.png)
+注意事项：
+
+- 必须提供包名或者目标的uid，二选一
+- 默认hook的库是`/apex/com.android.runtime/lib64/bionic/libc.so`，可以只提供符号进行hook
+- hook目标加载的库时，默认在对应的库目录搜索，所以可以直接指定库名而不需要完整路径
+    - 例如 `/data/app/~~t-iSPdaqQLZBOa9bm4keLA==/com.sfx.ebpf-C_ceI-EXetM4Ma7GVPORow==/lib/arm64`
+- 如果要hook的库无法被自动检索到，请提供在内存中加载的完整路径
+    - 最准确的做法是当程序运行时，查看程序的`/proc/{pid}/maps`内容，这里的路径是啥就是啥
+- 批量hook请记得把配置文件推送到程序运行的同一目录
 
 查看更多帮助信息使用如下命令：
 
 - `/data/local/tmp/stackplz -h`
 - `/data/local/tmp/stackplz stack -h`
 
-输出到日志文件添加`--log-file tmp.log`
-
-只输出到日志，不输出到终端再加一个`--quiet`即可
-
-# 批量hook
-
-准备好`stackplz`和`config.json`，推送到手机
-
-```bash
-adb push stackplz /data/local/tmp
-adb push config.json /data/local/tmp
-```
-
-参考下面的命令，目前可以仅使用`--regs`表示输出寄存器信息，但是现在还没有把批量hook的点和结果对应...所以请耐心等待完善
-
-```bash
-./stackplz stack -u 10245 --config config.json --unwindstack --regs --log-file tmp.log
-```
-
-效果如图：
-
-![](./images/Snipaste_2022-11-10_23-13-11.png)
-
-有的时候可能丢失了部分信息，后续尝试完善，或者减少系统函数的hook点位
-
-![](./images/Snipaste_2022-11-10_23-14-05.png)
+输出到日志文件添加`-o/--out tmp.log`，只输出到日志，不输出到终端再加一个`--quiet`即可
 
 # 编译
 
@@ -179,7 +206,7 @@ adb push bin/stackplz /data/local/tmp
 
 # TODO
 
-- 通过配置文件实现批量hook
+- 从0到1文章
 - 优化代码逻辑...
 
 # Q & A
@@ -204,11 +231,33 @@ adb push bin/stackplz /data/local/tmp
 
 3. perf event ring buffer full, dropped 9 samples
 
-待完善，wating plz...
+有待优化，目前建议是不输出堆栈，或者减少hook点
 
-3. 仅使用`--regs`不知道对应哪个hook点
+4. 通过符号hook确定调用了但是不输出信息？
 
-待完善，wating plz...
+某些符号存在多种实现（或者重定位？），这个时候需要指定具体使用的符号或者偏移
+
+例如`strchr`可能实际使用的是`__strchr_aarch64`，这个时候应该指定`__strchr_aarch64`而不是`strchr`
+
+```bash
+coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.so | grep strchr
+   868: 00000000000b9f00    32 GNU_IFUNC GLOBAL DEFAULT   14 strchrnul
+   869: 00000000000b9ee0    32 GNU_IFUNC GLOBAL DEFAULT   14 strchr
+  1349: 000000000007bcf8    68 FUNC    GLOBAL DEFAULT   14 __strchr_chk
+   689: 000000000004a8c0   132 FUNC    LOCAL  HIDDEN    14 __strchrnul_aarch64_mte
+   692: 000000000004a980   172 FUNC    LOCAL  HIDDEN    14 __strchrnul_aarch64
+   695: 000000000004aa40   160 FUNC    LOCAL  HIDDEN    14 __strchr_aarch64_mte
+   698: 000000000004ab00   204 FUNC    LOCAL  HIDDEN    14 __strchr_aarch64
+  5143: 00000000000b9ee0    32 FUNC    LOCAL  HIDDEN    14 strchr_resolver
+  5144: 00000000000b9f00    32 FUNC    LOCAL  HIDDEN    14 strchrnul_resolver
+  5550: 00000000000b9ee0    32 GNU_IFUNC GLOBAL DEFAULT   14 strchr
+  6253: 000000000007bcf8    68 FUNC    GLOBAL DEFAULT   14 __strchr_chk
+  6853: 00000000000b9f00    32 GNU_IFUNC GLOBAL DEFAULT   14 strchrnul
+```
+
+如图，我们可以看到直接调用了`__strchr_aarch64`而不是经过`strchr`再去调用`__strchr_aarch64`
+
+![](./images/Snipaste_2022-11-13_14-19-38.png)
 
 # 交流
 

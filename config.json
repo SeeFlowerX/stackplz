@@ -1,36 +1,34 @@
 {
-    "uid": 10245,
+    "library_dirs": [
+        "/apex/com.android.runtime/lib64"
+    ],
     "libs": [
         {
-            "path": "/apex/com.android.runtime/lib64/bionic/libc.so",
+            "library": "bionic/libc.so",
+            "disable": false,
             "configs": [
                 {
                     "unwindstack": true,
                     "regs": true,
-                    "symbols": ["open", "read"],
-                    "offsets": []
-                },
-                {
-                    "unwindstack": true,
-                    "regs": false,
-                    "symbols": ["pread", "pwrite"],
+                    "symbols": ["open"],
                     "offsets": []
                 },
                 {
                     "unwindstack": false,
-                    "regs": false,
-                    "symbols": ["sendto", "recvfrom"],
+                    "regs": true,
+                    "symbols": ["read", "send", "recv"],
                     "offsets": []
                 }
             ]
         },
         {
-            "path": "/data/app/~~t-iSPdaqQLZBOa9bm4keLA==/com.sfx.ebpf-C_ceI-EXetM4Ma7GVPORow==/lib/arm64/libnative-lib.so",
+            "library": "libnative-lib.so",
+            "disable": false,
             "configs": [
                 {
                     "unwindstack": true,
                     "regs": true,
-                    "symbols": [],
+                    "symbols": ["_Z5func1v"],
                     "offsets": ["0xF37C"]
                 }
             ]
