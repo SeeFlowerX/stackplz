@@ -18,9 +18,9 @@ import (
     "golang.org/x/sys/unix"
 )
 
-type MStackProbe struct {
+type MRawSyscallsTracepoint struct {
     Module
-    probeConf         *config.ProbeConfig
+    sysConf           *config.SyscallConfig
     bpfManager        *manager.Manager
     bpfManagerOptions manager.Options
     eventFuncMaps     map[*ebpf.Map]event.IEventStruct
@@ -29,50 +29,41 @@ type MStackProbe struct {
     hookBpfFile string
 }
 
-func (this *MStackProbe) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
+func (this *MRawSyscallsTracepoint) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
     this.Module.Init(ctx, logger, conf)
-    p, ok := (conf).(*config.ProbeConfig)
+    p, ok := (conf).(*config.SyscallConfig)
     if ok {
-        this.probeConf = p
+        this.sysConf = p
     }
     this.Module.SetChild(this)
     this.eventMaps = make([]*ebpf.Map, 0, 2)
     this.eventFuncMaps = make(map[*ebpf.Map]event.IEventStruct)
-    this.hookBpfFile = "stack.o"
+    this.hookBpfFile = "raw_syscalls.o"
     return nil
 }
 
-func (this *MStackProbe) GetConf() string {
-    return this.probeConf.Info()
-}
-
-func (this *MStackProbe) setupManager() error {
-    if this.probeConf.Debug {
-        this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.probeConf.Symbol, this.probeConf.Library, this.probeConf.Offset)
+func (this *MRawSyscallsTracepoint) setupManager() error {
+    if this.sysConf.Debug {
+        this.logger.Printf("NR:%d", this.sysConf.NR)
     }
     this.bpfManager = &manager.Manager{
         Probes: []*manager.Probe{
             {
-                Section:          "uprobe/stack",
-                EbpfFuncName:     "probe_stack",
-                AttachToFuncName: this.probeConf.Symbol,
-                BinaryPath:       this.probeConf.Library,
-                UprobeOffset:     this.probeConf.Offset,
-                // 这样每个hook点都使用独立的程序
-                // UID: util.RandStringBytes(8),
+                Section:      "tracepoint/raw_syscalls/sys_enter",
+                EbpfFuncName: "raw_syscalls_sys_enter",
             },
         },
 
         Maps: []*manager.Map{
             {
-                Name: "stack_events",
+                Name: "syscall_events",
             },
         },
     }
     return nil
 }
 
-func (this *MStackProbe) setupManagersUprobe() error {
+func (this *MRawSyscallsTracepoint) setupManagersUprobe() error {
     err := this.setupManager()
     if err != nil {
         return err
@@ -99,20 +90,24 @@ func (this *MStackProbe) setupManagersUprobe() error {
     return nil
 }
 
-func (this *MStackProbe) Start() error {
+func (this *MRawSyscallsTracepoint) Start() error {
     return this.start()
 }
 
-func (this *MStackProbe) Clone() IModule {
-    mod := new(MStackProbe)
+func (this *MRawSyscallsTracepoint) Clone() IModule {
+    mod := new(MRawSyscallsTracepoint)
     mod.name = this.name
     mod.mType = this.mType
     return mod
 }
 
-func (this *MStackProbe) start() error {
+func (this *MRawSyscallsTracepoint) GetConf() string {
+    return this.sysConf.Info()
+}
+
+func (this *MRawSyscallsTracepoint) start() error {
     // 保不齐什么时候写出bug了 这里再次检查uid
-    if this.probeConf.Uid == 0 {
+    if this.sysConf.Uid == 0 {
         return fmt.Errorf("uid is 0, %s", this.GetConf())
     }
     // 初始化Uprobe相关设置
@@ -128,8 +123,13 @@ func (this *MStackProbe) start() error {
 
     // 通过直接替换二进制数据实现uid过滤
     target_uid_buf := []byte{0xAA, 0xCC, 0xBB, 0xAA}
-    uid_buf := util.IntToBytes(int(this.probeConf.Uid))
+    uid_buf := util.IntToBytes(int(this.sconf.Uid))
     byteBuf = bytes.Replace(byteBuf, target_uid_buf, uid_buf, 3)
+    // 替换 NR
+    fmt.Println("NR:", this.sysConf.NR)
+    target_nr_buf := []byte{0x77, 0xCC, 0xBB, 0xAA}
+    nr_buf := util.IntToBytes(int(this.sysConf.NR))
+    byteBuf = bytes.Replace(byteBuf, target_nr_buf, nr_buf, 3)
 
     if err != nil {
         return fmt.Errorf("%s\tcouldn't find asset %v .", this.Name(), err)
@@ -154,42 +154,42 @@ func (this *MStackProbe) start() error {
     return nil
 }
 
-func (this *MStackProbe) initDecodeFun() error {
-    StackEventsMap, found, err := this.bpfManager.GetMap("stack_events")
+func (this *MRawSyscallsTracepoint) initDecodeFun() error {
+    SyscallEventsMap, found, err := this.bpfManager.GetMap("syscall_events")
     if err != nil {
         return err
     }
     if !found {
-        return errors.New("cant found map:stack_events")
+        return errors.New("cant found map:syscall_events")
     }
-    this.eventMaps = append(this.eventMaps, StackEventsMap)
-    hookEvent := &event.HookDataEvent{}
-    this.eventFuncMaps[StackEventsMap] = hookEvent
+    this.eventMaps = append(this.eventMaps, SyscallEventsMap)
+    hookEvent := &event.SyscallDataEvent{}
+    this.eventFuncMaps[SyscallEventsMap] = hookEvent
 
     return nil
 }
 
-func (this *MStackProbe) Events() []*ebpf.Map {
+func (this *MRawSyscallsTracepoint) Events() []*ebpf.Map {
     return this.eventMaps
 }
 
-func (this *MStackProbe) DecodeFun(em *ebpf.Map) (event.IEventStruct, bool) {
+func (this *MRawSyscallsTracepoint) DecodeFun(em *ebpf.Map) (event.IEventStruct, bool) {
     fun, found := this.eventFuncMaps[em]
     return fun, found
 }
 
-func (this *MStackProbe) Dispatcher(e event.IEventStruct) {
+func (this *MRawSyscallsTracepoint) Dispatcher(e event.IEventStruct) {
     // 事件类型指定为 EventTypeModuleData 直接使用当前方法处理
     // 如果需要多处联动收集信息 比如做统计之类的 那么使用 EventTypeEventProcessor 类型 并设计处理模式更合理
 
-    e.(*event.HookDataEvent).ShowRegs = this.probeConf.ShowRegs
-    e.(*event.HookDataEvent).UnwindStack = this.probeConf.UnwindStack
-    this.logger.Println(e.(*event.HookDataEvent).String())
+    e.(*event.SyscallDataEvent).ShowRegs = this.sconf.ShowRegs
+    e.(*event.SyscallDataEvent).UnwindStack = this.sconf.UnwindStack
+    this.logger.Println(e.(*event.SyscallDataEvent).String())
 }
 
 func init() {
-    mod := &MStackProbe{}
-    mod.name = MODULE_NAME_STACK
-    mod.mType = PROBE_TYPE_UPROBE
+    mod := &MRawSyscallsTracepoint{}
+    mod.name = MODULE_NAME_SYSCALL
+    mod.mType = PROBE_TYPE_TRACEPOINT
     Register(mod)
 }

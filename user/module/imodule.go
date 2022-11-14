@@ -16,7 +16,7 @@ import (
 
 type IModule interface {
     // Init 初始化
-    Init(context.Context, *log.Logger, config.ProbeConfig) error
+    Init(context.Context, *log.Logger, config.IConfig) error
 
     // Name 获取当前module的名字
     Name() string
@@ -61,16 +61,21 @@ type Module struct {
     // module的类型，uprobe,kprobe等
     mType string
 
-    conf config.ProbeConfig
+    sconf *config.SConfig
 
     // processor *event_processor.EventProcessor
 }
 
 // Init 对象初始化
-func (this *Module) Init(ctx context.Context, logger *log.Logger, conf config.ProbeConfig) {
+func (this *Module) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) {
     this.ctx = ctx
     this.logger = logger
-    this.conf = conf
+    this.sconf = conf.GetSConfig()
+    // if ok {
+    //     this.sconf = sconf
+    // } else {
+    //     panic("cannot convert conf to SConfig")
+    // }
     // this.processor = event_processor.NewEventProcessor(logger)
 
 }
@@ -80,8 +85,9 @@ func (this *Module) Clone() IModule {
 }
 
 func (this *Module) GetConf() string {
-    return this.conf.Info()
+    panic("Module.GetConf() not implemented yet")
 }
+
 func (this *Module) SetChild(module IModule) {
     this.child = module
 }
@@ -177,7 +183,7 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     // 这里对原ebpf包代码做了修改 以此控制是否让内核发生栈空间数据和寄存器数据
     // 用于进行堆栈回溯 以后可以细分栈数据与寄存器数据
     // 每个 模块都是 Clone 得到的 map 虽然名字相同 但是 fd不同 所以可以正常区分
-    rd, err := perf.NewReader(em, os.Getpagesize()*64, this.conf.UnwindStack, this.conf.ShowRegs)
+    rd, err := perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, this.sconf.ShowRegs)
     if err != nil {
         errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)
         return
@@ -196,9 +202,9 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 
             var record perf.Record
             // 根据预设的flag决定以何种方式读取事件数据
-            if this.conf.UnwindStack {
+            if this.sconf.UnwindStack {
                 record, err = rd.ReadWithUnwindStack()
-            } else if this.conf.ShowRegs {
+            } else if this.sconf.ShowRegs {
                 record, err = rd.ReadWithRegs()
             } else {
                 record, err = rd.Read()
@@ -281,9 +287,9 @@ func (this *Module) Decode(em *ebpf.Map, b []byte) (event event.IEventStruct, er
     // 通过结构体引用生成一个真正用于解析事件数据的实例
     // 注意这里会设置好 event_type 后续上报数据需要根据这个类型判断使用何种上报方式
     te := es.Clone()
-    te.SetUUID(this.conf.Info())
+    te.SetUUID(this.sconf.Info())
     // 正式解析，传入是否进行堆栈回溯的标志
-    err = te.Decode(b, this.conf.UnwindStack, this.conf.ShowRegs)
+    err = te.Decode(b, this.sconf.UnwindStack, this.sconf.ShowRegs)
     if err != nil {
         return nil, err
     }
@@ -301,8 +307,8 @@ func (this *Module) Dispatcher(e event.IEventStruct) {
 }
 
 func (this *Module) Close() error {
-    if this.conf.Debug {
-        this.logger.Printf("%s\tClose, %s", this.child.Name(), this.conf.Info())
+    if this.sconf.Debug {
+        this.logger.Printf("%s\tClose, %s", this.child.Name(), this.sconf.Info())
     }
     for _, iClose := range this.reader {
         if err := iClose.Close(); err != nil {

@@ -12,12 +12,14 @@ import (
     "unsafe"
 )
 
-type HookDataEvent struct {
-    event_type   EventType
-    Pid          uint32
-    Tid          uint32
-    Timestamp    uint64
-    Comm         [16]byte
+type SyscallDataEvent struct {
+    event_type EventType
+    Pid        uint32
+    Tid        uint32
+    Timestamp  uint64
+    Comm       [16]byte
+    NR         uint64
+    // Args         [6]uint64
     Stackinfo    string
     RegsBuffer   RegsBuf
     UnwindBuffer UnwindBuf
@@ -26,7 +28,7 @@ type HookDataEvent struct {
     UUID         string
 }
 
-func (this *HookDataEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
+func (this *SyscallDataEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
     buf := bytes.NewBuffer(payload)
     if err = binary.Read(buf, binary.LittleEndian, &this.Pid); err != nil {
         return
@@ -40,6 +42,12 @@ func (this *HookDataEvent) Decode(payload []byte, unwind_stack, regs bool) (err 
     if err = binary.Read(buf, binary.LittleEndian, &this.Comm); err != nil {
         return
     }
+    if err = binary.Read(buf, binary.LittleEndian, &this.NR); err != nil {
+        return
+    }
+    // if err = binary.Read(buf, binary.LittleEndian, &this.Args); err != nil {
+    //     return
+    // }
 
     if unwind_stack {
         // 理论上应该是不需要读取这4字节 但是实测需要 原因未知
@@ -72,23 +80,23 @@ func (this *HookDataEvent) Decode(payload []byte, unwind_stack, regs bool) (err 
     return nil
 }
 
-func (this *HookDataEvent) Clone() IEventStruct {
-    event := new(HookDataEvent)
+func (this *SyscallDataEvent) Clone() IEventStruct {
+    event := new(SyscallDataEvent)
     event.event_type = EventTypeModuleData
     return event
 }
 
-func (this *HookDataEvent) EventType() EventType {
+func (this *SyscallDataEvent) EventType() EventType {
     return this.event_type
 }
 
-func (this *HookDataEvent) SetUUID(uuid string) {
+func (this *SyscallDataEvent) SetUUID(uuid string) {
     this.UUID = uuid
 }
 
-func (this *HookDataEvent) String() string {
+func (this *SyscallDataEvent) String() string {
     var s string
-    s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d", this.UUID, this.Pid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")), this.Tid)
+    s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d NR:%d", this.UUID, this.Pid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")), this.Tid, this.NR)
     if this.ShowRegs {
         var tmp_regs [33]uint64
         if this.UnwindStack {

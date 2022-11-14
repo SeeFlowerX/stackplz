@@ -8,14 +8,14 @@ import (
 )
 
 type ProbeConfig struct {
-    LibName     string
-    Library     string
-    Symbol      string
-    Uid         uint64
-    Offset      uint64
-    UnwindStack bool
-    ShowRegs    bool
-    Debug       bool
+    SConfig
+    LibName string
+    Library string
+    Symbol  string
+    // Uid     uint64
+    Offset uint64
+    // UnwindStack bool
+    // ShowRegs    bool
 }
 
 func NewProbeConfig() *ProbeConfig {

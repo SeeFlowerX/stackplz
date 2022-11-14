@@ -32,6 +32,22 @@ ebpf:
 	-MD -MF user/bytecode/stack.d \
 	-o user/bytecode/stack.o \
 	src/stack.c
+	clang \
+	--target=bpf \
+	-c \
+	-nostdlibinc \
+	-no-canonical-prefixes \
+	-O2 \
+	-isystem external/bionic/libc/include \
+	-isystem external/bionic/libc/kernel/uapi \
+	-isystem external/bionic/libc/kernel/uapi/asm-arm64 \
+	-isystem external/bionic/libc/kernel/android/uapi \
+	-I       external/system/core/libcutils/include \
+	-I       external/libbpf/src \
+	-g \
+	-MD -MF user/bytecode/raw_syscalls.d \
+	-o user/bytecode/raw_syscalls.o \
+	src/raw_syscalls.c
 
 .PHONY: assets
 assets:

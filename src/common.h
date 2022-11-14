@@ -39,6 +39,13 @@ typedef __u64 u64;
 #define __type(name, val) typeof(val) *name
 #define __array(name, val) typeof(val) *name[]
 
+struct sys_enter_args
+{
+    unsigned long long ignore;
+    long id;
+    unsigned long args[6];
+};
+
 struct pt_regs {
     union {
         struct user_pt_regs user_regs;

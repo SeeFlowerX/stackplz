@@ -43,45 +43,6 @@ type HookConfig struct {
     Libs        []LibHookConfig `json:"libs"`
 }
 
-func FindLib(library string, search_paths []string) (string, error) {
-    // 尝试在给定的路径中搜索 主要目的是方便用户输入库名即可
-    search_paths = util.RemoveDuplication_map(search_paths)
-    // 以 / 开头的认为是完整路径 否则在提供的路径中查找
-    if strings.HasPrefix(library, "/") {
-        _, err := os.Stat(library)
-        if err != nil {
-            // 出现异常 提示对应的错误信息
-            if os.IsNotExist(err) {
-                return library, fmt.Errorf("%s not exists", library)
-            }
-            return library, err
-        }
-    } else {
-        var full_paths []string
-        for _, search_path := range search_paths {
-            // 去掉末尾可能存在的 /
-            check_path := strings.TrimRight(search_path, "/") + "/" + library
-            _, err := os.Stat(check_path)
-            if err != nil {
-                // 这里在debug模式下打印出来
-                continue
-            }
-            full_paths = append(full_paths, check_path)
-        }
-        if len(full_paths) == 0 {
-            // 没找到
-            return library, fmt.Errorf("can not find %s in these paths\n%s", library, strings.Join(search_paths[:], "\n\t"))
-        }
-        if len(full_paths) > 1 {
-            // 在已有的搜索路径下可能存在多个同名的库 提示用户指定全路径
-            return library, fmt.Errorf("find %d libs with the same name\n%s", len(full_paths), strings.Join(full_paths[:], "\n\t"))
-        }
-        // 修正为完整路径
-        library = full_paths[0]
-    }
-    return library, nil
-}
-
 func hex2int(hexStr string) uint64 {
     cleaned := strings.Replace(hexStr, "0x", "", -1)
     result, _ := strconv.ParseUint(cleaned, 16, 64)
@@ -138,25 +99,27 @@ func stackCommandFunc(command *cobra.Command, args []string) {
             logger.SetOutput(mw)
         }
     }
-    // hook 列表
+    // uprobe hook 列表
     var probeConfigs []config.ProbeConfig
     // 指定配置文件
     if stack_config.Config != "" {
         parseConfig(logger, stack_config.Config, &probeConfigs)
     } else {
-        library, err := FindLib(stack_config.Library, target_config.LibraryDirs)
+        library, err := util.FindLib(stack_config.Library, target_config.LibraryDirs)
         if err != nil {
             logger.Fatal(err)
             os.Exit(1)
         }
         // 没有配置文件 尝试检查是不是通过命令行进行单个位置点hook
         pConfig := config.ProbeConfig{
-            Library:     library,
-            Symbol:      stack_config.Symbol,
-            Offset:      stack_config.Offset,
-            UnwindStack: stack_config.UnwindStack,
-            ShowRegs:    stack_config.ShowRegs,
-            Uid:         target_config.Uid,
+            Library: library,
+            Symbol:  stack_config.Symbol,
+            Offset:  stack_config.Offset,
+            SConfig: config.SConfig{
+                UnwindStack: stack_config.UnwindStack,
+                ShowRegs:    stack_config.ShowRegs,
+                Uid:         target_config.Uid,
+            },
         }
         if err := pConfig.Check(); err == nil {
             probeConfigs = append(probeConfigs, pConfig)
@@ -186,7 +149,7 @@ func stackCommandFunc(command *cobra.Command, args []string) {
         logger.Printf("%s\thook info:%s", mod.Name(), probeConfig.Info())
 
         // 初始化单个eBPF模块
-        err := mod.Init(ctx, logger, probeConfig)
+        err := mod.Init(ctx, logger, &probeConfig)
         if err != nil {
             logger.Printf("%s\tmodule Init failed, [skip it]. error:%+v", mod.Name(), err)
             continue
@@ -255,7 +218,7 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
             continue
         }
         // 先查找目标库
-        library, err := FindLib(libHookConfig.Library, hookConfig.LibraryDirs)
+        library, err := util.FindLib(libHookConfig.Library, hookConfig.LibraryDirs)
         // 找不到 重复 ... 直接结束并返回错误
         // 或者考虑提供一个选项允许跳过找不到的 只对找得到的hook
         if err != nil {
@@ -278,12 +241,14 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
                     symbols = append(symbols, symbol)
                 }
                 pConfig := config.ProbeConfig{
-                    Library:     library,
-                    Symbol:      symbol,
-                    Offset:      0,
-                    UnwindStack: baseHookConfig.Unwindstack,
-                    ShowRegs:    baseHookConfig.Regs,
-                    Uid:         target_config.Uid,
+                    SConfig: config.SConfig{
+                        UnwindStack: baseHookConfig.Unwindstack,
+                        ShowRegs:    baseHookConfig.Regs,
+                        Uid:         target_config.Uid,
+                    },
+                    Library: library,
+                    Symbol:  symbol,
+                    Offset:  0,
                 }
                 if err := pConfig.Check(); err == nil {
                     *probeConfigs = append(*probeConfigs, pConfig)
@@ -310,12 +275,14 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
                     offsets = append(offsets, offset)
                 }
                 pConfig := config.ProbeConfig{
-                    Library:     library,
-                    Symbol:      "",
-                    Offset:      hex2int(offset),
-                    UnwindStack: baseHookConfig.Unwindstack,
-                    ShowRegs:    baseHookConfig.Regs,
-                    Uid:         target_config.Uid,
+                    SConfig: config.SConfig{
+                        UnwindStack: baseHookConfig.Unwindstack,
+                        ShowRegs:    baseHookConfig.Regs,
+                        Uid:         target_config.Uid,
+                    },
+                    Library: library,
+                    Symbol:  "",
+                    Offset:  hex2int(offset),
                 }
                 if err := pConfig.Check(); err == nil {
                     *probeConfigs = append(*probeConfigs, pConfig)

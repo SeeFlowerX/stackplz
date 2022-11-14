@@ -14,3 +14,16 @@ type IEventStruct interface {
     EventType() EventType
     SetUUID(string)
 }
+
+type UnwindBuf struct {
+    Abi       uint64
+    Regs      [33]uint64
+    StackSize uint64
+    Data      [16384]byte
+    DynSize   uint64
+}
+
+type RegsBuf struct {
+    Abi  uint64
+    Regs [33]uint64
+}
