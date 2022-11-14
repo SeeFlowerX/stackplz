@@ -42,13 +42,13 @@ chmod +x /data/local/tmp/stackplz
 
 3. 参考下列命令示例进行hook
 
-追踪系统调用时的堆栈，以及寄存器信息
+追踪系统调用时的堆栈，以及寄存器信息，支持按pid过滤
 
 ```bash
-./stackplz --name com.starbucks.cn syscall --nr 56 --regs --unwindstack -o syscall_openat.log
+./stackplz --name com.lemon.lv --pid 11267 syscall --nr 63 --regs --unwindstack
 ```
 
-![](./images/Snipaste_2022-11-14_18-00-57.png)
+![](./images/Snipaste_2022-11-14_22-33-28.png)
 
 通过**指定uid**，对`/apex/com.android.runtime/lib64/bionic/libc.so`的`open`函数进行hook
 
