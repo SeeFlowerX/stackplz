@@ -74,6 +74,9 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         fmt.Println("RestoreAssets preload_libs success")
         os.Exit(0)
     }
+    if global_config.Pid > 0 {
+        target_config.Pid = global_config.Pid
+    }
 
     // 第二步 通过包名获取uid和库路径 先通过pm命令获取安装位置
     if global_config.Name != "" {
@@ -204,8 +207,9 @@ func Execute() {
 func init() {
     cobra.EnablePrefixMatching = true
     rootCmd.PersistentFlags().BoolVarP(&global_config.Prepare, "prepare", "", false, "prepare libs")
-    rootCmd.PersistentFlags().StringVarP(&global_config.Name, "name", "n", "", "target package name")
-    rootCmd.PersistentFlags().Uint64VarP(&global_config.Uid, "uid", "u", 0, "if uid is 0 then we target all users")
+    rootCmd.PersistentFlags().StringVarP(&global_config.Name, "name", "n", "", "must set uid or package name")
+    rootCmd.PersistentFlags().Uint64VarP(&global_config.Uid, "uid", "u", 0, "must set uid or package name")
+    rootCmd.PersistentFlags().Uint64VarP(&global_config.Pid, "pid", "p", 0, "add pid to filter")
     rootCmd.PersistentFlags().BoolVarP(&global_config.Debug, "debug", "d", false, "enable debug logging")
     rootCmd.PersistentFlags().StringVarP(&global_config.LoggerFile, "out", "o", "", "-o save the packets to file")
     rootCmd.PersistentFlags().BoolVarP(&global_config.Quiet, "quiet", "", false, "use with --log-file, wont logging to terminal when used")

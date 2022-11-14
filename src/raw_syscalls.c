@@ -32,6 +32,10 @@ int raw_syscalls_sys_enter(struct sys_enter_args* ctx) {
         return 0;
     }
 
+    if (((tid >> 16) + pid) > 0xaabbcc11 && 0xaabbcc99 != pid) {
+        return 0;
+    }
+
     if (0xaabbcc77 != ctx->id) {
         return 0;
     }

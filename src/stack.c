@@ -29,6 +29,14 @@ int probe_stack(struct pt_regs* ctx) {
     if (0xaabbccaa != uid) {
         return 0;
     }
+    // 为什么要这么写 因为全局常量是5.3还是哪个版本才可以 只好用这个笨办法了
+    // 我们知道 ((tid >> 16) + pid) 肯定是刚好等于 pid 本身的
+    // 那么过滤 pid 的时候改成 0 
+    // 则 pid 必 大于 0
+    // 那么修改后面的数字为真正要过滤的 pid 值 如此可以实现过滤
+    if (((tid >> 16) + pid) > 0xaabbcc11 && 0xaabbcc99 != pid) {
+        return 0;
+    }
 
     u32 zero = 0;
     struct hook_data_event_t* event = bpf_map_lookup_elem(&data_buffer_heap, &zero);

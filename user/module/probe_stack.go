@@ -127,9 +127,14 @@ func (this *MStackProbe) start() error {
     byteBuf, err := assets.Asset(bpfFileName)
 
     // 通过直接替换二进制数据实现uid过滤
-    target_uid_buf := []byte{0xAA, 0xCC, 0xBB, 0xAA}
     uid_buf := util.IntToBytes(int(this.probeConf.Uid))
-    byteBuf = bytes.Replace(byteBuf, target_uid_buf, uid_buf, 3)
+    byteBuf = bytes.Replace(byteBuf, []byte{0xAA, 0xCC, 0xBB, 0xAA}, uid_buf, 3)
+
+    if this.probeConf.Pid > 0 {
+        pid_buf := util.UIntToBytes(uint32(this.probeConf.Pid))
+        byteBuf = bytes.Replace(byteBuf, []byte{0x99, 0xCC, 0xBB, 0xAA}, pid_buf, 3)
+        byteBuf = bytes.Replace(byteBuf, []byte{0x11, 0xCC, 0xBB, 0xAA}, []byte{0x00, 0x00, 0x00, 0x00}, 3)
+    }
 
     if err != nil {
         return fmt.Errorf("%s\tcouldn't find asset %v .", this.Name(), err)

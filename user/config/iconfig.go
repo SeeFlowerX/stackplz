@@ -8,6 +8,7 @@ type IConfig interface {
 
 type SConfig struct {
 	Uid         uint64
+	Pid         uint64
 	UnwindStack bool
 	ShowRegs    bool
 	Debug       bool

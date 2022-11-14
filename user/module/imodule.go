@@ -287,7 +287,7 @@ func (this *Module) Decode(em *ebpf.Map, b []byte) (event event.IEventStruct, er
     // 通过结构体引用生成一个真正用于解析事件数据的实例
     // 注意这里会设置好 event_type 后续上报数据需要根据这个类型判断使用何种上报方式
     te := es.Clone()
-    te.SetUUID(this.sconf.Info())
+    te.SetUUID(this.child.GetConf())
     // 正式解析，传入是否进行堆栈回溯的标志
     err = te.Decode(b, this.sconf.UnwindStack, this.sconf.ShowRegs)
     if err != nil {
@@ -308,7 +308,7 @@ func (this *Module) Dispatcher(e event.IEventStruct) {
 
 func (this *Module) Close() error {
     if this.sconf.Debug {
-        this.logger.Printf("%s\tClose, %s", this.child.Name(), this.sconf.Info())
+        this.logger.Printf("%s\tClose, %s", this.child.Name(), this.child.GetConf())
     }
     for _, iClose := range this.reader {
         if err := iClose.Close(); err != nil {

@@ -6,6 +6,7 @@ type GlobalConfig struct {
     Name       string
     Debug      bool
     Uid        uint64
+    Pid        uint64
     LoggerFile string
     ExecPath   string
 }

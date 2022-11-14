@@ -80,6 +80,7 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
                 UnwindStack: syscall_config.UnwindStack,
                 ShowRegs:    syscall_config.ShowRegs,
                 Uid:         global_config.Uid,
+                Pid:         global_config.Pid,
             },
             NR: sysno,
         }

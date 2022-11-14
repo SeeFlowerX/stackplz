@@ -119,6 +119,7 @@ func stackCommandFunc(command *cobra.Command, args []string) {
                 UnwindStack: stack_config.UnwindStack,
                 ShowRegs:    stack_config.ShowRegs,
                 Uid:         target_config.Uid,
+                Pid:         target_config.Pid,
             },
         }
         if err := pConfig.Check(); err == nil {
@@ -245,6 +246,7 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
                         UnwindStack: baseHookConfig.Unwindstack,
                         ShowRegs:    baseHookConfig.Regs,
                         Uid:         target_config.Uid,
+                        Pid:         target_config.Pid,
                     },
                     Library: library,
                     Symbol:  symbol,
@@ -279,6 +281,7 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
                         UnwindStack: baseHookConfig.Unwindstack,
                         ShowRegs:    baseHookConfig.Regs,
                         Uid:         target_config.Uid,
+                        Pid:         target_config.Pid,
                     },
                     Library: library,
                     Symbol:  "",

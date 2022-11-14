@@ -125,8 +125,13 @@ func (this *MRawSyscallsTracepoint) start() error {
     target_uid_buf := []byte{0xAA, 0xCC, 0xBB, 0xAA}
     uid_buf := util.IntToBytes(int(this.sconf.Uid))
     byteBuf = bytes.Replace(byteBuf, target_uid_buf, uid_buf, 3)
+    // 替换 pid
+    if this.sconf.Pid > 0 {
+        pid_buf := util.UIntToBytes(uint32(this.sconf.Pid))
+        byteBuf = bytes.Replace(byteBuf, []byte{0x99, 0xCC, 0xBB, 0xAA}, pid_buf, 3)
+        byteBuf = bytes.Replace(byteBuf, []byte{0x11, 0xCC, 0xBB, 0xAA}, []byte{0x00, 0x00, 0x00, 0x00}, 3)
+    }
     // 替换 NR
-    fmt.Println("NR:", this.sysConf.NR)
     target_nr_buf := []byte{0x77, 0xCC, 0xBB, 0xAA}
     nr_buf := util.IntToBytes(int(this.sysConf.NR))
     byteBuf = bytes.Replace(byteBuf, target_nr_buf, nr_buf, 3)

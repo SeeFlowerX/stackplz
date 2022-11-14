@@ -22,7 +22,13 @@ func RandStringBytes(n int) string {
 }
 
 func IntToBytes(n int) []byte {
-	x := int32(n)
+	x := uint32(n)
+	bytesBuffer := bytes.NewBuffer([]byte{})
+	binary.Write(bytesBuffer, binary.LittleEndian, x)
+	return bytesBuffer.Bytes()
+}
+
+func UIntToBytes(x uint32) []byte {
 	bytesBuffer := bytes.NewBuffer([]byte{})
 	binary.Write(bytesBuffer, binary.LittleEndian, x)
 	return bytesBuffer.Bytes()
