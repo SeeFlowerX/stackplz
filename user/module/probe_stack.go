@@ -1,23 +1,21 @@
 package module
 
 import (
-	"bytes"
-	"context"
-	"encoding/binary"
-	"errors"
-	"fmt"
-	"log"
-	"math"
-	"math/rand"
-	"os"
-	"path/filepath"
-	"stackplz/assets"
-	"stackplz/user/config"
-	"stackplz/user/event"
+    "bytes"
+    "context"
+    "encoding/binary"
+    "errors"
+    "fmt"
+    "log"
+    "math"
+    "path/filepath"
+    "stackplz/assets"
+    "stackplz/user/config"
+    "stackplz/user/event"
 
-	"github.com/cilium/ebpf"
-	manager "github.com/ehids/ebpfmanager"
-	"golang.org/x/sys/unix"
+    "github.com/cilium/ebpf"
+    manager "github.com/ehids/ebpfmanager"
+    "golang.org/x/sys/unix"
 )
 
 type MStackProbe struct {
@@ -30,19 +28,8 @@ type MStackProbe struct {
     hookBpfFile string
 }
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-func RandStringBytes(n int) string {
-    b := make([]byte, n)
-    for i := range b {
-        b[i] = letterBytes[rand.Intn(len(letterBytes))]
-    }
-    return string(b)
-}
-
-func (this *MStackProbe) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
+func (this *MStackProbe) Init(ctx context.Context, logger *log.Logger, conf config.ProbeConfig) error {
     this.Module.Init(ctx, logger, conf)
-    this.conf = conf
     this.Module.SetChild(this)
     this.eventMaps = make([]*ebpf.Map, 0, 2)
     this.eventFuncMaps = make(map[*ebpf.Map]event.IEventStruct)
@@ -50,47 +37,20 @@ func (this *MStackProbe) Init(ctx context.Context, logger *log.Logger, conf conf
     return nil
 }
 
-func (this *MStackProbe) setupManagerWithConfig() error {
-    return errors.New("hook with --config has not been implement yet")
-}
-
 func (this *MStackProbe) setupManager() error {
-
-    libPath := this.conf.(*config.StackConfig).Libpath
-    libSymbol := this.conf.(*config.StackConfig).Symbol
-    libOffset := this.conf.(*config.StackConfig).Offset
-
-    _, err := os.Stat(libPath)
-    if err != nil {
-        return err
+    if this.conf.Debug {
+        this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.conf.Symbol, this.conf.Library, this.conf.Offset)
     }
-
-    if libSymbol == "" && libOffset == 0 {
-        return fmt.Errorf("need symbol or offset\n")
-    }
-
-    if libSymbol != "" && libOffset > 0 {
-        return fmt.Errorf("just symbol or offset, not all of them\n")
-    }
-
-    if libSymbol != "" {
-        this.logger.Printf("%s\tlibPath:%s libSymbol:%s\n", this.Name(), libPath, libSymbol)
-    }
-
-    if libOffset > 0 {
-        this.logger.Printf("%s\tlibPath:%s libOffset:0x%x\n", this.Name(), libPath, libOffset)
-        // 虽然前面不允许用户同时设置offset和symbol 但是ebpf库必须要有一个symbol 于是这里随机下就好了
-        libSymbol = RandStringBytes(8)
-    }
-
     this.bpfManager = &manager.Manager{
         Probes: []*manager.Probe{
             {
                 Section:          "uprobe/stack",
                 EbpfFuncName:     "probe_stack",
-                AttachToFuncName: libSymbol,
-                BinaryPath:       libPath,
-                UprobeOffset:     libOffset,
+                AttachToFuncName: this.conf.Symbol,
+                BinaryPath:       this.conf.Library,
+                UprobeOffset:     this.conf.Offset,
+                // 这样每个hook点都使用独立的程序
+                // UID: util.RandStringBytes(8),
             },
         },
 
@@ -104,16 +64,9 @@ func (this *MStackProbe) setupManager() error {
 }
 
 func (this *MStackProbe) setupManagersUprobe() error {
-    if this.conf.(*config.StackConfig).Config == "" {
-        err := this.setupManager()
-        if err != nil {
-            return err
-        }
-    } else {
-        err := this.setupManagerWithConfig()
-        if err != nil {
-            return err
-        }
+    err := this.setupManager()
+    if err != nil {
+        return err
     }
 
     this.bpfManagerOptions = manager.Options{
@@ -141,6 +94,13 @@ func (this *MStackProbe) Start() error {
     return this.start()
 }
 
+func (this *MStackProbe) Clone() IModule {
+    mod := new(MStackProbe)
+    mod.name = this.name
+    mod.mType = this.mType
+    return mod
+}
+
 func IntToBytes(n int) []byte {
     x := int32(n)
     bytesBuffer := bytes.NewBuffer([]byte{})
@@ -149,6 +109,10 @@ func IntToBytes(n int) []byte {
 }
 
 func (this *MStackProbe) start() error {
+    // 保不齐什么时候写出bug了 这里再次检查uid
+    if this.conf.Uid == 0 {
+        return fmt.Errorf("uid is 0, %s", this.GetConf())
+    }
     // 初始化Uprobe相关设置
     err := this.setupManagersUprobe()
     if err != nil {
@@ -157,12 +121,12 @@ func (this *MStackProbe) start() error {
 
     // 从assets中获取eBPF程序的二进制数据
     var bpfFileName = filepath.Join("user/bytecode", this.hookBpfFile)
-    this.logger.Printf("%s\tBPF bytecode filename:%s\n", this.Name(), bpfFileName)
+    // this.logger.Printf("%s\tBPF bytecode filename:%s\n", this.Name(), bpfFileName)
     byteBuf, err := assets.Asset(bpfFileName)
 
     // 通过直接替换二进制数据实现uid过滤
     target_uid_buf := []byte{0xAA, 0xCC, 0xBB, 0xAA}
-    uid_buf := IntToBytes(int(this.conf.GetUid()))
+    uid_buf := IntToBytes(int(this.conf.Uid))
     byteBuf = bytes.Replace(byteBuf, target_uid_buf, uid_buf, 3)
 
     if err != nil {
@@ -216,7 +180,8 @@ func (this *MStackProbe) Dispatcher(e event.IEventStruct) {
     // 事件类型指定为 EventTypeModuleData 直接使用当前方法处理
     // 如果需要多处联动收集信息 比如做统计之类的 那么使用 EventTypeEventProcessor 类型 并设计处理模式更合理
 
-    e.(*event.HookDataEvent).ShowRegs = this.conf.GetShowRegs()
+    e.(*event.HookDataEvent).ShowRegs = this.conf.ShowRegs
+    e.(*event.HookDataEvent).UnwindStack = this.conf.UnwindStack
     this.logger.Println(e.(*event.HookDataEvent).String())
 }
 

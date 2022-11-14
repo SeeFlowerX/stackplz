@@ -1,25 +1,29 @@
 package module
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"log"
-	"os"
-	"stackplz/user/config"
-	"stackplz/user/event"
+    "context"
+    "errors"
+    "fmt"
+    "log"
+    "os"
+    "stackplz/user/config"
+    "stackplz/user/event"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/perf"
-	"github.com/cilium/ebpf/ringbuf"
+    "github.com/cilium/ebpf"
+    "github.com/cilium/ebpf/perf"
+    "github.com/cilium/ebpf/ringbuf"
 )
 
 type IModule interface {
     // Init 初始化
-    Init(context.Context, *log.Logger, config.IConfig) error
+    Init(context.Context, *log.Logger, config.ProbeConfig) error
 
     // Name 获取当前module的名字
     Name() string
+
+    Clone() IModule
+
+    GetConf() string
 
     // Run 事件监听感知
     Run() error
@@ -57,19 +61,27 @@ type Module struct {
     // module的类型，uprobe,kprobe等
     mType string
 
-    conf config.IConfig
+    conf config.ProbeConfig
 
     // processor *event_processor.EventProcessor
 }
 
 // Init 对象初始化
-func (this *Module) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) {
+func (this *Module) Init(ctx context.Context, logger *log.Logger, conf config.ProbeConfig) {
     this.ctx = ctx
     this.logger = logger
+    this.conf = conf
     // this.processor = event_processor.NewEventProcessor(logger)
 
 }
 
+func (this *Module) Clone() IModule {
+    panic("Module.Clone() not implemented yet")
+}
+
+func (this *Module) GetConf() string {
+    return this.conf.Info()
+}
 func (this *Module) SetChild(module IModule) {
     this.child = module
 }
@@ -91,7 +103,7 @@ func (this *Module) Name() string {
 }
 
 func (this *Module) Run() error {
-    this.logger.Printf("%s\tModule.Run()", this.Name())
+    // this.logger.Printf("%s\tModule.Run()", this.Name())
     //  加载全部eBPF程序
     err := this.child.Start()
     if err != nil {
@@ -103,7 +115,7 @@ func (this *Module) Run() error {
         this.run()
     }()
 
-    // 在一端不断接收readEvents所传递的数据
+    // 在一端不断接收readEvents所传递的数据 或许这样可以避免阻塞
     // go func() {
     //     this.processor.Serve()
     // }()
@@ -164,7 +176,8 @@ func (this *Module) readEvents() error {
 func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     // 这里对原ebpf包代码做了修改 以此控制是否让内核发生栈空间数据和寄存器数据
     // 用于进行堆栈回溯 以后可以细分栈数据与寄存器数据
-    rd, err := perf.NewReader(em, os.Getpagesize()*64, this.conf.GetUnwindStack())
+    // 每个 模块都是 Clone 得到的 map 虽然名字相同 但是 fd不同 所以可以正常区分
+    rd, err := perf.NewReader(em, os.Getpagesize()*64, this.conf.UnwindStack, this.conf.ShowRegs)
     if err != nil {
         errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)
         return
@@ -183,8 +196,10 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 
             var record perf.Record
             // 根据预设的flag决定以何种方式读取事件数据
-            if this.conf.GetUnwindStack() {
+            if this.conf.UnwindStack {
                 record, err = rd.ReadWithUnwindStack()
+            } else if this.conf.ShowRegs {
+                record, err = rd.ReadWithRegs()
             } else {
                 record, err = rd.Read()
             }
@@ -198,7 +213,7 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
             }
 
             if record.LostSamples != 0 {
-                this.logger.Printf("%s\tperf event ring buffer full, dropped %d samples", this.child.Name(), record.LostSamples)
+                this.logger.Printf("%s\tperf event ring buffer full, dropped %d samples, %s", this.child.Name(), record.LostSamples, this.child.GetConf())
                 continue
             }
 
@@ -266,8 +281,9 @@ func (this *Module) Decode(em *ebpf.Map, b []byte) (event event.IEventStruct, er
     // 通过结构体引用生成一个真正用于解析事件数据的实例
     // 注意这里会设置好 event_type 后续上报数据需要根据这个类型判断使用何种上报方式
     te := es.Clone()
+    te.SetUUID(this.conf.Info())
     // 正式解析，传入是否进行堆栈回溯的标志
-    err = te.Decode(b, this.conf.GetUnwindStack())
+    err = te.Decode(b, this.conf.UnwindStack, this.conf.ShowRegs)
     if err != nil {
         return nil, err
     }
@@ -278,10 +294,6 @@ func (this *Module) Decode(em *ebpf.Map, b []byte) (event event.IEventStruct, er
 // 写入数据，或者上传到远程数据库，写入到其他chan 等。
 func (this *Module) Dispatcher(e event.IEventStruct) {
     switch e.EventType() {
-    case event.EventTypeOutput:
-        this.logger.Println(e.String())
-    // case event.EventTypeEventProcessor:
-    //     this.processor.Write(e)
     case event.EventTypeModuleData:
         // Save to cache
         this.child.Dispatcher(e)
@@ -289,7 +301,9 @@ func (this *Module) Dispatcher(e event.IEventStruct) {
 }
 
 func (this *Module) Close() error {
-    this.logger.Printf("%s\tclose", this.child.Name())
+    if this.conf.Debug {
+        this.logger.Printf("%s\tClose, %s", this.child.Name(), this.conf.Info())
+    }
     for _, iClose := range this.reader {
         if err := iClose.Close(); err != nil {
             return err
