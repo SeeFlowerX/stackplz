@@ -212,11 +212,6 @@ source ~/.bashrc
 adb push bin/stackplz /data/local/tmp
 ```
 
-# TODO
-
-- 从0到1文章
-- 优化代码逻辑...
-
 # Q & A
 
 1. 使用时手机卡住并重启怎么办？
@@ -269,8 +264,11 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 # 交流
 
-安卓逆向、eBPF技术、反调对抗、搞机...欢迎加入讨论
+有关eBPF on Android系列可以加群交流，加群途径：从star列表找到你熟悉的id请他们进行邀请
 
-![](./images/Snipaste_2022-11-09_17-26-46.png)
+个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 
-后续将就本项目从0到1的过程分享系列文章，欢迎关注
+- [eBPF on Android之stackplz从0到1](https://blog.seeflower.dev/archives/176/)
+- [eBPF on Android之stackplz从0到1（补充）手机为何重启](https://blog.seeflower.dev/archives/177/)
+
+针对syscall追踪并获取参数单独开了一个项目，整体结构更简单，没有interface，有兴趣请移步[estrace](https://github.com/SeeFlowerX/estrace)
