@@ -13,13 +13,12 @@ import (
 )
 
 type SyscallDataEvent struct {
-    event_type EventType
-    Pid        uint32
-    Tid        uint32
-    Timestamp  uint64
-    Comm       [16]byte
-    NR         uint64
-    // Args         [6]uint64
+    event_type   EventType
+    Pid          uint32
+    Tid          uint32
+    Timestamp    uint64
+    Comm         [16]byte
+    NR           uint64
     Stackinfo    string
     RegsBuffer   RegsBuf
     UnwindBuffer UnwindBuf
@@ -45,9 +44,6 @@ func (this *SyscallDataEvent) Decode(payload []byte, unwind_stack, regs bool) (e
     if err = binary.Read(buf, binary.LittleEndian, &this.NR); err != nil {
         return
     }
-    // if err = binary.Read(buf, binary.LittleEndian, &this.Args); err != nil {
-    //     return
-    // }
 
     if unwind_stack {
         // 理论上应该是不需要读取这4字节 但是实测需要 原因未知

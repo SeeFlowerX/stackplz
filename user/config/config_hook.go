@@ -57,3 +57,11 @@ func (this *ProbeConfig) Check() error {
     this.LibName = parts[len(parts)-1]
     return nil
 }
+
+func (this *ProbeConfig) GetFilter() StackFilter {
+    filter := StackFilter{
+        uid: uint32(this.Uid),
+        pid: uint32(this.Pid),
+    }
+    return filter
+}

@@ -24,3 +24,12 @@ func (this *SyscallConfig) Info() string {
     // 调用号信息
     return fmt.Sprintf("sysno:%d", this.NR)
 }
+
+func (this *SyscallConfig) GetFilter() SyscallFilter {
+    filter := SyscallFilter{
+        uid: uint32(this.Uid),
+        pid: uint32(this.Pid),
+        nr:  uint32(this.NR),
+    }
+    return filter
+}
