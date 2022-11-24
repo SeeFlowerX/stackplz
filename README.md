@@ -121,7 +121,7 @@ chmod +x /data/local/tmp/stackplz
 - `library_dirs` 目标库的搜索路径，可以设置多个
 - `libs` 目标多个库的hook配置
     - `library` 库名、完整库路径或者与搜索路径拼接后存在的路径
-    - `disable` 是否启用hook
+    - `disable` 表示是否禁用hook
     - `configs` 目标库的多个hook点配置，按输出需要进行配置
         - 即输出堆栈与输出寄存器信息的组合，每一种组合都可以设定多个符号和多个偏移
 
