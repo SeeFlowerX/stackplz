@@ -64,6 +64,8 @@ chmod +x /data/local/tmp/stackplz
 ./stackplz --name com.sfx.ebpf stack --library libnative-lib.so --symbol _Z5func1v --unwindstack --regs
 ```
 
+![](./images/Snipaste_2022-11-13_14-11-03.png)
+
 通过`--reg`指定寄存器，对跳转目标地址进行偏移计算，再也不担心找不到跳哪儿去了
 
 `--reg`选项需要搭配`--regs`或者`--unwindstack`使用，后续进行优化
@@ -71,8 +73,6 @@ chmod +x /data/local/tmp/stackplz
 ```bash
 ./stackplz --name com.xingin.xhs stack --library libtiny.so --offset 0x175248 --regs --reg x8
 ```
-
-![](./images/Snipaste_2022-11-13_14-11-03.png)
 
 通过**指定包名和配置文件**进行批量hook
 
