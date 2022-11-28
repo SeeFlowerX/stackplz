@@ -66,6 +66,7 @@ func init() {
     stackCmd.PersistentFlags().StringVar(&stack_config.Library, "library", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
     stackCmd.PersistentFlags().StringVar(&stack_config.Symbol, "symbol", "", "lib symbol")
     stackCmd.PersistentFlags().Uint64Var(&stack_config.Offset, "offset", 0, "lib hook offset")
+    stackCmd.PersistentFlags().StringVar(&stack_config.RegName, "reg", "", "get the offset of reg")
     stackCmd.PersistentFlags().StringVar(&stack_config.Config, "config", "", "hook config file")
     rootCmd.AddCommand(stackCmd)
 }
@@ -118,6 +119,7 @@ func stackCommandFunc(command *cobra.Command, args []string) {
             SConfig: config.SConfig{
                 UnwindStack: stack_config.UnwindStack,
                 ShowRegs:    stack_config.ShowRegs,
+                RegName:     stack_config.RegName,
                 Uid:         target_config.Uid,
                 Pid:         target_config.Pid,
             },

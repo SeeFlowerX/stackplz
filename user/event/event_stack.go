@@ -9,6 +9,9 @@ import (
     "encoding/binary"
     "encoding/json"
     "fmt"
+    "stackplz/pkg/util"
+    "strconv"
+    "strings"
     "unsafe"
 )
 
@@ -23,6 +26,7 @@ type HookDataEvent struct {
     UnwindBuffer UnwindBuf
     UnwindStack  bool
     ShowRegs     bool
+    RegName      string
     UUID         string
 }
 
@@ -89,6 +93,39 @@ func (this *HookDataEvent) SetUUID(uuid string) {
 func (this *HookDataEvent) String() string {
     var s string
     s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d", this.UUID, this.Pid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")), this.Tid)
+    if this.RegName != "" && (this.ShowRegs || this.UnwindStack) {
+        // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
+        // 当然前提是取了寄存器数据
+        var tmp_regs [33]uint64
+        if this.UnwindStack {
+            tmp_regs = this.UnwindBuffer.Regs
+        } else {
+            tmp_regs = this.RegsBuffer.Regs
+        }
+        has_reg_value := false
+        var regvalue uint64
+        if strings.HasPrefix(this.RegName, "x") {
+            parts := strings.SplitN(this.RegName, "x", 2)
+            regno, _ := strconv.ParseUint(parts[1], 10, 32)
+            if regno >= 0 && regno <= 29 {
+                // 取到对应的寄存器值
+                regvalue = tmp_regs[regno]
+                has_reg_value = true
+            }
+        } else if this.RegName == "lr" {
+            regvalue = tmp_regs[30]
+            has_reg_value = true
+        }
+        if has_reg_value {
+            // 读取maps 获取偏移信息
+            info, err := util.ParseReg(this.Pid, regvalue)
+            if err != nil {
+                fmt.Printf("ParseReg for %s=0x%x failed", this.RegName, regvalue)
+            } else {
+                s += fmt.Sprintf(", Reg %s Info:\n%s", this.RegName, info)
+            }
+        }
+    }
     if this.ShowRegs {
         var tmp_regs [33]uint64
         if this.UnwindStack {

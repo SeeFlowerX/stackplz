@@ -6,6 +6,7 @@ type StackConfig struct {
     Library     string
     Symbol      string
     Offset      uint64
+    RegName     string
     Config      string
 }
 

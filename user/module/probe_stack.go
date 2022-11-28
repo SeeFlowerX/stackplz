@@ -186,8 +186,9 @@ func (this *MStackProbe) Dispatcher(e event.IEventStruct) {
     // 事件类型指定为 EventTypeModuleData 直接使用当前方法处理
     // 如果需要多处联动收集信息 比如做统计之类的 那么使用 EventTypeEventProcessor 类型 并设计处理模式更合理
 
-    e.(*event.HookDataEvent).ShowRegs = this.probeConf.ShowRegs
-    e.(*event.HookDataEvent).UnwindStack = this.probeConf.UnwindStack
+    e.(*event.HookDataEvent).RegName = this.sconf.RegName
+    e.(*event.HookDataEvent).ShowRegs = this.sconf.ShowRegs
+    e.(*event.HookDataEvent).UnwindStack = this.sconf.UnwindStack
     this.logger.Println(e.(*event.HookDataEvent).String())
 }
 

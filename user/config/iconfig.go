@@ -22,6 +22,7 @@ type SConfig struct {
 	Pid         uint64
 	UnwindStack bool
 	ShowRegs    bool
+	RegName     string
 	Debug       bool
 }
 
