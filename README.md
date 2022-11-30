@@ -45,7 +45,7 @@ chmod +x /data/local/tmp/stackplz
 追踪系统调用时的堆栈，以及寄存器信息，支持按pid过滤
 
 ```bash
-./stackplz --name com.lemon.lv --pid 11267 syscall --nr 63 --regs --unwindstack
+./stackplz --name com.lemon.lv --pid 11267 syscall --nr 63 --regs --stack
 ```
 
 ![](./images/Snipaste_2022-11-14_22-33-28.png)
@@ -53,7 +53,7 @@ chmod +x /data/local/tmp/stackplz
 通过**指定uid**，对`/apex/com.android.runtime/lib64/bionic/libc.so`的`open`函数进行hook
 
 ```bash
-./stackplz --uid 10245 stack --symbol open --unwindstack --regs
+./stackplz --uid 10245 stack --symbol open --stack --regs
 ```
 
 ![](./images/Snipaste_2022-11-13_14-10-18.png)
@@ -61,14 +61,14 @@ chmod +x /data/local/tmp/stackplz
 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook
 
 ```bash
-./stackplz --name com.sfx.ebpf stack --library libnative-lib.so --symbol _Z5func1v --unwindstack --regs
+./stackplz --name com.sfx.ebpf stack --library libnative-lib.so --symbol _Z5func1v --stack --regs
 ```
 
 ![](./images/Snipaste_2022-11-13_14-11-03.png)
 
 通过`--reg`指定寄存器，对跳转目标地址进行偏移计算，再也不担心找不到跳哪儿去了
 
-`--reg`选项需要搭配`--regs`或者`--unwindstack`使用，后续进行优化
+`--reg`选项需要搭配`--regs`或者`--stack`使用，后续进行优化
 
 ```bash
 ./stackplz --name com.xingin.xhs stack --library libtiny.so --offset 0x175248 --regs --reg x8
@@ -95,13 +95,13 @@ chmod +x /data/local/tmp/stackplz
             "disable": false,
             "configs": [
                 {
-                    "unwindstack": true,
+                    "stack": true,
                     "regs": true,
                     "symbols": ["open"],
                     "offsets": []
                 },
                 {
-                    "unwindstack": false,
+                    "stack": false,
                     "regs": true,
                     "symbols": ["read", "send", "recv"],
                     "offsets": []
@@ -113,7 +113,7 @@ chmod +x /data/local/tmp/stackplz
             "disable": false,
             "configs": [
                 {
-                    "unwindstack": true,
+                    "stack": true,
                     "regs": true,
                     "symbols": ["_Z5func1v"],
                     "offsets": ["0xF37C"]

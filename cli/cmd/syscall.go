@@ -30,7 +30,7 @@ var syscallCmd = &cobra.Command{
 func init() {
     // 此处 stack_config 只是设置了默认的值
     // global_config 也是只设置了默认的值
-    syscallCmd.PersistentFlags().BoolVarP(&syscall_config.UnwindStack, "unwindstack", "", false, "enable unwindstack")
+    syscallCmd.PersistentFlags().BoolVarP(&syscall_config.UnwindStack, "stack", "", false, "enable unwindstack")
     syscallCmd.PersistentFlags().BoolVarP(&syscall_config.ShowRegs, "regs", "", false, "show regs")
     syscallCmd.PersistentFlags().StringVar(&syscall_config.Config, "config", "", "syscall hook config file")
     syscallCmd.PersistentFlags().Int64VarP(&syscall_config.NR, "nr", "", -1, "filter syscall number")

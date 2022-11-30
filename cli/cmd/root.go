@@ -26,7 +26,7 @@ var target_config = config.NewTargetConfig()
 var rootCmd = &cobra.Command{
     Use:               "stackplz",
     Short:             "打印堆栈信息，目前仅支持4.14内核，出现崩溃请升级系统版本",
-    Long:              "基于eBPF的堆栈追踪工具，指定目标程序的uid、库文件路径和符号即可\n\t./stackplz stack --uid 10235 --unwindstack --symbol open",
+    Long:              "基于eBPF的堆栈追踪工具，指定目标程序的uid、库文件路径和符号即可\n\t./stackplz stack --uid 10235 --stack --symbol open",
     PersistentPreRunE: persistentPreRunEFunc,
 }
 
