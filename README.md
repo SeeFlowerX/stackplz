@@ -280,3 +280,15 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 - [eBPF on Android之stackplz从0到1（补充）手机为何重启](https://blog.seeflower.dev/archives/177/)
 
 针对syscall追踪并获取参数单独开了一个项目，整体结构更简单，没有interface，有兴趣请移步[estrace](https://github.com/SeeFlowerX/estrace)
+
+# NEXT
+
+后续功能开发：
+
+- 更合理的获取maps的方案，缓存机制，有变化时再获取
+- 提供选项区分hook类型，而不是拆成两个子命令，简化代码
+- 为高版本内核提供读取数据内存并输出hex、字符串参数等功能
+- 批量hook使用新的配置文件，更细化控制
+- 为特定syscall的参数提供过滤功能，当然这是高版本内核才有的
+
+性价比真机推荐Redmi Note 11T Pro（理由：价格亲民、内核开源、内核版本5.10.66、可解锁或[临时root](https://github.com/tiann/DirtyPipeRoot)）：
