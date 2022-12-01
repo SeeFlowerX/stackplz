@@ -22,6 +22,8 @@ struct {
 struct filter_t {
     u32 uid;
     u32 pid;
+    u32 tid_blacklist_mask;
+    u32 tid_blacklist[MAX_TID_BLACKLIST_COUNT];
 };
 
 struct {
@@ -50,6 +52,30 @@ int probe_stack(struct pt_regs* ctx) {
     u32 tid = current_pid_tgid & 0xffffffff;
     if (filter->pid != 0 && filter->pid != pid) {
         return 0;
+    }
+
+    #ifdef DEBUG_PRINT
+    char fmt0[] = "debug0, tid:%d mask:%d\n";
+    bpf_trace_printk(fmt0, sizeof(fmt0), tid, filter->tid_blacklist_mask);
+    #endif
+
+    #pragma unroll
+    for (int i = 0; i < MAX_TID_BLACKLIST_COUNT; i++) {
+        if ((filter->tid_blacklist_mask & (1 << i))) {
+
+            #ifdef DEBUG_PRINT
+            char fmt1[] = "debug1, tid:%d filter_tid:%d\n";
+            bpf_trace_printk(fmt1, sizeof(fmt1), tid, filter->tid_blacklist[i]);
+            #endif
+
+            if (filter->tid_blacklist[i] == tid) {
+                // 在tid黑名单直接跳过
+                return 0;
+            }
+        } else {
+            // 避免不必要的循环
+            break;
+        }
     }
 
     u32 zero = 0;

@@ -60,8 +60,10 @@ func (this *ProbeConfig) Check() error {
 
 func (this *ProbeConfig) GetFilter() StackFilter {
     filter := StackFilter{
-        uid: uint32(this.Uid),
-        pid: uint32(this.Pid),
+        uid:                uint32(this.Uid),
+        pid:                uint32(this.Pid),
+        tid_blacklist_mask: this.TidBlacklistMask,
+        tid_blacklist:      this.TidBlacklist,
     }
     return filter
 }

@@ -2,6 +2,11 @@ CMD_CLANG ?= clang
 CMD_GO ?= go
 CMD_RM ?= rm
 
+DEBUG_PRINT ?=
+ifeq ($(DEBUG),1)
+DEBUG_PRINT := -DDEBUG_PRINT
+endif
+
 .PHONY: all
 all: ebpf assets build
 	@echo $(shell date)
@@ -22,6 +27,7 @@ ebpf:
 	-nostdlibinc \
 	-no-canonical-prefixes \
 	-O2 \
+	$(DEBUG_PRINT)	\
 	-isystem external/bionic/libc/include \
 	-isystem external/bionic/libc/kernel/uapi \
 	-isystem external/bionic/libc/kernel/uapi/asm-arm64 \
@@ -38,6 +44,7 @@ ebpf:
 	-nostdlibinc \
 	-no-canonical-prefixes \
 	-O2 \
+	$(DEBUG_PRINT)	\
 	-isystem external/bionic/libc/include \
 	-isystem external/bionic/libc/kernel/uapi \
 	-isystem external/bionic/libc/kernel/uapi/asm-arm64 \
