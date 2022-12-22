@@ -10,9 +10,11 @@ type StackFilter struct {
 }
 
 type SyscallFilter struct {
-	uid uint32
-	pid uint32
-	nr  uint32
+	uid                uint32
+	pid                uint32
+	nr                 uint32
+	tid_blacklist_mask uint32
+	tid_blacklist      [MAX_TID_BLACKLIST_COUNT]uint32
 }
 
 type IConfig interface {
