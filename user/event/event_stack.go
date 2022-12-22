@@ -93,7 +93,7 @@ func (this *HookDataEvent) SetUUID(uuid string) {
 func (this *HookDataEvent) String() string {
     var s string
     s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d", this.UUID, this.Pid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")), this.Tid)
-    if this.RegName != "" && (this.ShowRegs || this.UnwindStack) {
+    if this.RegName != "" {
         // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
         // 当然前提是取了寄存器数据
         var tmp_regs [33]uint64

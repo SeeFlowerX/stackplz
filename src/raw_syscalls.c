@@ -1,5 +1,4 @@
 #include "common.h"
-// #include <asm/signal.h>
 
 struct syscall_data_event_t {
     u32 pid;
@@ -60,13 +59,6 @@ int raw_syscalls_sys_enter(struct sys_enter_args* ctx) {
     if (filter->nr != ctx->id) {
         return 0;
     }
-
-    // if (ctx->id == 134) {
-    //     char fmt1[] = "return SIGTERM, uid:%d pid:%d tid:%d\n";
-    //     bpf_trace_printk(fmt1, sizeof(fmt1), uid, pid, tid);
-    //     bpf_send_signal_thread(SIGTERM);
-    //     return 0;
-    // }
 
     #pragma unroll
     for (int i = 0; i < MAX_TID_BLACKLIST_COUNT; i++) {
