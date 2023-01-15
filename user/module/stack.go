@@ -50,38 +50,86 @@ func (this *MStack) GetConf() string {
 
 func (this *MStack) setupManager() error {
     if this.mconf.Debug {
-        this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.mconf.UprobeConf.Symbol, this.mconf.UprobeConf.Library, this.mconf.UprobeConf.Offset)
+        if this.stack_uprobe_hook {
+            this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.mconf.UprobeConf.Symbol, this.mconf.UprobeConf.Library, this.mconf.UprobeConf.Offset)
+        }
+        if this.stack_uprobe_hook {
+            this.logger.Printf("Syscall:%s", this.mconf.SyscallConf)
+        }
     }
-    this.bpfManager = &manager.Manager{
-        Probes: []*manager.Probe{
-            {
-                Section:          "uprobe/stack",
-                EbpfFuncName:     "probe_stack",
-                AttachToFuncName: this.mconf.UprobeConf.Symbol,
-                BinaryPath:       this.mconf.UprobeConf.Library,
-                UprobeOffset:     this.mconf.UprobeConf.Offset,
-                // 这样每个hook点都使用独立的程序
-                // UID: util.RandStringBytes(8),
+    if this.stack_uprobe_hook && this.stack_syscall_hook {
+        this.bpfManager = &manager.Manager{
+            Probes: []*manager.Probe{
+                {
+                    Section:          "uprobe/stack",
+                    EbpfFuncName:     "probe_stack",
+                    AttachToFuncName: this.mconf.UprobeConf.Symbol,
+                    BinaryPath:       this.mconf.UprobeConf.Library,
+                    UprobeOffset:     this.mconf.UprobeConf.Offset,
+                    // 这样每个hook点都使用独立的程序
+                    // UID: util.RandStringBytes(8),
+                },
+                {
+                    Section:      "raw_tracepoint/sys_enter",
+                    EbpfFuncName: "raw_syscalls_sys_enter",
+                },
+                {
+                    Section:      "raw_tracepoint/sys_exit",
+                    EbpfFuncName: "raw_syscalls_sys_exit",
+                },
             },
-            {
-                Section:      "raw_tracepoint/sys_enter",
-                EbpfFuncName: "raw_syscalls_sys_enter",
-            },
-            {
-                Section:      "raw_tracepoint/sys_exit",
-                EbpfFuncName: "raw_syscalls_sys_exit",
-            },
-        },
 
-        Maps: []*manager.Map{
-            {
-                Name: "stack_events",
+            Maps: []*manager.Map{
+                {
+                    Name: "stack_events",
+                },
+                {
+                    Name: "syscall_events",
+                },
             },
-            {
-                Name: "syscall_events",
-            },
-        },
+        }
     }
+    if this.stack_uprobe_hook {
+        this.bpfManager = &manager.Manager{
+            Probes: []*manager.Probe{
+                {
+                    Section:          "uprobe/stack",
+                    EbpfFuncName:     "probe_stack",
+                    AttachToFuncName: this.mconf.UprobeConf.Symbol,
+                    BinaryPath:       this.mconf.UprobeConf.Library,
+                    UprobeOffset:     this.mconf.UprobeConf.Offset,
+                    // 这样每个hook点都使用独立的程序
+                    // UID: util.RandStringBytes(8),
+                },
+            },
+
+            Maps: []*manager.Map{
+                {
+                    Name: "stack_events",
+                },
+            },
+        }
+    }
+    if this.stack_syscall_hook {
+        this.bpfManager = &manager.Manager{
+            Probes: []*manager.Probe{
+                {
+                    Section:      "raw_tracepoint/sys_enter",
+                    EbpfFuncName: "raw_syscalls_sys_enter",
+                },
+                {
+                    Section:      "raw_tracepoint/sys_exit",
+                    EbpfFuncName: "raw_syscalls_sys_exit",
+                },
+            },
+            Maps: []*manager.Map{
+                {
+                    Name: "syscall_events",
+                },
+            },
+        }
+    }
+
     return nil
 }
 
