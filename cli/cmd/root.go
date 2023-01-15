@@ -218,13 +218,31 @@ func Execute() {
 }
 
 func init() {
-    cobra.EnablePrefixMatching = true
-    rootCmd.PersistentFlags().BoolVarP(&global_config.Prepare, "prepare", "", false, "prepare libs")
+    cobra.EnablePrefixMatching = false
+    // 首次运行
+    rootCmd.PersistentFlags().BoolVar(&global_config.Prepare, "prepare", false, "prepare libs")
+    // 过滤设定
     rootCmd.PersistentFlags().StringVarP(&global_config.Name, "name", "n", "", "must set uid or package name")
     rootCmd.PersistentFlags().Uint64VarP(&global_config.Uid, "uid", "u", 0, "must set uid or package name")
     rootCmd.PersistentFlags().Uint64VarP(&global_config.Pid, "pid", "p", 0, "add pid to filter")
-    rootCmd.PersistentFlags().StringVarP(&global_config.TidsBlacklist, "no-tids", "", "", "tid black list, max 20")
+    // 堆栈输出设定
+    rootCmd.PersistentFlags().BoolVar(&global_config.UnwindStack, "stack", false, "enable unwindstack")
+    rootCmd.PersistentFlags().BoolVar(&global_config.ShowRegs, "regs", false, "show regs")
+    rootCmd.PersistentFlags().BoolVar(&global_config.GetLR, "getlr", false, "try get lr info")
+    rootCmd.PersistentFlags().BoolVar(&global_config.GetPC, "getpc", false, "try get pc info")
+    // 黑白名单设定
+    rootCmd.PersistentFlags().StringVarP(&global_config.TidsBlacklist, "no-tids", "nt", "", "tid black list, max 20")
+    // 日志设定
     rootCmd.PersistentFlags().BoolVarP(&global_config.Debug, "debug", "d", false, "enable debug logging")
-    rootCmd.PersistentFlags().StringVarP(&global_config.LoggerFile, "out", "o", "", "-o save the packets to file")
-    rootCmd.PersistentFlags().BoolVarP(&global_config.Quiet, "quiet", "", false, "use with --log-file, wont logging to terminal when used")
+    rootCmd.PersistentFlags().BoolVarP(&global_config.Quiet, "quiet", "q", false, "wont logging to terminal when used")
+    rootCmd.PersistentFlags().StringVarP(&global_config.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
+    // 常规ELF库hook设定
+    rootCmd.PersistentFlags().StringVarP(&global_config.Library, "library", "lib", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
+    rootCmd.PersistentFlags().StringVarP(&global_config.Symbol, "symbol", "sym", "", "lib symbol")
+    rootCmd.PersistentFlags().Uint64VarP(&global_config.Offset, "offset", "off", 0, "lib hook offset")
+    rootCmd.PersistentFlags().StringVar(&global_config.RegName, "reg", "", "get the offset of reg")
+    // syscall hook
+    rootCmd.PersistentFlags().StringVar(&global_config.SysCall, "syscall", "", "filter syscalls")
+    // 批量hook先放一边
+    // rootCmd.PersistentFlags().StringVar(&global_config.Config, "config", "", "hook config file")
 }
