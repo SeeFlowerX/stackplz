@@ -308,7 +308,7 @@ func Execute() {
 
 func init() {
     cobra.EnablePrefixMatching = false
-    // 首次运行
+    // 考虑到外部库更新 每个版本首次运行前 都应该执行一次
     rootCmd.PersistentFlags().BoolVar(&global_config.Prepare, "prepare", false, "prepare libs")
     // 过滤设定
     rootCmd.PersistentFlags().StringVarP(&global_config.Name, "name", "n", "", "must set uid or package name")

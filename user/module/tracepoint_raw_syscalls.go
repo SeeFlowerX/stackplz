@@ -205,5 +205,5 @@ func init() {
     mod := &MRawSyscallsTracepoint{}
     mod.name = MODULE_NAME_SYSCALL
     mod.mType = PROBE_TYPE_TRACEPOINT
-    Register(mod)
+    // Register(mod)
 }

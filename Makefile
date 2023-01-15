@@ -38,28 +38,11 @@ ebpf:
 	-MD -MF user/bytecode/stack.d \
 	-o user/bytecode/stack.o \
 	src/stack.c
-	clang \
-	--target=bpf \
-	-c \
-	-nostdlibinc \
-	-no-canonical-prefixes \
-	-O2 \
-	$(DEBUG_PRINT)	\
-	-isystem external/bionic/libc/include \
-	-isystem external/bionic/libc/kernel/uapi \
-	-isystem external/bionic/libc/kernel/uapi/asm-arm64 \
-	-isystem external/bionic/libc/kernel/android/uapi \
-	-I       external/system/core/libcutils/include \
-	-I       external/libbpf/src \
-	-g \
-	-MD -MF user/bytecode/raw_syscalls.d \
-	-o user/bytecode/raw_syscalls.o \
-	src/raw_syscalls.c
 
 .PHONY: assets
 assets:
-	$(CMD_GO) run github.com/shuLhan/go-bindata/cmd/go-bindata -pkg assets -o "assets/ebpf_probe.go" $(wildcard ./user/bytecode/*.o ./preload_libs/*.so)
+	$(CMD_GO) run github.com/shuLhan/go-bindata/cmd/go-bindata -pkg assets -o "assets/ebpf_probe.go" $(wildcard ./user/bytecode/*.o ./preload_libs/*.so ./user/config/*.json)
 
 .PHONY: build
 build:
-	GOARCH=arm64 GOOS=android CGO_ENABLED=1 CC=aarch64-linux-android29-clang $(CMD_GO) build -ldflags "-w -s" -o bin/stackplz .
+	GOARCH=arm64 GOOS=android CGO_ENABLED=1 CC=aarch64-linux-android29-clang $(CMD_GO) build -ldflags "-w -s -extldflags '-Wl,--hash-style=sysv'" -o bin/stackplz .

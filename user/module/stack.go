@@ -18,7 +18,7 @@ import (
     "golang.org/x/sys/unix"
 )
 
-type MStackProbe struct {
+type MStack struct {
     Module
     probeConf         *config.ProbeConfig
     bpfManager        *manager.Manager
@@ -29,7 +29,7 @@ type MStackProbe struct {
     hookBpfFile string
 }
 
-func (this *MStackProbe) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
+func (this *MStack) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
     this.Module.Init(ctx, logger, conf)
     p, ok := (conf).(*config.ProbeConfig)
     if ok {
@@ -42,11 +42,11 @@ func (this *MStackProbe) Init(ctx context.Context, logger *log.Logger, conf conf
     return nil
 }
 
-func (this *MStackProbe) GetConf() string {
+func (this *MStack) GetConf() string {
     return this.probeConf.Info()
 }
 
-func (this *MStackProbe) setupManager() error {
+func (this *MStack) setupManager() error {
     if this.probeConf.Debug {
         this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.probeConf.Symbol, this.probeConf.Library, this.probeConf.Offset)
     }
@@ -72,7 +72,7 @@ func (this *MStackProbe) setupManager() error {
     return nil
 }
 
-func (this *MStackProbe) setupManagersUprobe() error {
+func (this *MStack) setupManagersUprobe() error {
     err := this.setupManager()
     if err != nil {
         return err
@@ -99,18 +99,18 @@ func (this *MStackProbe) setupManagersUprobe() error {
     return nil
 }
 
-func (this *MStackProbe) Start() error {
+func (this *MStack) Start() error {
     return this.start()
 }
 
-func (this *MStackProbe) Clone() IModule {
-    mod := new(MStackProbe)
+func (this *MStack) Clone() IModule {
+    mod := new(MStack)
     mod.name = this.name
     mod.mType = this.mType
     return mod
 }
 
-func (this *MStackProbe) start() error {
+func (this *MStack) start() error {
     // 保不齐什么时候写出bug了 这里再次检查uid
     if this.probeConf.Uid == 0 {
         return fmt.Errorf("uid is 0, %s", this.GetConf())
@@ -158,7 +158,7 @@ func (this *MStackProbe) start() error {
     return nil
 }
 
-func (this *MStackProbe) initDecodeFun() error {
+func (this *MStack) initDecodeFun() error {
     StackEventsMap, found, err := this.bpfManager.GetMap("stack_events")
     if err != nil {
         return err
@@ -173,16 +173,16 @@ func (this *MStackProbe) initDecodeFun() error {
     return nil
 }
 
-func (this *MStackProbe) Events() []*ebpf.Map {
+func (this *MStack) Events() []*ebpf.Map {
     return this.eventMaps
 }
 
-func (this *MStackProbe) DecodeFun(em *ebpf.Map) (event.IEventStruct, bool) {
+func (this *MStack) DecodeFun(em *ebpf.Map) (event.IEventStruct, bool) {
     fun, found := this.eventFuncMaps[em]
     return fun, found
 }
 
-func (this *MStackProbe) Dispatcher(e event.IEventStruct) {
+func (this *MStack) Dispatcher(e event.IEventStruct) {
     // 事件类型指定为 EventTypeModuleData 直接使用当前方法处理
     // 如果需要多处联动收集信息 比如做统计之类的 那么使用 EventTypeEventProcessor 类型 并设计处理模式更合理
 
@@ -193,7 +193,7 @@ func (this *MStackProbe) Dispatcher(e event.IEventStruct) {
 }
 
 func init() {
-    mod := &MStackProbe{}
+    mod := &MStack{}
     mod.name = MODULE_NAME_STACK
     mod.mType = PROBE_TYPE_UPROBE
     // Register(mod)
