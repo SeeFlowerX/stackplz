@@ -320,7 +320,7 @@ func init() {
     rootCmd.PersistentFlags().BoolVar(&global_config.GetLR, "getlr", false, "try get lr info")
     rootCmd.PersistentFlags().BoolVar(&global_config.GetPC, "getpc", false, "try get pc info")
     // 黑白名单设定
-    rootCmd.PersistentFlags().StringVarP(&global_config.TidsBlacklist, "no-tids", "nt", "", "tid black list, max 20")
+    rootCmd.PersistentFlags().StringVar(&global_config.TidsBlacklist, "no-tids", "", "tid black list, max 20")
     // 日志设定
     rootCmd.PersistentFlags().BoolVarP(&global_config.Debug, "debug", "d", false, "enable debug logging")
     rootCmd.PersistentFlags().BoolVarP(&global_config.Quiet, "quiet", "q", false, "wont logging to terminal when used")
