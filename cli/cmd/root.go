@@ -326,9 +326,9 @@ func init() {
     rootCmd.PersistentFlags().BoolVarP(&global_config.Quiet, "quiet", "q", false, "wont logging to terminal when used")
     rootCmd.PersistentFlags().StringVarP(&global_config.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
     // 常规ELF库hook设定
-    rootCmd.PersistentFlags().StringVarP(&global_config.Library, "library", "lib", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
-    rootCmd.PersistentFlags().StringVarP(&global_config.Symbol, "symbol", "sym", "", "lib symbol")
-    rootCmd.PersistentFlags().Uint64VarP(&global_config.Offset, "offset", "off", 0, "lib hook offset")
+    rootCmd.PersistentFlags().StringVarP(&global_config.Library, "library", "l", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
+    rootCmd.PersistentFlags().StringVarP(&global_config.Symbol, "symbol", "s", "", "lib symbol")
+    rootCmd.PersistentFlags().Uint64VarP(&global_config.Offset, "offset", "f", 0, "lib hook offset")
     rootCmd.PersistentFlags().StringVar(&global_config.RegName, "reg", "", "get the offset of reg")
     // syscall hook
     rootCmd.PersistentFlags().StringVar(&global_config.SysCall, "syscall", "", "filter syscalls")
