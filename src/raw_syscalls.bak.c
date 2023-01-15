@@ -25,7 +25,7 @@ struct filter_t {
     u32 pid;
     u32 nr;
     u32 tid_blacklist_mask;
-    u32 tid_blacklist[MAX_TID_BLACKLIST_COUNT];
+    u32 tid_blacklist[MAX_COUNT];
 };
 
 struct {
@@ -61,7 +61,7 @@ int raw_syscalls_sys_enter(struct sys_enter_args* ctx) {
     }
 
     #pragma unroll
-    for (int i = 0; i < MAX_TID_BLACKLIST_COUNT; i++) {
+    for (int i = 0; i < MAX_COUNT; i++) {
         if ((filter->tid_blacklist_mask & (1 << i))) {
             if (filter->tid_blacklist[i] == tid) {
                 // 在tid黑名单直接跳过

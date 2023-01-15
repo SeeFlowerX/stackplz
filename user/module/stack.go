@@ -20,7 +20,7 @@ import (
 
 type MStack struct {
     Module
-    probeConf         *config.ProbeConfig
+    mconf             *config.ModuleConfig
     bpfManager        *manager.Manager
     bpfManagerOptions manager.Options
     eventFuncMaps     map[*ebpf.Map]event.IEventStruct
@@ -31,9 +31,9 @@ type MStack struct {
 
 func (this *MStack) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
     this.Module.Init(ctx, logger, conf)
-    p, ok := (conf).(*config.ProbeConfig)
+    p, ok := (conf).(*config.ModuleConfig)
     if ok {
-        this.probeConf = p
+        this.mconf = p
     }
     this.Module.SetChild(this)
     this.eventMaps = make([]*ebpf.Map, 0, 2)
@@ -43,21 +43,21 @@ func (this *MStack) Init(ctx context.Context, logger *log.Logger, conf config.IC
 }
 
 func (this *MStack) GetConf() string {
-    return this.probeConf.Info()
+    return this.mconf.Info()
 }
 
 func (this *MStack) setupManager() error {
-    if this.probeConf.Debug {
-        this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.probeConf.Symbol, this.probeConf.Library, this.probeConf.Offset)
+    if this.mconf.Debug {
+        this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.mconf.Symbol, this.mconf.Library, this.mconf.Offset)
     }
     this.bpfManager = &manager.Manager{
         Probes: []*manager.Probe{
             {
                 Section:          "uprobe/stack",
                 EbpfFuncName:     "probe_stack",
-                AttachToFuncName: this.probeConf.Symbol,
-                BinaryPath:       this.probeConf.Library,
-                UprobeOffset:     this.probeConf.Offset,
+                AttachToFuncName: this.mconf.Symbol,
+                BinaryPath:       this.mconf.Library,
+                UprobeOffset:     this.mconf.Offset,
                 // 这样每个hook点都使用独立的程序
                 // UID: util.RandStringBytes(8),
             },
@@ -112,7 +112,7 @@ func (this *MStack) Clone() IModule {
 
 func (this *MStack) start() error {
     // 保不齐什么时候写出bug了 这里再次检查uid
-    if this.probeConf.Uid == 0 {
+    if this.mconf.Uid == 0 {
         return fmt.Errorf("uid is 0, %s", this.GetConf())
     }
     // 初始化Uprobe相关设置
@@ -146,7 +146,7 @@ func (this *MStack) start() error {
         return errors.New("cannot find filter_map")
     }
     filter_key := 0
-    filter := this.probeConf.GetFilter()
+    filter := this.mconf.GetFilter()
     filterMap.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
 
     // 加载map信息，设置eventFuncMaps，给不同的事件指定处理事件数据的函数
@@ -196,5 +196,5 @@ func init() {
     mod := &MStack{}
     mod.name = MODULE_NAME_STACK
     mod.mType = PROBE_TYPE_UPROBE
-    // Register(mod)
+    Register(mod)
 }

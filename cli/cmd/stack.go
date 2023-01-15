@@ -117,13 +117,13 @@ func stackCommandFunc(command *cobra.Command, args []string) {
             Symbol:  stack_config.Symbol,
             Offset:  stack_config.Offset,
             SConfig: config.SConfig{
-                UnwindStack:       stack_config.UnwindStack,
-                ShowRegs:          stack_config.ShowRegs,
-                RegName:           stack_config.RegName,
-                Uid:               target_config.Uid,
-                Pid:               target_config.Pid,
-                TidsBlacklist:     target_config.TidsBlacklist,
-                TidsBlacklistMask: target_config.TidsBlacklistMask,
+                UnwindStack: stack_config.UnwindStack,
+                ShowRegs:    stack_config.ShowRegs,
+                RegName:     stack_config.RegName,
+                Uid:         target_config.Uid,
+                Pid:         target_config.Pid,
+                // TidsBlacklist:     target_config.TidsBlacklist,
+                // TidsBlacklistMask: target_config.TidsBlacklistMask,
             },
         }
         if err := pConfig.Check(); err == nil {

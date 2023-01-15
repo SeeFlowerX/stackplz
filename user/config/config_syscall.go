@@ -27,11 +27,11 @@ func (this *SyscallConfig) Info() string {
 
 func (this *SyscallConfig) GetFilter() SyscallFilter {
     filter := SyscallFilter{
-        uid:                uint32(this.Uid),
-        pid:                uint32(this.Pid),
-        nr:                 uint32(this.NR),
-        tid_blacklist_mask: this.TidsBlacklistMask,
-        tid_blacklist:      this.TidsBlacklist,
+        // uid:                uint32(this.Uid),
+        // pid:                uint32(this.Pid),
+        // nr:                 uint32(this.NR),
+        // tid_blacklist_mask: this.TidsBlacklistMask,
+        // tid_blacklist:      this.TidsBlacklist,
     }
     return filter
 }

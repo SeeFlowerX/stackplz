@@ -26,7 +26,7 @@ struct filter_t {
     u32 uid;
     u32 pid;
     u32 tid_blacklist_mask;
-    u32 tid_blacklist[MAX_TID_BLACKLIST_COUNT];
+    u32 tid_blacklist[MAX_COUNT];
 };
 
 struct {
@@ -63,7 +63,7 @@ int probe_stack(struct pt_regs* ctx) {
     #endif
 
     #pragma unroll
-    for (int i = 0; i < MAX_TID_BLACKLIST_COUNT; i++) {
+    for (int i = 0; i < MAX_COUNT; i++) {
         if ((filter->tid_blacklist_mask & (1 << i))) {
 
             #ifdef DEBUG_PRINT

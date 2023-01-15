@@ -1,21 +1,6 @@
 package config
 
-const MAX_TID_BLACKLIST_COUNT = 20
-
-type StackFilter struct {
-	uid                uint32
-	pid                uint32
-	tid_blacklist_mask uint32
-	tid_blacklist      [MAX_TID_BLACKLIST_COUNT]uint32
-}
-
-type SyscallFilter struct {
-	uid                uint32
-	pid                uint32
-	nr                 uint32
-	tid_blacklist_mask uint32
-	tid_blacklist      [MAX_TID_BLACKLIST_COUNT]uint32
-}
+const MAX_COUNT = 20
 
 type IConfig interface {
 	GetSConfig() *SConfig
@@ -24,16 +9,15 @@ type IConfig interface {
 }
 
 type SConfig struct {
-	Uid               uint64
-	Pid               uint64
-	TidsBlacklistMask uint32
-	TidsBlacklist     [MAX_TID_BLACKLIST_COUNT]uint32
-	UnwindStack       bool
-	ShowRegs          bool
-	GetLR             bool
-	GetPC             bool
-	RegName           string
-	Debug             bool
+	Uid         uint64
+	Pid         uint64
+	UnwindStack bool
+	ShowRegs    bool
+	GetLR       bool
+	GetPC       bool
+	RegName     string
+	Debug       bool
+	Quiet       bool
 }
 
 func (this *SConfig) SetDebug(debug bool) {

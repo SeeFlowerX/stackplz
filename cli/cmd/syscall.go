@@ -77,12 +77,12 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
 
         sysnoConfig := config.SyscallConfig{
             SConfig: config.SConfig{
-                UnwindStack:       syscall_config.UnwindStack,
-                ShowRegs:          syscall_config.ShowRegs,
-                Uid:               global_config.Uid,
-                Pid:               global_config.Pid,
-                TidsBlacklist:     target_config.TidsBlacklist,
-                TidsBlacklistMask: target_config.TidsBlacklistMask,
+                UnwindStack: syscall_config.UnwindStack,
+                ShowRegs:    syscall_config.ShowRegs,
+                Uid:         global_config.Uid,
+                Pid:         global_config.Pid,
+                // TidsBlacklist:     target_config.TidsBlacklist,
+                // TidsBlacklistMask: target_config.TidsBlacklistMask,
             },
             NR: sysno,
         }

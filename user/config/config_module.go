@@ -4,10 +4,14 @@ import "fmt"
 
 type ModuleConfig struct {
     SConfig
-    UnwindStack bool
-    ShowRegs    bool
-    Config      string
-    NR          int64
+    TidsBlacklistMask uint32
+    TidsBlacklist     [MAX_COUNT]uint32
+    Name              string
+    Library           string
+    Symbol            string
+    Offset            uint64
+    SysCall           string
+    Config            string
 }
 
 func NewModuleConfig() *ModuleConfig {
@@ -22,7 +26,7 @@ func (this *ModuleConfig) Check() error {
 
 func (this *ModuleConfig) Info() string {
     // 调用号信息
-    return fmt.Sprintf("sysno:%d", this.NR)
+    return fmt.Sprintf("sysno:%s", this.SysCall)
 }
 
 // func (this *ModuleConfig) GetFilter() ModuleFilter {
