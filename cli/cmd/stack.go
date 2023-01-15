@@ -68,7 +68,7 @@ func init() {
     stackCmd.PersistentFlags().Uint64Var(&stack_config.Offset, "offset", 0, "lib hook offset")
     stackCmd.PersistentFlags().StringVar(&stack_config.RegName, "reg", "", "get the offset of reg")
     stackCmd.PersistentFlags().StringVar(&stack_config.Config, "config", "", "hook config file")
-    rootCmd.AddCommand(stackCmd)
+    // rootCmd.AddCommand(stackCmd)
 }
 
 func stackCommandFunc(command *cobra.Command, args []string) {
@@ -78,8 +78,8 @@ func stackCommandFunc(command *cobra.Command, args []string) {
 
     // 首先根据全局设定设置日志输出
     logger := log.New(os.Stdout, "stack_", log.Ltime)
-    if global_config.LoggerFile != "" {
-        log_path := global_config.ExecPath + "/" + global_config.LoggerFile
+    if global_config.LogFile != "" {
+        log_path := "/data/local/tmp/" + global_config.LogFile
         _, err := os.Stat(log_path)
         if err != nil {
             if os.IsNotExist(err) {
@@ -117,13 +117,13 @@ func stackCommandFunc(command *cobra.Command, args []string) {
             Symbol:  stack_config.Symbol,
             Offset:  stack_config.Offset,
             SConfig: config.SConfig{
-                UnwindStack:      stack_config.UnwindStack,
-                ShowRegs:         stack_config.ShowRegs,
-                RegName:          stack_config.RegName,
-                Uid:              target_config.Uid,
-                Pid:              target_config.Pid,
-                TidBlacklist:     target_config.TidBlacklist,
-                TidBlacklistMask: target_config.TidBlacklistMask,
+                UnwindStack:       stack_config.UnwindStack,
+                ShowRegs:          stack_config.ShowRegs,
+                RegName:           stack_config.RegName,
+                Uid:               target_config.Uid,
+                Pid:               target_config.Pid,
+                TidsBlacklist:     target_config.TidsBlacklist,
+                TidsBlacklistMask: target_config.TidsBlacklistMask,
             },
         }
         if err := pConfig.Check(); err == nil {
@@ -202,7 +202,7 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
         // 否则先检查是否直接存在
         if _, err := os.Stat(config_path); err != nil {
             // 不存在则尝试拼接可执行程序所在文件夹路径
-            config_path = global_config.ExecPath + "/" + config_path
+            config_path = "/data/local/tmp/" + config_path
         }
     }
 

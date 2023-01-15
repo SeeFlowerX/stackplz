@@ -6,20 +6,28 @@ package cmd
 
 import (
     "bufio"
+    "context"
     "errors"
     "fmt"
+    "io"
     "io/ioutil"
+    "log"
     "os"
     "os/exec"
+    "os/signal"
     "path"
     "stackplz/assets"
     "stackplz/user/config"
+    "stackplz/user/module"
     "strconv"
     "strings"
+    "sync"
+    "syscall"
 
     "github.com/spf13/cobra"
 )
 
+var exec_path = "/data/local/tmp"
 var global_config = config.NewGlobalConfig()
 var target_config = config.NewTargetConfig()
 
@@ -28,6 +36,7 @@ var rootCmd = &cobra.Command{
     Short:             "打印堆栈信息，目前仅支持4.14内核，出现崩溃请升级系统版本",
     Long:              "基于eBPF的堆栈追踪工具，指定目标程序的uid、库文件路径和符号即可\n\t./stackplz stack --uid 10235 --stack --symbol open",
     PersistentPreRunE: persistentPreRunEFunc,
+    Run:               runFunc,
 }
 
 // cobra.Command 中几个函数执行的顺序
@@ -47,13 +56,13 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         return fmt.Errorf("please build as executable binary, %v", err)
     }
     // 获取一次 后面用得到 免去重复获取
-    global_config.ExecPath = path.Dir(exec_path)
-    _, err = os.Stat(global_config.ExecPath + "/" + "preload_libs")
+    exec_path = path.Dir(exec_path)
+    _, err = os.Stat(exec_path + "/" + "preload_libs")
     var has_restore bool = false
     if err != nil {
         if os.IsNotExist(err) {
             // 路径不存在就自动释放
-            err = assets.RestoreAssets(global_config.ExecPath, "preload_libs")
+            err = assets.RestoreAssets(exec_path, "preload_libs")
             if err != nil {
                 return fmt.Errorf("RestoreAssets preload_libs failed, %v", err)
             }
@@ -66,7 +75,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     if global_config.Prepare {
         // 认为是需要重新释放一次
         if !has_restore {
-            err = assets.RestoreAssets(global_config.ExecPath, "preload_libs")
+            err = assets.RestoreAssets(exec_path, "preload_libs")
             if err != nil {
                 return fmt.Errorf("RestoreAssets preload_libs failed, %v", err)
             }
@@ -78,7 +87,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         target_config.Pid = global_config.Pid
     }
 
-    target_config.TidBlacklistMask = 0
+    target_config.TidsBlacklistMask = 0
     if global_config.TidsBlacklist != "" {
         tids := strings.Split(global_config.TidsBlacklist, ",")
         if len(tids) > 20 {
@@ -86,8 +95,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         }
         for i, v := range tids {
             value, _ := strconv.ParseUint(v, 10, 32)
-            target_config.TidBlacklist[i] = uint32(value)
-            target_config.TidBlacklistMask |= (1 << i)
+            target_config.TidsBlacklist[i] = uint32(value)
+            target_config.TidsBlacklistMask |= (1 << i)
         }
     }
 
@@ -99,6 +108,86 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     } else {
         return errors.New("please set --uid or --name")
     }
+}
+
+func runFunc(command *cobra.Command, args []string) {
+    stopper := make(chan os.Signal, 1)
+    signal.Notify(stopper, os.Interrupt, syscall.SIGTERM)
+    ctx, cancelFun := context.WithCancel(context.TODO())
+
+    // 首先根据全局设定设置日志输出
+    logger := log.New(os.Stdout, "", log.Lmicroseconds)
+    if global_config.LogFile != "" {
+        log_path := exec_path + "/" + global_config.LogFile
+        _, err := os.Stat(log_path)
+        if err != nil {
+            if os.IsNotExist(err) {
+                os.Remove(log_path)
+            }
+        }
+        f, err := os.Create(log_path)
+        if err != nil {
+            logger.Fatal(err)
+            os.Exit(1)
+        }
+        if global_config.Quiet {
+            // 直接设置 则不会输出到终端
+            logger.SetOutput(f)
+        } else {
+            // 这样可以同时输出到终端
+            mw := io.MultiWriter(os.Stdout, f)
+            logger.SetOutput(mw)
+        }
+    }
+
+    module_config, err := toModuleConfig(global_config)
+    if err != nil {
+        logger.Printf("toModuleConfig failed, %v", err)
+        os.Exit(1)
+    }
+
+    var runMods uint8
+    var wg sync.WaitGroup
+
+    mod := &module.Module{}
+
+    mod.Init(ctx, logger, module_config)
+    err = mod.Run()
+    if err != nil {
+        logger.Printf("%s\tmodule Run failed, [skip it]. error:%+v", mod.Name(), err)
+        os.Exit(1)
+    }
+    if global_config.Debug {
+        logger.Printf("%s\tmodule started successfully", mod.Name())
+    }
+    wg.Add(1)
+    runMods++
+
+    if runMods > 0 {
+        logger.Printf("start %d modules", runMods)
+        <-stopper
+    } else {
+        logger.Println("No runnable modules, Exit(1)")
+        os.Exit(1)
+    }
+    cancelFun()
+
+    err = mod.Close()
+    logger.Println("mod Close")
+    wg.Done()
+    if err != nil {
+        logger.Fatalf("%s:module close failed. error:%+v", mod.Name(), err)
+    }
+
+    wg.Wait()
+    os.Exit(0)
+}
+
+func toModuleConfig(global_config *config.GlobalConfig) (*config.ModuleConfig, error) {
+    // 转换命令行的选项 并且进行检查
+    module_config := config.NewModuleConfig()
+
+    return module_config, nil
 }
 
 func parseByUid(uid uint64) error {

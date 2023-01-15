@@ -34,7 +34,7 @@ func init() {
     syscallCmd.PersistentFlags().BoolVarP(&syscall_config.ShowRegs, "regs", "", false, "show regs")
     syscallCmd.PersistentFlags().StringVar(&syscall_config.Config, "config", "", "syscall hook config file")
     syscallCmd.PersistentFlags().Int64VarP(&syscall_config.NR, "nr", "", -1, "filter syscall number")
-    rootCmd.AddCommand(syscallCmd)
+    // rootCmd.AddCommand(syscallCmd)
 }
 
 func syscallCommandFunc(command *cobra.Command, args []string) {
@@ -44,8 +44,8 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
 
     // 首先根据全局设定设置日志输出
     logger := log.New(os.Stdout, "syscall_", log.Ltime)
-    if global_config.LoggerFile != "" {
-        log_path := global_config.ExecPath + "/" + global_config.LoggerFile
+    if global_config.LogFile != "" {
+        log_path := "/data/local/tmp/" + global_config.LogFile
         _, err := os.Stat(log_path)
         if err != nil {
             if os.IsNotExist(err) {
@@ -77,12 +77,12 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
 
         sysnoConfig := config.SyscallConfig{
             SConfig: config.SConfig{
-                UnwindStack:      syscall_config.UnwindStack,
-                ShowRegs:         syscall_config.ShowRegs,
-                Uid:              global_config.Uid,
-                Pid:              global_config.Pid,
-                TidBlacklist:     target_config.TidBlacklist,
-                TidBlacklistMask: target_config.TidBlacklistMask,
+                UnwindStack:       syscall_config.UnwindStack,
+                ShowRegs:          syscall_config.ShowRegs,
+                Uid:               global_config.Uid,
+                Pid:               global_config.Pid,
+                TidsBlacklist:     target_config.TidsBlacklist,
+                TidsBlacklistMask: target_config.TidsBlacklistMask,
             },
             NR: sysno,
         }

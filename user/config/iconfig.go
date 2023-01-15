@@ -24,14 +24,16 @@ type IConfig interface {
 }
 
 type SConfig struct {
-	Uid              uint64
-	Pid              uint64
-	TidBlacklistMask uint32
-	TidBlacklist     [MAX_TID_BLACKLIST_COUNT]uint32
-	UnwindStack      bool
-	ShowRegs         bool
-	RegName          string
-	Debug            bool
+	Uid               uint64
+	Pid               uint64
+	TidsBlacklistMask uint32
+	TidsBlacklist     [MAX_TID_BLACKLIST_COUNT]uint32
+	UnwindStack       bool
+	ShowRegs          bool
+	GetLR             bool
+	GetPC             bool
+	RegName           string
+	Debug             bool
 }
 
 func (this *SConfig) SetDebug(debug bool) {

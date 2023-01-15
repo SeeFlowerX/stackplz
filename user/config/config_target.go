@@ -4,8 +4,8 @@ type TargetConfig struct {
     Name             string
     Uid              uint64
     Pid              uint64
-    TidBlacklist     [MAX_TID_BLACKLIST_COUNT]uint32
-    TidBlacklistMask uint32
+    TidsBlacklist     [MAX_TID_BLACKLIST_COUNT]uint32
+    TidsBlacklistMask uint32
     LibraryDirs      []string
     DataDir          string
     Abi              string

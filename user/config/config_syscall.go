@@ -30,8 +30,8 @@ func (this *SyscallConfig) GetFilter() SyscallFilter {
         uid:                uint32(this.Uid),
         pid:                uint32(this.Pid),
         nr:                 uint32(this.NR),
-        tid_blacklist_mask: this.TidBlacklistMask,
-        tid_blacklist:      this.TidBlacklist,
+        tid_blacklist_mask: this.TidsBlacklistMask,
+        tid_blacklist:      this.TidsBlacklist,
     }
     return filter
 }
