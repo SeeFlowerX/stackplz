@@ -26,7 +26,9 @@ type MStack struct {
     eventFuncMaps     map[*ebpf.Map]event.IEventStruct
     eventMaps         []*ebpf.Map
 
-    hookBpfFile string
+    hookBpfFile        string
+    stack_uprobe_hook  bool
+    stack_syscall_hook bool
 }
 
 func (this *MStack) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
@@ -48,24 +50,35 @@ func (this *MStack) GetConf() string {
 
 func (this *MStack) setupManager() error {
     if this.mconf.Debug {
-        this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.mconf.Symbol, this.mconf.Library, this.mconf.Offset)
+        this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.mconf.UprobeConf.Symbol, this.mconf.UprobeConf.Library, this.mconf.UprobeConf.Offset)
     }
     this.bpfManager = &manager.Manager{
         Probes: []*manager.Probe{
             {
                 Section:          "uprobe/stack",
                 EbpfFuncName:     "probe_stack",
-                AttachToFuncName: this.mconf.Symbol,
-                BinaryPath:       this.mconf.Library,
-                UprobeOffset:     this.mconf.Offset,
+                AttachToFuncName: this.mconf.UprobeConf.Symbol,
+                BinaryPath:       this.mconf.UprobeConf.Library,
+                UprobeOffset:     this.mconf.UprobeConf.Offset,
                 // 这样每个hook点都使用独立的程序
                 // UID: util.RandStringBytes(8),
+            },
+            {
+                Section:      "raw_tracepoint/sys_enter",
+                EbpfFuncName: "raw_syscalls_sys_enter",
+            },
+            {
+                Section:      "raw_tracepoint/sys_exit",
+                EbpfFuncName: "raw_syscalls_sys_exit",
             },
         },
 
         Maps: []*manager.Map{
             {
                 Name: "stack_events",
+            },
+            {
+                Name: "syscall_events",
             },
         },
     }
@@ -115,7 +128,23 @@ func (this *MStack) start() error {
     if this.mconf.Uid == 0 {
         return fmt.Errorf("uid is 0, %s", this.GetConf())
     }
-    // 初始化Uprobe相关设置
+    // 要注意 一部分选项是通用的
+    // 常规ELF uprobe hook 和 syscall hook 要分别设置
+
+    // 先判断有是只hook其中一个 还是两个都要
+    this.stack_uprobe_hook = false
+    this.stack_syscall_hook = false
+    if this.mconf.UprobeConf.IsEnable() {
+        this.stack_uprobe_hook = true
+    }
+    if this.mconf.SyscallConf.IsEnable() {
+        this.stack_syscall_hook = true
+    }
+    if !this.stack_uprobe_hook && !this.stack_uprobe_hook {
+        return errors.New("hook nothing")
+    }
+
+    // 初始化uprobe相关设置
     err := this.setupManagersUprobe()
     if err != nil {
         return err
