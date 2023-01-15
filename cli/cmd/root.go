@@ -27,6 +27,7 @@ import (
     "github.com/spf13/cobra"
 )
 
+var logger = log.New(os.Stdout, "stack_", log.Ltime)
 var exec_path = "/data/local/tmp"
 var global_config = config.NewGlobalConfig()
 var target_config = config.NewTargetConfig()
@@ -50,10 +51,38 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 在执行子命令的时候 上级命令的 PersistentPreRun/PersistentPreRunE 会先执行
     // 优先通过包名指定要hook的目标 在执行子命令之前先通过包名得到uid
 
+    // 首先根据全局设定设置日志输出
+
+    if global_config.LogFile != "" {
+        log_path := exec_path + "/" + global_config.LogFile
+        _, err := os.Stat(log_path)
+        if err != nil {
+            if os.IsNotExist(err) {
+                os.Remove(log_path)
+            }
+        }
+        f, err := os.Create(log_path)
+        if err != nil {
+            logger.Fatal(err)
+            os.Exit(1)
+        }
+        if global_config.Quiet {
+            // 直接设置 则不会输出到终端
+            logger.SetOutput(f)
+        } else {
+            // 这样可以同时输出到终端
+            mw := io.MultiWriter(os.Stdout, f)
+            logger.SetOutput(mw)
+        }
+    }
+
     // 第一步先释放用于获取堆栈信息的外部库
     exec_path, err := os.Executable()
     if err != nil {
         return fmt.Errorf("please build as executable binary, %v", err)
+    }
+    if global_config.Debug {
+        logger.Printf("Executable:%s", exec_path)
     }
     // 获取一次 后面用得到 免去重复获取
     exec_path = path.Dir(exec_path)
@@ -114,31 +143,6 @@ func runFunc(command *cobra.Command, args []string) {
     stopper := make(chan os.Signal, 1)
     signal.Notify(stopper, os.Interrupt, syscall.SIGTERM)
     ctx, cancelFun := context.WithCancel(context.TODO())
-
-    // 首先根据全局设定设置日志输出
-    logger := log.New(os.Stdout, "", log.Lmicroseconds)
-    if global_config.LogFile != "" {
-        log_path := exec_path + "/" + global_config.LogFile
-        _, err := os.Stat(log_path)
-        if err != nil {
-            if os.IsNotExist(err) {
-                os.Remove(log_path)
-            }
-        }
-        f, err := os.Create(log_path)
-        if err != nil {
-            logger.Fatal(err)
-            os.Exit(1)
-        }
-        if global_config.Quiet {
-            // 直接设置 则不会输出到终端
-            logger.SetOutput(f)
-        } else {
-            // 这样可以同时输出到终端
-            mw := io.MultiWriter(os.Stdout, f)
-            logger.SetOutput(mw)
-        }
-    }
 
     module_config, err := toModuleConfig(global_config)
     if err != nil {
@@ -290,6 +294,9 @@ func parseByPackage(name string) error {
     // wait 方法会一直阻塞到其所属的命令完全运行结束为止
     if err := cmd.Wait(); err != nil {
         return err
+    }
+    if global_config.Uid == 0 {
+        return fmt.Errorf("parseByPackage failed, uid is 0, package name:%s", name)
     }
     return nil
 }
