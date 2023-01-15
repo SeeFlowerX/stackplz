@@ -7,7 +7,7 @@
 
 #define TASK_COMM_LEN 16
 
-#define MAX_TID_BLACKLIST_COUNT 5
+#define MAX_TID_BLACKLIST_COUNT 20
 
 typedef signed char __s8;
 

@@ -1,6 +1,6 @@
 package config
 
-const MAX_TID_BLACKLIST_COUNT = 5
+const MAX_TID_BLACKLIST_COUNT = 20
 
 type StackFilter struct {
 	uid                uint32

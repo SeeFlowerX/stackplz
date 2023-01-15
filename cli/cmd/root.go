@@ -81,8 +81,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     target_config.TidBlacklistMask = 0
     if global_config.TidsBlacklist != "" {
         tids := strings.Split(global_config.TidsBlacklist, ",")
-        if len(tids) > 5 {
-            return fmt.Errorf("max tid blacklist count is 5, provided count:%d", len(tids))
+        if len(tids) > 20 {
+            return fmt.Errorf("max tid blacklist count is 20, provided count:%d", len(tids))
         }
         for i, v := range tids {
             value, _ := strconv.ParseUint(v, 10, 32)
@@ -223,7 +223,7 @@ func init() {
     rootCmd.PersistentFlags().StringVarP(&global_config.Name, "name", "n", "", "must set uid or package name")
     rootCmd.PersistentFlags().Uint64VarP(&global_config.Uid, "uid", "u", 0, "must set uid or package name")
     rootCmd.PersistentFlags().Uint64VarP(&global_config.Pid, "pid", "p", 0, "add pid to filter")
-    rootCmd.PersistentFlags().StringVarP(&global_config.TidsBlacklist, "no-tids", "", "", "tid black list, max 5")
+    rootCmd.PersistentFlags().StringVarP(&global_config.TidsBlacklist, "no-tids", "", "", "tid black list, max 20")
     rootCmd.PersistentFlags().BoolVarP(&global_config.Debug, "debug", "d", false, "enable debug logging")
     rootCmd.PersistentFlags().StringVarP(&global_config.LoggerFile, "out", "o", "", "-o save the packets to file")
     rootCmd.PersistentFlags().BoolVarP(&global_config.Quiet, "quiet", "", false, "use with --log-file, wont logging to terminal when used")
