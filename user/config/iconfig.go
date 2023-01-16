@@ -9,8 +9,9 @@ type IConfig interface {
 }
 
 type SConfig struct {
-	Uid         uint64
-	Pid         uint64
+	Uid         uint32
+	Pid         uint32
+	Tid         uint32
 	UnwindStack bool
 	ShowRegs    bool
 	GetLR       bool

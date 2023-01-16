@@ -1,10 +1,10 @@
 package config
 
 import (
-    "fmt"
-    "os"
-    "stackplz/pkg/util"
-    "strings"
+	"fmt"
+	"os"
+	"stackplz/pkg/util"
+	"strings"
 )
 
 type ProbeConfig struct {
@@ -58,8 +58,8 @@ func (this *ProbeConfig) Check() error {
     return nil
 }
 
-func (this *ProbeConfig) GetFilter() StackFilter {
-    filter := StackFilter{
+func (this *ProbeConfig) GetFilter() UprobeStackFilter {
+    filter := UprobeStackFilter{
         // uid:                uint32(this.Uid),
         // pid:                uint32(this.Pid),
         // tid_blacklist_mask: this.TidsBlacklistMask,

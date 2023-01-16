@@ -3,7 +3,7 @@
 
 // uprobe hook
 
-struct hook_data_event_t {
+struct uprobe_stack_event_t {
     u32 pid;
     u32 tid;
     u64 timestamp_ns;
@@ -17,72 +17,80 @@ struct {
 struct {
     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
     __type(key, u32);
-    __type(value, struct hook_data_event_t);
+    __type(value, struct uprobe_stack_event_t);
     __uint(max_entries, 1);
-} data_buffer_heap SEC(".maps");
+} uprobe_stack_event_heap SEC(".maps");
 
 // 用于设置过滤配置
-struct filter_t {
+struct uprobe_stack_filter_t {
     u32 uid;
     u32 pid;
-    u32 tid_blacklist_mask;
-    u32 tid_blacklist[MAX_COUNT];
+    u32 tid;
+    u32 tids_blacklist_mask;
+    u32 tids_blacklist[MAX_COUNT];
+    u32 pids_blacklist_mask;
+    u32 pids_blacklist[MAX_COUNT];
 };
 
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, u32);
-    __type(value, struct filter_t);
+    __type(value, struct uprobe_stack_filter_t);
     __uint(max_entries, 1);
-} filter_map SEC(".maps");
+} uprobe_stack_filter SEC(".maps");
 
 SEC("uprobe/stack")
 int probe_stack(struct pt_regs* ctx) {
     u32 filter_key = 0;
-    struct filter_t* filter = bpf_map_lookup_elem(&filter_map, &filter_key);
+    struct uprobe_stack_filter_t* filter = bpf_map_lookup_elem(&uprobe_stack_filter, &filter_key);
     if (filter == NULL) {
         return 0;
     }
 
+    // 获取信息用于过滤
     u64 current_uid_gid = bpf_get_current_uid_gid();
     u32 uid = current_uid_gid >> 32;
-    if (filter->uid != 0 && filter->uid != uid) {
-        return 0;
-    }
-
     u64 current_pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = current_pid_tgid >> 32;
     u32 tid = current_pid_tgid & 0xffffffff;
+    // uid 过滤
+    if (filter->uid != 0 && filter->uid != uid) {
+        return 0;
+    }
+    // pid 过滤
     if (filter->pid != 0 && filter->pid != pid) {
         return 0;
     }
+    // tid 过滤
+    if (filter->tid != 0 && filter->tid != tid) {
+        return 0;
+    }
 
-    #ifdef DEBUG_PRINT
-    char fmt0[] = "debug0, tid:%d mask:%d\n";
-    bpf_trace_printk(fmt0, sizeof(fmt0), tid, filter->tid_blacklist_mask);
-    #endif
-
+    // tid 黑名单过滤
     #pragma unroll
     for (int i = 0; i < MAX_COUNT; i++) {
-        if ((filter->tid_blacklist_mask & (1 << i))) {
-
-            #ifdef DEBUG_PRINT
-            char fmt1[] = "debug1, tid:%d filter_tid:%d\n";
-            bpf_trace_printk(fmt1, sizeof(fmt1), tid, filter->tid_blacklist[i]);
-            #endif
-
-            if (filter->tid_blacklist[i] == tid) {
-                // 在tid黑名单直接跳过
+        if ((filter->tids_blacklist_mask & (1 << i))) {
+            if (filter->tids_blacklist[i] == tid) {
                 return 0;
             }
         } else {
-            // 避免不必要的循环
+            break;
+        }
+    }
+    // pid 黑名单过滤
+    #pragma unroll
+    for (int i = 0; i < MAX_COUNT; i++) {
+        if ((filter->pids_blacklist_mask & (1 << i))) {
+            if (filter->pids_blacklist[i] == tid) {
+                return 0;
+            }
+        } else {
             break;
         }
     }
 
     u32 zero = 0;
-    struct hook_data_event_t* event = bpf_map_lookup_elem(&data_buffer_heap, &zero);
+    struct uprobe_stack_event_t* event = bpf_map_lookup_elem(&uprobe_stack_event_heap, &zero);
     if (event == NULL) {
         return 0;
     }
@@ -93,7 +101,14 @@ int probe_stack(struct pt_regs* ctx) {
 
     bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
-    long status = bpf_perf_event_output(ctx, &stack_events, BPF_F_CURRENT_CPU, event, sizeof(struct hook_data_event_t));
+    long status = bpf_perf_event_output(ctx, &stack_events, BPF_F_CURRENT_CPU, event, sizeof(struct uprobe_stack_event_t));
+
+    #ifdef DEBUG_PRINT
+    if (status != 0) {
+        char perf_msg_fmt[] = "bpf_perf_event_output, uid:%d pid:%d tid:%d status:%d\n";
+        bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), uid, pid, tid, status);
+    }
+    #endif
 
     return 0;
 }
@@ -156,8 +171,8 @@ struct syscall_filter_t {
     u32 is_32bit;
     u32 try_bypass;
     u32 after_read;
-    u32 tid_blacklist_mask;
-    u32 tid_blacklist[MAX_COUNT];
+    u32 tids_blacklist_mask;
+    u32 tids_blacklist[MAX_COUNT];
     u32 syscall_mask;
     u32 syscall[MAX_COUNT];
     u32 syscall_blacklist_mask;
@@ -235,8 +250,8 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     // tid 黑名单过滤
     #pragma unroll
     for (int i = 0; i < MAX_COUNT; i++) {
-        if ((filter->tid_blacklist_mask & (1 << i))) {
-            if (filter->tid_blacklist[i] == tid) {
+        if ((filter->tids_blacklist_mask & (1 << i))) {
+            if (filter->tids_blacklist[i] == tid) {
                 // 在tid黑名单直接结束跳过
                 return 0;
             }
@@ -480,8 +495,8 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     // tid 黑名单过滤
     #pragma unroll
     for (int i = 0; i < MAX_COUNT; i++) {
-        if ((filter->tid_blacklist_mask & (1 << i))) {
-            if (filter->tid_blacklist[i] == tid) {
+        if ((filter->tids_blacklist_mask & (1 << i))) {
+            if (filter->tids_blacklist[i] == tid) {
                 // 在tid黑名单直接结束跳过
                 return 0;
             }

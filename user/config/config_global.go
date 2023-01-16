@@ -5,11 +5,13 @@ type GlobalConfig struct {
     Name          string
     Uid           uint64
     Pid           uint64
+    Tid           uint64
     UnwindStack   bool
     ShowRegs      bool
     GetLR         bool
     GetPC         bool
     TidsBlacklist string
+    PidsBlacklist string
     Debug         bool
     Quiet         bool
     LogFile       string

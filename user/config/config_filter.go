@@ -7,16 +7,16 @@ import (
 )
 
 type BaseFilter struct {
-	uid                uint32
-	pid                uint32
-	tid                uint32
-	tid_blacklist_mask uint32
-	tid_blacklist      [MAX_COUNT]uint32
-	pid_blacklist_mask uint32
-	pid_blacklist      [MAX_COUNT]uint32
+	uid                 uint32
+	pid                 uint32
+	tid                 uint32
+	tids_blacklist_mask uint32
+	tids_blacklist      [MAX_COUNT]uint32
+	pids_blacklist_mask uint32
+	pids_blacklist      [MAX_COUNT]uint32
 }
 
-type StackFilter struct {
+type UprobeStackFilter struct {
 	BaseFilter
 }
 
@@ -76,15 +76,15 @@ func (this *SyscallFilter) SetSysCallBlacklist(syscall_blacklist string, systabl
 	return nil
 }
 
-func (this *SyscallFilter) SetTidBlacklist(tid_blacklist string) error {
-	items := strings.Split(tid_blacklist, ",")
+func (this *SyscallFilter) SetTidBlacklist(tids_blacklist string) error {
+	items := strings.Split(tids_blacklist, ",")
 	if len(items) > MAX_COUNT {
 		return fmt.Errorf("max tid blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
 	}
 	for i, v := range items {
 		value, _ := strconv.ParseUint(v, 10, 32)
-		this.tid_blacklist[i] = uint32(value)
-		this.tid_blacklist_mask |= (1 << i)
+		this.tids_blacklist[i] = uint32(value)
+		this.tids_blacklist_mask |= (1 << i)
 	}
 	return nil
 }

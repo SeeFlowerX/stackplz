@@ -17,6 +17,7 @@ import (
     "os/signal"
     "path"
     "stackplz/assets"
+    "stackplz/pkg/util"
     "stackplz/user/config"
     "stackplz/user/module"
     "strconv"
@@ -188,11 +189,34 @@ func runFunc(command *cobra.Command, args []string) {
     os.Exit(0)
 }
 
-func toModuleConfig(global_config *config.GlobalConfig) (*config.ModuleConfig, error) {
+func toModuleConfig(gconfig *config.GlobalConfig) (*config.ModuleConfig, error) {
     // 转换命令行的选项 并且进行检查
-    module_config := config.NewModuleConfig()
+    mconfig := config.NewModuleConfig()
+    mconfig.Uid = uint32(gconfig.Uid)
+    mconfig.Pid = uint32(gconfig.Pid)
+    mconfig.Tid = uint32(gconfig.Tid)
+    mconfig.UnwindStack = gconfig.UnwindStack
+    mconfig.ShowRegs = gconfig.ShowRegs
+    mconfig.GetLR = gconfig.GetLR
+    mconfig.GetPC = gconfig.GetPC
+    var err error
+    err = mconfig.SetTidsBlacklist(gconfig.TidsBlacklist)
+    if err != nil {
+        return mconfig, err
+    }
+    err = mconfig.SetPidsBlacklist(gconfig.PidsBlacklist)
+    if err != nil {
+        return mconfig, err
+    }
 
-    return module_config, nil
+    mconfig.UprobeConf.Library, err = util.FindLib(gconfig.Library, target_config.LibraryDirs)
+    if err != nil {
+        logger.Fatal(err)
+        os.Exit(1)
+    }
+    mconfig.UprobeConf.Symbol = gconfig.Symbol
+    mconfig.UprobeConf.Offset = gconfig.Offset
+    return mconfig, nil
 }
 
 func parseByUid(uid uint64) error {
@@ -322,6 +346,7 @@ func init() {
     rootCmd.PersistentFlags().StringVarP(&global_config.Name, "name", "n", "", "must set uid or package name")
     rootCmd.PersistentFlags().Uint64VarP(&global_config.Uid, "uid", "u", 0, "must set uid or package name")
     rootCmd.PersistentFlags().Uint64VarP(&global_config.Pid, "pid", "p", 0, "add pid to filter")
+    rootCmd.PersistentFlags().Uint64VarP(&global_config.Tid, "tid", "t", 0, "add tid to filter")
     // 堆栈输出设定
     rootCmd.PersistentFlags().BoolVar(&global_config.UnwindStack, "stack", false, "enable unwindstack")
     rootCmd.PersistentFlags().BoolVar(&global_config.ShowRegs, "regs", false, "show regs")
@@ -329,6 +354,7 @@ func init() {
     rootCmd.PersistentFlags().BoolVar(&global_config.GetPC, "getpc", false, "try get pc info")
     // 黑白名单设定
     rootCmd.PersistentFlags().StringVar(&global_config.TidsBlacklist, "no-tids", "", "tid black list, max 20")
+    rootCmd.PersistentFlags().StringVar(&global_config.PidsBlacklist, "no-pids", "", "pid black list, max 20")
     // 日志设定
     rootCmd.PersistentFlags().BoolVarP(&global_config.Debug, "debug", "d", false, "enable debug logging")
     rootCmd.PersistentFlags().BoolVarP(&global_config.Quiet, "quiet", "q", false, "wont logging to terminal when used")

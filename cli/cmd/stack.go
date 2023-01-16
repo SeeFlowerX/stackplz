@@ -55,7 +55,7 @@ var stackCmd = &cobra.Command{
     Use:   "stack",
     Short: "show stack plz",
     Long:  "show stack which based unwindstack",
-    Run:   stackCommandFunc,
+    // Run:   stackCommandFunc,
 }
 
 func init() {
@@ -120,8 +120,8 @@ func stackCommandFunc(command *cobra.Command, args []string) {
                 UnwindStack: stack_config.UnwindStack,
                 ShowRegs:    stack_config.ShowRegs,
                 RegName:     stack_config.RegName,
-                Uid:         target_config.Uid,
-                Pid:         target_config.Pid,
+                Uid:         uint32(target_config.Uid),
+                Pid:         uint32(target_config.Pid),
                 // TidsBlacklist:     target_config.TidsBlacklist,
                 // TidsBlacklistMask: target_config.TidsBlacklistMask,
             },
@@ -249,8 +249,8 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
                     SConfig: config.SConfig{
                         UnwindStack: baseHookConfig.Unwindstack,
                         ShowRegs:    baseHookConfig.Regs,
-                        Uid:         target_config.Uid,
-                        Pid:         target_config.Pid,
+                        Uid:         uint32(target_config.Uid),
+                        Pid:         uint32(target_config.Pid),
                     },
                     Library: library,
                     Symbol:  symbol,
@@ -284,8 +284,8 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
                     SConfig: config.SConfig{
                         UnwindStack: baseHookConfig.Unwindstack,
                         ShowRegs:    baseHookConfig.Regs,
-                        Uid:         target_config.Uid,
-                        Pid:         target_config.Pid,
+                        Uid:         uint32(target_config.Uid),
+                        Pid:         uint32(target_config.Pid),
                     },
                     Library: library,
                     Symbol:  "",

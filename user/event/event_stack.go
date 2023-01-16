@@ -15,7 +15,7 @@ import (
     "unsafe"
 )
 
-type HookDataEvent struct {
+type UprobeStackEvent struct {
     event_type   EventType
     Pid          uint32
     Tid          uint32
@@ -30,7 +30,7 @@ type HookDataEvent struct {
     UUID         string
 }
 
-func (this *HookDataEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
+func (this *UprobeStackEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
     buf := bytes.NewBuffer(payload)
     if err = binary.Read(buf, binary.LittleEndian, &this.Pid); err != nil {
         return
@@ -76,21 +76,21 @@ func (this *HookDataEvent) Decode(payload []byte, unwind_stack, regs bool) (err 
     return nil
 }
 
-func (this *HookDataEvent) Clone() IEventStruct {
-    event := new(HookDataEvent)
+func (this *UprobeStackEvent) Clone() IEventStruct {
+    event := new(UprobeStackEvent)
     event.event_type = EventTypeModuleData
     return event
 }
 
-func (this *HookDataEvent) EventType() EventType {
+func (this *UprobeStackEvent) EventType() EventType {
     return this.event_type
 }
 
-func (this *HookDataEvent) SetUUID(uuid string) {
+func (this *UprobeStackEvent) SetUUID(uuid string) {
     this.UUID = uuid
 }
 
-func (this *HookDataEvent) String() string {
+func (this *UprobeStackEvent) String() string {
     var s string
     s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d", this.UUID, this.Pid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")), this.Tid)
     if this.RegName != "" {

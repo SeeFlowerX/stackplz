@@ -24,7 +24,7 @@ var syscallCmd = &cobra.Command{
     Use:   "syscall",
     Short: "filter and show syscall stack plz",
     Long:  "filter and show syscall stack which based unwindstack",
-    Run:   syscallCommandFunc,
+    // Run:   syscallCommandFunc,
 }
 
 func init() {
@@ -79,8 +79,8 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
             SConfig: config.SConfig{
                 UnwindStack: syscall_config.UnwindStack,
                 ShowRegs:    syscall_config.ShowRegs,
-                Uid:         global_config.Uid,
-                Pid:         global_config.Pid,
+                Uid:         uint32(global_config.Uid),
+                Pid:         uint32(global_config.Pid),
                 // TidsBlacklist:     target_config.TidsBlacklist,
                 // TidsBlacklistMask: target_config.TidsBlacklistMask,
             },
