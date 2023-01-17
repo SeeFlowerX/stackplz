@@ -15,6 +15,8 @@ type GlobalConfig struct {
     Debug         bool
     Quiet         bool
     LogFile       string
+    DataDir       string
+    LibraryDirs   []string
     Library       string
     Symbol        string
     Offset        uint64

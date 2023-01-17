@@ -60,7 +60,7 @@ var stackCmd = &cobra.Command{
 
 func init() {
     // 此处 stack_config 只是设置了默认的值
-    // global_config 也是只设置了默认的值
+    // gconfig 也是只设置了默认的值
     stackCmd.PersistentFlags().BoolVarP(&stack_config.UnwindStack, "stack", "", false, "enable unwindstack")
     stackCmd.PersistentFlags().BoolVarP(&stack_config.ShowRegs, "regs", "", false, "show regs")
     stackCmd.PersistentFlags().StringVar(&stack_config.Library, "library", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
@@ -78,8 +78,8 @@ func stackCommandFunc(command *cobra.Command, args []string) {
 
     // 首先根据全局设定设置日志输出
     logger := log.New(os.Stdout, "stack_", log.Ltime)
-    if global_config.LogFile != "" {
-        log_path := "/data/local/tmp/" + global_config.LogFile
+    if gconfig.LogFile != "" {
+        log_path := "/data/local/tmp/" + gconfig.LogFile
         _, err := os.Stat(log_path)
         if err != nil {
             if os.IsNotExist(err) {
@@ -91,7 +91,7 @@ func stackCommandFunc(command *cobra.Command, args []string) {
             logger.Fatal(err)
             os.Exit(1)
         }
-        if global_config.Quiet {
+        if gconfig.Quiet {
             // 直接设置 则不会输出到终端
             logger.SetOutput(f)
         } else {
@@ -106,7 +106,7 @@ func stackCommandFunc(command *cobra.Command, args []string) {
     if stack_config.Config != "" {
         parseConfig(logger, stack_config.Config, &probeConfigs)
     } else {
-        library, err := util.FindLib(stack_config.Library, target_config.LibraryDirs)
+        library, err := util.FindLib(stack_config.Library, gconfig.LibraryDirs)
         if err != nil {
             logger.Fatal(err)
             os.Exit(1)
@@ -120,8 +120,8 @@ func stackCommandFunc(command *cobra.Command, args []string) {
                 UnwindStack: stack_config.UnwindStack,
                 ShowRegs:    stack_config.ShowRegs,
                 RegName:     stack_config.RegName,
-                Uid:         uint32(target_config.Uid),
-                Pid:         uint32(target_config.Pid),
+                Uid:         uint32(gconfig.Uid),
+                Pid:         uint32(gconfig.Pid),
                 // TidsBlacklist:     target_config.TidsBlacklist,
                 // TidsBlacklistMask: target_config.TidsBlacklistMask,
             },
@@ -149,7 +149,7 @@ func stackCommandFunc(command *cobra.Command, args []string) {
             break
         }
 
-        probeConfig.Debug = global_config.Debug
+        probeConfig.Debug = gconfig.Debug
 
         logger.Printf("%s\thook info:%s", mod.Name(), probeConfig.Info())
 
@@ -166,7 +166,7 @@ func stackCommandFunc(command *cobra.Command, args []string) {
             continue
         }
         runModules[probeConfig.Info()] = mod
-        if global_config.Debug {
+        if gconfig.Debug {
             logger.Printf("%s\tmodule started successfully", mod.Name())
         }
         wg.Add(1)
@@ -214,10 +214,10 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
     var hookConfig HookConfig
     json.Unmarshal(content, &hookConfig)
 
-    hookConfig.LibraryDirs = append(hookConfig.LibraryDirs, target_config.LibraryDirs...)
+    hookConfig.LibraryDirs = append(hookConfig.LibraryDirs, gconfig.LibraryDirs...)
     for _, libHookConfig := range hookConfig.Libs {
         if libHookConfig.Disable {
-            if global_config.Debug {
+            if gconfig.Debug {
                 logger.Printf("disabled, skip hook %s", libHookConfig.Library)
             }
             continue
@@ -249,8 +249,8 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
                     SConfig: config.SConfig{
                         UnwindStack: baseHookConfig.Unwindstack,
                         ShowRegs:    baseHookConfig.Regs,
-                        Uid:         uint32(target_config.Uid),
-                        Pid:         uint32(target_config.Pid),
+                        Uid:         uint32(gconfig.Uid),
+                        Pid:         uint32(gconfig.Pid),
                     },
                     Library: library,
                     Symbol:  symbol,
@@ -284,8 +284,8 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
                     SConfig: config.SConfig{
                         UnwindStack: baseHookConfig.Unwindstack,
                         ShowRegs:    baseHookConfig.Regs,
-                        Uid:         uint32(target_config.Uid),
-                        Pid:         uint32(target_config.Pid),
+                        Uid:         uint32(gconfig.Uid),
+                        Pid:         uint32(gconfig.Pid),
                     },
                     Library: library,
                     Symbol:  "",
@@ -300,7 +300,7 @@ func parseConfig(logger *log.Logger, config_path string, probeConfigs *[]config.
             }
         }
     }
-    if global_config.Debug {
+    if gconfig.Debug {
         logger.Printf("hook count %d", len(*probeConfigs))
     }
     return nil

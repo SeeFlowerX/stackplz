@@ -29,7 +29,7 @@ var syscallCmd = &cobra.Command{
 
 func init() {
     // 此处 stack_config 只是设置了默认的值
-    // global_config 也是只设置了默认的值
+    // gconfig 也是只设置了默认的值
     syscallCmd.PersistentFlags().BoolVarP(&syscall_config.UnwindStack, "stack", "", false, "enable unwindstack")
     syscallCmd.PersistentFlags().BoolVarP(&syscall_config.ShowRegs, "regs", "", false, "show regs")
     syscallCmd.PersistentFlags().StringVar(&syscall_config.Config, "config", "", "syscall hook config file")
@@ -44,8 +44,8 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
 
     // 首先根据全局设定设置日志输出
     logger := log.New(os.Stdout, "syscall_", log.Ltime)
-    if global_config.LogFile != "" {
-        log_path := "/data/local/tmp/" + global_config.LogFile
+    if gconfig.LogFile != "" {
+        log_path := "/data/local/tmp/" + gconfig.LogFile
         _, err := os.Stat(log_path)
         if err != nil {
             if os.IsNotExist(err) {
@@ -57,7 +57,7 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
             logger.Fatal(err)
             os.Exit(1)
         }
-        if global_config.Quiet {
+        if gconfig.Quiet {
             // 直接设置 则不会输出到终端
             logger.SetOutput(f)
         } else {
@@ -79,8 +79,8 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
             SConfig: config.SConfig{
                 UnwindStack: syscall_config.UnwindStack,
                 ShowRegs:    syscall_config.ShowRegs,
-                Uid:         uint32(global_config.Uid),
-                Pid:         uint32(global_config.Pid),
+                Uid:         uint32(gconfig.Uid),
+                Pid:         uint32(gconfig.Pid),
                 // TidsBlacklist:     target_config.TidsBlacklist,
                 // TidsBlacklistMask: target_config.TidsBlacklistMask,
             },
@@ -107,7 +107,7 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
             continue
         }
         runModules[sysnoConfig.Info()] = mod
-        if global_config.Debug {
+        if gconfig.Debug {
             logger.Printf("%s\tmodule started successfully", mod.Name())
         }
         wg.Add(1)

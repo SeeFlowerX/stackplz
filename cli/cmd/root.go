@@ -30,8 +30,8 @@ import (
 
 var logger = log.New(os.Stdout, "stack_", log.Ltime)
 var exec_path = "/data/local/tmp"
-var global_config = config.NewGlobalConfig()
-var target_config = config.NewTargetConfig()
+var gconfig = config.NewGlobalConfig()
+var mconfig = config.NewModuleConfig()
 
 var rootCmd = &cobra.Command{
     Use:               "stackplz",
@@ -52,10 +52,11 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 在执行子命令的时候 上级命令的 PersistentPreRun/PersistentPreRunE 会先执行
     // 优先通过包名指定要hook的目标 在执行子命令之前先通过包名得到uid
 
+    var err error
     // 首先根据全局设定设置日志输出
 
-    if global_config.LogFile != "" {
-        log_path := exec_path + "/" + global_config.LogFile
+    if gconfig.LogFile != "" {
+        log_path := exec_path + "/" + gconfig.LogFile
         _, err := os.Stat(log_path)
         if err != nil {
             if os.IsNotExist(err) {
@@ -67,7 +68,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             logger.Fatal(err)
             os.Exit(1)
         }
-        if global_config.Quiet {
+        if gconfig.Quiet {
             // 直接设置 则不会输出到终端
             logger.SetOutput(f)
         } else {
@@ -82,7 +83,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     if err != nil {
         return fmt.Errorf("please build as executable binary, %v", err)
     }
-    if global_config.Debug {
+    if gconfig.Debug {
         logger.Printf("Executable:%s", exec_path)
     }
     // 获取一次 后面用得到 免去重复获取
@@ -102,7 +103,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             return err
         }
     }
-    if global_config.Prepare {
+    if gconfig.Prepare {
         // 认为是需要重新释放一次
         if !has_restore {
             err = assets.RestoreAssets(exec_path, "preload_libs")
@@ -113,31 +114,56 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         fmt.Println("RestoreAssets preload_libs success")
         os.Exit(0)
     }
-    if global_config.Pid > 0 {
-        target_config.Pid = global_config.Pid
-    }
-
-    target_config.TidsBlacklistMask = 0
-    if global_config.TidsBlacklist != "" {
-        tids := strings.Split(global_config.TidsBlacklist, ",")
-        if len(tids) > 20 {
-            return fmt.Errorf("max tid blacklist count is 20, provided count:%d", len(tids))
-        }
-        for i, v := range tids {
-            value, _ := strconv.ParseUint(v, 10, 32)
-            target_config.TidsBlacklist[i] = uint32(value)
-            target_config.TidsBlacklistMask |= (1 << i)
-        }
-    }
+    // if gconfig.Pid > 0 {
+    //     target_config.Pid = gconfig.Pid
+    // }
 
     // 第二步 通过包名获取uid和库路径 先通过pm命令获取安装位置
-    if global_config.Name != "" {
-        return parseByPackage(global_config.Name)
-    } else if global_config.Uid != 0 {
-        return parseByUid(global_config.Uid)
+    if gconfig.Name != "" {
+        err = parseByPackage(gconfig.Name)
+        if err != nil {
+            return err
+        }
+    } else if gconfig.Uid != 0 {
+        err = parseByUid(gconfig.Uid)
+        if err != nil {
+            return err
+        }
     } else {
         return errors.New("please set --uid or --name")
     }
+
+    // 转换命令行的选项 并且进行检查
+    mconfig.Uid = uint32(gconfig.Uid)
+    mconfig.Pid = uint32(gconfig.Pid)
+    mconfig.Tid = uint32(gconfig.Tid)
+    mconfig.UnwindStack = gconfig.UnwindStack
+    mconfig.ShowRegs = gconfig.ShowRegs
+    mconfig.GetLR = gconfig.GetLR
+    mconfig.GetPC = gconfig.GetPC
+    err = mconfig.SetTidsBlacklist(gconfig.TidsBlacklist)
+    if err != nil {
+        return err
+    }
+    err = mconfig.SetPidsBlacklist(gconfig.PidsBlacklist)
+    if err != nil {
+        return err
+    }
+
+    mconfig.UprobeConf.Library, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
+    if err != nil {
+        logger.Fatal(err)
+        os.Exit(1)
+    }
+    mconfig.UprobeConf.Symbol = gconfig.Symbol
+    mconfig.UprobeConf.Offset = gconfig.Offset
+
+    // mconfig, err = toModuleConfig(global_config)
+    // if err != nil {
+    //     logger.Printf("toModuleConfig failed, %v", err)
+    //     os.Exit(1)
+    // }
+    return nil
 }
 
 func runFunc(command *cobra.Command, args []string) {
@@ -145,25 +171,19 @@ func runFunc(command *cobra.Command, args []string) {
     signal.Notify(stopper, os.Interrupt, syscall.SIGTERM)
     ctx, cancelFun := context.WithCancel(context.TODO())
 
-    module_config, err := toModuleConfig(global_config)
-    if err != nil {
-        logger.Printf("toModuleConfig failed, %v", err)
-        os.Exit(1)
-    }
-
     var runMods uint8
     var wg sync.WaitGroup
 
     // 现在合并成只有一个模块了 所以直接通过名字获取
     mod := module.GetModuleByName(module.MODULE_NAME_STACK)
 
-    mod.Init(ctx, logger, module_config)
-    err = mod.Run()
+    mod.Init(ctx, logger, mconfig)
+    err := mod.Run()
     if err != nil {
         logger.Printf("%s\tmodule Run failed, [skip it]. error:%+v", mod.Name(), err)
         os.Exit(1)
     }
-    if global_config.Debug {
+    if gconfig.Debug {
         logger.Printf("%s\tmodule started successfully", mod.Name())
     }
     wg.Add(1)
@@ -190,32 +210,7 @@ func runFunc(command *cobra.Command, args []string) {
 }
 
 func toModuleConfig(gconfig *config.GlobalConfig) (*config.ModuleConfig, error) {
-    // 转换命令行的选项 并且进行检查
-    mconfig := config.NewModuleConfig()
-    mconfig.Uid = uint32(gconfig.Uid)
-    mconfig.Pid = uint32(gconfig.Pid)
-    mconfig.Tid = uint32(gconfig.Tid)
-    mconfig.UnwindStack = gconfig.UnwindStack
-    mconfig.ShowRegs = gconfig.ShowRegs
-    mconfig.GetLR = gconfig.GetLR
-    mconfig.GetPC = gconfig.GetPC
-    var err error
-    err = mconfig.SetTidsBlacklist(gconfig.TidsBlacklist)
-    if err != nil {
-        return mconfig, err
-    }
-    err = mconfig.SetPidsBlacklist(gconfig.PidsBlacklist)
-    if err != nil {
-        return mconfig, err
-    }
 
-    mconfig.UprobeConf.Library, err = util.FindLib(gconfig.Library, target_config.LibraryDirs)
-    if err != nil {
-        logger.Fatal(err)
-        os.Exit(1)
-    }
-    mconfig.UprobeConf.Symbol = gconfig.Symbol
-    mconfig.UprobeConf.Offset = gconfig.Offset
     return mconfig, nil
 }
 
@@ -259,8 +254,7 @@ func parseByUid(uid uint64) error {
 }
 
 func parseByPackage(name string) error {
-    target_config.Name = name
-    global_config.Name = name
+    gconfig.Name = name
     cmd := exec.Command("dumpsys", "package", name)
 
     // 创建获取命令输出管道
@@ -294,22 +288,23 @@ func parseByPackage(name string) error {
             value := parts[1]
             switch key {
             case "userId":
-                target_config.Uid, _ = strconv.ParseUint(value, 10, 64)
+                gconfig.Uid, _ = strconv.ParseUint(value, 10, 64)
                 // 只指定了包名的时候 global_config.Uid 是 0 需要修正
-                global_config.Uid = target_config.Uid
+                // gconfig.Uid = gconfig.Uid
             case "legacyNativeLibraryDir":
                 // 考虑到后面会通过其他方式增加搜索路径 所以是数组
-                target_config.LibraryDirs = append(target_config.LibraryDirs, value)
+                gconfig.LibraryDirs = append(gconfig.LibraryDirs, value)
             case "dataDir":
-                target_config.DataDir = value
+                gconfig.DataDir = value
             case "primaryCpuAbi":
                 // 只支持 arm64 否则直接返回错误
+                // 不过对于syscall则是支持 32 位的 后面优化逻辑
                 if value == "arm64-v8a" {
-                    if len(target_config.LibraryDirs) != 1 {
+                    if len(gconfig.LibraryDirs) != 1 {
                         // 一般是不会进入这个分支 万一呢
                         return fmt.Errorf("can not find legacyNativeLibraryDir, cmd:%s", strings.Join(cmd.Args, " "))
                     }
-                    target_config.LibraryDirs[0] = target_config.LibraryDirs[0] + "/" + "arm64"
+                    gconfig.LibraryDirs[0] = gconfig.LibraryDirs[0] + "/" + "arm64"
                 } else {
                     return fmt.Errorf("not support package=%s primaryCpuAbi=%s", name, value)
                 }
@@ -320,7 +315,7 @@ func parseByPackage(name string) error {
     if err := cmd.Wait(); err != nil {
         return err
     }
-    if global_config.Uid == 0 {
+    if gconfig.Uid == 0 {
         return fmt.Errorf("parseByPackage failed, uid is 0, package name:%s", name)
     }
     return nil
@@ -341,31 +336,31 @@ func Execute() {
 func init() {
     cobra.EnablePrefixMatching = false
     // 考虑到外部库更新 每个版本首次运行前 都应该执行一次
-    rootCmd.PersistentFlags().BoolVar(&global_config.Prepare, "prepare", false, "prepare libs")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.Prepare, "prepare", false, "prepare libs")
     // 过滤设定
-    rootCmd.PersistentFlags().StringVarP(&global_config.Name, "name", "n", "", "must set uid or package name")
-    rootCmd.PersistentFlags().Uint64VarP(&global_config.Uid, "uid", "u", 0, "must set uid or package name")
-    rootCmd.PersistentFlags().Uint64VarP(&global_config.Pid, "pid", "p", 0, "add pid to filter")
-    rootCmd.PersistentFlags().Uint64VarP(&global_config.Tid, "tid", "t", 0, "add tid to filter")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.Name, "name", "n", "", "must set uid or package name")
+    rootCmd.PersistentFlags().Uint64VarP(&gconfig.Uid, "uid", "u", 0, "must set uid or package name")
+    rootCmd.PersistentFlags().Uint64VarP(&gconfig.Pid, "pid", "p", 0, "add pid to filter")
+    rootCmd.PersistentFlags().Uint64VarP(&gconfig.Tid, "tid", "t", 0, "add tid to filter")
     // 堆栈输出设定
-    rootCmd.PersistentFlags().BoolVar(&global_config.UnwindStack, "stack", false, "enable unwindstack")
-    rootCmd.PersistentFlags().BoolVar(&global_config.ShowRegs, "regs", false, "show regs")
-    rootCmd.PersistentFlags().BoolVar(&global_config.GetLR, "getlr", false, "try get lr info")
-    rootCmd.PersistentFlags().BoolVar(&global_config.GetPC, "getpc", false, "try get pc info")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.UnwindStack, "stack", false, "enable unwindstack")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.ShowRegs, "regs", false, "show regs")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.GetLR, "getlr", false, "try get lr info")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.GetPC, "getpc", false, "try get pc info")
     // 黑白名单设定
-    rootCmd.PersistentFlags().StringVar(&global_config.TidsBlacklist, "no-tids", "", "tid black list, max 20")
-    rootCmd.PersistentFlags().StringVar(&global_config.PidsBlacklist, "no-pids", "", "pid black list, max 20")
+    rootCmd.PersistentFlags().StringVar(&gconfig.TidsBlacklist, "no-tids", "", "tid black list, max 20")
+    rootCmd.PersistentFlags().StringVar(&gconfig.PidsBlacklist, "no-pids", "", "pid black list, max 20")
     // 日志设定
-    rootCmd.PersistentFlags().BoolVarP(&global_config.Debug, "debug", "d", false, "enable debug logging")
-    rootCmd.PersistentFlags().BoolVarP(&global_config.Quiet, "quiet", "q", false, "wont logging to terminal when used")
-    rootCmd.PersistentFlags().StringVarP(&global_config.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
+    rootCmd.PersistentFlags().BoolVarP(&gconfig.Debug, "debug", "d", false, "enable debug logging")
+    rootCmd.PersistentFlags().BoolVarP(&gconfig.Quiet, "quiet", "q", false, "wont logging to terminal when used")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
     // 常规ELF库hook设定
-    rootCmd.PersistentFlags().StringVarP(&global_config.Library, "library", "l", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
-    rootCmd.PersistentFlags().StringVarP(&global_config.Symbol, "symbol", "s", "", "lib symbol")
-    rootCmd.PersistentFlags().Uint64VarP(&global_config.Offset, "offset", "f", 0, "lib hook offset")
-    rootCmd.PersistentFlags().StringVar(&global_config.RegName, "reg", "", "get the offset of reg")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.Library, "library", "l", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.Symbol, "symbol", "s", "", "lib symbol")
+    rootCmd.PersistentFlags().Uint64VarP(&gconfig.Offset, "offset", "f", 0, "lib hook offset")
+    rootCmd.PersistentFlags().StringVar(&gconfig.RegName, "reg", "", "get the offset of reg")
     // syscall hook
-    rootCmd.PersistentFlags().StringVar(&global_config.SysCall, "syscall", "", "filter syscalls")
+    rootCmd.PersistentFlags().StringVar(&gconfig.SysCall, "syscall", "", "filter syscalls")
     // 批量hook先放一边
-    // rootCmd.PersistentFlags().StringVar(&global_config.Config, "config", "", "hook config file")
+    // rootCmd.PersistentFlags().StringVar(&gconfig.Config, "config", "", "hook config file")
 }
