@@ -43,7 +43,7 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
     ctx, cancelFun := context.WithCancel(context.TODO())
 
     // 首先根据全局设定设置日志输出
-    logger := log.New(os.Stdout, "syscall_", log.LstdFlags)
+    logger := log.New(os.Stdout, "syscall_", log.Ltime)
     if global_config.LoggerFile != "" {
         log_path := global_config.ExecPath + "/" + global_config.LoggerFile
         _, err := os.Stat(log_path)
