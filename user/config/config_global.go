@@ -3,9 +3,9 @@ package config
 type GlobalConfig struct {
     Prepare       bool
     Name          string
-    Uid           uint64
-    Pid           uint64
-    Tid           uint64
+    Uid           uint32
+    Pid           uint32
+    Tid           uint32
     UnwindStack   bool
     ShowRegs      bool
     GetLR         bool
@@ -21,8 +21,11 @@ type GlobalConfig struct {
     Symbol        string
     Offset        uint64
     RegName       string
+    DumpHex       string
+    DumpLen       uint32
     SysCall       string
     Config        string
+    CanReadUser   bool
 }
 
 func NewGlobalConfig() *GlobalConfig {

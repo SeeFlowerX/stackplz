@@ -79,8 +79,8 @@ func syscallCommandFunc(command *cobra.Command, args []string) {
             SConfig: config.SConfig{
                 UnwindStack: syscall_config.UnwindStack,
                 ShowRegs:    syscall_config.ShowRegs,
-                Uid:         uint32(gconfig.Uid),
-                Pid:         uint32(gconfig.Pid),
+                Uid:         gconfig.Uid,
+                Pid:         gconfig.Pid,
                 // TidsBlacklist:     target_config.TidsBlacklist,
                 // TidsBlacklistMask: target_config.TidsBlacklistMask,
             },

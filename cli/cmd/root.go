@@ -133,10 +133,21 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         return errors.New("please set --uid or --name")
     }
 
+    // 检查符号情况 用于判断部分选项是否能启用
+    gconfig.CanReadUser, err = findKallsymsSymbol("bpf_probe_read_user")
+    if err != nil {
+        logger.Printf("bpf_probe_read_user err:%v", err)
+        return err
+    }
+
+    if gconfig.Debug {
+        logger.Printf("bpf_probe_read_user:%t", gconfig.CanReadUser)
+    }
+
     // 转换命令行的选项 并且进行检查
-    mconfig.Uid = uint32(gconfig.Uid)
-    mconfig.Pid = uint32(gconfig.Pid)
-    mconfig.Tid = uint32(gconfig.Tid)
+    mconfig.Uid = gconfig.Uid
+    mconfig.Pid = gconfig.Pid
+    mconfig.Tid = gconfig.Tid
     mconfig.UnwindStack = gconfig.UnwindStack
     mconfig.ShowRegs = gconfig.ShowRegs
     mconfig.GetLR = gconfig.GetLR
@@ -158,11 +169,6 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.UprobeConf.Symbol = gconfig.Symbol
     mconfig.UprobeConf.Offset = gconfig.Offset
 
-    // mconfig, err = toModuleConfig(global_config)
-    // if err != nil {
-    //     logger.Printf("toModuleConfig failed, %v", err)
-    //     os.Exit(1)
-    // }
     return nil
 }
 
@@ -209,40 +215,37 @@ func runFunc(command *cobra.Command, args []string) {
     os.Exit(0)
 }
 
-func toModuleConfig(gconfig *config.GlobalConfig) (*config.ModuleConfig, error) {
-
-    return mconfig, nil
-}
-
-func parseByUid(uid uint64) error {
-    // pm list package --uid 10245
-    cmd := exec.Command("pm", "list", "package", "--uid", strconv.FormatUint(uid, 10))
-
-    //创建获取命令输出管道
+func runCommand(executable string, args ...string) (string, error) {
+    cmd := exec.Command(executable, args...)
     stdout, err := cmd.StdoutPipe()
     if err != nil {
-        return err
+        return "", err
     }
-
-    //执行命令
     if err := cmd.Start(); err != nil {
-        return err
+        return "", err
     }
-
-    //读取所有输出
     bytes, err := ioutil.ReadAll(stdout)
+    if err != nil {
+        return "", err
+    }
+    if err := cmd.Wait(); err != nil {
+        return "", err
+    }
+    return strings.TrimSpace(string(bytes)), nil
+}
+
+func parseByUid(uid uint32) error {
+    // pm list package --uid 10245
+
+    lines, err := runCommand("pm", "list", "package", "--uid", strconv.FormatUint(uint64(uid), 10))
     if err != nil {
         return err
     }
 
-    if err := cmd.Wait(); err != nil {
-        return err
-    }
-    line := strings.TrimSpace(string(bytes))
-    if line == "" {
+    if lines == "" {
         return fmt.Errorf("can not find package by uid=%d", uid)
     }
-    parts := strings.SplitN(line, " ", 2)
+    parts := strings.SplitN(lines, " ", 2)
     if len(parts) != 2 {
         return fmt.Errorf("get package name by uid=%d failed, sep => <=", uid)
     }
@@ -251,6 +254,23 @@ func parseByUid(uid uint64) error {
         return fmt.Errorf("get package name by uid=%d failed, sep =>:<=", uid)
     }
     return parseByPackage(name[1])
+}
+
+func findKallsymsSymbol(symbol string) (bool, error) {
+    find := false
+    // 对于读取内存的操作 检查 bpf_probe_read_user 这个符号
+    // 用 sh 好像有问题 反正已经是 root 了 再 su 一下无所谓
+    lines, err := runCommand("su", "-c", "cat", "/proc/kallsyms", "|", "grep", symbol+"$")
+    if err != nil {
+        return find, err
+    }
+    for _, line := range strings.Split(lines, "\n") {
+        parts := strings.SplitN(line, " ", 3)
+        if parts[2] == symbol {
+            find = true
+        }
+    }
+    return find, nil
 }
 
 func parseByPackage(name string) error {
@@ -288,7 +308,8 @@ func parseByPackage(name string) error {
             value := parts[1]
             switch key {
             case "userId":
-                gconfig.Uid, _ = strconv.ParseUint(value, 10, 64)
+                value, _ := strconv.ParseUint(value, 10, 32)
+                gconfig.Uid = uint32(value)
                 // 只指定了包名的时候 global_config.Uid 是 0 需要修正
                 // gconfig.Uid = gconfig.Uid
             case "legacyNativeLibraryDir":
@@ -339,9 +360,9 @@ func init() {
     rootCmd.PersistentFlags().BoolVar(&gconfig.Prepare, "prepare", false, "prepare libs")
     // 过滤设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.Name, "name", "n", "", "must set uid or package name")
-    rootCmd.PersistentFlags().Uint64VarP(&gconfig.Uid, "uid", "u", 0, "must set uid or package name")
-    rootCmd.PersistentFlags().Uint64VarP(&gconfig.Pid, "pid", "p", 0, "add pid to filter")
-    rootCmd.PersistentFlags().Uint64VarP(&gconfig.Tid, "tid", "t", 0, "add tid to filter")
+    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Uid, "uid", "u", 0, "must set uid or package name")
+    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Pid, "pid", "p", 0, "add pid to filter")
+    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Tid, "tid", "t", 0, "add tid to filter")
     // 堆栈输出设定
     rootCmd.PersistentFlags().BoolVar(&gconfig.UnwindStack, "stack", false, "enable unwindstack")
     rootCmd.PersistentFlags().BoolVar(&gconfig.ShowRegs, "regs", false, "show regs")
@@ -359,6 +380,8 @@ func init() {
     rootCmd.PersistentFlags().StringVarP(&gconfig.Symbol, "symbol", "s", "", "lib symbol")
     rootCmd.PersistentFlags().Uint64VarP(&gconfig.Offset, "offset", "f", 0, "lib hook offset")
     rootCmd.PersistentFlags().StringVar(&gconfig.RegName, "reg", "", "get the offset of reg")
+    rootCmd.PersistentFlags().StringVar(&gconfig.DumpHex, "dumphex", "", "dump target register(s) memory layout")
+    rootCmd.PersistentFlags().Uint32Var(&gconfig.DumpLen, "dumplen", 256, "dump length, max is 1024")
     // syscall hook
     rootCmd.PersistentFlags().StringVar(&gconfig.SysCall, "syscall", "", "filter syscalls")
     // 批量hook先放一边
