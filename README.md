@@ -294,4 +294,30 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 - 为特定syscall的参数提供过滤功能，当然这是高版本内核才有的
 - pid、tid等选项的黑名单+白名单过滤支持
 
-性价比真机推荐Redmi Note 11T Pro（理由：价格亲民、内核开源、内核版本5.10.66、可解锁或[临时root](https://github.com/tiann/DirtyPipeRoot)）：
+性价比真机推荐Redmi Note 11T Pro（理由：价格亲民、内核开源、内核版本5.10.66、可解锁
+
+---
+
+**下一版命令设计：**
+
+`libtest.so + 0x1AB` => `stack` + `lr offset`
+
+`syscall openat` => `pc offset` + `lr offset`
+
+> ./stackplz -l libtest.so -f 0x1AB --syscall openat --stack elf --pc sys --lr elf,sys -o tmp.log
+
+`syscall openat` => `pc offset`
+
+> ./stackplz --syscall openat --pc elf -o tmp.log
+
+`libc recvfrom symbol` => `lr offset`
+
+> ./stackplz -l libc.so -s recvfrom --lr elf -o tmp.log
+
+`use remote http://192.168.2.13/config.json`
+
+> ./stackplz --config 192.168.2.13 -o tmp.log
+
+`dump target register memory`
+
+> ./stackplz -l libtest.so -f 0x1AB --dumphex x0,x1 --dumplen 32
