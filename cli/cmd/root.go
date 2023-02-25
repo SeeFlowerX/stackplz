@@ -258,16 +258,19 @@ func parseByUid(uid uint32) error {
 
 func findKallsymsSymbol(symbol string) (bool, error) {
     find := false
-    // 对于读取内存的操作 检查 bpf_probe_read_user 这个符号
-    // 用 sh 好像有问题 反正已经是 root 了 再 su 一下无所谓
-    lines, err := runCommand("su", "-c", "cat", "/proc/kallsyms", "|", "grep", symbol+"$")
+    content, err := ioutil.ReadFile("/proc/kallsyms")
     if err != nil {
-        return find, err
+        return find, fmt.Errorf("Error when opening file:%v", err)
     }
+    lines := string(content)
     for _, line := range strings.Split(lines, "\n") {
         parts := strings.SplitN(line, " ", 3)
+        if len(parts) != 3 {
+            continue
+        }
         if parts[2] == symbol {
             find = true
+            break
         }
     }
     return find, nil
