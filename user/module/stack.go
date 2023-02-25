@@ -53,13 +53,20 @@ func (this *MStack) setupManager() error {
         if this.stack_uprobe_hook {
             this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.mconf.UprobeConf.Symbol, this.mconf.UprobeConf.Library, this.mconf.UprobeConf.Offset)
         }
-        if this.stack_uprobe_hook {
-            this.logger.Printf("Syscall:%s", this.mconf.SyscallConf)
+        if this.stack_syscall_hook {
+            this.logger.Printf("Syscall:%s", this.mconf.SyscallConf.GetNR())
         }
     }
     if this.stack_uprobe_hook && this.stack_syscall_hook {
         this.bpfManager = &manager.Manager{
             Probes: []*manager.Probe{
+                {
+                    Section:          "uprobe/soinfo",
+                    EbpfFuncName:     "probe_soinfo",
+                    AttachToFuncName: "__dl__ZN6soinfo17call_constructorsEv",
+                    BinaryPath:       "/apex/com.android.runtime/bin/linker64",
+                    UprobeOffset:     0,
+                },
                 {
                     Section:          "uprobe/stack",
                     EbpfFuncName:     "probe_stack",
@@ -81,6 +88,9 @@ func (this *MStack) setupManager() error {
 
             Maps: []*manager.Map{
                 {
+                    Name: "soinfo_events",
+                },
+                {
                     Name: "stack_events",
                 },
                 {
@@ -93,6 +103,13 @@ func (this *MStack) setupManager() error {
         this.bpfManager = &manager.Manager{
             Probes: []*manager.Probe{
                 {
+                    Section:          "uprobe/soinfo",
+                    EbpfFuncName:     "probe_soinfo",
+                    AttachToFuncName: "__dl__ZN6soinfo17call_constructorsEv",
+                    BinaryPath:       "/apex/com.android.runtime/bin/linker64",
+                    UprobeOffset:     0,
+                },
+                {
                     Section:          "uprobe/stack",
                     EbpfFuncName:     "probe_stack",
                     AttachToFuncName: this.mconf.UprobeConf.Symbol,
@@ -104,6 +121,9 @@ func (this *MStack) setupManager() error {
             },
 
             Maps: []*manager.Map{
+                {
+                    Name: "soinfo_events",
+                },
                 {
                     Name: "stack_events",
                 },
@@ -208,10 +228,21 @@ func (this *MStack) start() error {
         return fmt.Errorf("couldn't start bootstrap manager %v .", err)
     }
 
-    // 可以使用 manager.ConstantEditor 这样的方法去替换常量，但是相关特性在4.x内核上不支持
-    // 所以本项目是通过更新 BPF_MAP_TYPE_HASH 类型的 map 实现过滤设定的同步
+    // uprobe hook soinfo 的过滤配置更新
+    filterMap, found, err := this.bpfManager.GetMap("soinfo_filter")
+    if err != nil {
+        return err
+    }
+    if !found {
+        return errors.New("cannot find soinfo_filter")
+    }
+    filter_key := 0
+    filter := this.mconf.GetSoInfoFilter()
+    filterMap.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
+
+    // 通过更新 BPF_MAP_TYPE_HASH 类型的 map 实现过滤设定的同步
     if this.stack_uprobe_hook {
-        // uprobe hook 的过滤配置更新
+        // uprobe hook elf 的过滤配置更新
         filterMap, found, err := this.bpfManager.GetMap("uprobe_stack_filter")
         if err != nil {
             return err
@@ -242,8 +273,19 @@ func (this *MStack) initDecodeFun() error {
         return errors.New("cant found map:stack_events")
     }
     this.eventMaps = append(this.eventMaps, StackEventsMap)
-    hookEvent := &event.UprobeStackEvent{}
-    this.eventFuncMaps[StackEventsMap] = hookEvent
+    uprobestackEvent := &event.UprobeStackEvent{}
+    this.eventFuncMaps[StackEventsMap] = uprobestackEvent
+
+    SoInfoEventsMap, found, err := this.bpfManager.GetMap("soinfo_events")
+    if err != nil {
+        return err
+    }
+    if !found {
+        return errors.New("cant found map:soinfo_events")
+    }
+    this.eventMaps = append(this.eventMaps, SoInfoEventsMap)
+    soinfoEvent := &event.SoInfoEvent{}
+    this.eventFuncMaps[SoInfoEventsMap] = soinfoEvent
 
     return nil
 }
@@ -261,10 +303,14 @@ func (this *MStack) Dispatcher(e event.IEventStruct) {
     // 事件类型指定为 EventTypeModuleData 直接使用当前方法处理
     // 如果需要多处联动收集信息 比如做统计之类的 那么使用 EventTypeEventProcessor 类型 并设计处理模式更合理
 
-    e.(*event.UprobeStackEvent).RegName = this.sconf.RegName
-    e.(*event.UprobeStackEvent).ShowRegs = this.sconf.ShowRegs
-    e.(*event.UprobeStackEvent).UnwindStack = this.sconf.UnwindStack
-    this.logger.Println(e.(*event.UprobeStackEvent).String())
+    if e.EventType() == event.EventTypeModuleData {
+        e.(*event.UprobeStackEvent).RegName = this.sconf.RegName
+        e.(*event.UprobeStackEvent).ShowRegs = this.sconf.ShowRegs
+        e.(*event.UprobeStackEvent).UnwindStack = this.sconf.UnwindStack
+        this.logger.Println(e.(*event.UprobeStackEvent).String())
+    } else {
+        this.logger.Println(e.(*event.SoInfoEvent).String())
+    }
 }
 
 func init() {

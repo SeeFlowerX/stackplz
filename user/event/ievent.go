@@ -3,8 +3,8 @@ package event
 type EventType uint8
 
 const (
-    // EventTypeModuleData set as module cache data
-    EventTypeModuleData = 0
+    EventTypeSoInfoData = iota
+    EventTypeModuleData
 )
 
 type IEventStruct interface {

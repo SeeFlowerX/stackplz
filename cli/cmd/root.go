@@ -141,7 +141,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
 
     if gconfig.Debug {
-        logger.Printf("bpf_probe_read_user:%t", gconfig.CanReadUser)
+        logger.Printf("has bpf_probe_read_user:%t", gconfig.CanReadUser)
     }
 
     // 转换命令行的选项 并且进行检查
@@ -160,7 +160,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     if err != nil {
         return err
     }
-
+    // 这里暂时是针对 stack 命令 后续整合 syscall 要进行区分
     mconfig.UprobeConf.Library, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
     if err != nil {
         logger.Fatal(err)

@@ -643,7 +643,9 @@ struct soinfo_data_t {
     u32 pid;
     u32 tid;
     char comm[16];
-    char buffer[1024];
+    u64 base_addr;
+    char realpath[256];
+    char buffer[256];
 };
 
 struct {
@@ -662,7 +664,6 @@ struct soinfo_filter_t {
     u32 uid;
     u32 pid;
     u32 is_32bit;
-    u32 read_len;
 };
 
 struct {
@@ -670,12 +671,12 @@ struct {
     __type(key, u32);
     __type(value, struct soinfo_filter_t);
     __uint(max_entries, 1);
-} soinfo_filter_map SEC(".maps");
+} soinfo_filter SEC(".maps");
 
 SEC("uprobe/soinfo")
 int probe_soinfo(struct pt_regs* ctx) {
     u32 filter_key = 0;
-    struct soinfo_filter_t* filter = bpf_map_lookup_elem(&soinfo_filter_map, &filter_key);
+    struct soinfo_filter_t* filter = bpf_map_lookup_elem(&soinfo_filter, &filter_key);
     if (filter == NULL) {
         return 0;
     }
@@ -699,14 +700,38 @@ int probe_soinfo(struct pt_regs* ctx) {
         return 0;
     }
 
-    // 直接 bpf_probe_read_user 读取soinfo数据 解析工作交给前端
-
     event->pid = pid;
     event->tid = tid;
 
     bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
+    // 直接 bpf_probe_read_user 读取soinfo数据 解析工作交给前端
+    // __builtin_memset(&event->buffer, 0, sizeof(event->buffer));
+    // bpf_probe_read_user(event->buffer, sizeof(event->buffer), (void*)ctx->regs[0]);
+    
+    // 不同版本的类型和偏移可能不一样
+    // soinfo->get_realpath() 432 std::string
+    // soinfo->base 16 u64
+    // u64 base_addr = 0x0;
+    bpf_probe_read_user(&event->base_addr, sizeof(event->base_addr), (void*)(ctx->regs[0] + 16));
+
+    u8 tiny_flag = 0;
+    u64 so_path_ptr = ctx->regs[0] + 432;
+    bpf_probe_read_user(&tiny_flag, sizeof(tiny_flag), (void*)so_path_ptr);
+    u64 addr = 0x0;
+    if ((tiny_flag & 1) != 0) {
+        bpf_probe_read_user(&addr, sizeof(addr), (void*)(so_path_ptr + 2 * 8));
+    } else {
+        bpf_probe_read_user(&addr, sizeof(addr), (void*)(so_path_ptr + 1));
+    }
+    __builtin_memset(&event->realpath, 0, sizeof(event->realpath));
+    bpf_probe_read_user_str(event->realpath, sizeof(event->realpath), (void*)addr);
+    __builtin_memset(&event->buffer, 0, sizeof(event->buffer));
+    bpf_probe_read_user(event->buffer, sizeof(event->buffer), (void*)addr);
+
     long status = bpf_perf_event_output(ctx, &soinfo_events, BPF_F_CURRENT_CPU, event, sizeof(struct soinfo_data_t));
 
+    // char perf_msg_fmt[] = "[soinfo], x0:0x%lx pid:%d status:%d\n";
+    // bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), ctx->regs[0], pid, status);
     return 0;
 }

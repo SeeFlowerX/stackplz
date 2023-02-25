@@ -6,6 +6,7 @@ import (
     "fmt"
     "log"
     "os"
+    "reflect"
     "stackplz/user/config"
     "stackplz/user/event"
 
@@ -183,9 +184,17 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     // 这里对原ebpf包代码做了修改 以此控制是否让内核发生栈空间数据和寄存器数据
     // 用于进行堆栈回溯 以后可以细分栈数据与寄存器数据
     // 每个 模块都是 Clone 得到的 map 虽然名字相同 但是 fd不同 所以可以正常区分
+
+    map_value := reflect.ValueOf(em)
+    map_name := map_value.Elem().FieldByName("name")
+    IsSoInfoMap := map_name.String() == "soinfo_events"
+
     var rd *perf.Reader
     var err error
-    if this.sconf.RegName != "" {
+    // soinfo 不管如何都不需要或者堆栈和寄存器信息
+    if IsSoInfoMap {
+        rd, err = perf.NewReader(em, os.Getpagesize()*64, false, false)
+    } else if this.sconf.RegName != "" {
         rd, err = perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, true)
     } else {
         rd, err = perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, this.sconf.ShowRegs)
@@ -208,7 +217,9 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 
             var record perf.Record
             // 根据预设的flag决定以何种方式读取事件数据
-            if this.sconf.UnwindStack {
+            if IsSoInfoMap {
+                record, err = rd.Read()
+            } else if this.sconf.UnwindStack {
                 record, err = rd.ReadWithUnwindStack()
             } else if this.sconf.ShowRegs {
                 record, err = rd.ReadWithRegs()
@@ -313,6 +324,9 @@ func (this *Module) Decode(em *ebpf.Map, b []byte) (event event.IEventStruct, er
 func (this *Module) Dispatcher(e event.IEventStruct) {
     switch e.EventType() {
     case event.EventTypeModuleData:
+        // Save to cache
+        this.child.Dispatcher(e)
+    case event.EventTypeSoInfoData:
         // Save to cache
         this.child.Dispatcher(e)
     }

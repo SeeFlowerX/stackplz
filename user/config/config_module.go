@@ -81,6 +81,11 @@ func (this *SyscallConfig) Info() string {
     return fmt.Sprintf("sysno:%d", this.NR)
 }
 
+func (this *SyscallConfig) GetNR() string {
+    // 调用号信息
+    return fmt.Sprintf("sysno:%d", this.NR)
+}
+
 func (this *SyscallConfig) GetFilter() SyscallFilter {
     filter := SyscallFilter{
         // uid:                this.Uid,
@@ -174,5 +179,14 @@ func (this *ModuleConfig) GetUprobeStackFilter() UprobeStackFilter {
     filter.tids_blacklist = this.TidsBlacklist
     filter.pids_blacklist_mask = this.PidsBlacklistMask
     filter.pids_blacklist = this.PidsBlacklist
+    return filter
+}
+
+func (this *ModuleConfig) GetSoInfoFilter() SoInfoFilter {
+    filter := SoInfoFilter{}
+    filter.uid = this.Uid
+    filter.pid = this.Pid
+    // 暂时硬编码为 false
+    filter.is_32bit = 0
     return filter
 }

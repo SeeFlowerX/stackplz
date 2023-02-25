@@ -32,7 +32,8 @@ type SyscallFilter struct {
 }
 
 type SoInfoFilter struct {
-	BaseFilter
+	uid      uint32
+	pid      uint32
 	is_32bit uint32
 }
 
