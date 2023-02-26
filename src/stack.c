@@ -1,4 +1,5 @@
 #include "common.h"
+#include "soinfo_android12_r3.h"
 #include <stdbool.h>
 
 // uprobe hook
@@ -644,8 +645,8 @@ struct soinfo_data_t {
     u32 tid;
     char comm[16];
     u64 base_addr;
+    u64 lib_size;
     char realpath[256];
-    char buffer[256];
 };
 
 struct {
@@ -706,28 +707,21 @@ int probe_soinfo(struct pt_regs* ctx) {
     bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
     // 直接 bpf_probe_read_user 读取soinfo数据 解析工作交给前端
-    // __builtin_memset(&event->buffer, 0, sizeof(event->buffer));
-    // bpf_probe_read_user(event->buffer, sizeof(event->buffer), (void*)ctx->regs[0]);
     
-    // 不同版本的类型和偏移可能不一样
-    // soinfo->get_realpath() 432 std::string
-    // soinfo->base 16 u64
-    // u64 base_addr = 0x0;
-    bpf_probe_read_user(&event->base_addr, sizeof(event->base_addr), (void*)(ctx->regs[0] + 16));
+    bpf_probe_read_user(&event->base_addr, sizeof(event->base_addr), (void*)(ctx->regs[0] + SOINFO_BASE));
+    bpf_probe_read_user(&event->lib_size, sizeof(event->lib_size), (void*)(ctx->regs[0] + SOINFO_SIZE));
 
     u8 tiny_flag = 0;
-    u64 so_path_ptr = ctx->regs[0] + 432;
+    u64 so_path_ptr = ctx->regs[0] + SOINFO_REALPATH;
     bpf_probe_read_user(&tiny_flag, sizeof(tiny_flag), (void*)so_path_ptr);
     u64 addr = 0x0;
     if ((tiny_flag & 1) != 0) {
         bpf_probe_read_user(&addr, sizeof(addr), (void*)(so_path_ptr + 2 * 8));
     } else {
-        bpf_probe_read_user(&addr, sizeof(addr), (void*)(so_path_ptr + 1));
+        addr = so_path_ptr + 1;
     }
     __builtin_memset(&event->realpath, 0, sizeof(event->realpath));
     bpf_probe_read_user_str(event->realpath, sizeof(event->realpath), (void*)addr);
-    __builtin_memset(&event->buffer, 0, sizeof(event->buffer));
-    bpf_probe_read_user(event->buffer, sizeof(event->buffer), (void*)addr);
 
     long status = bpf_perf_event_output(ctx, &soinfo_events, BPF_F_CURRENT_CPU, event, sizeof(struct soinfo_data_t));
 

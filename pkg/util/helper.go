@@ -120,3 +120,78 @@ func ParseReg(pid uint32, value uint64) (string, error) {
 	}
 	return info, err
 }
+
+func B2STrim(src []byte) string {
+	return string(bytes.TrimSpace(bytes.Trim(src, "\x00")))
+}
+
+// 格式化输出相关
+
+const CHUNK_SIZE = 16
+const CHUNK_SIZE_HALF = CHUNK_SIZE / 2
+
+const (
+	COLORRESET  = "\033[0m"
+	COLORRED    = "\033[31m"
+	COLORGREEN  = "\033[32m"
+	COLORYELLOW = "\033[33m"
+	COLORBLUE   = "\033[34m"
+	COLORPURPLE = "\033[35m"
+	COLORCYAN   = "\033[36m"
+	COLORWHITE  = "\033[37m"
+)
+
+func dumpByteSlice(b []byte, perfix string) *bytes.Buffer {
+	var a [CHUNK_SIZE]byte
+	bb := new(bytes.Buffer)
+	n := (len(b) + (CHUNK_SIZE - 1)) &^ (CHUNK_SIZE - 1)
+
+	for i := 0; i < n; i++ {
+
+		// 序号列
+		if i%CHUNK_SIZE == 0 {
+			bb.WriteString(perfix)
+			bb.WriteString(fmt.Sprintf("%04d", i))
+		}
+
+		// 长度的一半，则输出4个空格
+		if i%CHUNK_SIZE_HALF == 0 {
+			bb.WriteString("    ")
+		} else if i%(CHUNK_SIZE_HALF/2) == 0 {
+			bb.WriteString("  ")
+		}
+
+		if i < len(b) {
+			bb.WriteString(fmt.Sprintf(" %02X", b[i]))
+		} else {
+			bb.WriteString("  ")
+		}
+
+		// 非ASCII 改为 .
+		if i >= len(b) {
+			a[i%CHUNK_SIZE] = ' '
+		} else if b[i] < 32 || b[i] > 126 {
+			a[i%CHUNK_SIZE] = '.'
+		} else {
+			a[i%CHUNK_SIZE] = b[i]
+		}
+
+		// 如果到达size长度，则换行
+		if i%CHUNK_SIZE == (CHUNK_SIZE - 1) {
+			bb.WriteString(fmt.Sprintf("    %s\n", string(a[:])))
+		}
+	}
+	return bb
+}
+
+func HexDump(buffer []byte, color string) string {
+	b := dumpByteSlice(buffer, color)
+	b.WriteString(COLORRESET)
+	return b.String()
+}
+
+func HexDumpGreen(buffer []byte) string {
+	b := dumpByteSlice(buffer, COLORGREEN)
+	b.WriteString(COLORRESET)
+	return b.String()
+}

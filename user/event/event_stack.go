@@ -16,11 +16,13 @@ import (
 )
 
 type UprobeStackEvent struct {
-    event_type   EventType
-    Pid          uint32
-    Tid          uint32
-    Timestamp    uint64
-    Comm         [16]byte
+    event_type EventType
+    Pid        uint32
+    Tid        uint32
+    Timestamp  uint64
+    Comm       [16]byte
+    // Buffer       [256]byte
+    // BufferHex    string
     Stackinfo    string
     RegsBuffer   RegsBuf
     UnwindBuffer UnwindBuf
@@ -44,6 +46,11 @@ func (this *UprobeStackEvent) Decode(payload []byte, unwind_stack, regs bool) (e
     if err = binary.Read(buf, binary.LittleEndian, &this.Comm); err != nil {
         return
     }
+    // // 感觉输出 指定地址/寄存器 的内存视图很鸡肋 为什么不用其他工具呢 先不要了吧
+    // if err = binary.Read(buf, binary.LittleEndian, &this.Buffer); err != nil {
+    //     return
+    // }
+    // this.BufferHex = util.HexDumpGreen(this.Buffer[:])
 
     if unwind_stack {
         // 理论上应该是不需要读取这4字节 但是实测需要 原因未知
@@ -92,7 +99,7 @@ func (this *UprobeStackEvent) SetUUID(uuid string) {
 
 func (this *UprobeStackEvent) String() string {
     var s string
-    s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d", this.UUID, this.Pid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")), this.Tid)
+    s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d", this.UUID, this.Pid, util.B2STrim(this.Comm[:]), this.Tid)
     if this.RegName != "" {
         // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
         // 当然前提是取了寄存器数据

@@ -9,6 +9,7 @@ import (
     "encoding/binary"
     "encoding/json"
     "fmt"
+    "stackplz/pkg/util"
     "unsafe"
 )
 
@@ -92,7 +93,7 @@ func (this *SyscallDataEvent) SetUUID(uuid string) {
 
 func (this *SyscallDataEvent) String() string {
     var s string
-    s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d NR:%d", this.UUID, this.Pid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")), this.Tid, this.NR)
+    s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d NR:%d", this.UUID, this.Pid, util.B2STrim(this.Comm[:]), this.Tid, this.NR)
     if this.ShowRegs {
         var tmp_regs [33]uint64
         if this.UnwindStack {
