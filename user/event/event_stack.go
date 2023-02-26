@@ -10,6 +10,7 @@ import (
     "encoding/json"
     "fmt"
     "stackplz/pkg/util"
+    "stackplz/user/config"
     "strconv"
     "strings"
     "unsafe"
@@ -30,6 +31,10 @@ type UprobeStackEvent struct {
     ShowRegs     bool
     RegName      string
     UUID         string
+}
+
+func (this *UprobeStackEvent) SetConf(conf config.IConfig) {
+    // panic("SoInfoEvent.SetConf() not implemented yet")
 }
 
 func (this *UprobeStackEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
@@ -93,13 +98,13 @@ func (this *UprobeStackEvent) EventType() EventType {
     return this.event_type
 }
 
-func (this *UprobeStackEvent) SetUUID(uuid string) {
-    this.UUID = uuid
+func (this *UprobeStackEvent) GetUUID() string {
+    return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
 }
 
 func (this *UprobeStackEvent) String() string {
     var s string
-    s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d", this.UUID, this.Pid, util.B2STrim(this.Comm[:]), this.Tid)
+    s = fmt.Sprintf("[%s]", this.GetUUID())
     if this.RegName != "" {
         // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
         // 当然前提是取了寄存器数据

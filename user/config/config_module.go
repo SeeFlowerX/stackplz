@@ -1,31 +1,33 @@
 package config
 
 import (
+    "encoding/json"
     "fmt"
     "os"
+    "stackplz/assets"
     "stackplz/pkg/util"
     "strconv"
     "strings"
+    "unsafe"
+
+    "github.com/cilium/ebpf"
 )
 
-type UprobeConfig struct {
+type StackUprobeConfig struct {
     LibName string
     Library string
     Symbol  string
     Offset  uint64
 }
 
-func (this *UprobeConfig) IsEnable() bool {
-    fmt.Println("this.Library", this.Library)
-    fmt.Println("this.Symbol", this.Symbol)
-    fmt.Println("this.Offset", this.Offset)
+func (this *StackUprobeConfig) IsEnable() bool {
     if this.Symbol == "" && this.Offset == 0 {
         return false
     }
     return true
 }
 
-func (this *UprobeConfig) Check() error {
+func (this *StackUprobeConfig) Check() error {
     // 对每一个hook配置进行检查
     // 1. 要有完整的库路径
     // 2. 要么指定符号 要么指定偏移
@@ -53,22 +55,110 @@ func (this *UprobeConfig) Check() error {
 
 type SyscallConfig struct {
     SConfig
-    UnwindStack bool
-    ShowRegs    bool
-    Config      string
-    NR          int64
+    UnwindStack            bool
+    ShowRegs               bool
+    Config                 string
+    SysTable               SysTableConfig
+    Enable                 bool
+    syscall_mask           uint32
+    syscall                [MAX_COUNT]uint32
+    syscall_blacklist_mask uint32
+    syscall_blacklist      [MAX_COUNT]uint32
 }
 
 func NewSyscallConfig() *SyscallConfig {
     config := &SyscallConfig{}
+    config.Enable = false
     return config
 }
 
-func (this *SyscallConfig) IsEnable() bool {
-    if this.NR == 0 {
-        return false
+func (this *SyscallConfig) FillFilter(filter *SyscallFilter) {
+    filter.syscall = this.syscall
+    filter.syscall_mask = this.syscall_mask
+    filter.syscall_blacklist = this.syscall_blacklist
+    filter.syscall_blacklist_mask = this.syscall_blacklist_mask
+}
+
+func (this *SyscallConfig) UpdateArgMaskMap(argMaskMap *ebpf.Map) error {
+    // 更新用于获取字符串信息的map
+    for nr, table_config := range this.SysTable {
+        nr_key, _ := strconv.ParseUint(nr, 10, 32)
+        argMaskMap.Update(unsafe.Pointer(&nr_key), unsafe.Pointer(&table_config.Mask), ebpf.UpdateAny)
     }
-    return true
+    return nil
+}
+
+func (this *SyscallConfig) UpdateArgRetMaskMap(argRetMaskMap *ebpf.Map) error {
+    // 和上面一样 只是也许会跟随配置文件形式发生变化 所以写了两份
+    for nr, table_config := range this.SysTable {
+        nr_key, _ := strconv.ParseUint(nr, 10, 32)
+        argRetMaskMap.Update(unsafe.Pointer(&nr_key), unsafe.Pointer(&table_config.Mask), ebpf.UpdateAny)
+    }
+    return nil
+}
+
+func (this *SyscallConfig) SetUp(is_32bit bool) error {
+    var table_path string
+    if is_32bit {
+        table_path = "user/config/table32.json"
+    } else {
+        table_path = "user/config/table64.json"
+    }
+    this.SysTable = NewSysTableConfig()
+    // 获取syscall读取参数的mask配置
+    table_buffer, err := assets.Asset(table_path)
+    if err != nil {
+        return err
+    }
+    var tmp_config map[string][]interface{}
+    json.Unmarshal(table_buffer, &tmp_config)
+    for nr, config_arr := range tmp_config {
+        table_config := TableConfig{
+            Count:   uint32(config_arr[0].(float64)),
+            Name:    config_arr[1].(string),
+            Mask:    uint32(config_arr[2].(float64)),
+            RetMask: uint32(config_arr[3].(float64)),
+        }
+        this.SysTable[nr] = table_config
+    }
+    return nil
+}
+
+func (this *SyscallConfig) SetSysCall(syscall string) error {
+    this.Enable = true
+    items := strings.Split(syscall, ",")
+    if len(items) > MAX_COUNT {
+        return fmt.Errorf("max syscall whitelist count is %d, provided count:%d", MAX_COUNT, len(items))
+    }
+    for i, v := range items {
+        nr, err := this.SysTable.GetNR(v)
+        if err != nil {
+            return err
+        }
+        this.syscall[i] = uint32(nr)
+        this.syscall_mask |= (1 << i)
+    }
+    return nil
+}
+
+func (this *SyscallConfig) SetSysCallBlacklist(syscall_blacklist string) error {
+    items := strings.Split(syscall_blacklist, ",")
+    if len(items) > MAX_COUNT {
+        return fmt.Errorf("max syscall blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
+    }
+    for i, v := range items {
+        nr, err := this.SysTable.GetNR(v)
+        if err != nil {
+            return err
+        }
+        this.syscall_blacklist[i] = uint32(nr)
+        this.syscall_blacklist_mask |= (1 << i)
+    }
+    return nil
+}
+
+func (this *SyscallConfig) IsEnable() bool {
+    return this.Enable
 }
 
 func (this *SyscallConfig) Check() error {
@@ -78,24 +168,26 @@ func (this *SyscallConfig) Check() error {
 
 func (this *SyscallConfig) Info() string {
     // 调用号信息
-    return fmt.Sprintf("sysno:%d", this.NR)
-}
-
-func (this *SyscallConfig) GetNR() string {
-    // 调用号信息
-    return fmt.Sprintf("sysno:%d", this.NR)
-}
-
-func (this *SyscallConfig) GetFilter() SyscallFilter {
-    filter := SyscallFilter{
-        // uid:                this.Uid,
-        // pid:                this.Pid,
-        // nr:                 uint32(this.NR),
-        // tid_blacklist_mask: this.TidsBlacklistMask,
-        // tid_blacklist:      this.TidsBlacklist,
+    var name_lsit []string
+    for _, v := range this.syscall {
+        if v == 0 {
+            continue
+        }
+        name_lsit = append(name_lsit, this.SysTable.GetName(v))
     }
-    return filter
+    return fmt.Sprintf("nr(s):%s", strings.Join(name_lsit[:], ","))
 }
+
+// func (this *SyscallConfig) GetFilter() SyscallFilter {
+//     filter := SyscallFilter{
+//         // uid:                this.Uid,
+//         // pid:                this.Pid,
+//         // nr:                 uint32(this.NR),
+//         // tid_blacklist_mask: this.TidsBlacklistMask,
+//         // tid_blacklist:      this.TidsBlacklist,
+//     }
+//     return filter
+// }
 
 type ModuleConfig struct {
     SConfig
@@ -104,9 +196,8 @@ type ModuleConfig struct {
     PidsBlacklistMask uint32
     PidsBlacklist     [MAX_COUNT]uint32
     Name              string
-    UprobeConf        UprobeConfig
-    SyscallConf       SyscallConfig
-    SysCall           string
+    StackUprobeConf   StackUprobeConfig
+    SysCallConf       SyscallConfig
     Config            string
 }
 
@@ -122,19 +213,8 @@ func (this *ModuleConfig) Check() error {
 
 func (this *ModuleConfig) Info() string {
     // 调用号信息
-    return fmt.Sprintf("sysno:%s", this.SysCall)
+    return fmt.Sprintf("-")
 }
-
-// func (this *ModuleConfig) GetFilter() ModuleFilter {
-//     filter := ModuleFilter{
-//         uid:                this.Uid,
-//         pid:                this.Pid,
-//         nr:                 uint32(this.NR),
-//         tid_blacklist_mask: this.TidsBlacklistMask,
-//         tid_blacklist:      this.TidsBlacklist,
-//     }
-//     return filter
-// }
 
 func (this *ModuleConfig) SetTidsBlacklist(tids_blacklist string) error {
     if tids_blacklist == "" {
@@ -170,6 +250,15 @@ func (this *ModuleConfig) SetPidsBlacklist(pids_blacklist string) error {
     return nil
 }
 
+func (this *ModuleConfig) GetSoInfoFilter() SoInfoFilter {
+    filter := SoInfoFilter{}
+    filter.uid = this.Uid
+    filter.pid = this.Pid
+    // 暂时硬编码为 false
+    filter.is_32bit = 0
+    return filter
+}
+
 func (this *ModuleConfig) GetUprobeStackFilter() UprobeStackFilter {
     filter := UprobeStackFilter{}
     filter.uid = this.Uid
@@ -182,11 +271,17 @@ func (this *ModuleConfig) GetUprobeStackFilter() UprobeStackFilter {
     return filter
 }
 
-func (this *ModuleConfig) GetSoInfoFilter() SoInfoFilter {
-    filter := SoInfoFilter{}
+func (this *ModuleConfig) GetSyscallFilter() SyscallFilter {
+    filter := SyscallFilter{}
     filter.uid = this.Uid
     filter.pid = this.Pid
-    // 暂时硬编码为 false
-    filter.is_32bit = 0
+    filter.tid = this.Tid
+    filter.tids_blacklist_mask = this.TidsBlacklistMask
+    filter.tids_blacklist = this.TidsBlacklist
+    filter.pids_blacklist_mask = this.PidsBlacklistMask
+    filter.pids_blacklist = this.PidsBlacklist
+    filter.SetArch(this.Is32Bit)
+    filter.SetAfterRead(this.AfterRead)
+    this.SysCallConf.FillFilter(&filter)
     return filter
 }

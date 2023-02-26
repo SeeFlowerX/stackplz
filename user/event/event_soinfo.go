@@ -9,6 +9,7 @@ import (
     "encoding/binary"
     "fmt"
     "stackplz/pkg/util"
+    "stackplz/user/config"
 )
 
 type SoInfoEvent struct {
@@ -20,6 +21,10 @@ type SoInfoEvent struct {
     LibSize    uint64
     RealPath   [256]byte
     UUID       string
+}
+
+func (this *SoInfoEvent) SetConf(conf config.IConfig) {
+    // panic("SoInfoEvent.SetConf() not implemented yet")
 }
 
 func (this *SoInfoEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
@@ -56,13 +61,13 @@ func (this *SoInfoEvent) EventType() EventType {
     return this.event_type
 }
 
-func (this *SoInfoEvent) SetUUID(uuid string) {
-    this.UUID = uuid
+func (this *SoInfoEvent) GetUUID() string {
+    return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
 }
 
 func (this *SoInfoEvent) String() string {
     var s string
-    s = fmt.Sprintf("[%s] PID:%d, Comm:%s", this.UUID, this.Pid, util.B2STrim(this.Comm[:]))
+    s = fmt.Sprintf("[%s]", this.GetUUID())
     s += fmt.Sprintf(", Base:0x%x Size:0x%x %s", this.BaseAddr, this.LibSize, util.B2STrim(this.RealPath[:]))
     return s
 }

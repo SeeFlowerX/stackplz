@@ -24,7 +24,7 @@ type IModule interface {
 
     Clone() IModule
 
-    GetConf() string
+    GetConf() config.IConfig
 
     // Run 事件监听感知
     Run() error
@@ -85,7 +85,7 @@ func (this *Module) Clone() IModule {
     panic("Module.Clone() not implemented yet")
 }
 
-func (this *Module) GetConf() string {
+func (this *Module) GetConf() config.IConfig {
     panic("Module.GetConf() not implemented yet")
 }
 
@@ -193,11 +193,11 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     var err error
     // soinfo 不管如何都不需要或者堆栈和寄存器信息
     if IsSoInfoMap {
-        rd, err = perf.NewReader(em, os.Getpagesize()*64, false, false)
+        rd, err = perf.NewReader(em, os.Getpagesize()*512, false, false)
     } else if this.sconf.RegName != "" {
-        rd, err = perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, true)
+        rd, err = perf.NewReader(em, os.Getpagesize()*512, this.sconf.UnwindStack, true)
     } else {
-        rd, err = perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, this.sconf.ShowRegs)
+        rd, err = perf.NewReader(em, os.Getpagesize()*512, this.sconf.UnwindStack, this.sconf.ShowRegs)
     }
     if err != nil {
         errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)
@@ -238,7 +238,7 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
             }
 
             if record.LostSamples != 0 {
-                this.logger.Printf("%s\tperf event ring buffer full, dropped %d samples, %s", this.child.Name(), record.LostSamples, this.child.GetConf())
+                this.logger.Printf("%s\tperf event ring buffer full, dropped %d samples, %s", this.child.Name(), record.LostSamples, map_name)
                 continue
             }
 
@@ -306,7 +306,7 @@ func (this *Module) Decode(em *ebpf.Map, b []byte) (event event.IEventStruct, er
     // 通过结构体引用生成一个真正用于解析事件数据的实例
     // 注意这里会设置好 event_type 后续上报数据需要根据这个类型判断使用何种上报方式
     te := es.Clone()
-    te.SetUUID(this.child.GetConf())
+    te.SetConf(this.child.GetConf())
     // 正式解析，传入是否进行堆栈回溯的标志
     if this.sconf.RegName != "" {
         err = te.Decode(b, this.sconf.UnwindStack, true)
@@ -327,14 +327,15 @@ func (this *Module) Dispatcher(e event.IEventStruct) {
         // Save to cache
         this.child.Dispatcher(e)
     case event.EventTypeSoInfoData:
-        // Save to cache
-        this.child.Dispatcher(e)
+        this.logger.Println(e.(*event.SoInfoEvent).String())
+    case event.EventTypeSysCallData:
+        this.logger.Println(e.(*event.SyscallEvent).String())
     }
 }
 
 func (this *Module) Close() error {
     if this.sconf.Debug {
-        this.logger.Printf("%s\tClose, %s", this.child.Name(), this.child.GetConf())
+        this.logger.Printf("%s\tClose", this.child.Name())
     }
     for _, iClose := range this.reader {
         if err := iClose.Close(); err != nil {

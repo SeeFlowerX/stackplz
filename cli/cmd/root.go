@@ -152,6 +152,10 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.ShowRegs = gconfig.ShowRegs
     mconfig.GetLR = gconfig.GetLR
     mconfig.GetPC = gconfig.GetPC
+    mconfig.Debug = gconfig.Debug
+    mconfig.Quiet = gconfig.Quiet
+    mconfig.AfterRead = gconfig.AfterRead
+    mconfig.Is32Bit = gconfig.Is32Bit
     err = mconfig.SetTidsBlacklist(gconfig.TidsBlacklist)
     if err != nil {
         return err
@@ -161,13 +165,33 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         return err
     }
     // 这里暂时是针对 stack 命令 后续整合 syscall 要进行区分
-    mconfig.UprobeConf.Library, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
+    mconfig.StackUprobeConf.Library, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
     if err != nil {
         logger.Fatal(err)
         os.Exit(1)
     }
-    mconfig.UprobeConf.Symbol = gconfig.Symbol
-    mconfig.UprobeConf.Offset = gconfig.Offset
+    mconfig.StackUprobeConf.Symbol = gconfig.Symbol
+    mconfig.StackUprobeConf.Offset = gconfig.Offset
+
+    // 处理 syscall 的命令
+    if gconfig.SysCall != "" {
+        // 先把 syscall 的配置加载起来
+        err = mconfig.SysCallConf.SetUp(gconfig.Is32Bit)
+        if err != nil {
+            return err
+        }
+        // 特别的 设置为 * 表示追踪全部的系统调用
+        err = mconfig.SysCallConf.SetSysCall(gconfig.SysCall)
+        if err != nil {
+            return err
+        }
+        if gconfig.SysCallBlacklist != "" {
+            err = mconfig.SysCallConf.SetSysCallBlacklist(gconfig.SysCallBlacklist)
+            if err != nil {
+                return err
+            }
+        }
+    }
 
     return nil
 }
@@ -277,6 +301,8 @@ func findKallsymsSymbol(symbol string) (bool, error) {
 }
 
 func parseByPackage(name string) error {
+    // 先设置默认值
+    gconfig.Is32Bit = true
     gconfig.Name = name
     cmd := exec.Command("dumpsys", "package", name)
 
@@ -324,6 +350,7 @@ func parseByPackage(name string) error {
                 // 只支持 arm64 否则直接返回错误
                 // 不过对于syscall则是支持 32 位的 后面优化逻辑
                 if value == "arm64-v8a" {
+                    gconfig.Is32Bit = false
                     if len(gconfig.LibraryDirs) != 1 {
                         // 一般是不会进入这个分支 万一呢
                         return fmt.Errorf("can not find legacyNativeLibraryDir, cmd:%s", strings.Join(cmd.Args, " "))
@@ -387,6 +414,8 @@ func init() {
     rootCmd.PersistentFlags().Uint32Var(&gconfig.DumpLen, "dumplen", 256, "dump length, max is 1024")
     // syscall hook
     rootCmd.PersistentFlags().StringVar(&gconfig.SysCall, "syscall", "", "filter syscalls")
+    rootCmd.PersistentFlags().StringVar(&gconfig.SysCallBlacklist, "no-syscall", "", "syscall black list, max 20")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.AfterRead, "after", false, "read arg str after syscall")
     // 批量hook先放一边
     // rootCmd.PersistentFlags().StringVar(&gconfig.Config, "config", "", "hook config file")
 }

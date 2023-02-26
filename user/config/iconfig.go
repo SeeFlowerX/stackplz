@@ -19,6 +19,8 @@ type SConfig struct {
 	RegName     string
 	Debug       bool
 	Quiet       bool
+	AfterRead   bool
+	Is32Bit     bool
 }
 
 func (this *SConfig) SetDebug(debug bool) {

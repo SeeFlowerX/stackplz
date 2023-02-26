@@ -1,9 +1,12 @@
 package event
 
+import "stackplz/user/config"
+
 type EventType uint8
 
 const (
     EventTypeSoInfoData = iota
+    EventTypeSysCallData
     EventTypeModuleData
 )
 
@@ -12,7 +15,8 @@ type IEventStruct interface {
     String() string
     Clone() IEventStruct
     EventType() EventType
-    SetUUID(string)
+    GetUUID() string
+    SetConf(config.IConfig)
 }
 
 type UnwindBuf struct {
