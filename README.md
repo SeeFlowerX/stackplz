@@ -321,3 +321,9 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 `dump target register memory`
 
 > ./stackplz -l libtest.so -f 0x1AB --dumphex x0,x1 --dumplen 32
+
+---
+
+```bash
+./stackplz --name com.starbucks.cn --syscall openat
+```
