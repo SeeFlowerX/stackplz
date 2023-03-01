@@ -7,6 +7,7 @@ import (
     "log"
     "os"
     "reflect"
+    "stackplz/pkg/event_processor"
     "stackplz/user/config"
     "stackplz/user/event"
 
@@ -64,7 +65,7 @@ type Module struct {
 
     sconf *config.SConfig
 
-    // processor *event_processor.EventProcessor
+    processor *event_processor.EventProcessor
 }
 
 // Init 对象初始化
@@ -77,7 +78,7 @@ func (this *Module) Init(ctx context.Context, logger *log.Logger, conf config.IC
     // } else {
     //     panic("cannot convert conf to SConfig")
     // }
-    // this.processor = event_processor.NewEventProcessor(logger)
+    this.processor = event_processor.NewEventProcessor(logger)
 
 }
 
@@ -123,9 +124,9 @@ func (this *Module) Run() error {
     }()
 
     // 在一端不断接收readEvents所传递的数据 或许这样可以避免阻塞
-    // go func() {
-    //     this.processor.Serve()
-    // }()
+    go func() {
+        this.processor.Serve()
+    }()
 
     // 不断读取内核传递过来的事件
     err = this.readEvents()
@@ -342,7 +343,7 @@ func (this *Module) Close() error {
             return err
         }
     }
-    // err := this.processor.Close()
-    // return err
-    return nil
+    err := this.processor.Close()
+    return err
+    // return nil
 }
