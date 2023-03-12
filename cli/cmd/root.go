@@ -180,7 +180,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         if err != nil {
             return err
         }
-        // 特别的 设置为 * 表示追踪全部的系统调用
+        // 特别的 设置为 all 表示追踪全部的系统调用
         err = mconfig.SysCallConf.SetSysCall(gconfig.SysCall)
         if err != nil {
             return err

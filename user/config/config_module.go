@@ -126,6 +126,9 @@ func (this *SyscallConfig) SetUp(is_32bit bool) error {
 
 func (this *SyscallConfig) SetSysCall(syscall string) error {
     this.Enable = true
+    if syscall == "all" {
+        return nil
+    }
     items := strings.Split(syscall, ",")
     if len(items) > MAX_COUNT {
         return fmt.Errorf("max syscall whitelist count is %d, provided count:%d", MAX_COUNT, len(items))

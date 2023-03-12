@@ -6,8 +6,6 @@ import (
     "encoding/json"
     "fmt"
     "io/ioutil"
-    "stackplz/pkg/util"
-    "stackplz/user/config"
     "strings"
 )
 
@@ -21,45 +19,35 @@ func (this *Timespec) String() string {
 }
 
 type SyscallEvent struct {
-    event_type   EventType
-    mconf        *config.ModuleConfig
+    event_type EventType
+    KEvent
     UUID         string
     Stackinfo    string
     RegsBuffer   RegsBuf
     UnwindBuffer UnwindBuf
-    pid          uint32
-    tid          uint32
-    mtype        uint32
-    syscall_id   uint32
-    lr           uint64
-    sp           uint64
-    pc           uint64
-    ret          uint64
-    arg_index    uint64
-    args         [6]uint64
-    comm         [16]byte
-    arg_str      [1024]byte
+    // Pid          uint32
+    // Tid          uint32
+    mtype      uint32
+    syscall_id uint32
+    lr         uint64
+    sp         uint64
+    pc         uint64
+    ret        uint64
+    arg_index  uint64
+    args       [6]uint64
+    comm       [16]byte
+    arg_str    [1024]byte
 }
 
-func (this *SyscallEvent) SetConf(conf config.IConfig) {
-    // 原生指针转换 conf 是指针的时候 但不能是 interface
-    // this.mconf = (*config.ModuleConfig)(unsafe.Pointer(conf))
-    p, ok := (conf).(*config.ModuleConfig)
-    if ok {
-        this.mconf = p
-    } else {
-        panic("SyscallEvent.SetConf() cast to ModuleConfig failed")
-    }
-}
-
-func (this *SyscallEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
-    buf := bytes.NewBuffer(payload)
-    if err = binary.Read(buf, binary.LittleEndian, &this.pid); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.tid); err != nil {
-        return
-    }
+func (this *SyscallEvent) Decode() (err error) {
+    // buf := bytes.NewBuffer(payload)
+    // if err = binary.Read(buf, binary.LittleEndian, &this.Pid); err != nil {
+    //     return
+    // }
+    // if err = binary.Read(buf, binary.LittleEndian, &this.Tid); err != nil {
+    //     return
+    // }
+    buf := this.buf
     if err = binary.Read(buf, binary.LittleEndian, &this.mtype); err != nil {
         return
     }
@@ -93,9 +81,9 @@ func (this *SyscallEvent) Decode(payload []byte, unwind_stack, regs bool) (err e
     return nil
 }
 
-func (this *SyscallEvent) GetUUID() string {
-    return fmt.Sprintf("%d|%d|%s", this.pid, this.tid, util.B2STrim(this.comm[:]))
-}
+// func (this *SyscallEvent) GetUUID() string {
+//     return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.comm[:]))
+// }
 
 func (this *SyscallEvent) String() string {
     conf := this.mconf
@@ -154,7 +142,7 @@ func (this *SyscallEvent) String() string {
 func (this *SyscallEvent) ParseLR() (string, error) {
     info := "UNKNOWN"
     // 直接读取maps信息 计算lr在什么地方 定位syscall调用也就一目了然了
-    filename := fmt.Sprintf("/proc/%d/maps", this.pid)
+    filename := fmt.Sprintf("/proc/%d/maps", this.Pid)
     content, err := ioutil.ReadFile(filename)
     if err != nil {
         return info, fmt.Errorf("Error when opening file:%v", err)
@@ -185,7 +173,7 @@ func (this *SyscallEvent) ParseLR() (string, error) {
 func (this *SyscallEvent) ParsePC() (string, error) {
     info := "UNKNOWN"
     // 直接读取maps信息 计算pc在什么地方 定位syscall调用也就一目了然了
-    filename := fmt.Sprintf("/proc/%d/maps", this.pid)
+    filename := fmt.Sprintf("/proc/%d/maps", this.Pid)
     content, err := ioutil.ReadFile(filename)
     if err != nil {
         return info, fmt.Errorf("Error when opening file:%v", err)

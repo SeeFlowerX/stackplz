@@ -41,13 +41,13 @@ type IModule interface {
 
     SetChild(module IModule)
 
-    Decode(*ebpf.Map, []byte) (event.IEventStruct, error)
+    PrePare(*ebpf.Map, []byte) (event.IEventStruct, error)
 
     Events() []*ebpf.Map
 
     DecodeFun(p *ebpf.Map) (event.IEventStruct, bool)
 
-    Dispatcher(event.IEventStruct)
+    // Dispatcher(event.IEventStruct)
 }
 
 type Module struct {
@@ -243,16 +243,16 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
                 continue
             }
 
+            // 只做简单的准备 数据解析不要在这个部分做
             var e event.IEventStruct
-            // 读取到事件数据之后 立刻开始解析获取结果
-            e, err = this.child.Decode(em, record.RawSample)
+            e, err = this.child.PrePare(em, record.RawSample)
             if err != nil {
                 this.logger.Printf("%s\tthis.child.decode error:%v", this.child.Name(), err)
                 continue
             }
-
-            // 事件数据解析完成之后上报数据，比如写入日志获取输出到特定格式文件中
-            this.Dispatcher(e)
+            // 准备完成将数据交给 processor 处理
+            // 从而加快读取环形缓冲区的数据 减缓数据丢失的概率
+            this.processor.Write(e)
         }
     }()
 }
@@ -285,54 +285,55 @@ func (this *Module) ringbufEventReader(errChan chan error, em *ebpf.Map) {
             }
 
             var e event.IEventStruct
-            e, err = this.child.Decode(em, record.RawSample)
+            e, err = this.child.PrePare(em, record.RawSample)
             if err != nil {
                 this.logger.Printf("%s\tthis.child.decode error:%v", this.child.Name(), err)
                 continue
             }
 
-            // 上报数据
-            this.Dispatcher(e)
+            // 直接将解析数据交给 processor 做
+            // 从而加快读取环形缓冲区的数据 减缓数据丢失的概率
+            this.processor.Write(e)
+            // // 上报数据
+            // this.Dispatcher(e)
         }
     }()
 }
 
-func (this *Module) Decode(em *ebpf.Map, b []byte) (event event.IEventStruct, err error) {
+func (this *Module) PrePare(em *ebpf.Map, b []byte) (event event.IEventStruct, err error) {
     // 首先根据map得到最开始设置好的用于解析的结构体引用（这样描述可能不对）
     es, found := this.child.DecodeFun(em)
     if !found {
         err = fmt.Errorf("%s\tcan't found decode function :%s, address:%p", this.child.Name(), em.String(), em)
-        return
+        return nil, err
     }
     // 通过结构体引用生成一个真正用于解析事件数据的实例
     // 注意这里会设置好 event_type 后续上报数据需要根据这个类型判断使用何种上报方式
     te := es.Clone()
     te.SetConf(this.child.GetConf())
+    te.SetPayload(b)
+    te.SetUnwindStack(this.sconf.UnwindStack)
     // 正式解析，传入是否进行堆栈回溯的标志
     if this.sconf.RegName != "" {
-        err = te.Decode(b, this.sconf.UnwindStack, true)
+        te.SetShowRegs(true)
     } else {
-        err = te.Decode(b, this.sconf.UnwindStack, this.sconf.ShowRegs)
+        te.SetShowRegs(this.sconf.ShowRegs)
     }
-    if err != nil {
-        return nil, err
-    }
-    // 解析完成 可以用于事件上报处理
     return te, nil
 }
 
 // 写入数据，或者上传到远程数据库，写入到其他chan 等。
-func (this *Module) Dispatcher(e event.IEventStruct) {
-    switch e.EventType() {
-    case event.EventTypeModuleData:
-        // Save to cache
-        this.child.Dispatcher(e)
-    case event.EventTypeSoInfoData:
-        this.logger.Println(e.(*event.SoInfoEvent).String())
-    case event.EventTypeSysCallData:
-        this.logger.Println(e.(*event.SyscallEvent).String())
-    }
-}
+// func (this *Module) Dispatcher(e event.IEventStruct) {
+//     switch e.EventType() {
+//     case event.EventTypeModuleData:
+//         // Save to cache
+//         this.child.Dispatcher(e)
+//     case event.EventTypeSoInfoData:
+//         this.logger.Println(e.(*event.SoInfoEvent).String())
+//     case event.EventTypeSysCallData:
+//         this.logger.Println(e.(*event.SyscallEvent).String())
+//     }
+// }
 
 func (this *Module) Close() error {
     if this.sconf.Debug {

@@ -5,7 +5,6 @@ package event
 import "C"
 
 import (
-    "bytes"
     "encoding/binary"
     "fmt"
     "stackplz/pkg/util"
@@ -14,27 +13,26 @@ import (
 
 type SoInfoEvent struct {
     event_type EventType
-    Pid        uint32
-    Tid        uint32
-    Comm       [16]byte
-    BaseAddr   uint64
-    LibSize    uint64
-    RealPath   [256]byte
-    UUID       string
+    KEvent
+    mconf    *config.ModuleConfig
+    Pid      uint32
+    Tid      uint32
+    Comm     [16]byte
+    BaseAddr uint64
+    LibSize  uint64
+    RealPath [256]byte
+    UUID     string
 }
 
-func (this *SoInfoEvent) SetConf(conf config.IConfig) {
-    // panic("SoInfoEvent.SetConf() not implemented yet")
-}
-
-func (this *SoInfoEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
-    buf := bytes.NewBuffer(payload)
-    if err = binary.Read(buf, binary.LittleEndian, &this.Pid); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.Tid); err != nil {
-        return
-    }
+func (this *SoInfoEvent) Decode() (err error) {
+    // buf := bytes.NewBuffer(payload)
+    // if err = binary.Read(buf, binary.LittleEndian, &this.Pid); err != nil {
+    //     return
+    // }
+    // if err = binary.Read(buf, binary.LittleEndian, &this.Tid); err != nil {
+    //     return
+    // }
+    buf := this.buf
     if err = binary.Read(buf, binary.LittleEndian, &this.Comm); err != nil {
         return
     }
@@ -61,9 +59,9 @@ func (this *SoInfoEvent) EventType() EventType {
     return this.event_type
 }
 
-func (this *SoInfoEvent) GetUUID() string {
-    return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
-}
+// func (this *SoInfoEvent) GetUUID() string {
+//     return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
+// }
 
 func (this *SoInfoEvent) String() string {
     var s string

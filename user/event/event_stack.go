@@ -5,7 +5,6 @@ package event
 import "C"
 
 import (
-    "bytes"
     "encoding/binary"
     "encoding/json"
     "fmt"
@@ -18,10 +17,12 @@ import (
 
 type UprobeStackEvent struct {
     event_type EventType
-    Pid        uint32
-    Tid        uint32
-    Timestamp  uint64
-    Comm       [16]byte
+    KEvent
+    mconf     *config.ModuleConfig
+    Pid       uint32
+    Tid       uint32
+    Timestamp uint64
+    Comm      [16]byte
     // Buffer       [256]byte
     // BufferHex    string
     Stackinfo    string
@@ -33,18 +34,15 @@ type UprobeStackEvent struct {
     UUID         string
 }
 
-func (this *UprobeStackEvent) SetConf(conf config.IConfig) {
-    // panic("SoInfoEvent.SetConf() not implemented yet")
-}
-
-func (this *UprobeStackEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
-    buf := bytes.NewBuffer(payload)
-    if err = binary.Read(buf, binary.LittleEndian, &this.Pid); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.Tid); err != nil {
-        return
-    }
+func (this *UprobeStackEvent) Decode() (err error) {
+    // buf := bytes.NewBuffer(payload)
+    // if err = binary.Read(buf, binary.LittleEndian, &this.Pid); err != nil {
+    //     return
+    // }
+    // if err = binary.Read(buf, binary.LittleEndian, &this.Tid); err != nil {
+    //     return
+    // }
+    buf := this.buf
     if err = binary.Read(buf, binary.LittleEndian, &this.Timestamp); err != nil {
         return
     }
@@ -57,7 +55,7 @@ func (this *UprobeStackEvent) Decode(payload []byte, unwind_stack, regs bool) (e
     // }
     // this.BufferHex = util.HexDumpGreen(this.Buffer[:])
 
-    if unwind_stack {
+    if this.unwind_stack {
         // 理论上应该是不需要读取这4字节 但是实测需要 原因未知
         var pad uint32
         if err = binary.Read(buf, binary.LittleEndian, &pad); err != nil {
@@ -72,7 +70,7 @@ func (this *UprobeStackEvent) Decode(payload []byte, unwind_stack, regs bool) (e
         stack_str := C.get_stack(C.int(this.Pid), C.ulong(((1 << 33) - 1)), unsafe.Pointer(&this.UnwindBuffer))
         // char* 转到 go 的 string
         this.Stackinfo = C.GoString(stack_str)
-    } else if regs {
+    } else if this.show_regs {
         var pad uint32
         if err = binary.Read(buf, binary.LittleEndian, &pad); err != nil {
             return
@@ -98,9 +96,9 @@ func (this *UprobeStackEvent) EventType() EventType {
     return this.event_type
 }
 
-func (this *UprobeStackEvent) GetUUID() string {
-    return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
-}
+// func (this *UprobeStackEvent) GetUUID() string {
+//     return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
+// }
 
 func (this *UprobeStackEvent) String() string {
     var s string

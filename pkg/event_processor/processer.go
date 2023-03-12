@@ -44,6 +44,11 @@ func (this *EventProcessor) Serve() {
 
 func (this *EventProcessor) dispatch(e event.IEventStruct) {
 	//this.logger.Printf("event ID:%s", e.GetUUID())
+	err := e.PrePareUUID()
+	if err != nil {
+		this.logger.Printf("PrePareUUID failed:%d", e.EventType())
+		return
+	}
 	var uuid string = e.GetUUID()
 	found, eWorker := this.getWorkerByUUID(uuid)
 	if !found {
@@ -52,7 +57,7 @@ func (this *EventProcessor) dispatch(e event.IEventStruct) {
 		this.addWorkerByUUID(eWorker)
 	}
 
-	err := eWorker.Write(e)
+	err = eWorker.Write(e)
 	if err != nil {
 		//...
 		this.GetLogger().Fatalf("write event failed , error:%v", err)
