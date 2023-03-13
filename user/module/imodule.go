@@ -183,6 +183,10 @@ func (this *Module) readEvents() error {
     return nil
 }
 
+func (this *Module) getPerCPUBuffer() int {
+    return os.Getpagesize() * (int(this.sconf.Buffer) * 1024 / 4)
+}
+
 func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     // 这里对原ebpf包代码做了修改 以此控制是否让内核发生栈空间数据和寄存器数据
     // 用于进行堆栈回溯 以后可以细分栈数据与寄存器数据
@@ -198,9 +202,9 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     if IsSoInfoMap {
         rd, err = perf.NewReader(em, os.Getpagesize()*512, false, false)
     } else if this.sconf.RegName != "" {
-        rd, err = perf.NewReader(em, os.Getpagesize()*30720, this.sconf.UnwindStack, true)
+        rd, err = perf.NewReader(em, this.getPerCPUBuffer(), this.sconf.UnwindStack, true)
     } else {
-        rd, err = perf.NewReader(em, os.Getpagesize()*30720, this.sconf.UnwindStack, this.sconf.ShowRegs)
+        rd, err = perf.NewReader(em, this.getPerCPUBuffer(), this.sconf.UnwindStack, this.sconf.ShowRegs)
     }
     if err != nil {
         errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)

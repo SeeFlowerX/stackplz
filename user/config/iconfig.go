@@ -21,6 +21,7 @@ type SConfig struct {
 	Quiet       bool
 	AfterRead   bool
 	Is32Bit     bool
+	Buffer      uint32
 }
 
 func (this *SConfig) SetDebug(debug bool) {

@@ -16,6 +16,7 @@ type GlobalConfig struct {
     Quiet            bool
     AfterRead        bool
     Is32Bit          bool
+    Buffer           uint32
     LogFile          string
     DataDir          string
     LibraryDirs      []string

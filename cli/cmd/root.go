@@ -28,7 +28,9 @@ import (
     "github.com/spf13/cobra"
 )
 
-var logger = log.New(os.Stdout, "stack_", log.Ltime)
+// var logger = log.New(os.Stdout, "stack_", log.Ltime)
+// 整合为一个模块之后 前缀就没啥必要了 时间也是没有必要的
+var logger = log.New(os.Stdout, "", 0)
 var exec_path = "/data/local/tmp"
 var gconfig = config.NewGlobalConfig()
 var mconfig = config.NewModuleConfig()
@@ -148,6 +150,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Uid = gconfig.Uid
     mconfig.Pid = gconfig.Pid
     mconfig.Tid = gconfig.Tid
+    mconfig.Buffer = gconfig.Buffer
     mconfig.UnwindStack = gconfig.UnwindStack
     mconfig.ShowRegs = gconfig.ShowRegs
     mconfig.GetLR = gconfig.GetLR
@@ -393,6 +396,8 @@ func init() {
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Uid, "uid", "u", 0, "must set uid or package name")
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Pid, "pid", "p", 0, "add pid to filter")
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Tid, "tid", "t", 0, "add tid to filter")
+    // 缓冲区大小设定 单位M
+    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 32, "perf cache buffer size, default 32M")
     // 堆栈输出设定
     rootCmd.PersistentFlags().BoolVar(&gconfig.UnwindStack, "stack", false, "enable unwindstack")
     rootCmd.PersistentFlags().BoolVar(&gconfig.ShowRegs, "regs", false, "show regs")
