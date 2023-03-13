@@ -297,7 +297,6 @@ func (this *Module) ringbufEventReader(errChan chan error, em *ebpf.Map) {
                 this.logger.Printf("%s\tthis.child.decode error:%v", this.child.Name(), err)
                 continue
             }
-
             // 直接将解析数据交给 processor 做
             // 从而加快读取环形缓冲区的数据 减缓数据丢失的概率
             this.processor.Write(e)

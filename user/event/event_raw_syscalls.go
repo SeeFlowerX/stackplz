@@ -111,14 +111,16 @@ func (this *SyscallEvent) String() string {
     case EventTypeSysEnter:
         // --getlr 和 --getpc 建议只使用其中一个
         if conf.GetLR {
-            info, err := this.ParseLR()
+            // info, err := this.ParseLR()
+            info, err := this.ParseLRV1()
             if err != nil {
                 return fmt.Sprintf("ParseLR err:%v\n", err)
             }
             return fmt.Sprintf("%s LR:0x%x Info:\n%s\n", base_str, this.lr, info)
         }
         if conf.GetPC {
-            info, err := this.ParsePC()
+            // info, err := this.ParsePC()
+            info, err := this.ParsePCV1()
             if err != nil {
                 return fmt.Sprintf("ParsePC err:%v\n", err)
             }
@@ -151,6 +153,10 @@ func (this *SyscallEvent) String() string {
     return base_str
 }
 
+func (this *SyscallEvent) ParseLRV1() (string, error) {
+    return maps_helper.GetOffset(this.Pid, this.lr), nil
+}
+
 func (this *SyscallEvent) ParseLR() (string, error) {
     info := "UNKNOWN"
     // 直接读取maps信息 计算lr在什么地方 定位syscall调用也就一目了然了
@@ -180,6 +186,12 @@ func (this *SyscallEvent) ParseLR() (string, error) {
         }
     }
     return info, err
+}
+
+func (this *SyscallEvent) ParsePCV1() (string, error) {
+    // 通过在启动阶段收集到的库基址信息来计算偏移
+    // 由于每个进程的加载情况不一样 这里要传递 pid
+    return maps_helper.GetOffset(this.Pid, this.pc), nil
 }
 
 func (this *SyscallEvent) ParsePC() (string, error) {

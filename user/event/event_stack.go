@@ -18,9 +18,9 @@ import (
 type UprobeStackEvent struct {
     event_type EventType
     KEvent
-    mconf     *config.ModuleConfig
-    Pid       uint32
-    Tid       uint32
+    mconf *config.ModuleConfig
+    // Pid       uint32
+    // Tid       uint32
     Timestamp uint64
     Comm      [16]byte
     // Buffer       [256]byte
