@@ -92,7 +92,7 @@ func (this *SyscallConfig) UpdateArgRetMaskMap(argRetMaskMap *ebpf.Map) error {
     // 和上面一样 只是也许会跟随配置文件形式发生变化 所以写了两份
     for nr, table_config := range this.SysTable {
         nr_key, _ := strconv.ParseUint(nr, 10, 32)
-        argRetMaskMap.Update(unsafe.Pointer(&nr_key), unsafe.Pointer(&table_config.Mask), ebpf.UpdateAny)
+        argRetMaskMap.Update(unsafe.Pointer(&nr_key), unsafe.Pointer(&table_config.RetMask), ebpf.UpdateAny)
     }
     return nil
 }
