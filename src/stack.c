@@ -190,7 +190,14 @@ struct {
     __uint(max_entries, 1);
 } syscall_filter SEC(".maps");
 
-static int inline send_data_arg_str(struct bpf_raw_tracepoint_args* ctx, struct syscall_data_t* data, u64 addr) {
+#define EventTypeSysEnter 1
+#define EventTypeSysEnterArgs 2
+#define EventTypeSysEnterRegs 3
+#define EventTypeSysExitReadAfterArgs 4
+#define EventTypeSysExitArgs 5
+#define EventTypeSysExitRet 6
+
+static int inline send_data_arg_str(struct bpf_raw_tracepoint_args* ctx, struct syscall_data_t* data, u64 addr, u32 data_type) {
     // u32 filter_key = 0;
     // struct syscall_filter_t* filter = bpf_map_lookup_elem(&syscall_filter, &filter_key);
     // if (filter == NULL) {
@@ -223,7 +230,7 @@ static int inline send_data_arg_str(struct bpf_raw_tracepoint_args* ctx, struct 
     //         }
     //     }
     // }
-    data->type = 2;
+    data->type = data_type;
     bpf_perf_event_output(ctx, &syscall_events, BPF_F_CURRENT_CPU, data, sizeof(struct syscall_data_t));
     return 0;
 }
@@ -364,7 +371,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     bpf_probe_read_kernel(&data->pc, sizeof(data->pc), &regs->pc);
     bpf_probe_read_kernel(&data->sp, sizeof(data->sp), &regs->sp);
     __builtin_memset(&data->arg_str, 0, sizeof(data->arg_str));
-    data->type = 1;
+    data->type = EventTypeSysEnter;
     bpf_perf_event_output(ctx, &syscall_events, BPF_F_CURRENT_CPU, data, sizeof(struct syscall_data_t));
 
     // 获取参数
@@ -380,7 +387,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
             if (j == 0) {
                 __builtin_memset(&data->arg_str, 0, sizeof(data->arg_str));
                 bpf_probe_read_user(data->arg_str, sizeof(data->arg_str), (void*)data->args[j]);
-                send_data_arg_str(ctx, data, data->args[j]);
+                send_data_arg_str(ctx, data, data->args[j], EventTypeSysEnterArgs);
             } else {
                 // 最多遍历得到6个子参数
                 for (int i = 0; i < 6; i++) {
@@ -391,7 +398,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                     bpf_probe_read_user(&addr, sizeof(u64), ptr);
                     if (addr != 0) {
                         bpf_probe_read_user(data->arg_str, sizeof(data->arg_str), (void*)addr);
-                        send_data_arg_str(ctx, data, addr);
+                        send_data_arg_str(ctx, data, addr, EventTypeSysEnterArgs);
                     } else {
                         // 遇到为NULL的 直接结束内部遍历
                         break;
@@ -410,7 +417,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
             if (j == 1) {
                 __builtin_memset(&data->arg_str, 0, sizeof(data->arg_str));
                 bpf_probe_read_user(data->arg_str, sizeof(data->arg_str), (void*)data->args[j]);
-                send_data_arg_str(ctx, data, data->args[j]);
+                send_data_arg_str(ctx, data, data->args[j], EventTypeSysEnterArgs);
             } else {
                 for (int i = 0; i < 6; i++) {
                     __builtin_memset(&data->arg_str, 0, sizeof(data->arg_str));
@@ -419,7 +426,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                     bpf_probe_read_user(&addr, sizeof(u64), ptr);
                     if (addr != 0) {
                         bpf_probe_read_user(data->arg_str, sizeof(data->arg_str), (void*)addr);
-                        send_data_arg_str(ctx, data, addr);
+                        send_data_arg_str(ctx, data, addr, EventTypeSysEnterArgs);
                     } else {
                         break;
                     }
@@ -439,7 +446,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
             if (data->args[j] != 0) {
                 __builtin_memset(&data->arg_str, 0, sizeof(data->arg_str));
                 bpf_probe_read_user(data->arg_str, sizeof(struct timespec), (void*)data->args[j]);
-                data->type = 2;
+                data->type = EventTypeSysEnterArgs;
                 bpf_perf_event_output(ctx, &syscall_events, BPF_F_CURRENT_CPU, data, sizeof(struct syscall_data_t));
             }
         }
@@ -463,13 +470,13 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                 // 综合测试使用 bpf_probe_read_user 最合理 在前端处理 NUL
                 // 不过仍然有部分结果是空 调整大小又能读到 原因未知
                 bpf_probe_read_user(data->arg_str, sizeof(data->arg_str), (void*)data->args[i]);
-                send_data_arg_str(ctx, data, data->args[i]);
+                send_data_arg_str(ctx, data, data->args[i], EventTypeSysEnterArgs);
             }
         }
     }
     // 这里会得到完整参数对应的寄存器信息
     __builtin_memset(&data->arg_str, 0, sizeof(data->arg_str));
-    data->type = 3;
+    data->type = EventTypeSysEnterRegs;
     bpf_perf_event_output(ctx, &syscall_events, BPF_F_CURRENT_CPU, data, sizeof(struct syscall_data_t));
     return 0;
 }
@@ -603,7 +610,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         return 0;
     }
     if (filter->after_read) {
-        data->type = 6;
+        // 这个函数起初是用于对比 syscall 执行前后参数变化的 一般用不到
         #pragma unroll
         for (int i = 0; i < 6; i++) {
             bpf_probe_read_kernel(&data->args[i], sizeof(u64), &regs->regs[i]);
@@ -611,7 +618,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
                 data->arg_index = i;
                 __builtin_memset(&data->arg_str, 0, sizeof(data->arg_str));
                 bpf_probe_read_user(data->arg_str, sizeof(data->arg_str), (void*)data->args[i]);
-                send_data_arg_str(ctx, data, data->args[i]);
+                send_data_arg_str(ctx, data, data->args[i], EventTypeSysExitReadAfterArgs);
             }
         }
     }
@@ -621,8 +628,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         return 0;
     }
 
-    // 获取syscall执行后才会有内容的字符串参数 比如重定向检测
-    data->type = 4;
+    // 在执行syscall之后 原本的传入参数才会有值 在这里读取
     #pragma unroll
     for (int i = 0; i < 6; i++) {
         bpf_probe_read_kernel(&data->args[i], sizeof(u64), &regs->regs[i]);
@@ -630,12 +636,12 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
             data->arg_index = i;
             __builtin_memset(&data->arg_str, 0, sizeof(data->arg_str));
             bpf_probe_read_user(data->arg_str, sizeof(data->arg_str), (void*)data->args[i]);
-            send_data_arg_str(ctx, data, data->args[i]);
+            send_data_arg_str(ctx, data, data->args[i], EventTypeSysExitArgs);
         }
     }
 
-    // 发送返回结果
-    data->type = 5;
+    // 发送返回结果 返回值可能是字符串 后续加上读取
+    data->type = EventTypeSysExitRet;
     data->ret = ctx->args[1];
     bpf_perf_event_output(ctx, &syscall_events, BPF_F_CURRENT_CPU, data, sizeof(struct syscall_data_t));
     return 0;

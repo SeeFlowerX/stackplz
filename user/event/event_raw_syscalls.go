@@ -6,7 +6,19 @@ import (
     "encoding/json"
     "fmt"
     "io/ioutil"
+    "stackplz/pkg/util"
     "strings"
+)
+
+// type EventTypeSys uint32
+
+const (
+    EventTypeSysEnter             uint32 = 1
+    EventTypeSysEnterArgs         uint32 = 2
+    EventTypeSysEnterRegs         uint32 = 3
+    EventTypeSysExitReadAfterArgs uint32 = 4
+    EventTypeSysExitArgs          uint32 = 5
+    EventTypeSysExitRet           uint32 = 6
 )
 
 type Timespec struct {
@@ -35,7 +47,7 @@ type SyscallEvent struct {
     ret        uint64
     arg_index  uint64
     args       [6]uint64
-    comm       [16]byte
+    Comm       [16]byte
     arg_str    [1024]byte
 }
 
@@ -72,7 +84,7 @@ func (this *SyscallEvent) Decode() (err error) {
     if err = binary.Read(buf, binary.LittleEndian, &this.args); err != nil {
         return
     }
-    if err = binary.Read(buf, binary.LittleEndian, &this.comm); err != nil {
+    if err = binary.Read(buf, binary.LittleEndian, &this.Comm); err != nil {
         return
     }
     if err = binary.Read(buf, binary.LittleEndian, &this.arg_str); err != nil {
@@ -82,7 +94,7 @@ func (this *SyscallEvent) Decode() (err error) {
 }
 
 // func (this *SyscallEvent) GetUUID() string {
-//     return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.comm[:]))
+//     return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
 // }
 
 func (this *SyscallEvent) String() string {
@@ -90,13 +102,13 @@ func (this *SyscallEvent) String() string {
     nr := this.mconf.SysCallConf.SysTable.ReadNR(this.syscall_id)
     var base_str string
     if conf.Debug {
-        base_str = fmt.Sprintf("[%s] type:%d nr:%s", this.GetUUID(), this.mtype, nr)
+        base_str = fmt.Sprintf("[%s_%s] type:%d %s", this.GetUUID(), util.B2STrim(this.Comm[:]), this.mtype, nr)
     } else {
-        base_str = fmt.Sprintf("[%s] nr:%s", this.GetUUID(), nr)
+        base_str = fmt.Sprintf("[%s_%s] %s", this.GetUUID(), util.B2STrim(this.Comm[:]), nr)
     }
     // type 和数据发送的顺序相关
     switch this.mtype {
-    case 1:
+    case EventTypeSysEnter:
         // --getlr 和 --getpc 建议只使用其中一个
         if conf.GetLR {
             info, err := this.ParseLR()
@@ -112,7 +124,7 @@ func (this *SyscallEvent) String() string {
             }
             return fmt.Sprintf("%s PC:0x%x Info:\n%s\n", base_str, this.pc, info)
         }
-    case 2:
+    case EventTypeSysEnterArgs:
         var arg_str string
         if nr == "nanosleep" {
             var spec Timespec
@@ -124,17 +136,17 @@ func (this *SyscallEvent) String() string {
         } else {
             arg_str = strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
         }
-        return fmt.Sprintf("%s arg_index:%d arg_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
-    case 3:
+        return fmt.Sprintf("%s arg_%d arg_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
+    case EventTypeSysEnterRegs:
         return fmt.Sprintf("%s %s", base_str, this.ReadArgs())
-    case 4:
+    case EventTypeSysExitReadAfterArgs:
         arg_str := strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
-        return fmt.Sprintf("%s arg_index:%d arg_ret_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
-    case 5:
+        return fmt.Sprintf("%s arg_%d arg_after_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
+    case EventTypeSysExitArgs:
+        arg_str := strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
+        return fmt.Sprintf("%s arg_%d arg_ret_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
+    case EventTypeSysExitRet:
         return fmt.Sprintf("%s ret:0x%x", base_str, this.ret)
-    case 6:
-        arg_str := strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
-        return fmt.Sprintf("%s arg_index:%d arg_after_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
     }
     return base_str
 }
