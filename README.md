@@ -242,7 +242,21 @@ adb push bin/stackplz /data/local/tmp
 
 3. perf event ring buffer full, dropped 9 samples
 
-有待优化，目前建议是不输出堆栈，或者减少hook点
+使用`-b/-buffer`设置环形缓冲区大小，默认为`32M`，如果出现数据丢失的情况，请适当增加这个值，直到不再出现数据丢失的情况
+
+经过测试，使用`Pixel 6`，完全停止`starbucks`后，对其全部syscall调用进行追踪，大概需要设置为`120M`
+
+当然每个手机体质不一样，这个数不一定准确，需要自行测试调整
+
+命令示意如下：
+
+```bash
+./stackplz -n com.starbucks.cn -b 120 --syscall all -o tmp.log
+```
+
+一味增大缓冲区大小也可能带来新的问题，比如分配失败，这个时候建议尽可能清理正在运行的进程
+
+> failed to create perf ring for CPU 0: can't mmap: cannot allocate memory
 
 4. 通过符号hook确定调用了但是不输出信息？
 
