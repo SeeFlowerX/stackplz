@@ -239,13 +239,16 @@ func (this *MStack) updateFilter() error {
     return nil
 }
 func (this *MStack) initDecodeFun() error {
-    StackEventsMap, err := this.FindMap("stack_events")
-    if err != nil {
-        return err
+    // 根据设置添加 map 不然即使不使用的map也会创建缓冲区
+    if this.mconf.StackUprobeConf.IsEnable() {
+        StackEventsMap, err := this.FindMap("stack_events")
+        if err != nil {
+            return err
+        }
+        this.eventMaps = append(this.eventMaps, StackEventsMap)
+        uprobestackEvent := &event.UprobeStackEvent{}
+        this.eventFuncMaps[StackEventsMap] = uprobestackEvent
     }
-    this.eventMaps = append(this.eventMaps, StackEventsMap)
-    uprobestackEvent := &event.UprobeStackEvent{}
-    this.eventFuncMaps[StackEventsMap] = uprobestackEvent
 
     SoInfoEventsMap, err := this.FindMap("soinfo_events")
     if err != nil {
@@ -255,13 +258,15 @@ func (this *MStack) initDecodeFun() error {
     soinfoEvent := &event.SoInfoEvent{}
     this.eventFuncMaps[SoInfoEventsMap] = soinfoEvent
 
-    SysCallEventsMap, err := this.FindMap("syscall_events")
-    if err != nil {
-        return err
+    if this.mconf.SysCallConf.IsEnable() {
+        SysCallEventsMap, err := this.FindMap("syscall_events")
+        if err != nil {
+            return err
+        }
+        this.eventMaps = append(this.eventMaps, SysCallEventsMap)
+        syscallEvent := &event.SyscallEvent{}
+        this.eventFuncMaps[SysCallEventsMap] = syscallEvent
     }
-    this.eventMaps = append(this.eventMaps, SysCallEventsMap)
-    syscallEvent := &event.SyscallEvent{}
-    this.eventFuncMaps[SysCallEventsMap] = syscallEvent
 
     return nil
 }
