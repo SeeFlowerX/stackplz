@@ -66,6 +66,8 @@ type Module struct {
     sconf *config.SConfig
 
     processor *event_processor.EventProcessor
+
+    TotalLost uint64
 }
 
 // Init 对象初始化
@@ -196,9 +198,9 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     if IsSoInfoMap {
         rd, err = perf.NewReader(em, os.Getpagesize()*512, false, false)
     } else if this.sconf.RegName != "" {
-        rd, err = perf.NewReader(em, os.Getpagesize()*512, this.sconf.UnwindStack, true)
+        rd, err = perf.NewReader(em, os.Getpagesize()*30720, this.sconf.UnwindStack, true)
     } else {
-        rd, err = perf.NewReader(em, os.Getpagesize()*512, this.sconf.UnwindStack, this.sconf.ShowRegs)
+        rd, err = perf.NewReader(em, os.Getpagesize()*30720, this.sconf.UnwindStack, this.sconf.ShowRegs)
     }
     if err != nil {
         errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)
@@ -239,6 +241,7 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
             }
 
             if record.LostSamples != 0 {
+                this.TotalLost += record.LostSamples
                 this.logger.Printf("%s\tperf event ring buffer full, dropped %d samples, %s", this.child.Name(), record.LostSamples, map_name)
                 continue
             }
@@ -336,6 +339,7 @@ func (this *Module) PrePare(em *ebpf.Map, b []byte) (event event.IEventStruct, e
 // }
 
 func (this *Module) Close() error {
+    this.logger.Printf("TotalLost => %d\n", this.TotalLost)
     if this.sconf.Debug {
         this.logger.Printf("%s\tClose", this.child.Name())
     }
