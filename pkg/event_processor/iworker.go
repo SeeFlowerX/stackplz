@@ -113,11 +113,13 @@ func (this *eventWorker) Run() {
 		case _ = <-this.ticker.C:
 			this.tickerCount++
 			if this.NeedExit {
+				this.Close()
 				return
 			}
 		case e := <-this.incoming:
 			this.parserEvent(e)
 			if this.NeedExit {
+				this.Close()
 				return
 			}
 		}

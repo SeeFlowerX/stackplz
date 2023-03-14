@@ -5,6 +5,7 @@ import (
 	"log"
 	"stackplz/user/event"
 	"sync"
+	"time"
 )
 
 const (
@@ -103,6 +104,12 @@ func (this *EventProcessor) Write(e event.IEventStruct) {
 }
 
 func (this *EventProcessor) Close() error {
+	// 关闭模块的时候 变更 worker 状态 让它自己退出
+	for _, worker := range this.workerQueue {
+		worker.(*eventWorker).NeedExit = true
+	}
+	// 等待 0.3s
+	time.Sleep(3 * 100 * time.Millisecond)
 	if len(this.workerQueue) > 0 {
 		return fmt.Errorf("EventProcessor.Close(): workerQueue is not empty:%d", len(this.workerQueue))
 	}
