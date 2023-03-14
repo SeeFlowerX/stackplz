@@ -102,7 +102,7 @@ func (this *UprobeStackEvent) EventType() EventType {
 
 func (this *UprobeStackEvent) String() string {
     var s string
-    s = fmt.Sprintf("[%s]", this.GetUUID())
+    s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.Comm[:]))
     if this.RegName != "" {
         // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
         // 当然前提是取了寄存器数据
