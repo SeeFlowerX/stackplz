@@ -13,8 +13,8 @@ stackplz是一款基于eBPF的堆栈追踪工具，本项目主要参考以下�
 # 要求
 
 - 手机有root权限
-- 内核大于等于4.14，可使用`uname -r`查看自己手机的内核信息
-- Android 11以及之后的系统版本
+- 内核大于等于5.10，可使用`uname -r`查看自己手机的内核信息
+- Android 12以及之后的系统版本
 - 仅支持对64位库进行hook
 
 ![](./images/Snipaste_2022-11-09_14-26-47.png)
@@ -40,20 +40,22 @@ chmod +x /data/local/tmp/stackplz
 
 ![](./images/Snipaste_2022-11-09_14-25-46.png)
 
-3. 参考下列命令示例进行hook
+3. 命令示意
 
-追踪系统调用时的堆栈，以及寄存器信息，支持按pid过滤
+**追踪syscall**
 
 ```bash
-./stackplz --name com.lemon.lv --pid 11267 syscall --nr 63 --regs --stack
+./stackplz -n com.starbucks.cn --syscall openat --getpc -o tmp.log
 ```
 
-![](./images/Snipaste_2022-11-14_22-33-28.png)
+![](./images/Snipaste_2023-03-14_09-52-09.png)
 
-通过**指定uid**，对`/apex/com.android.runtime/lib64/bionic/libc.so`的`open`函数进行hook
+**追踪libc的open**
+
+注：默认设定的库是`/apex/com.android.runtime/lib64/bionic/libc.so`，要自定义请使用`--library`指定
 
 ```bash
-./stackplz --uid 10245 stack --symbol open --stack --regs
+./stackplz -n com.starbucks.cn --stack --symbol open -o tmp.log
 ```
 
 ![](./images/Snipaste_2022-11-13_14-10-18.png)
@@ -61,77 +63,10 @@ chmod +x /data/local/tmp/stackplz
 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook
 
 ```bash
-./stackplz --name com.sfx.ebpf stack --library libnative-lib.so --symbol _Z5func1v --stack --regs
+./stackplz --name com.sfx.ebpf --library libnative-lib.so --symbol _Z5func1v --stack
 ```
 
 ![](./images/Snipaste_2022-11-13_14-11-03.png)
-
-通过`--reg`指定寄存器，对跳转目标地址进行偏移计算，再也不担心找不到跳哪儿去了
-
-`--reg`选项需要搭配`--regs`或者`--stack`使用，后续进行优化
-
-```bash
-./stackplz --name com.xingin.xhs stack --library libtiny.so --offset 0x175248 --regs --reg x8
-```
-
-通过**指定包名和配置文件**进行批量hook
-
-```bash
-./stackplz --name com.sfx.ebpf stack --config config.json
-```
-
-![](./images/Snipaste_2022-11-13_14-12-00.png)
-
-配置文件示例如下
-
-```json
-{
-    "library_dirs": [
-        "/apex/com.android.runtime/lib64"
-    ],
-    "libs": [
-        {
-            "library": "bionic/libc.so",
-            "disable": false,
-            "configs": [
-                {
-                    "stack": true,
-                    "regs": true,
-                    "symbols": ["open"],
-                    "offsets": []
-                },
-                {
-                    "stack": false,
-                    "regs": true,
-                    "symbols": ["read", "send", "recv"],
-                    "offsets": []
-                }
-            ]
-        },
-        {
-            "library": "libnative-lib.so",
-            "disable": false,
-            "configs": [
-                {
-                    "stack": true,
-                    "regs": true,
-                    "symbols": ["_Z5func1v"],
-                    "offsets": ["0xF37C"]
-                }
-            ]
-        }
-    ]
-}
-```
-
-字段说明：
-
-- `library_dirs` 目标库的搜索路径，可以设置多个
-- `libs` 目标多个库的hook配置
-    - `library` 库名、完整库路径或者与搜索路径拼接后存在的路径
-    - `disable` 表示是否禁用hook
-    - `configs` 目标库的多个hook点配置，按输出需要进行配置
-        - 即输出堆栈与输出寄存器信息的组合，每一种组合都可以设定多个符号和多个偏移
 
 注意事项：
 
@@ -288,7 +223,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 有关eBPF on Android系列可以加群交流
 
-![](./images/IMG_20221218_135510.png)
+![](./images/Snipaste_2023-03-14_10-27-56.png)
 
 个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 
