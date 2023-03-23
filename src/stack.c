@@ -49,8 +49,7 @@ int probe_stack(struct pt_regs* ctx) {
     }
 
     // 获取信息用于过滤
-    u64 current_uid_gid = bpf_get_current_uid_gid();
-    u32 uid = current_uid_gid >> 32;
+    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
     u64 current_pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = current_pid_tgid >> 32;
     u32 tid = current_pid_tgid & 0xffffffff;
@@ -245,8 +244,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     }
 
     // 获取信息用于过滤
-    u64 current_uid_gid = bpf_get_current_uid_gid();
-    u32 uid = current_uid_gid >> 32;
+    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
     u64 current_pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = current_pid_tgid >> 32;
     u32 tid = current_pid_tgid & 0xffffffff;
@@ -490,8 +488,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     }
 
     // 获取信息用于过滤
-    u64 current_uid_gid = bpf_get_current_uid_gid();
-    u32 uid = current_uid_gid >> 32;
+    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
     u64 current_pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = current_pid_tgid >> 32;
     u32 tid = current_pid_tgid & 0xffffffff;
@@ -691,8 +688,7 @@ int probe_soinfo(struct pt_regs* ctx) {
         return 0;
     }
 
-    u64 current_uid_gid = bpf_get_current_uid_gid();
-    u32 uid = current_uid_gid >> 32;
+    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
     if (filter->uid != 0 && filter->uid != uid) {
         return 0;
     }
