@@ -48,7 +48,7 @@ type SyscallEvent struct {
     arg_index  uint64
     args       [6]uint64
     Comm       [16]byte
-    arg_str    [1024]byte
+    arg_str    [512]byte
 }
 
 func (this *SyscallEvent) Decode() (err error) {

@@ -127,7 +127,7 @@ struct syscall_data_t {
     u64 arg_index;
     u64 args[6];
     char comm[16];
-    char arg_str[1024];
+    char arg_str[512];
 };
 
 struct {
