@@ -3,6 +3,7 @@ CMD_GO ?= go
 CMD_RM ?= rm
 
 DEBUG_PRINT ?=
+LINUX_ARCH = arm64
 ifeq ($(DEBUG),1)
 DEBUG_PRINT := -DDEBUG_PRINT
 endif
@@ -22,6 +23,7 @@ clean:
 .PHONY: ebpf
 ebpf:
 	clang \
+	-D__aarch64__ \
 	--target=bpf \
 	-c \
 	-nostdlibinc \
@@ -34,6 +36,7 @@ ebpf:
 	-isystem external/bionic/libc/kernel/android/uapi \
 	-I       external/system/core/libcutils/include \
 	-I       external/libbpf/src \
+	-I       src \
 	-g \
 	-MD -MF user/bytecode/stack.d \
 	-o user/bytecode/stack.o \

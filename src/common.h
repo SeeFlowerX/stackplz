@@ -1,45 +1,18 @@
 #ifndef STACKPLZ_COMMON_H
 #define STACKPLZ_COMMON_H
 
-#include <linux/bpf.h>
-#include <linux/ptrace.h>
-#include <bpf_helpers.h>
+#include "vmlinux_510.h"
 
-#define TASK_COMM_LEN 16
+#include "bpf/bpf_helpers.h"
+#include "bpf/bpf_tracing.h"
 
-#define MAX_COUNT 20
+#include "maps.h"
 
-typedef signed char __s8;
+extern char *d_path(const struct path *, char *, int);
 
-typedef unsigned char __u8;
-
-typedef short unsigned int __u16;
-
-typedef int __s32;
-
-typedef unsigned int __u32;
-
-typedef long long int __s64;
-
-typedef long long unsigned int __u64;
-
-typedef __s8 s8;
-
-typedef __u8 u8;
-
-typedef __u16 u16;
-
-typedef __s32 s32;
-
-typedef __u32 u32;
-
-typedef __s64 s64;
-
-typedef __u64 u64;
-
-#define __uint(name, val) int (*name)[val]
-#define __type(name, val) typeof(val) *name
-#define __array(name, val) typeof(val) *name[]
+// #define __uint(name, val) int (*name)[val]
+// #define __type(name, val) typeof(val) *name
+// #define __array(name, val) typeof(val) *name[]
 
 struct sys_enter_args
 {
@@ -48,25 +21,54 @@ struct sys_enter_args
     unsigned long args[6];
 };
 
-struct pt_regs {
-    union {
-        struct user_pt_regs user_regs;
-        struct {
-            u64 regs[31];
-            u64 sp;
-            u64 pc;
-            u64 pstate;
-        };
-    };
-    u64 orig_x0;
-    s32 syscallno;
-    u32 unused2;
-    u64 orig_addr_limit;
-    u64 pmr_save;
-    u64 stackframe[2];
-    u64 lockdep_hardirqs;
-    u64 exit_rcu;
-};
+// struct pt_regs {
+//     union {
+//         struct user_pt_regs user_regs;
+//         struct {
+//             u64 regs[31];
+//             u64 sp;
+//             u64 pc;
+//             u64 pstate;
+//         };
+//     };
+//     u64 orig_x0;
+//     s32 syscallno;
+//     u32 unused2;
+//     u64 orig_addr_limit;
+//     u64 pmr_save;
+//     u64 stackframe[2];
+//     u64 lockdep_hardirqs;
+//     u64 exit_rcu;
+// };
+
+// https://github.com/aquasecurity/tracee/blob/main/pkg/ebpf/c/common/common.h
+
+#define GET_FIELD_ADDR(field) &field
+
+#define READ_KERN(ptr)                                                                         \
+    ({                                                                                         \
+        typeof(ptr) _val;                                                                      \
+        __builtin_memset((void *) &_val, 0, sizeof(_val));                                     \
+        bpf_probe_read((void *) &_val, sizeof(_val), &ptr);                                    \
+        _val;                                                                                  \
+    })
+
+#define READ_KERN_STR_INTO(dst, src) bpf_probe_read_str((void *) &dst, sizeof(dst), src)
+
+#define READ_USER(ptr)                                                                         \
+    ({                                                                                         \
+        typeof(ptr) _val;                                                                      \
+        __builtin_memset((void *) &_val, 0, sizeof(_val));                                     \
+        bpf_probe_read_user((void *) &_val, sizeof(_val), &ptr);                               \
+        _val;                                                                                  \
+    })
+
+#define BPF_READ(src, a, ...)                                                                  \
+    ({                                                                                         \
+        ___type((src), a, ##__VA_ARGS__) __r;                                                  \
+        BPF_PROBE_READ_INTO(&__r, (src), a, ##__VA_ARGS__);                                    \
+        __r;                                                                                   \
+    })
 
 char __license[] SEC("license") = "GPL";
 __u32 _version SEC("version") = 0xFFFFFFFE;
