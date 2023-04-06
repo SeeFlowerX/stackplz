@@ -3,6 +3,7 @@ CMD_GO ?= go
 CMD_RM ?= rm
 
 DEBUG_PRINT ?=
+ARCH = arm64
 LINUX_ARCH = arm64
 ifeq ($(DEBUG),1)
 DEBUG_PRINT := -DDEBUG_PRINT
@@ -23,7 +24,7 @@ clean:
 .PHONY: ebpf
 ebpf:
 	clang \
-	-D__aarch64__ \
+	-D__TARGET_ARCH_$(LINUX_ARCH) \
 	--target=bpf \
 	-c \
 	-nostdlibinc \

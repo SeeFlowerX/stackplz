@@ -779,10 +779,10 @@ int BPF_KPROBE(trace_security_file_mprotect) {
         return 0;
 
     // vm_file_path = smith_d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
-    char* name = d_path(&file->f_path, (char *)&string_p, PATH_MAX);
+    long sz = bpf_d_path(&file->f_path, (char *)&string_p, PATH_MAX);
 
-    char perf_msg_fmt[] = "[vmainfo] pid:%d name:%s\n";
-    bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), pid, name);
+    char perf_msg_fmt[] = "[vmainfo] pid:%d sz:%ld name:%s\n";
+    bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), pid, sz, string_p->buf);
 
     return 0;
 }
