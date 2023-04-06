@@ -9,7 +9,6 @@ import (
     "math"
     "path/filepath"
     "stackplz/assets"
-    "stackplz/pkg/util"
     "stackplz/user/config"
     "stackplz/user/event"
     "unsafe"
@@ -52,11 +51,11 @@ func (this *MStack) setupManager() error {
     probes := []*manager.Probe{}
 
     // soinfo hook 配置
-    vmainfo_probe := &manager.Probe{
-        Section:          "kprobe/security_file_mprotect",
-        EbpfFuncName:     "trace_security_file_mprotect",
-        AttachToFuncName: util.RandStringBytes(8),
-    }
+    // vmainfo_probe := &manager.Probe{
+    //     Section:          "kprobe/security_file_mprotect",
+    //     EbpfFuncName:     "trace_security_file_mprotect",
+    //     AttachToFuncName: util.RandStringBytes(8),
+    // }
     // soinfo hook 配置
     soinfo_probe := &manager.Probe{
         Section:          "uprobe/soinfo",
@@ -69,7 +68,7 @@ func (this *MStack) setupManager() error {
         Name: "soinfo_events",
     }
     // 不管是 stack 还是 syscall 都需要用到 soinfo
-    probes = append(probes, vmainfo_probe)
+    // probes = append(probes, vmainfo_probe)
     probes = append(probes, soinfo_probe)
     maps = append(maps, soinfo_events_map)
 

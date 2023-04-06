@@ -736,53 +736,53 @@ int probe_soinfo(struct pt_regs* ctx) {
     return 0;
 }
 
-// vmainfo过滤配置
-struct vmainfo_filter_t {
-    u32 uid;
-    u32 pid;
-    u32 is_32bit;
-};
+// // vmainfo过滤配置
+// struct vmainfo_filter_t {
+//     u32 uid;
+//     u32 pid;
+//     u32 is_32bit;
+// };
 
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u32);
-    __type(value, struct vmainfo_filter_t);
-    __uint(max_entries, 1);
-} vmainfo_filter SEC(".maps");
+// struct {
+//     __uint(type, BPF_MAP_TYPE_HASH);
+//     __type(key, u32);
+//     __type(value, struct vmainfo_filter_t);
+//     __uint(max_entries, 1);
+// } vmainfo_filter SEC(".maps");
 
-SEC("kprobe/security_file_mprotect")
-int BPF_KPROBE(trace_security_file_mprotect) {
-    u32 filter_key = 0;
-    struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
-    if (filter == NULL) {
-        return 0;
-    }
+// SEC("kprobe/security_file_mprotect")
+// int BPF_KPROBE(trace_security_file_mprotect) {
+//     u32 filter_key = 0;
+//     struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
+//     if (filter == NULL) {
+//         return 0;
+//     }
 
-    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
-    if (filter->uid != 0 && filter->uid != uid) {
-        return 0;
-    }
+//     u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
+//     if (filter->uid != 0 && filter->uid != uid) {
+//         return 0;
+//     }
 
-    u64 current_pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = current_pid_tgid >> 32;
-    u32 tid = current_pid_tgid & 0xffffffff;
-    if (filter->pid != 0 && filter->pid != pid) {
-        return 0;
-    }
+//     u64 current_pid_tgid = bpf_get_current_pid_tgid();
+//     u32 pid = current_pid_tgid >> 32;
+//     u32 tid = current_pid_tgid & 0xffffffff;
+//     if (filter->pid != 0 && filter->pid != pid) {
+//         return 0;
+//     }
 
-    struct vm_area_struct *vma = (struct vm_area_struct *) PT_REGS_PARM1(ctx);
-    struct file *file = (struct file *) READ_KERN(vma->vm_file);
+//     struct vm_area_struct *vma = (struct vm_area_struct *) PT_REGS_PARM1(ctx);
+//     struct file *file = (struct file *) READ_KERN(vma->vm_file);
 
-    // Get per-cpu string buffer
-    buf_t *string_p = get_buf(STRING_BUF_IDX);
-    if (string_p == NULL)
-        return 0;
+//     // Get per-cpu string buffer
+//     buf_t *string_p = get_buf(STRING_BUF_IDX);
+//     if (string_p == NULL)
+//         return 0;
 
-    // vm_file_path = smith_d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
-    long sz = bpf_d_path(&file->f_path, (char *)&string_p, PATH_MAX);
+//     // vm_file_path = smith_d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
+//     long sz = bpf_d_path(&file->f_path, (char *)&string_p, PATH_MAX);
 
-    char perf_msg_fmt[] = "[vmainfo] pid:%d sz:%ld name:%s\n";
-    bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), pid, sz, string_p->buf);
+//     char perf_msg_fmt[] = "[vmainfo] pid:%d sz:%ld name:%s\n";
+//     bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), pid, sz, string_p->buf);
 
-    return 0;
-}
+//     return 0;
+// }
