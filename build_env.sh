@@ -1,12 +1,12 @@
 mkdir -p external && cd external
 
-git clone https://android.googlesource.com/platform/bionic --depth=1
+wget https://github.com/libbpf/bpftool/releases/download/v7.2.0-snapshot.0/bpftool-v7.2.0-snapshot.0-amd64.tar.gz
 
-mkdir system && cd system
+tar -zxvf bpftool-v7.2.0-snapshot.0-amd64.tar.gz
 
-git clone https://android.googlesource.com/platform/system/core --depth=1
+rm bpftool-v7.2.0-snapshot.0-amd64.tar.gz
 
-cd ..
+chmod +x bpftool
 
 git clone https://android.googlesource.com/platform/external/libbpf --depth=1
 
