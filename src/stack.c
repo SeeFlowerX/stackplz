@@ -752,7 +752,7 @@ struct {
 
 // 如果要获取权限信息 还是配合 kretprobe 一起做比较合适？
 SEC("kprobe/vma_set_page_prot")
-int BPF_KPROBE(trace_vma_set_page_prot) {
+int BPF_KPROBE(kprobe_vma_set_page_prot) {
     u32 filter_key = 0;
     struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
     if (filter == NULL) {
@@ -771,9 +771,39 @@ int BPF_KPROBE(trace_vma_set_page_prot) {
         return 0;
     }
 
-    // char msg_test[] = "[vmainfo] enter vma_set_page_prot\n";
-    // bpf_trace_printk(msg_test, sizeof(msg_test));
-    struct vm_area_struct *vma = (struct vm_area_struct *) PT_REGS_PARM1(ctx);
+    vma_arg_t vma_arg = {};
+    vma_arg.vma_ptr = PT_REGS_PARM1(ctx);
+    bpf_map_update_elem(&vma_map, &current_pid_tgid, &vma_arg, BPF_ANY);
+
+    return 0;
+}
+
+SEC("kretprobe/vma_set_page_prot")
+int BPF_KRETPROBE(kretprobe_vma_set_page_prot) {
+    u32 filter_key = 0;
+    struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
+    if (filter == NULL) {
+        return 0;
+    }
+
+    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
+    if (filter->uid != 0 && filter->uid != uid) {
+        return 0;
+    }
+
+    u64 current_pid_tgid = bpf_get_current_pid_tgid();
+    u32 pid = current_pid_tgid >> 32;
+    u32 tid = current_pid_tgid & 0xffffffff;
+    if (filter->pid != 0 && filter->pid != pid) {
+        return 0;
+    }
+
+    vma_arg_t* vma_arg = (vma_arg_t *) bpf_map_lookup_elem(&vma_map, &current_pid_tgid);
+    if (vma_arg == NULL) {
+        return 0;
+    }
+    // struct vm_area_struct* vma = (struct vm_area_struct *) READ_KERN(vma_arg->vma_ptr);
+    struct vm_area_struct* vma = (struct vm_area_struct *) vma_arg->vma_ptr;
     struct file *file = (struct file *) READ_KERN(vma->vm_file);
 
     // Get per-cpu string buffer
@@ -781,12 +811,10 @@ int BPF_KPROBE(trace_vma_set_page_prot) {
     if (string_p == NULL)
         return 0;
 
-    // vm_file_path = smith_d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
-    // long sz = bpf_d_path(&file->f_path, (char *)&string_p, PATH_MAX);
     get_file_path(file, (char *)&string_p->buf, PATH_MAX);
-    size_t file_path_size = strlen((char *)&string_p->buf);
-    char perf_msg_fmt[] = "[vmainfo] pid:%d len:%d, name:%s\n";
-    bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), pid, file_path_size, string_p->buf);
+    size_t str_len = strlen((char *)&string_p->buf);
+    char perf_msg_fmt[] = "[vmainfo] pid:%d len:%d name:%s\n";
+    bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), pid, str_len, string_p->buf);
 
     return 0;
 }

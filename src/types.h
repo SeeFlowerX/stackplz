@@ -35,4 +35,9 @@ typedef struct simple_buf {
     u8 buf[MAX_PERCPU_BUFSIZE];
 } buf_t;
 
+
+typedef struct vma_arg {
+    u64 vma_ptr;
+} vma_arg_t;
+
 #endif
