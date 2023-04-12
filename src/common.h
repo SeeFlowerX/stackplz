@@ -3,12 +3,19 @@
 
 #include "vmlinux_510.h"
 
-#include "bpf/bpf_helpers.h"
-#include "bpf/bpf_tracing.h"
+#include "bpf_helpers.h"
+#include "bpf_core_read.h"
+#include "bpf_tracing.h"
 
 #include "maps.h"
 
-extern char *d_path(const struct path *, char *, int);
+static void get_file_path(struct file *file, char *buf, size_t size)
+{
+	struct qstr dname;
+
+	dname = BPF_CORE_READ(file, f_path.dentry, d_name);
+	bpf_probe_read_kernel(buf, size, dname.name);
+}
 
 // #define __uint(name, val) int (*name)[val]
 // #define __type(name, val) typeof(val) *name
