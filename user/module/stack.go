@@ -53,7 +53,7 @@ func (this *MStack) setupManager() error {
 
     // soinfo hook 配置
     vmainfo_probe := &manager.Probe{
-        Section:          "kretprobe/vma_set_page_prot",
+        Section:          "kprobe/vma_set_page_prot",
         EbpfFuncName:     "trace_vma_set_page_prot",
         AttachToFuncName: "vma_set_page_prot",
     }

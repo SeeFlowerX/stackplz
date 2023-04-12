@@ -749,8 +749,10 @@ struct {
     __uint(max_entries, 1);
 } vmainfo_filter SEC(".maps");
 
-SEC("kretprobe/vma_set_page_prot")
-int BPF_KRETPROBE(trace_vma_set_page_prot) {
+
+// 如果要获取权限信息 还是配合 kretprobe 一起做比较合适？
+SEC("kprobe/vma_set_page_prot")
+int BPF_KPROBE(trace_vma_set_page_prot) {
     u32 filter_key = 0;
     struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
     if (filter == NULL) {
@@ -769,8 +771,8 @@ int BPF_KRETPROBE(trace_vma_set_page_prot) {
         return 0;
     }
 
-    char msg_test[] = "[vmainfo] enter vma_set_page_prot\n";
-    bpf_trace_printk(msg_test, sizeof(msg_test));
+    // char msg_test[] = "[vmainfo] enter vma_set_page_prot\n";
+    // bpf_trace_printk(msg_test, sizeof(msg_test));
     struct vm_area_struct *vma = (struct vm_area_struct *) PT_REGS_PARM1(ctx);
     struct file *file = (struct file *) READ_KERN(vma->vm_file);
 
@@ -782,9 +784,9 @@ int BPF_KRETPROBE(trace_vma_set_page_prot) {
     // vm_file_path = smith_d_path(&vma->vm_file->f_path, vm_file_buff, PATH_MAX);
     // long sz = bpf_d_path(&file->f_path, (char *)&string_p, PATH_MAX);
     get_file_path(file, (char *)&string_p->buf, PATH_MAX);
-
-    char perf_msg_fmt[] = "[vmainfo] pid:%d name:%s\n";
-    bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), pid, string_p->buf);
+    size_t file_path_size = strlen((char *)&string_p->buf);
+    char perf_msg_fmt[] = "[vmainfo] pid:%d len:%d, name:%s\n";
+    bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), pid, file_path_size, string_p->buf);
 
     return 0;
 }

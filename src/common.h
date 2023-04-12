@@ -17,6 +17,37 @@ static void get_file_path(struct file *file, char *buf, size_t size)
 	bpf_probe_read_kernel(buf, size, dname.name);
 }
 
+size_t strlen(const char *s)
+{
+	// 写法一
+	// int len;
+    // for (len = 0; len < PATH_MAX; len++) {
+    //     if (*sc == '\0') {
+    //         break;
+    //     }
+    //     sc++;
+    // }
+    // return len;
+
+	// 写法二 感觉好看一点
+    const char *sc = s;
+    for (int i = 0; i < PATH_MAX; i++) {
+        if (*sc == '\0') {
+            break;
+        }
+        sc++;
+    }
+
+	// 写法三
+	// int offset = 0;
+    // for (sc = s; *sc != '\0' && offset < PATH_MAX; ++sc)
+    // {
+    //     offset += 1;
+    // };
+
+	return sc - s;
+}
+
 // #define __uint(name, val) int (*name)[val]
 // #define __type(name, val) typeof(val) *name
 // #define __array(name, val) typeof(val) *name[]
