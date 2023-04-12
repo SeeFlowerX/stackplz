@@ -31,6 +31,11 @@ type SoInfoFilter struct {
 	is_32bit uint32
 }
 
+type VmaInfoFilter struct {
+	uid uint32
+	pid uint32
+}
+
 func (this *SyscallFilter) SetUid(uid uint32) {
 	this.uid = uid
 }

@@ -1,6 +1,8 @@
 CMD_CLANG ?= clang
 CMD_GO ?= go
 CMD_RM ?= rm
+CMD_BPFTOOL ?= bpftool
+ASSETS_PATH ?= user/assets
 
 DEBUG_PRINT ?=
 ARCH = arm64
@@ -10,7 +12,7 @@ DEBUG_PRINT := -DDEBUG_PRINT
 endif
 
 .PHONY: all
-all: ebpf assets build
+all: ebpf genbtf assets build
 	@echo $(shell date)
 
 
@@ -31,21 +33,20 @@ ebpf:
 	-no-canonical-prefixes \
 	-O2 \
 	$(DEBUG_PRINT)	\
-	-isystem external/bionic/libc/include \
-	-isystem external/bionic/libc/kernel/uapi \
-	-isystem external/bionic/libc/kernel/uapi/asm-arm64 \
-	-isystem external/bionic/libc/kernel/android/uapi \
-	-I       external/system/core/libcutils/include \
 	-I       external/libbpf/src \
 	-I       src \
 	-g \
-	-MD -MF user/bytecode/stack.d \
-	-o user/bytecode/stack.o \
+	-MD -MF user/assets/stack.d \
+	-o user/assets/stack.o \
 	src/stack.c
+
+.PHONY: genbtf
+genbtf:
+	cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf a12-5.10-arm64.btf a12-5.10-arm64_min.btf stack.o
 
 .PHONY: assets
 assets:
-	$(CMD_GO) run github.com/shuLhan/go-bindata/cmd/go-bindata -pkg assets -o "assets/ebpf_probe.go" $(wildcard ./user/bytecode/*.o ./preload_libs/*.so ./user/config/*.json)
+	$(CMD_GO) run github.com/shuLhan/go-bindata/cmd/go-bindata -pkg assets -o "assets/ebpf_probe.go" $(wildcard ./user/assets/*.o ./user/assets/a12-5.10-arm64_min.btf ./preload_libs/*.so ./user/config/*.json)
 
 .PHONY: build
 build:

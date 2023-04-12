@@ -262,6 +262,13 @@ func (this *ModuleConfig) GetSoInfoFilter() SoInfoFilter {
     return filter
 }
 
+func (this *ModuleConfig) GetVmaInfoFilter() VmaInfoFilter {
+    filter := VmaInfoFilter{}
+    filter.uid = this.Uid
+    filter.pid = this.Pid
+    return filter
+}
+
 func (this *ModuleConfig) GetUprobeStackFilter() UprobeStackFilter {
     filter := UprobeStackFilter{}
     filter.uid = this.Uid

@@ -14,6 +14,7 @@ import (
     "unsafe"
 
     "github.com/cilium/ebpf"
+    "github.com/cilium/ebpf/btf"
     manager "github.com/ehids/ebpfmanager"
     "golang.org/x/sys/unix"
 )
@@ -51,11 +52,11 @@ func (this *MStack) setupManager() error {
     probes := []*manager.Probe{}
 
     // soinfo hook 配置
-    // vmainfo_probe := &manager.Probe{
-    //     Section:          "kprobe/security_file_mprotect",
-    //     EbpfFuncName:     "trace_security_file_mprotect",
-    //     AttachToFuncName: util.RandStringBytes(8),
-    // }
+    vmainfo_probe := &manager.Probe{
+        Section:          "kretprobe/vma_set_page_prot",
+        EbpfFuncName:     "trace_vma_set_page_prot",
+        AttachToFuncName: "vma_set_page_prot",
+    }
     // soinfo hook 配置
     soinfo_probe := &manager.Probe{
         Section:          "uprobe/soinfo",
@@ -68,7 +69,7 @@ func (this *MStack) setupManager() error {
         Name: "soinfo_events",
     }
     // 不管是 stack 还是 syscall 都需要用到 soinfo
-    // probes = append(probes, vmainfo_probe)
+    probes = append(probes, vmainfo_probe)
     probes = append(probes, soinfo_probe)
     maps = append(maps, soinfo_events_map)
 
@@ -124,11 +125,20 @@ func (this *MStack) setupManager() error {
 }
 
 func (this *MStack) setupManagerOptions() {
+    // 对于没有开启 CONFIG_DEBUG_INFO_BTF 的加载额外的 btf.Spec
+    byteBuf, err := assets.Asset("user/assets/a12-5.10-arm64_min.btf")
+    if err != nil {
+        this.logger.Fatalf("[setupManagerOptions] failed, err:%v", err)
+        return
+    }
+    spec, err := btf.LoadSpecFromReader((bytes.NewReader(byteBuf)))
+
     this.bpfManagerOptions = manager.Options{
         DefaultKProbeMaxActive: 512,
         VerifierOptions: ebpf.CollectionOptions{
             Programs: ebpf.ProgramOptions{
-                LogSize: 2097152,
+                LogSize:     2097152,
+                KernelTypes: spec,
             },
         },
         RLimit: &unix.Rlimit{
@@ -168,7 +178,7 @@ func (this *MStack) start() error {
     this.setupManagerOptions()
 
     // 从assets中获取eBPF程序的二进制数据
-    var bpfFileName = filepath.Join("user/bytecode", this.hookBpfFile)
+    var bpfFileName = filepath.Join("user/assets", this.hookBpfFile)
     byteBuf, err := assets.Asset(bpfFileName)
 
     if err != nil {
@@ -210,6 +220,18 @@ func (this *MStack) updateFilter() error {
     filter := this.mconf.GetSoInfoFilter()
     filterMap.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
 
+    vfilterMap, err := this.FindMap("vmainfo_filter")
+    if err != nil {
+        return err
+    }
+    vfilter_key := 0
+    vfilter := this.mconf.GetVmaInfoFilter()
+    err = vfilterMap.Update(unsafe.Pointer(&vfilter_key), unsafe.Pointer(&vfilter), ebpf.UpdateAny)
+    if err != nil {
+        fmt.Println("eeeeeeeeeeeeeeeeeee")
+        return err
+    }
+    fmt.Println("oooooooooooo")
     // uprobe hook stack 的过滤配置更新
     if this.mconf.StackUprobeConf.IsEnable() {
         filterMap, err = this.FindMap("uprobe_stack_filter")

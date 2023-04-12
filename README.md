@@ -278,3 +278,19 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 ./stackplz --name com.starbucks.cn --syscall execve -o tmp.log
 ./stackplz --name com.starbucks.cn --syscall all -o tmp.log
 ```
+
+```bash
+tar -xvf user/assets/a12-5.10-arm64.btf.tar.xz -C user/assets/
+rm user/assets/a12-5.10-arm64.btf.tar.xz
+```
+
+```bash
+cd user/assets
+../../bpftool gen min_core_btf a12-5.10-arm64.btf a12-5.10-arm64_min.btf stack.o
+cd ../../
+```
+
+```bash
+echo 1 > /sys/kernel/tracing/tracing_on
+cat /sys/kernel/tracing/trace_pipe
+```
