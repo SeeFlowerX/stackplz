@@ -397,7 +397,7 @@ func init() {
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Pid, "pid", "p", 0, "add pid to filter")
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Tid, "tid", "t", 0, "add tid to filter")
     // 缓冲区大小设定 单位M
-    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 32, "perf cache buffer size, default 32M")
+    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定
     rootCmd.PersistentFlags().BoolVar(&gconfig.UnwindStack, "stack", false, "enable unwindstack")
     rootCmd.PersistentFlags().BoolVar(&gconfig.ShowRegs, "regs", false, "show regs")
