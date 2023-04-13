@@ -63,21 +63,21 @@ func (this *MStack) setupManager() error {
         AttachToFuncName: "vma_set_page_prot",
     }
     // soinfo hook 配置
-    soinfo_probe := &manager.Probe{
-        Section:          "uprobe/soinfo",
-        EbpfFuncName:     "probe_soinfo",
-        AttachToFuncName: "__dl__ZN6soinfo17call_constructorsEv",
-        BinaryPath:       "/apex/com.android.runtime/bin/linker64",
-        UprobeOffset:     0,
-    }
-    soinfo_events_map := &manager.Map{
-        Name: "soinfo_events",
-    }
+    // soinfo_probe := &manager.Probe{
+    //     Section:          "uprobe/soinfo",
+    //     EbpfFuncName:     "probe_soinfo",
+    //     AttachToFuncName: "__dl__ZN6soinfo17call_constructorsEv",
+    //     BinaryPath:       "/apex/com.android.runtime/bin/linker64",
+    //     UprobeOffset:     0,
+    // }
+    // soinfo_events_map := &manager.Map{
+    //     Name: "soinfo_events",
+    // }
     // 不管是 stack 还是 syscall 都需要用到 soinfo
     probes = append(probes, vmainfo_kprobe)
     probes = append(probes, vmainfo_kretprobe)
-    probes = append(probes, soinfo_probe)
-    maps = append(maps, soinfo_events_map)
+    // probes = append(probes, soinfo_probe)
+    // maps = append(maps, soinfo_events_map)
 
     // stack hook 配置
     stack_probe := &manager.Probe{
