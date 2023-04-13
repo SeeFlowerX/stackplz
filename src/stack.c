@@ -1,5 +1,6 @@
 #include "common.h"
 #include "buffer.h"
+#include "filesystem.h"
 #include "soinfo_android12_r3.h"
 #include <stdbool.h>
 
@@ -805,43 +806,53 @@ int BPF_KRETPROBE(kretprobe_vma_set_page_prot) {
     // struct vm_area_struct* vma = (struct vm_area_struct *) READ_KERN(vma_arg->vma_ptr);
     struct vm_area_struct* vma = (struct vm_area_struct *) vma_arg->vma_ptr;
     struct file *file = (struct file *) READ_KERN(vma->vm_file);
+    
+    void *file_path = get_path_str(&file->f_path);
+    
+    // struct path root_path = READ_KERN(file->f_path);
+    // struct dentry* dentry = (struct dentry *) READ_KERN(root_path.dentry);
+    // void *dentry_path = get_dentry_path_str(dentry);
 
     // Get per-cpu string buffer
     buf_t *string_p = get_buf(STRING_BUF_IDX);
     if (string_p == NULL)
         return 0;
 
-    get_file_path(file, (char *)&string_p->buf, PATH_MAX);
-    size_t str_len = strlen((char *)&string_p->buf);
-    char perf_msg_fmt[] = "[vmainfo] pid:%d len:%d name:%s\n";
-    bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), pid, str_len, string_p->buf);
-    int total_len = str_len;
+    // get_file_path(file, (char *)&string_p->buf, PATH_MAX);
+    // bpf_probe_read_str(&string_p->buf, PATH_MAX, dentry_path);
+    bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
+    size_t str_len = mystrlen((char *)&string_p->buf);
+    if (str_len > 0) {
+        bpf_printk("[vmainfo] pid:%d len:%d path:%s\n", pid, str_len, string_p->buf);
+    }
+    // bpf_printk("[vmainfo] pid:%d len:%d name:%s\n", pid, str_len, dentry_path);
+    // int total_len = str_len;
 
 	// struct dentry *d_root = BPF_CORE_READ(file, f_path.dentry);
 
-    int loop_count = 0;
-    struct path root_path = READ_KERN(file->f_path);
-    struct dentry * d_root = (struct dentry *) READ_KERN(root_path.dentry);
-    // #pragma unroll
-    for (int i = 0; i < 20; i++) {
-        loop_count += 1;
-        struct dentry * tmp_dentry = READ_KERN(d_root->d_parent);
-        buf_t *string_tmp = get_buf(STRING_BUF_IDX);
-        if (string_tmp == NULL)
-            return 0;
-        struct qstr dname = BPF_CORE_READ(tmp_dentry, d_name);
-        bpf_probe_read_kernel((char *)&string_tmp->buf, PATH_MAX, dname.name);
-        if (tmp_dentry == d_root) {
-            // bpf_printk("[vmainfo] count:%d yes tmp:%p name:%s\n", loop_count, tmp_dentry, string_tmp->buf);
-            break;
-        } else {
-            bpf_printk("[vmainfo] count:%d name:%s\n", loop_count, string_tmp->buf);
-            // mystrcpy(string_p, total_len, (char *)&string_tmp->buf);
-            // size_t str_len = strlen((char *)&string_tmp->buf);
-            // total_len += str_len;
-            d_root = tmp_dentry;
-        }
-    }
+    // int loop_count = 0;
+    // struct path root_path = READ_KERN(file->f_path);
+    // struct dentry * d_root = (struct dentry *) READ_KERN(root_path.dentry);
+    // // #pragma unroll
+    // for (int i = 0; i < 20; i++) {
+    //     loop_count += 1;
+    //     struct dentry * tmp_dentry = READ_KERN(d_root->d_parent);
+    //     buf_t *string_tmp = get_buf(STRING_BUF_IDX);
+    //     if (string_tmp == NULL)
+    //         return 0;
+    //     struct qstr dname = BPF_CORE_READ(tmp_dentry, d_name);
+    //     bpf_probe_read_kernel((char *)&string_tmp->buf, PATH_MAX, dname.name);
+    //     if (tmp_dentry == d_root) {
+    //         // bpf_printk("[vmainfo] count:%d yes tmp:%p name:%s\n", loop_count, tmp_dentry, string_tmp->buf);
+    //         break;
+    //     } else {
+    //         bpf_printk("[vmainfo] count:%d name:%s\n", loop_count, string_tmp->buf);
+    //         // mystrcpy(string_p, total_len, (char *)&string_tmp->buf);
+    //         // size_t str_len = strlen((char *)&string_tmp->buf);
+    //         // total_len += str_len;
+    //         d_root = tmp_dentry;
+    //     }
+    // }
     // bpf_printk("[vmainfo] count:%d path:%s\n", loop_count, string_p->buf);
 
     return 0;

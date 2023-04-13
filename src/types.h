@@ -40,4 +40,20 @@ typedef struct vma_arg {
     u64 vma_ptr;
 } vma_arg_t;
 
+#define MAX_CACHED_PATH_SIZE 64
+
+typedef u32 __kernel_dev_t;
+
+typedef __kernel_dev_t dev_t;
+
+typedef struct file_info {
+    union {
+        char pathname[MAX_CACHED_PATH_SIZE];
+        char *pathname_p;
+    };
+    dev_t device;
+    unsigned long inode;
+    u64 ctime;
+} file_info_t;
+
 #endif

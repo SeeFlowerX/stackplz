@@ -17,7 +17,7 @@ static void get_file_path(struct file *file, char *buf, size_t size)
 	bpf_probe_read_kernel(buf, size, dname.name);
 }
 
-size_t strlen(const char *s)
+size_t mystrlen(const char *s)
 {
 	// 写法一
 	// int len;
