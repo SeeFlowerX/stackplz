@@ -1,4 +1,7 @@
-#include "common.h"
+#ifndef __STACKPLZ_FILESYSTEM_H__
+#define __STACKPLZ_FILESYSTEM_H__
+
+#include "common/common.h"
 #include "memory.h"
 
 // static __always_inline file_info_t get_file_info(struct file *file)
@@ -170,3 +173,5 @@ static __always_inline void *get_dentry_path_str(struct dentry *dentry)
 
     return &string_p->buf[buf_off];
 }
+
+#endif

@@ -1,20 +1,38 @@
-#ifndef __TRACEE_TYPES_H__
-#define __TRACEE_TYPES_H__
+#ifndef __STACKPLZ_TYPES_H__
+#define __STACKPLZ_TYPES_H__
 
-#include "consts.h"
+#include "common/consts.h"
+
+typedef struct common_filter {
+    u32 uid;
+    u32 pid;
+    u32 tid;
+} common_filter_t;
+
+typedef struct args {
+    unsigned long args[6];
+} args_t;
+
+typedef struct config_entry {
+    u32 stackplz_pid;
+} config_entry_t;
 
 enum event_id_e
 {
     SECURITY_FILE_MPROTECT = 456,
-    SU_FILE_ACCESS
+    SU_FILE_ACCESS,
+    VMA_SET_PAGE_PROT
 };
 
 typedef struct event_context {
     u32 eventid;
-    u32 pid;
+    u32 host_tid;
+    u32 host_pid;
     u32 tid;
-    u64 timestamp_ns;
+    u32 pid;
+    u32 uid;
     char comm[TASK_COMM_LEN];
+    u64 ts;
     u8 argnum;
 } event_context_t;
 
@@ -22,11 +40,13 @@ typedef struct event_data {
     event_context_t context;
     char args[ARGS_BUF_SIZE];
     u32 buf_off;
+    struct task_struct *task;
 } event_data_t;
 
 #define MAX_EVENT_SIZE sizeof(event_context_t) + ARGS_BUF_SIZE
 
 typedef struct program_data {
+    config_entry_t *config;
     event_data_t *event;
     void *ctx;
 } program_data_t;

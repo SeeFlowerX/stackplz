@@ -1,8 +1,16 @@
-#include "common.h"
-#include "buffer.h"
-#include "filesystem.h"
-#include "soinfo_android12_r3.h"
+#include "utils.h"
+// #include "soinfo_android12_r3.h"
 #include <stdbool.h>
+
+#include "types.h"
+#include "common/arguments.h"
+#include "common/buffer.h"
+#include "common/common.h"
+#include "common/consts.h"
+#include "common/context.h"
+#include "common/filesystem.h"
+#include "common/filtering.h"
+#include "common/probes.h"
 
 // uprobe hook
 
@@ -648,94 +656,94 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
 
 // <-----------------------soinfo------------------------->
 
-struct soinfo_data_t {
-    u32 pid;
-    u32 tid;
-    char comm[16];
-    u64 base_addr;
-    u64 lib_size;
-    char realpath[256];
-};
+// struct soinfo_data_t {
+//     u32 pid;
+//     u32 tid;
+//     char comm[16];
+//     u64 base_addr;
+//     u64 lib_size;
+//     char realpath[256];
+// };
 
-struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-} soinfo_events SEC(".maps");
+// struct {
+//     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+// } soinfo_events SEC(".maps");
 
-struct {
-    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __type(key, u32);
-    __type(value, struct soinfo_data_t);
-    __uint(max_entries, 1);
-} soinfo_data_buffer_heap SEC(".maps");
+// struct {
+//     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+//     __type(key, u32);
+//     __type(value, struct soinfo_data_t);
+//     __uint(max_entries, 1);
+// } soinfo_data_buffer_heap SEC(".maps");
 
-// soinfo过滤配置
-struct soinfo_filter_t {
-    u32 uid;
-    u32 pid;
-    u32 is_32bit;
-};
+// // soinfo过滤配置
+// struct soinfo_filter_t {
+//     u32 uid;
+//     u32 pid;
+//     u32 is_32bit;
+// };
 
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u32);
-    __type(value, struct soinfo_filter_t);
-    __uint(max_entries, 1);
-} soinfo_filter SEC(".maps");
+// struct {
+//     __uint(type, BPF_MAP_TYPE_HASH);
+//     __type(key, u32);
+//     __type(value, struct soinfo_filter_t);
+//     __uint(max_entries, 1);
+// } soinfo_filter SEC(".maps");
 
-SEC("uprobe/soinfo")
-int probe_soinfo(struct pt_regs* ctx) {
-    u32 filter_key = 0;
-    struct soinfo_filter_t* filter = bpf_map_lookup_elem(&soinfo_filter, &filter_key);
-    if (filter == NULL) {
-        return 0;
-    }
+// SEC("uprobe/soinfo")
+// int probe_soinfo(struct pt_regs* ctx) {
+//     u32 filter_key = 0;
+//     struct soinfo_filter_t* filter = bpf_map_lookup_elem(&soinfo_filter, &filter_key);
+//     if (filter == NULL) {
+//         return 0;
+//     }
 
-    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
-    if (filter->uid != 0 && filter->uid != uid) {
-        return 0;
-    }
+//     u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
+//     if (filter->uid != 0 && filter->uid != uid) {
+//         return 0;
+//     }
 
-    u64 current_pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = current_pid_tgid >> 32;
-    u32 tid = current_pid_tgid & 0xffffffff;
-    if (filter->pid != 0 && filter->pid != pid) {
-        return 0;
-    }
+//     u64 current_pid_tgid = bpf_get_current_pid_tgid();
+//     u32 pid = current_pid_tgid >> 32;
+//     u32 tid = current_pid_tgid & 0xffffffff;
+//     if (filter->pid != 0 && filter->pid != pid) {
+//         return 0;
+//     }
 
-    u32 zero = 0;
-    struct soinfo_data_t* event = bpf_map_lookup_elem(&soinfo_data_buffer_heap, &zero);
-    if (event == NULL) {
-        return 0;
-    }
+//     u32 zero = 0;
+//     struct soinfo_data_t* event = bpf_map_lookup_elem(&soinfo_data_buffer_heap, &zero);
+//     if (event == NULL) {
+//         return 0;
+//     }
 
-    event->pid = pid;
-    event->tid = tid;
+//     event->pid = pid;
+//     event->tid = tid;
 
-    bpf_get_current_comm(&event->comm, sizeof(event->comm));
+//     bpf_get_current_comm(&event->comm, sizeof(event->comm));
 
-    // 直接 bpf_probe_read_user 读取soinfo数据 解析工作交给前端
+//     // 直接 bpf_probe_read_user 读取soinfo数据 解析工作交给前端
     
-    bpf_probe_read_user(&event->base_addr, sizeof(event->base_addr), (void*)(ctx->regs[0] + SOINFO_BASE));
-    bpf_probe_read_user(&event->lib_size, sizeof(event->lib_size), (void*)(ctx->regs[0] + SOINFO_SIZE));
+//     bpf_probe_read_user(&event->base_addr, sizeof(event->base_addr), (void*)(ctx->regs[0] + SOINFO_BASE));
+//     bpf_probe_read_user(&event->lib_size, sizeof(event->lib_size), (void*)(ctx->regs[0] + SOINFO_SIZE));
 
-    u8 tiny_flag = 0;
-    u64 so_path_ptr = ctx->regs[0] + SOINFO_REALPATH;
-    bpf_probe_read_user(&tiny_flag, sizeof(tiny_flag), (void*)so_path_ptr);
-    u64 addr = 0x0;
-    if ((tiny_flag & 1) != 0) {
-        bpf_probe_read_user(&addr, sizeof(addr), (void*)(so_path_ptr + 2 * 8));
-    } else {
-        addr = so_path_ptr + 1;
-    }
-    __builtin_memset(&event->realpath, 0, sizeof(event->realpath));
-    bpf_probe_read_user_str(event->realpath, sizeof(event->realpath), (void*)addr);
+//     u8 tiny_flag = 0;
+//     u64 so_path_ptr = ctx->regs[0] + SOINFO_REALPATH;
+//     bpf_probe_read_user(&tiny_flag, sizeof(tiny_flag), (void*)so_path_ptr);
+//     u64 addr = 0x0;
+//     if ((tiny_flag & 1) != 0) {
+//         bpf_probe_read_user(&addr, sizeof(addr), (void*)(so_path_ptr + 2 * 8));
+//     } else {
+//         addr = so_path_ptr + 1;
+//     }
+//     __builtin_memset(&event->realpath, 0, sizeof(event->realpath));
+//     bpf_probe_read_user_str(event->realpath, sizeof(event->realpath), (void*)addr);
 
-    long status = bpf_perf_event_output(ctx, &soinfo_events, BPF_F_CURRENT_CPU, event, sizeof(struct soinfo_data_t));
+//     long status = bpf_perf_event_output(ctx, &soinfo_events, BPF_F_CURRENT_CPU, event, sizeof(struct soinfo_data_t));
 
-    // char perf_msg_fmt[] = "[soinfo], x0:0x%lx pid:%d status:%d\n";
-    // bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), ctx->regs[0], pid, status);
-    return 0;
-}
+//     // char perf_msg_fmt[] = "[soinfo], x0:0x%lx pid:%d status:%d\n";
+//     // bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), ctx->regs[0], pid, status);
+//     return 0;
+// }
 
 // vmainfo过滤配置
 struct vmainfo_filter_t {
@@ -750,61 +758,82 @@ struct {
     __uint(max_entries, 1);
 } vmainfo_filter SEC(".maps");
 
+SEC("kprobe/vma_set_page_prot")
+TRACE_ENT_FUNC(vma_set_page_prot, VMA_SET_PAGE_PROT)
 
 // 如果要获取权限信息 还是配合 kretprobe 一起做比较合适？
-SEC("kprobe/vma_set_page_prot")
-int BPF_KPROBE(kprobe_vma_set_page_prot) {
-    u32 filter_key = 0;
-    struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
-    if (filter == NULL) {
-        return 0;
-    }
+// SEC("kprobe/vma_set_page_prot")
+// int BPF_KPROBE(kprobe_vma_set_page_prot) {
 
-    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
-    if (filter->uid != 0 && filter->uid != uid) {
-        return 0;
-    }
+//     u32 filter_key = 0;
+//     struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
+//     if (filter == NULL) {
+//         return 0;
+//     }
 
-    u64 current_pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = current_pid_tgid >> 32;
-    u32 tid = current_pid_tgid & 0xffffffff;
-    if (filter->pid != 0 && filter->pid != pid) {
-        return 0;
-    }
+//     u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
+//     if (filter->uid != 0 && filter->uid != uid) {
+//         return 0;
+//     }
 
-    vma_arg_t vma_arg = {};
-    vma_arg.vma_ptr = PT_REGS_PARM1(ctx);
-    bpf_map_update_elem(&vma_map, &current_pid_tgid, &vma_arg, BPF_ANY);
+//     u64 current_pid_tgid = bpf_get_current_pid_tgid();
+//     u32 pid = current_pid_tgid >> 32;
+//     u32 tid = current_pid_tgid & 0xffffffff;
+//     if (filter->pid != 0 && filter->pid != pid) {
+//         return 0;
+//     }
 
-    return 0;
-}
+//     vma_arg_t vma_arg = {};
+//     vma_arg.vma_ptr = PT_REGS_PARM1(ctx);
+//     bpf_map_update_elem(&vma_map, &current_pid_tgid, &vma_arg, BPF_ANY);
+
+//     return 0;
+// }
 
 SEC("kretprobe/vma_set_page_prot")
-int BPF_KRETPROBE(kretprobe_vma_set_page_prot) {
-    u32 filter_key = 0;
-    struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
-    if (filter == NULL) {
+int BPF_KRETPROBE(trace_ret_vma_set_page_prot) {
+
+    program_data_t p = {};
+    if (!init_program_data(&p, ctx))
+        return 0;
+
+    // if (!should_submit(VMA_SET_PAGE_PROT, p.event))
+    //     return 0;
+                                                                        \
+    if (!should_trace(&p))                                                                     \
+        return 0;
+
+    args_t saved_args;
+    if (load_args(&saved_args, VMA_SET_PAGE_PROT) != 0) {
+        // missed entry or not traced
         return 0;
     }
 
-    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
-    if (filter->uid != 0 && filter->uid != uid) {
-        return 0;
-    }
+    // u32 filter_key = 0;
+    // struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
+    // if (filter == NULL) {
+    //     return 0;
+    // }
 
-    u64 current_pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = current_pid_tgid >> 32;
-    u32 tid = current_pid_tgid & 0xffffffff;
-    if (filter->pid != 0 && filter->pid != pid) {
-        return 0;
-    }
+    // u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
+    // if (filter->uid != 0 && filter->uid != uid) {
+    //     return 0;
+    // }
 
-    vma_arg_t* vma_arg = (vma_arg_t *) bpf_map_lookup_elem(&vma_map, &current_pid_tgid);
-    if (vma_arg == NULL) {
-        return 0;
-    }
+    // u64 current_pid_tgid = bpf_get_current_pid_tgid();
+    // u32 pid = current_pid_tgid >> 32;
+    // u32 tid = current_pid_tgid & 0xffffffff;
+    // if (filter->pid != 0 && filter->pid != pid) {
+    //     return 0;
+    // }
+
+    // vma_arg_t* vma_arg = (vma_arg_t *) bpf_map_lookup_elem(&vma_map, &current_pid_tgid);
+    // if (vma_arg == NULL) {
+    //     return 0;
+    // }
     // struct vm_area_struct* vma = (struct vm_area_struct *) READ_KERN(vma_arg->vma_ptr);
-    struct vm_area_struct* vma = (struct vm_area_struct *) vma_arg->vma_ptr;
+    // struct vm_area_struct* vma = (struct vm_area_struct *) vma_arg->vma_ptr;
+    struct vm_area_struct* vma = (struct vm_area_struct *) saved_args.args[0];
     struct file *file = (struct file *) READ_KERN(vma->vm_file);
     
     void *file_path = get_path_str(&file->f_path);
@@ -823,7 +852,7 @@ int BPF_KRETPROBE(kretprobe_vma_set_page_prot) {
     bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
     size_t str_len = mystrlen((char *)&string_p->buf);
     if (str_len > 0) {
-        bpf_printk("[vmainfo] pid:%d len:%d path:%s\n", pid, str_len, string_p->buf);
+        bpf_printk("[vmainfo] pid:%d len:%d path:%s\n", &p.event->context.pid, str_len, string_p->buf);
     }
     // bpf_printk("[vmainfo] pid:%d len:%d name:%s\n", pid, str_len, dentry_path);
     // int total_len = str_len;

@@ -3,7 +3,7 @@
 
 // #include "vmlinux_510.h"
 // #include "bpf_helpers.h"
-#include "common.h"
+#include "common/common.h"
 
 static __always_inline struct mm_struct *get_mm_from_task(struct task_struct *task)
 {
