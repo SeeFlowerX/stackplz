@@ -654,97 +654,6 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     return 0;
 }
 
-// <-----------------------soinfo------------------------->
-
-// struct soinfo_data_t {
-//     u32 pid;
-//     u32 tid;
-//     char comm[16];
-//     u64 base_addr;
-//     u64 lib_size;
-//     char realpath[256];
-// };
-
-// struct {
-//     __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-// } soinfo_events SEC(".maps");
-
-// struct {
-//     __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-//     __type(key, u32);
-//     __type(value, struct soinfo_data_t);
-//     __uint(max_entries, 1);
-// } soinfo_data_buffer_heap SEC(".maps");
-
-// // soinfo过滤配置
-// struct soinfo_filter_t {
-//     u32 uid;
-//     u32 pid;
-//     u32 is_32bit;
-// };
-
-// struct {
-//     __uint(type, BPF_MAP_TYPE_HASH);
-//     __type(key, u32);
-//     __type(value, struct soinfo_filter_t);
-//     __uint(max_entries, 1);
-// } soinfo_filter SEC(".maps");
-
-// SEC("uprobe/soinfo")
-// int probe_soinfo(struct pt_regs* ctx) {
-//     u32 filter_key = 0;
-//     struct soinfo_filter_t* filter = bpf_map_lookup_elem(&soinfo_filter, &filter_key);
-//     if (filter == NULL) {
-//         return 0;
-//     }
-
-//     u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
-//     if (filter->uid != 0 && filter->uid != uid) {
-//         return 0;
-//     }
-
-//     u64 current_pid_tgid = bpf_get_current_pid_tgid();
-//     u32 pid = current_pid_tgid >> 32;
-//     u32 tid = current_pid_tgid & 0xffffffff;
-//     if (filter->pid != 0 && filter->pid != pid) {
-//         return 0;
-//     }
-
-//     u32 zero = 0;
-//     struct soinfo_data_t* event = bpf_map_lookup_elem(&soinfo_data_buffer_heap, &zero);
-//     if (event == NULL) {
-//         return 0;
-//     }
-
-//     event->pid = pid;
-//     event->tid = tid;
-
-//     bpf_get_current_comm(&event->comm, sizeof(event->comm));
-
-//     // 直接 bpf_probe_read_user 读取soinfo数据 解析工作交给前端
-    
-//     bpf_probe_read_user(&event->base_addr, sizeof(event->base_addr), (void*)(ctx->regs[0] + SOINFO_BASE));
-//     bpf_probe_read_user(&event->lib_size, sizeof(event->lib_size), (void*)(ctx->regs[0] + SOINFO_SIZE));
-
-//     u8 tiny_flag = 0;
-//     u64 so_path_ptr = ctx->regs[0] + SOINFO_REALPATH;
-//     bpf_probe_read_user(&tiny_flag, sizeof(tiny_flag), (void*)so_path_ptr);
-//     u64 addr = 0x0;
-//     if ((tiny_flag & 1) != 0) {
-//         bpf_probe_read_user(&addr, sizeof(addr), (void*)(so_path_ptr + 2 * 8));
-//     } else {
-//         addr = so_path_ptr + 1;
-//     }
-//     __builtin_memset(&event->realpath, 0, sizeof(event->realpath));
-//     bpf_probe_read_user_str(event->realpath, sizeof(event->realpath), (void*)addr);
-
-//     long status = bpf_perf_event_output(ctx, &soinfo_events, BPF_F_CURRENT_CPU, event, sizeof(struct soinfo_data_t));
-
-//     // char perf_msg_fmt[] = "[soinfo], x0:0x%lx pid:%d status:%d\n";
-//     // bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), ctx->regs[0], pid, status);
-//     return 0;
-// }
-
 // vmainfo过滤配置
 struct vmainfo_filter_t {
     u32 uid;
@@ -760,35 +669,6 @@ struct {
 
 SEC("kprobe/vma_set_page_prot")
 TRACE_ENT_FUNC(vma_set_page_prot, VMA_SET_PAGE_PROT)
-
-// 如果要获取权限信息 还是配合 kretprobe 一起做比较合适？
-// SEC("kprobe/vma_set_page_prot")
-// int BPF_KPROBE(kprobe_vma_set_page_prot) {
-
-//     u32 filter_key = 0;
-//     struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
-//     if (filter == NULL) {
-//         return 0;
-//     }
-
-//     u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
-//     if (filter->uid != 0 && filter->uid != uid) {
-//         return 0;
-//     }
-
-//     u64 current_pid_tgid = bpf_get_current_pid_tgid();
-//     u32 pid = current_pid_tgid >> 32;
-//     u32 tid = current_pid_tgid & 0xffffffff;
-//     if (filter->pid != 0 && filter->pid != pid) {
-//         return 0;
-//     }
-
-//     vma_arg_t vma_arg = {};
-//     vma_arg.vma_ptr = PT_REGS_PARM1(ctx);
-//     bpf_map_update_elem(&vma_map, &current_pid_tgid, &vma_arg, BPF_ANY);
-
-//     return 0;
-// }
 
 SEC("kretprobe/vma_set_page_prot")
 int BPF_KRETPROBE(trace_ret_vma_set_page_prot) {
@@ -806,81 +686,22 @@ int BPF_KRETPROBE(trace_ret_vma_set_page_prot) {
         return 0;
     }
 
-    // u32 filter_key = 0;
-    // struct vmainfo_filter_t* filter = bpf_map_lookup_elem(&vmainfo_filter, &filter_key);
-    // if (filter == NULL) {
-    //     return 0;
-    // }
-
-    // u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
-    // if (filter->uid != 0 && filter->uid != uid) {
-    //     return 0;
-    // }
-
-    // u64 current_pid_tgid = bpf_get_current_pid_tgid();
-    // u32 pid = current_pid_tgid >> 32;
-    // u32 tid = current_pid_tgid & 0xffffffff;
-    // if (filter->pid != 0 && filter->pid != pid) {
-    //     return 0;
-    // }
-
-    // vma_arg_t* vma_arg = (vma_arg_t *) bpf_map_lookup_elem(&vma_map, &current_pid_tgid);
-    // if (vma_arg == NULL) {
-    //     return 0;
-    // }
-    // struct vm_area_struct* vma = (struct vm_area_struct *) READ_KERN(vma_arg->vma_ptr);
-    // struct vm_area_struct* vma = (struct vm_area_struct *) vma_arg->vma_ptr;
     struct vm_area_struct* vma = (struct vm_area_struct *) saved_args.args[0];
     struct file *file = (struct file *) READ_KERN(vma->vm_file);
     
     void *file_path = get_path_str(&file->f_path);
     
-    // struct path root_path = READ_KERN(file->f_path);
-    // struct dentry* dentry = (struct dentry *) READ_KERN(root_path.dentry);
-    // void *dentry_path = get_dentry_path_str(dentry);
-
     // Get per-cpu string buffer
     buf_t *string_p = get_buf(STRING_BUF_IDX);
     if (string_p == NULL)
         return 0;
 
-    // get_file_path(file, (char *)&string_p->buf, PATH_MAX);
-    // bpf_probe_read_str(&string_p->buf, PATH_MAX, dentry_path);
     bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
     size_t str_len = mystrlen((char *)&string_p->buf);
     if (str_len > 0) {
         bpf_printk("[vmainfo] ctx_pid:%d ctx_tid:%d\n", p.event->context.pid, p.event->context.tid);
         bpf_printk("[vmainfo] len:%d path:%s\n", str_len, string_p->buf);
     }
-    // bpf_printk("[vmainfo] pid:%d len:%d name:%s\n", pid, str_len, dentry_path);
-    // int total_len = str_len;
-
-	// struct dentry *d_root = BPF_CORE_READ(file, f_path.dentry);
-
-    // int loop_count = 0;
-    // struct path root_path = READ_KERN(file->f_path);
-    // struct dentry * d_root = (struct dentry *) READ_KERN(root_path.dentry);
-    // // #pragma unroll
-    // for (int i = 0; i < 20; i++) {
-    //     loop_count += 1;
-    //     struct dentry * tmp_dentry = READ_KERN(d_root->d_parent);
-    //     buf_t *string_tmp = get_buf(STRING_BUF_IDX);
-    //     if (string_tmp == NULL)
-    //         return 0;
-    //     struct qstr dname = BPF_CORE_READ(tmp_dentry, d_name);
-    //     bpf_probe_read_kernel((char *)&string_tmp->buf, PATH_MAX, dname.name);
-    //     if (tmp_dentry == d_root) {
-    //         // bpf_printk("[vmainfo] count:%d yes tmp:%p name:%s\n", loop_count, tmp_dentry, string_tmp->buf);
-    //         break;
-    //     } else {
-    //         bpf_printk("[vmainfo] count:%d name:%s\n", loop_count, string_tmp->buf);
-    //         // mystrcpy(string_p, total_len, (char *)&string_tmp->buf);
-    //         // size_t str_len = strlen((char *)&string_tmp->buf);
-    //         // total_len += str_len;
-    //         d_root = tmp_dentry;
-    //     }
-    // }
-    // bpf_printk("[vmainfo] count:%d path:%s\n", loop_count, string_p->buf);
 
     return 0;
 }
