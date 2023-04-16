@@ -335,7 +335,7 @@ func (this *Module) PrePare(em *ebpf.Map, b []byte) (event event.IEventStruct, e
 //         // Save to cache
 //         this.child.Dispatcher(e)
 //     case event.EventTypeSoInfoData:
-//         this.logger.Println(e.(*event.SoInfoEvent).String())
+//         this.logger.Println(e.(*event.CommonEvent).String())
 //     case event.EventTypeSysCallData:
 //         this.logger.Println(e.(*event.SyscallEvent).String())
 //     }

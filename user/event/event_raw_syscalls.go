@@ -154,13 +154,13 @@ func (this *SyscallEvent) String() string {
 }
 
 func (this *SyscallEvent) ParseLRV1() (string, error) {
-    return maps_helper.GetOffset(this.Pid, this.lr), nil
+    return maps_helper.GetOffset(this.event_context.Pid, this.lr), nil
 }
 
 func (this *SyscallEvent) ParseLR() (string, error) {
     info := "UNKNOWN"
     // 直接读取maps信息 计算lr在什么地方 定位syscall调用也就一目了然了
-    filename := fmt.Sprintf("/proc/%d/maps", this.Pid)
+    filename := fmt.Sprintf("/proc/%d/maps", this.event_context.Pid)
     content, err := ioutil.ReadFile(filename)
     if err != nil {
         return info, fmt.Errorf("Error when opening file:%v", err)
@@ -191,13 +191,13 @@ func (this *SyscallEvent) ParseLR() (string, error) {
 func (this *SyscallEvent) ParsePCV1() (string, error) {
     // 通过在启动阶段收集到的库基址信息来计算偏移
     // 由于每个进程的加载情况不一样 这里要传递 pid
-    return maps_helper.GetOffset(this.Pid, this.pc), nil
+    return maps_helper.GetOffset(this.event_context.Pid, this.pc), nil
 }
 
 func (this *SyscallEvent) ParsePC() (string, error) {
     info := "UNKNOWN"
     // 直接读取maps信息 计算pc在什么地方 定位syscall调用也就一目了然了
-    filename := fmt.Sprintf("/proc/%d/maps", this.Pid)
+    filename := fmt.Sprintf("/proc/%d/maps", this.event_context.Pid)
     content, err := ioutil.ReadFile(filename)
     if err != nil {
         return info, fmt.Errorf("Error when opening file:%v", err)

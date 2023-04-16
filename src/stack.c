@@ -691,17 +691,27 @@ int BPF_KRETPROBE(trace_ret_vma_set_page_prot) {
     
     void *file_path = get_path_str(&file->f_path);
     
-    // Get per-cpu string buffer
-    buf_t *string_p = get_buf(STRING_BUF_IDX);
-    if (string_p == NULL)
-        return 0;
+    // // // Get per-cpu string buffer
+    // buf_t *string_p = get_buf(STRING_BUF_IDX);
+    // if (string_p == NULL)
+    //     return 0;
 
-    bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
-    size_t str_len = mystrlen((char *)&string_p->buf);
-    if (str_len > 0) {
-        bpf_printk("[vmainfo] ctx_pid:%d ctx_tid:%d\n", p.event->context.pid, p.event->context.tid);
-        bpf_printk("[vmainfo] len:%d path:%s\n", str_len, string_p->buf);
-    }
+    // bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
+    // size_t str_len = mystrlen((char *)&string_p->buf);
+    // if (str_len > 0) {
+    //     // bpf_printk("[vmainfo] ctx_pid:%d ctx_tid:%d\n", p.event->context.pid, p.event->context.tid);
+    //     bpf_printk("[vmainfo] ctx_pid:%d len:%d path:%s\n", p.event->context.pid, str_len, string_p->buf);
+    // }
+    unsigned long vm_flags = get_vma_flags(vma);
+    unsigned long vm_start = get_vma_start(vma);
+    unsigned long vm_end = get_vma_end(vma);
+    save_str_to_buf(p.event, file_path, 0);
+    save_to_submit_buf(p.event, &vm_flags, sizeof(int), 1);
+    save_to_submit_buf(p.event, &vm_start, sizeof(int), 2);
+    save_to_submit_buf(p.event, &vm_end, sizeof(int), 3);
+    bpf_printk("[vmainfo] flags:%d 0x%lx-0x%lx\n", vm_flags, vm_start, vm_end);
+
+    events_perf_submit(&p, VMA_SET_PAGE_PROT);
 
     return 0;
 }

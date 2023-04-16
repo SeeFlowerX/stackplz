@@ -62,6 +62,9 @@ func (this *MStack) setupManager() error {
         EbpfFuncName:     "trace_ret_vma_set_page_prot",
         AttachToFuncName: "vma_set_page_prot",
     }
+    common_events_map := &manager.Map{
+        Name: "events",
+    }
     // soinfo hook 配置
     // soinfo_probe := &manager.Probe{
     //     Section:          "uprobe/soinfo",
@@ -76,8 +79,7 @@ func (this *MStack) setupManager() error {
     // 不管是 stack 还是 syscall 都需要用到 soinfo
     probes = append(probes, vmainfo_kprobe)
     probes = append(probes, vmainfo_kretprobe)
-    // probes = append(probes, soinfo_probe)
-    // maps = append(maps, soinfo_events_map)
+    maps = append(maps, common_events_map)
 
     // stack hook 配置
     stack_probe := &manager.Probe{
@@ -315,6 +317,15 @@ func (this *MStack) updateFilter() (err error) {
 }
 
 func (this *MStack) initDecodeFun() error {
+
+    CommonEventsMap, err := this.FindMap("events")
+    if err != nil {
+        return err
+    }
+    this.eventMaps = append(this.eventMaps, CommonEventsMap)
+    commonEvent := &event.CommonEvent{}
+    this.eventFuncMaps[CommonEventsMap] = commonEvent
+
     // 根据设置添加 map 不然即使不使用的map也会创建缓冲区
     if this.mconf.StackUprobeConf.IsEnable() {
         StackEventsMap, err := this.FindMap("stack_events")
@@ -325,14 +336,6 @@ func (this *MStack) initDecodeFun() error {
         uprobestackEvent := &event.UprobeStackEvent{}
         this.eventFuncMaps[StackEventsMap] = uprobestackEvent
     }
-
-    // SoInfoEventsMap, err := this.FindMap("soinfo_events")
-    // if err != nil {
-    //     return err
-    // }
-    // this.eventMaps = append(this.eventMaps, SoInfoEventsMap)
-    // soinfoEvent := &event.SoInfoEvent{}
-    // this.eventFuncMaps[SoInfoEventsMap] = soinfoEvent
 
     if this.mconf.SysCallConf.IsEnable() {
         SysCallEventsMap, err := this.FindMap("syscall_events")

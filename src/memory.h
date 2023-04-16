@@ -35,6 +35,16 @@ static __always_inline unsigned long get_vma_flags(struct vm_area_struct *vma)
     return READ_KERN(vma->vm_flags);
 }
 
+static __always_inline unsigned long get_vma_start(struct vm_area_struct *vma)
+{
+    return READ_KERN(vma->vm_start);
+}
+
+static __always_inline unsigned long get_vma_end(struct vm_area_struct *vma)
+{
+    return READ_KERN(vma->vm_end);
+}
+
 static inline struct mount *real_mount(struct vfsmount *mnt)
 {
     return container_of(mnt, struct mount, mnt);

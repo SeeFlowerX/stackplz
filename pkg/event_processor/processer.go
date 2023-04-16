@@ -45,11 +45,12 @@ func (this *EventProcessor) Serve() {
 
 func (this *EventProcessor) dispatch(e event.IEventStruct) {
 	//this.logger.Printf("event ID:%s", e.GetUUID())
-	err := e.PrePareUUID()
+	err := e.ParseContext()
 	if err != nil {
-		this.logger.Printf("PrePareUUID failed:%d", e.EventType())
+		this.logger.Printf("ParseContext failed:%d", e.EventType())
 		return
 	}
+	this.logger.Printf("event_context:%s", e.GetEventContext().String())
 	var uuid string = e.GetUUID()
 	found, eWorker := this.getWorkerByUUID(uuid)
 	if !found {

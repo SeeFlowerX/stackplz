@@ -32,9 +32,10 @@ typedef struct event_context {
     u32 tid;
     u32 pid;
     u32 uid;
-    char comm[TASK_COMM_LEN];
     u64 ts;
+    char comm[TASK_COMM_LEN];
     u8 argnum;
+    u8 padding;
 } event_context_t;
 
 typedef struct event_data {

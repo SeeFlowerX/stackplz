@@ -67,7 +67,7 @@ func (this *UprobeStackEvent) Decode() (err error) {
         }
         // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
-        stack_str := C.get_stack(C.int(this.Pid), C.ulong(((1 << 33) - 1)), unsafe.Pointer(&this.UnwindBuffer))
+        stack_str := C.get_stack(C.int(this.event_context.Pid), C.ulong(((1 << 33) - 1)), unsafe.Pointer(&this.UnwindBuffer))
         // char* 转到 go 的 string
         this.Stackinfo = C.GoString(stack_str)
     } else if this.show_regs {
@@ -128,7 +128,7 @@ func (this *UprobeStackEvent) String() string {
         }
         if has_reg_value {
             // 读取maps 获取偏移信息
-            info, err := util.ParseReg(this.Pid, regvalue)
+            info, err := util.ParseReg(this.event_context.Pid, regvalue)
             if err != nil {
                 fmt.Printf("ParseReg for %s=0x%x failed", this.RegName, regvalue)
             } else {
