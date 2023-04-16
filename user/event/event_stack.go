@@ -17,7 +17,7 @@ import (
 
 type UprobeStackEvent struct {
     event_type EventType
-    KEvent
+    CommonEvent
     mconf *config.ModuleConfig
     // Pid       uint32
     // Tid       uint32

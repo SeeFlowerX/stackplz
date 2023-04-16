@@ -85,7 +85,7 @@ func (this *eventWorker) parserEvent(e event.IEventStruct) {
 
 	err := e.Decode()
 	if err != nil {
-		this.processor.GetLogger().Printf("Decode failed UUID:%s", this.UUID)
+		this.processor.GetLogger().Printf("Decode failed UUID:%s, err:%v", this.UUID, err)
 	}
 	// 打印输出
 	this.processor.GetLogger().Printf(e.String())

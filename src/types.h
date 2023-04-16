@@ -26,16 +26,16 @@ enum event_id_e
 };
 
 typedef struct event_context {
+    u64 ts;
     u32 eventid;
     u32 host_tid;
     u32 host_pid;
     u32 tid;
     u32 pid;
     u32 uid;
-    u64 ts;
     char comm[TASK_COMM_LEN];
     u8 argnum;
-    u8 padding;
+    char padding[7];
 } event_context_t;
 
 typedef struct event_data {

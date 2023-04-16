@@ -32,7 +32,7 @@ func (this *Timespec) String() string {
 
 type SyscallEvent struct {
     event_type EventType
-    KEvent
+    CommonEvent
     UUID         string
     Stackinfo    string
     RegsBuffer   RegsBuf

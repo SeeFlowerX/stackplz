@@ -50,7 +50,9 @@ func (this *EventProcessor) dispatch(e event.IEventStruct) {
 		this.logger.Printf("ParseContext failed:%d", e.EventType())
 		return
 	}
-	this.logger.Printf("event_context:%s", e.GetEventContext().String())
+	// this.logger.Printf("event_context:%s", e.GetEventContext().String())
+	// 在做完初步解析之后 这里应该根据 eventid 转换为更明确的 event
+	e = e.ToChildEvent()
 	var uuid string = e.GetUUID()
 	found, eWorker := this.getWorkerByUUID(uuid)
 	if !found {

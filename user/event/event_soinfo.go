@@ -106,16 +106,16 @@ var maps_helper = NewMapsHelper()
 var maps_lock sync.Mutex
 
 type EventContext struct {
+    Ts      uint64
     EventId uint32
     HostTid uint32
     HostPid uint32
     Tid     uint32
     Pid     uint32
     Uid     uint32
-    Ts      uint64
     Comm    [16]byte
     Argnum  uint8
-    Padding uint8
+    Padding [7]byte
 }
 
 func (this *EventContext) String() (s string) {
@@ -127,10 +127,10 @@ func (this *EventContext) String() (s string) {
     return s
 }
 
-type CommonEvent struct {
-    event_type EventType
-    KEvent
-}
+// type CommonEvent struct {
+//     event_type EventType
+//     CommonEvent
+// }
 
 type VmaInfoEvent struct {
     CommonEvent
@@ -140,53 +140,29 @@ type VmaInfoEvent struct {
     vm_end    uint32
 }
 
-// type SoInfoEvent struct {
-//     event_type EventType
-//     KEvent
-//     mconf *config.ModuleConfig
-//     // Pid      uint32
-//     // Tid      uint32
-//     Comm     [16]byte
-//     BaseAddr uint64
-//     LibSize  uint64
-//     LibPath  string
-//     RealPath [256]byte
-//     UUID     string
+// func (this *CommonEvent) Decode() (err error) {
+//     panic("CommonEvent.Decode() not implemented yet")
 // }
 
-func (this *CommonEvent) Decode() (err error) {
-    // switch this.event_context.EventId {
-    // case VMA_SET_PAGE_PROT:
-    //     {
-    //         this.SetChild((this).(*VmaInfoEvent))
-    //     }
-    // default:
-    //     {
-    //         panic("CommonEvent.Decode() not implemented yet")
-    //     }
-    // }
-    // return this.child.Decode()
-    panic("CommonEvent.Decode() not implemented yet")
-}
-
-func (this *CommonEvent) ReadIndex() (index uint32, err error) {
+func (this *VmaInfoEvent) ReadIndex() (index uint8, err error) {
     err = binary.Read(this.buf, binary.LittleEndian, &index)
     return index, err
 }
 
-func (this *CommonEvent) SetChild(event IEventStruct) {
-    this.child = event
-}
-
 func (this *VmaInfoEvent) Decode() (err error) {
     // 根据 event_context->Argnum 可用于检查传递的参数个数是否匹配
-    var size int
+    var size uint32
+
+    // fmt.Print(util.HexDumpGreen(this.payload))
 
     // read file_path, type: string
     this.ReadIndex()
+    // index0, err := this.ReadIndex()
+    // fmt.Printf("[VmaInfoEvent] index0:%d err:%v\n", index0, err)
     if err = binary.Read(this.buf, binary.LittleEndian, &size); err != nil {
         return err
     }
+    // fmt.Printf("[VmaInfoEvent] file_path size:%v\n", size)
     var tmp = make([]byte, size)
     if err = binary.Read(this.buf, binary.LittleEndian, &tmp); err != nil {
         return err
@@ -195,17 +171,24 @@ func (this *VmaInfoEvent) Decode() (err error) {
 
     // read vm_flags, type: uint32
     this.ReadIndex()
+    // index1, err := this.ReadIndex()
+    // fmt.Printf("[VmaInfoEvent] index1:%d err:%v\n", index1, err)
     if err = binary.Read(this.buf, binary.LittleEndian, &this.vm_flags); err != nil {
         return err
     }
     this.ReadIndex()
+    // index2, err := this.ReadIndex()
+    // fmt.Printf("[VmaInfoEvent] index2:%d err:%v\n", index2, err)
     if err = binary.Read(this.buf, binary.LittleEndian, &this.vm_start); err != nil {
         return err
     }
     this.ReadIndex()
+    // index3, err := this.ReadIndex()
+    // fmt.Printf("[VmaInfoEvent] index3:%d err:%v\n", index3, err)
     if err = binary.Read(this.buf, binary.LittleEndian, &this.vm_end); err != nil {
         return err
     }
+    // fmt.Printf("VmaInfoEvent read left:%d\n", this.buf.Len())
     // maps_helper.UpdateMaps(this)
     return nil
 }
@@ -213,33 +196,6 @@ func (this *VmaInfoEvent) Decode() (err error) {
 func (this *VmaInfoEvent) String() string {
     var s string
     s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.event_context.Comm[:]))
-    s += fmt.Sprintf(", Base:0x%x Size:0x%x Perm:0x%x %s", this.vm_start, this.vm_end, this.vm_flags, this.file_path)
-    return s
-}
-
-func (this *CommonEvent) Clone() IEventStruct {
-    event := new(CommonEvent)
-    event.event_type = EventTypeSoInfoData
-    return event
-}
-
-func (this *CommonEvent) EventType() EventType {
-    return this.event_type
-}
-
-// func (this *CommonEvent) GetUUID() string {
-//     return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
-// }
-
-func (this *CommonEvent) String() string {
-    switch this.event_context.EventId {
-    case VMA_SET_PAGE_PROT:
-        {
-            return (this.child).(*VmaInfoEvent).String()
-        }
-    }
-    var s string
-    s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.event_context.Comm[:]))
-    // s += fmt.Sprintf(", Base:0x%x Size:0x%x %s", this.BaseAddr, this.LibSize, this.LibPath)
+    s += fmt.Sprintf(", Base:0x%x Size:0x%x Perm:0x%x <%s>", this.vm_start, this.vm_end, this.vm_flags, this.file_path)
     return s
 }
