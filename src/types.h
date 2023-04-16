@@ -7,6 +7,7 @@ typedef struct common_filter {
     u32 uid;
     u32 pid;
     u32 tid;
+    u32 is_32bit;
 } common_filter_t;
 
 typedef struct args {

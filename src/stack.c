@@ -797,10 +797,7 @@ int BPF_KRETPROBE(trace_ret_vma_set_page_prot) {
     if (!init_program_data(&p, ctx))
         return 0;
 
-    // if (!should_submit(VMA_SET_PAGE_PROT, p.event))
-    //     return 0;
-                                                                        \
-    if (!should_trace(&p))                                                                     \
+    if (!should_trace(&p))
         return 0;
 
     args_t saved_args;
@@ -852,7 +849,8 @@ int BPF_KRETPROBE(trace_ret_vma_set_page_prot) {
     bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
     size_t str_len = mystrlen((char *)&string_p->buf);
     if (str_len > 0) {
-        bpf_printk("[vmainfo] pid:%d len:%d path:%s\n", &p.event->context.pid, str_len, string_p->buf);
+        bpf_printk("[vmainfo] ctx_pid:%d ctx_tid:%d\n", p.event->context.pid, p.event->context.tid);
+        bpf_printk("[vmainfo] len:%d path:%s\n", str_len, string_p->buf);
     }
     // bpf_printk("[vmainfo] pid:%d len:%d name:%s\n", pid, str_len, dentry_path);
     // int total_len = str_len;

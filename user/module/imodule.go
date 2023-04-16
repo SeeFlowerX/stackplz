@@ -194,14 +194,14 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 
     map_value := reflect.ValueOf(em)
     map_name := map_value.Elem().FieldByName("name")
-    IsSoInfoMap := map_name.String() == "soinfo_events"
+    // IsSoInfoMap := map_name.String() == "soinfo_events"
 
     var rd *perf.Reader
     var err error
     // soinfo 不管如何都不需要或者堆栈和寄存器信息
-    if IsSoInfoMap {
-        rd, err = perf.NewReader(em, os.Getpagesize()*512, false, false)
-    } else if this.sconf.RegName != "" {
+    // if IsSoInfoMap {
+    // rd, err = perf.NewReader(em, os.Getpagesize()*512, false, false)
+    if this.sconf.RegName != "" {
         rd, err = perf.NewReader(em, this.getPerCPUBuffer(), this.sconf.UnwindStack, true)
     } else {
         rd, err = perf.NewReader(em, this.getPerCPUBuffer(), this.sconf.UnwindStack, this.sconf.ShowRegs)
@@ -224,9 +224,9 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 
             var record perf.Record
             // 根据预设的flag决定以何种方式读取事件数据
-            if IsSoInfoMap {
-                record, err = rd.Read()
-            } else if this.sconf.UnwindStack {
+            // if IsSoInfoMap {
+            //     record, err = rd.Read()
+            if this.sconf.UnwindStack {
                 record, err = rd.ReadWithUnwindStack()
             } else if this.sconf.ShowRegs {
                 record, err = rd.ReadWithRegs()

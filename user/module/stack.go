@@ -54,12 +54,12 @@ func (this *MStack) setupManager() error {
     // soinfo hook 配置
     vmainfo_kprobe := &manager.Probe{
         Section:          "kprobe/vma_set_page_prot",
-        EbpfFuncName:     "kprobe_vma_set_page_prot",
+        EbpfFuncName:     "trace_vma_set_page_prot",
         AttachToFuncName: "vma_set_page_prot",
     }
     vmainfo_kretprobe := &manager.Probe{
         Section:          "kretprobe/vma_set_page_prot",
-        EbpfFuncName:     "kretprobe_vma_set_page_prot",
+        EbpfFuncName:     "trace_ret_vma_set_page_prot",
         AttachToFuncName: "vma_set_page_prot",
     }
     // soinfo hook 配置
@@ -216,63 +216,104 @@ func (this *MStack) start() error {
     return nil
 }
 
-func (this *MStack) updateFilter() error {
-    // uprobe hook soinfo 的过滤配置更新
-    filterMap, err := this.FindMap("soinfo_filter")
-    if err != nil {
-        return err
-    }
+func (this *MStack) updateFilter() (err error) {
     filter_key := 0
-    filter := this.mconf.GetSoInfoFilter()
-    filterMap.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
 
-    vfilterMap, err := this.FindMap("vmainfo_filter")
+    // 更新 config_map 用作基础的过滤 比如排除 stackplz 自身相关的调用
+    config_map, err := this.FindMap("config_map")
     if err != nil {
         return err
     }
-    vfilter_key := 0
-    vfilter := this.mconf.GetVmaInfoFilter()
-    err = vfilterMap.Update(unsafe.Pointer(&vfilter_key), unsafe.Pointer(&vfilter), ebpf.UpdateAny)
+    filter := this.mconf.GetConfigMap()
+    err = config_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
     if err != nil {
-        fmt.Println("eeeeeeeeeeeeeeeeeee")
         return err
     }
-    fmt.Println("oooooooooooo")
+    if this.sconf.Debug {
+        this.logger.Printf("update config_map success")
+    }
+
+    // 更新 common_filter
+    common_filter, err := this.FindMap("common_filter")
+    if err != nil {
+        return err
+    }
+    err = common_filter.Update(unsafe.Pointer(&filter_key), this.mconf.GetCommonFilter(), ebpf.UpdateAny)
+    if err != nil {
+        return err
+    }
+    if this.sconf.Debug {
+        this.logger.Printf("update common_filter success")
+    }
+
+    vmainfo_filter, err := this.FindMap("vmainfo_filter")
+    if err != nil {
+        return err
+    }
+    err = vmainfo_filter.Update(unsafe.Pointer(&filter_key), this.mconf.GetVmaInfoFilter(), ebpf.UpdateAny)
+    if err != nil {
+        return err
+    }
+    if this.sconf.Debug {
+        this.logger.Printf("update vmainfo_filter success")
+    }
+
     // uprobe hook stack 的过滤配置更新
     if this.mconf.StackUprobeConf.IsEnable() {
-        filterMap, err = this.FindMap("uprobe_stack_filter")
+        uprobe_stack_filter, err := this.FindMap("uprobe_stack_filter")
         if err != nil {
             return err
         }
-        filter_key := 0
         filter := this.mconf.GetUprobeStackFilter()
-        filterMap.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
-        this.logger.Println("hook for stack, update uprobe_stack_filter end")
+        err = uprobe_stack_filter.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
+        if this.sconf.Debug {
+            this.logger.Printf("hook for stack, update uprobe_stack_filter success")
+        }
     }
 
     // raw syscall hook 的过滤配置更新
     if this.mconf.SysCallConf.IsEnable() {
-        filterMap, err = this.FindMap("arg_mask_map")
+        arg_mask_map, err := this.FindMap("arg_mask_map")
         if err != nil {
             return err
         }
-        this.mconf.SysCallConf.UpdateArgMaskMap(filterMap)
-        filterMap, err = this.FindMap("arg_ret_mask_map")
+        err = this.mconf.SysCallConf.UpdateArgMaskMap(arg_mask_map)
         if err != nil {
             return err
         }
-        this.mconf.SysCallConf.UpdateArgRetMaskMap(filterMap)
-        filterMap, err = this.FindMap("syscall_filter")
+        if this.sconf.Debug {
+            this.logger.Printf("update arg_mask_map success")
+        }
+        arg_ret_mask_map, err := this.FindMap("arg_ret_mask_map")
         if err != nil {
             return err
         }
-        filter_key := 0
+        err = this.mconf.SysCallConf.UpdateArgRetMaskMap(arg_ret_mask_map)
+        if err != nil {
+            return err
+        }
+        if this.sconf.Debug {
+            this.logger.Printf("update arg_ret_mask_map success")
+        }
+        syscall_filter, err := this.FindMap("syscall_filter")
+        if err != nil {
+            return err
+        }
         filter := this.mconf.GetSyscallFilter()
-        filterMap.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
-        this.logger.Println("hook for syscall, update syscall_filter end")
+        err = syscall_filter.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
+        if this.sconf.Debug {
+            this.logger.Printf("hook for syscall, update syscall_filter success")
+        }
     }
     return nil
 }
+
 func (this *MStack) initDecodeFun() error {
     // 根据设置添加 map 不然即使不使用的map也会创建缓冲区
     if this.mconf.StackUprobeConf.IsEnable() {
@@ -285,13 +326,13 @@ func (this *MStack) initDecodeFun() error {
         this.eventFuncMaps[StackEventsMap] = uprobestackEvent
     }
 
-    SoInfoEventsMap, err := this.FindMap("soinfo_events")
-    if err != nil {
-        return err
-    }
-    this.eventMaps = append(this.eventMaps, SoInfoEventsMap)
-    soinfoEvent := &event.SoInfoEvent{}
-    this.eventFuncMaps[SoInfoEventsMap] = soinfoEvent
+    // SoInfoEventsMap, err := this.FindMap("soinfo_events")
+    // if err != nil {
+    //     return err
+    // }
+    // this.eventMaps = append(this.eventMaps, SoInfoEventsMap)
+    // soinfoEvent := &event.SoInfoEvent{}
+    // this.eventFuncMaps[SoInfoEventsMap] = soinfoEvent
 
     if this.mconf.SysCallConf.IsEnable() {
         SysCallEventsMap, err := this.FindMap("syscall_events")

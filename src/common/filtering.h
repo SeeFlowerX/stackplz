@@ -32,6 +32,9 @@ static __always_inline u64 should_trace(program_data_t *p)
         return 0;
     }
 
+    // 有时候希望对一些额外的进程进行追踪或者屏蔽
+    // 还需要提供 uid pid tid 的黑白名单列表以达成更加精细的追踪
+
     return 1;
 }
 

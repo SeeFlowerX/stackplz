@@ -34,6 +34,10 @@ type GlobalConfig struct {
 
 func NewGlobalConfig() *GlobalConfig {
     config := &GlobalConfig{}
+    // 默认设置 目的是为了后续允许加入对 uid=0 也就是 root 进程的追踪
+    config.Uid = MAGIC_UID
+    config.Pid = MAGIC_PID
+    config.Tid = MAGIC_TID
     return config
 }
 

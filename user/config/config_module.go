@@ -3,6 +3,7 @@ package config
 import (
     "encoding/json"
     "fmt"
+    "log"
     "os"
     "stackplz/assets"
     "stackplz/pkg/util"
@@ -204,8 +205,15 @@ type ModuleConfig struct {
     Config            string
 }
 
-func NewModuleConfig() *ModuleConfig {
+func NewModuleConfig(logger *log.Logger) *ModuleConfig {
     config := &ModuleConfig{}
+    // 首先把 logger 设置上
+    config.SetLogger(logger)
+    // 虽然会通过全局配置进程覆盖 但是还是做好在初始化时就进行默认赋值
+    config.Uid = MAGIC_UID
+    config.Pid = MAGIC_PID
+    config.Tid = MAGIC_TID
+    // fmt.Printf("uid:%d pid:%d tid:%d", config.Uid, config.Pid, config.Tid)
     return config
 }
 
@@ -253,20 +261,33 @@ func (this *ModuleConfig) SetPidsBlacklist(pids_blacklist string) error {
     return nil
 }
 
-func (this *ModuleConfig) GetSoInfoFilter() SoInfoFilter {
-    filter := SoInfoFilter{}
+func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
+    filter := CommonFilter{}
     filter.uid = this.Uid
     filter.pid = this.Pid
+    filter.tid = this.Tid
     // 暂时硬编码为 false
     filter.is_32bit = 0
-    return filter
+    if this.Debug {
+        this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit)
+    }
+    return unsafe.Pointer(&filter)
 }
 
-func (this *ModuleConfig) GetVmaInfoFilter() VmaInfoFilter {
+func (this *ModuleConfig) GetConfigMap() ConfigMap {
+    config := ConfigMap{}
+    config.stackplz_pid = uint32(os.Getpid())
+    if this.Debug {
+        this.logger.Printf("ConfigMap{stackplz_pid=%d}", config.stackplz_pid)
+    }
+    return config
+}
+
+func (this *ModuleConfig) GetVmaInfoFilter() unsafe.Pointer {
     filter := VmaInfoFilter{}
     filter.uid = this.Uid
     filter.pid = this.Pid
-    return filter
+    return unsafe.Pointer(&filter)
 }
 
 func (this *ModuleConfig) GetUprobeStackFilter() UprobeStackFilter {

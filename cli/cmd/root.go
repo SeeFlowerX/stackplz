@@ -33,12 +33,12 @@ import (
 var logger = log.New(os.Stdout, "", 0)
 var exec_path = "/data/local/tmp"
 var gconfig = config.NewGlobalConfig()
-var mconfig = config.NewModuleConfig()
+var mconfig = config.NewModuleConfig(logger)
 
 var rootCmd = &cobra.Command{
     Use:               "stackplz",
-    Short:             "打印堆栈信息，目前仅支持4.14内核，出现崩溃请升级系统版本",
-    Long:              "基于eBPF的堆栈追踪工具，指定目标程序的uid、库文件路径和符号即可\n\t./stackplz stack --uid 10235 --stack --symbol open",
+    Short:             "打印堆栈信息，目前仅支持5.10+内核，出现崩溃请升级系统版本",
+    Long:              "基于eBPF的堆栈追踪工具，指定目标程序的uid、库文件路径和符号即可\n\t./stackplz --name com.sfx.ebpf --syscall openat -o tmp.log --debug",
     PersistentPreRunE: persistentPreRunEFunc,
     Run:               runFunc,
 }
@@ -126,7 +126,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         if err != nil {
             return err
         }
-    } else if gconfig.Uid != 0 {
+    } else if gconfig.Uid != config.MAGIC_UID {
         err = parseByUid(gconfig.Uid)
         if err != nil {
             return err
@@ -393,9 +393,9 @@ func init() {
     rootCmd.PersistentFlags().BoolVar(&gconfig.Prepare, "prepare", false, "prepare libs")
     // 过滤设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.Name, "name", "n", "", "must set uid or package name")
-    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Uid, "uid", "u", 0, "must set uid or package name")
-    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Pid, "pid", "p", 0, "add pid to filter")
-    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Tid, "tid", "t", 0, "add tid to filter")
+    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Uid, "uid", "u", config.MAGIC_UID, "must set uid or package name")
+    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Pid, "pid", "p", config.MAGIC_PID, "add pid to filter")
+    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Tid, "tid", "t", config.MAGIC_TID, "add tid to filter")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定

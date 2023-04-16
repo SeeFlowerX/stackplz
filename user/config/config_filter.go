@@ -25,10 +25,15 @@ type SyscallFilter struct {
 	syscall_blacklist      [MAX_COUNT]uint32
 }
 
-type SoInfoFilter struct {
+type CommonFilter struct {
 	uid      uint32
 	pid      uint32
+	tid      uint32
 	is_32bit uint32
+}
+
+type ConfigMap struct {
+	stackplz_pid uint32
 }
 
 type VmaInfoFilter struct {
