@@ -52,15 +52,15 @@ func (this *MStack) setupManager() error {
     probes := []*manager.Probe{}
 
     // soinfo hook 配置
-    vmainfo_kprobe := &manager.Probe{
-        Section:          "kprobe/vma_set_page_prot",
-        EbpfFuncName:     "trace_vma_set_page_prot",
-        AttachToFuncName: "vma_set_page_prot",
-    }
+    // vmainfo_kprobe := &manager.Probe{
+    //     Section:          "kprobe/do_mmap",
+    //     EbpfFuncName:     "trace_do_mmap",
+    //     AttachToFuncName: "do_mmap",
+    // }
     vmainfo_kretprobe := &manager.Probe{
-        Section:          "kretprobe/vma_set_page_prot",
-        EbpfFuncName:     "trace_ret_vma_set_page_prot",
-        AttachToFuncName: "vma_set_page_prot",
+        Section:          "kretprobe/do_mmap",
+        EbpfFuncName:     "trace_ret_do_mmap",
+        AttachToFuncName: "do_mmap",
     }
     common_events_map := &manager.Map{
         Name: "events",
@@ -77,7 +77,7 @@ func (this *MStack) setupManager() error {
     //     Name: "soinfo_events",
     // }
     // 不管是 stack 还是 syscall 都需要用到 soinfo
-    probes = append(probes, vmainfo_kprobe)
+    // probes = append(probes, vmainfo_kprobe)
     probes = append(probes, vmainfo_kretprobe)
     maps = append(maps, common_events_map)
 

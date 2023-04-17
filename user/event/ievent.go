@@ -1,11 +1,11 @@
 package event
 
 import (
-    "bytes"
-    "encoding/binary"
-    "fmt"
-    "stackplz/pkg/util"
-    "stackplz/user/config"
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"stackplz/pkg/util"
+	"stackplz/user/config"
 )
 
 type EventType uint8
@@ -19,7 +19,7 @@ const (
 const (
     SECURITY_FILE_MPROTECT uint32 = iota + 456
     SU_FILE_ACCESS
-    VMA_SET_PAGE_PROT
+    DO_MMAP
 )
 
 type IEventStruct interface {
@@ -114,10 +114,10 @@ func (this *CommonEvent) ToChildEvent() IEventStruct {
     // 根据具体的 eventid 转换到具体的 event
     var event IEventStruct
     switch this.event_context.EventId {
-    case VMA_SET_PAGE_PROT:
+    case DO_MMAP:
         {
             event = &VmaInfoEvent{*this, "", 0, 0, 0}
-            // fmt.Printf("yes, VMA_SET_PAGE_PROT %d\n", this.event_context.EventId)
+            // fmt.Printf("yes, DO_MMAP %d\n", this.event_context.EventId)
         }
     default:
         {

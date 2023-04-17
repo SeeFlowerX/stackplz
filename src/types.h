@@ -22,7 +22,8 @@ enum event_id_e
 {
     SECURITY_FILE_MPROTECT = 456,
     SU_FILE_ACCESS,
-    VMA_SET_PAGE_PROT
+    DO_MMAP,
+    DO_MUNMAP
 };
 
 typedef struct event_context {
