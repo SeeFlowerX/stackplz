@@ -718,48 +718,43 @@ int BPF_KRETPROBE(trace_ret_do_mmap) {
 
     struct mm_struct *mm = (struct mm_struct *) READ_KERN(p.event->task->mm);
     struct vm_area_struct* vma = (struct vm_area_struct *) READ_KERN(mm->mmap);
-    struct loop_ctx_t loop_ctx = {};
-    loop_ctx.ctx = ctx;
-    loop_ctx.vma = vma;
-    u32 nr_loops = 10;
-    bpf_loop(nr_loops, loop_vma, &loop_ctx, 0);
     
-    // for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 20; i++) {
 
-    //     program_data_t loop_p = {};
-    //     if (!init_program_data(&loop_p, ctx))
-    //         return 0;
+        program_data_t loop_p = {};
+        if (!init_program_data(&loop_p, ctx))
+            return 0;
 
-    //     // struct vm_area_struct* vma = (struct vm_area_struct *) BPF_CORE_READ(p.event, task->mm->mmap);
+        // struct vm_area_struct* vma = (struct vm_area_struct *) BPF_CORE_READ(p.event, task->mm->mmap);
 
-    //     // struct vm_area_struct* vma = (struct vm_area_struct *) saved_args.args[0];
-    //     struct file *file = (struct file *) READ_KERN(vma->vm_file);
+        // struct vm_area_struct* vma = (struct vm_area_struct *) saved_args.args[0];
+        struct file *file = (struct file *) READ_KERN(vma->vm_file);
         
-    //     void *file_path = get_path_str(&file->f_path);
+        void *file_path = get_path_str(&file->f_path);
         
-    //     // // // Get per-cpu string buffer
-    //     // buf_t *string_p = get_buf(STRING_BUF_IDX);
-    //     // if (string_p == NULL)
-    //     //     return 0;
+        // // // Get per-cpu string buffer
+        // buf_t *string_p = get_buf(STRING_BUF_IDX);
+        // if (string_p == NULL)
+        //     return 0;
 
-    //     // bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
-    //     // size_t str_len = mystrlen((char *)&string_p->buf);
-    //     // if (str_len > 0) {
-    //     //     // bpf_printk("[vmainfo] ctx_pid:%d ctx_tid:%d\n", p.event->context.pid, p.event->context.tid);
-    //     //     bpf_printk("[vmainfo] ctx_pid:%d len:%d path:%s\n", p.event->context.pid, str_len, string_p->buf);
-    //     // }
-    //     unsigned long vm_flags = get_vma_flags(vma);
-    //     unsigned long vm_start = get_vma_start(vma);
-    //     unsigned long vm_end = get_vma_end(vma);
-    //     save_str_to_buf(loop_p.event, file_path, 0);
-    //     save_to_submit_buf(loop_p.event, &vm_flags, sizeof(int), 1);
-    //     save_to_submit_buf(loop_p.event, &vm_start, sizeof(int), 2);
-    //     save_to_submit_buf(loop_p.event, &vm_end, sizeof(int), 3);
-    //     bpf_printk("[vmainfo] i:%d 0x%lx-0x%lx\n", i, vm_start, vm_end);
+        // bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
+        // size_t str_len = mystrlen((char *)&string_p->buf);
+        // if (str_len > 0) {
+        //     // bpf_printk("[vmainfo] ctx_pid:%d ctx_tid:%d\n", p.event->context.pid, p.event->context.tid);
+        //     bpf_printk("[vmainfo] ctx_pid:%d len:%d path:%s\n", p.event->context.pid, str_len, string_p->buf);
+        // }
+        unsigned long vm_flags = get_vma_flags(vma);
+        unsigned long vm_start = get_vma_start(vma);
+        unsigned long vm_end = get_vma_end(vma);
+        save_str_to_buf(loop_p.event, file_path, 0);
+        save_to_submit_buf(loop_p.event, &vm_flags, sizeof(int), 1);
+        save_to_submit_buf(loop_p.event, &vm_start, sizeof(int), 2);
+        save_to_submit_buf(loop_p.event, &vm_end, sizeof(int), 3);
+        bpf_printk("[vmainfo] i:%d 0x%lx-0x%lx\n", i, vm_start, vm_end);
 
-    //     events_perf_submit(&loop_p, DO_MMAP);
-    //     vma = (struct vm_area_struct *) READ_KERN(vma->vm_next);
-    // }
+        events_perf_submit(&loop_p, DO_MMAP);
+        vma = (struct vm_area_struct *) READ_KERN(vma->vm_next);
+    }
 
 
     return 0;
