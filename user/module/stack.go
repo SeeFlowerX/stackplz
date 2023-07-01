@@ -36,6 +36,7 @@ func (this *MStack) Init(ctx context.Context, logger *log.Logger, conf config.IC
     if ok {
         this.mconf = p
     }
+    fmt.Println("...", this.mconf.Uid, this.mconf.Pid, this.mconf.Tid)
     this.Module.SetChild(this)
     this.eventMaps = make([]*ebpf.Map, 0, 2)
     this.eventFuncMaps = make(map[*ebpf.Map]event.IEventStruct)
@@ -52,16 +53,16 @@ func (this *MStack) setupManager() error {
     probes := []*manager.Probe{}
 
     // soinfo hook 配置
-    // vmainfo_kprobe := &manager.Probe{
-    //     Section:          "kprobe/do_mmap",
-    //     EbpfFuncName:     "trace_do_mmap",
+    vmainfo_kprobe := &manager.Probe{
+        Section:          "kretprobe/perf_event_mmap_output",
+        EbpfFuncName:     "trace_perf_event_mmap_output",
+        AttachToFuncName: "perf_event_mmap",
+    }
+    // vmainfo_kretprobe := &manager.Probe{
+    //     Section:          "kretprobe/do_mmap",
+    //     EbpfFuncName:     "trace_ret_do_mmap",
     //     AttachToFuncName: "do_mmap",
     // }
-    vmainfo_kretprobe := &manager.Probe{
-        Section:          "kretprobe/do_mmap",
-        EbpfFuncName:     "trace_ret_do_mmap",
-        AttachToFuncName: "do_mmap",
-    }
     common_events_map := &manager.Map{
         Name: "events",
     }
@@ -77,8 +78,8 @@ func (this *MStack) setupManager() error {
     //     Name: "soinfo_events",
     // }
     // 不管是 stack 还是 syscall 都需要用到 soinfo
-    // probes = append(probes, vmainfo_kprobe)
-    probes = append(probes, vmainfo_kretprobe)
+    probes = append(probes, vmainfo_kprobe)
+    // probes = append(probes, vmainfo_kretprobe)
     maps = append(maps, common_events_map)
 
     // stack hook 配置

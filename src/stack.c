@@ -64,15 +64,15 @@ int probe_stack(struct pt_regs* ctx) {
     u32 pid = current_pid_tgid >> 32;
     u32 tid = current_pid_tgid & 0xffffffff;
     // uid 过滤
-    if (filter->uid != 0 && filter->uid != uid) {
+    if (filter->uid != MAGIC_UID && filter->uid != uid) {
         return 0;
     }
     // pid 过滤
-    if (filter->pid != 0 && filter->pid != pid) {
+    if (filter->pid != MAGIC_PID && filter->pid != pid) {
         return 0;
     }
     // tid 过滤
-    if (filter->tid != 0 && filter->tid != tid) {
+    if (filter->tid != MAGIC_TID && filter->tid != tid) {
         return 0;
     }
 
@@ -259,11 +259,11 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     u32 pid = current_pid_tgid >> 32;
     u32 tid = current_pid_tgid & 0xffffffff;
     // uid 过滤
-    if (filter->uid != 0 && filter->uid != uid) {
+    if (filter->uid != MAGIC_UID && filter->uid != uid) {
         return 0;
     }
     // pid 过滤
-    if (filter->pid != 0 && filter->pid != pid) {
+    if (filter->pid != MAGIC_PID && filter->pid != pid) {
         return 0;
     }
     // tid 黑名单过滤
@@ -503,11 +503,11 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     u32 pid = current_pid_tgid >> 32;
     u32 tid = current_pid_tgid & 0xffffffff;
     // uid过滤
-    if (filter->uid != 0 && filter->uid != uid) {
+    if (filter->uid != MAGIC_UID && filter->uid != uid) {
         return 0;
     }
     // pid过滤
-    if (filter->pid != 0 && filter->pid != pid) {
+    if (filter->pid != MAGIC_PID && filter->pid != pid) {
         return 0;
     }
     // tid 黑名单过滤
@@ -659,30 +659,30 @@ struct loop_ctx_t {
     struct vm_area_struct *vma;
 };
 
-static int loop_vma(u32 index, void *data)
-{
-    struct loop_ctx_t *loop_ctx = data;
-    struct vm_area_struct * vma = loop_ctx->vma;
-    program_data_t p = {};
-    if (!init_program_data(&p, loop_ctx->ctx))
-        return 1;
+// static int loop_vma(u32 index, void *data)
+// {
+//     struct loop_ctx_t *loop_ctx = data;
+//     struct vm_area_struct * vma = loop_ctx->vma;
+//     program_data_t p = {};
+//     if (!init_program_data(&p, loop_ctx->ctx))
+//         return 1;
 
-    struct file *file = (struct file *) READ_KERN(vma->vm_file);
-    void *file_path = get_path_str(&file->f_path);
-    unsigned long vm_flags = get_vma_flags(vma);
-    unsigned long vm_start = get_vma_start(vma);
-    unsigned long vm_end = get_vma_end(vma);
-    save_str_to_buf(p.event, file_path, 0);
-    save_to_submit_buf(p.event, &vm_flags, sizeof(int), 1);
-    save_to_submit_buf(p.event, &vm_start, sizeof(int), 2);
-    save_to_submit_buf(p.event, &vm_end, sizeof(int), 3);
-    events_perf_submit(&p, DO_MMAP);
-    loop_ctx->vma = (struct vm_area_struct *) READ_KERN(vma->vm_next);
-    if (loop_ctx->vma == 0) {
-        return 1;
-    }
-    return 0;
-}
+//     struct file *file = (struct file *) READ_KERN(vma->vm_file);
+//     void *file_path = get_path_str(&file->f_path);
+//     unsigned long vm_flags = get_vma_flags(vma);
+//     unsigned long vm_start = get_vma_start(vma);
+//     unsigned long vm_end = get_vma_end(vma);
+//     save_str_to_buf(p.event, file_path, 0);
+//     save_to_submit_buf(p.event, &vm_flags, sizeof(int), 1);
+//     save_to_submit_buf(p.event, &vm_start, sizeof(int), 2);
+//     save_to_submit_buf(p.event, &vm_end, sizeof(int), 3);
+//     events_perf_submit(&p, DO_MMAP);
+//     loop_ctx->vma = (struct vm_area_struct *) READ_KERN(vma->vm_next);
+//     if (loop_ctx->vma == 0) {
+//         return 1;
+//     }
+//     return 0;
+// }
 
 // vmainfo过滤配置
 struct vmainfo_filter_t {
@@ -700,8 +700,8 @@ struct {
 // SEC("kprobe/do_mmap")
 // TRACE_ENT_FUNC(do_mmap, DO_MMAP)
 
-SEC("kretprobe/do_mmap")
-int BPF_KRETPROBE(trace_ret_do_mmap) {
+SEC("kretprobe/perf_event_mmap_output")
+int trace_perf_event_mmap_output(struct pt_regs *ctx) {
 
     program_data_t p = {};
     if (!init_program_data(&p, ctx))
@@ -710,51 +710,55 @@ int BPF_KRETPROBE(trace_ret_do_mmap) {
     if (!should_trace(&p))
         return 0;
 
-    // args_t saved_args;
-    // if (load_args(&saved_args, DO_MMAP) != 0) {
-    //     // missed entry or not traced
-    //     return 0;
-    // }
-
-    struct mm_struct *mm = (struct mm_struct *) READ_KERN(p.event->task->mm);
-    struct vm_area_struct* vma = (struct vm_area_struct *) READ_KERN(mm->mmap);
-    
-    for (int i = 0; i < 20; i++) {
-
-        program_data_t loop_p = {};
-        if (!init_program_data(&loop_p, ctx))
-            return 0;
-
-        // struct vm_area_struct* vma = (struct vm_area_struct *) BPF_CORE_READ(p.event, task->mm->mmap);
-
-        // struct vm_area_struct* vma = (struct vm_area_struct *) saved_args.args[0];
-        struct file *file = (struct file *) READ_KERN(vma->vm_file);
-        
-        void *file_path = get_path_str(&file->f_path);
-        
-        // // // Get per-cpu string buffer
-        // buf_t *string_p = get_buf(STRING_BUF_IDX);
-        // if (string_p == NULL)
-        //     return 0;
-
-        // bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
-        // size_t str_len = mystrlen((char *)&string_p->buf);
-        // if (str_len > 0) {
-        //     // bpf_printk("[vmainfo] ctx_pid:%d ctx_tid:%d\n", p.event->context.pid, p.event->context.tid);
-        //     bpf_printk("[vmainfo] ctx_pid:%d len:%d path:%s\n", p.event->context.pid, str_len, string_p->buf);
-        // }
-        unsigned long vm_flags = get_vma_flags(vma);
-        unsigned long vm_start = get_vma_start(vma);
-        unsigned long vm_end = get_vma_end(vma);
-        save_str_to_buf(loop_p.event, file_path, 0);
-        save_to_submit_buf(loop_p.event, &vm_flags, sizeof(int), 1);
-        save_to_submit_buf(loop_p.event, &vm_start, sizeof(int), 2);
-        save_to_submit_buf(loop_p.event, &vm_end, sizeof(int), 3);
-        bpf_printk("[vmainfo] i:%d 0x%lx-0x%lx\n", i, vm_start, vm_end);
-
-        events_perf_submit(&loop_p, DO_MMAP);
-        vma = (struct vm_area_struct *) READ_KERN(vma->vm_next);
+    bpf_printk("[cccc] p_event  ccc\n");
+    args_t saved_args;
+    if (load_args(&saved_args, DO_MMAP) != 0) {
+        // missed entry or not traced
+        return 0;
     }
+
+    
+    bpf_printk("[perf_event_mmap_output] p_event:0x%lx p_data:0x%lx\n", saved_args.args[0], saved_args.args[1]);
+
+    // struct mm_struct *mm = (struct mm_struct *) READ_KERN(p.event->task->mm);
+    // struct vm_area_struct* vma = (struct vm_area_struct *) READ_KERN(mm->mmap);
+    
+    // for (int i = 0; i < 20; i++) {
+
+    //     program_data_t loop_p = {};
+    //     if (!init_program_data(&loop_p, ctx))
+    //         return 0;
+
+    //     // struct vm_area_struct* vma = (struct vm_area_struct *) BPF_CORE_READ(p.event, task->mm->mmap);
+
+    //     // struct vm_area_struct* vma = (struct vm_area_struct *) saved_args.args[0];
+    //     struct file *file = (struct file *) READ_KERN(vma->vm_file);
+        
+    //     void *file_path = get_path_str(&file->f_path);
+        
+    //     // // // Get per-cpu string buffer
+    //     // buf_t *string_p = get_buf(STRING_BUF_IDX);
+    //     // if (string_p == NULL)
+    //     //     return 0;
+
+    //     // bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
+    //     // size_t str_len = mystrlen((char *)&string_p->buf);
+    //     // if (str_len > 0) {
+    //     //     // bpf_printk("[vmainfo] ctx_pid:%d ctx_tid:%d\n", p.event->context.pid, p.event->context.tid);
+    //     //     bpf_printk("[vmainfo] ctx_pid:%d len:%d path:%s\n", p.event->context.pid, str_len, string_p->buf);
+    //     // }
+    //     unsigned long vm_flags = get_vma_flags(vma);
+    //     unsigned long vm_start = get_vma_start(vma);
+    //     unsigned long vm_end = get_vma_end(vma);
+    //     save_str_to_buf(loop_p.event, file_path, 0);
+    //     save_to_submit_buf(loop_p.event, &vm_flags, sizeof(int), 1);
+    //     save_to_submit_buf(loop_p.event, &vm_start, sizeof(int), 2);
+    //     save_to_submit_buf(loop_p.event, &vm_end, sizeof(int), 3);
+    //     bpf_printk("[vmainfo] i:%d 0x%lx-0x%lx\n", i, vm_start, vm_end);
+
+    //     events_perf_submit(&loop_p, DO_MMAP);
+    //     vma = (struct vm_area_struct *) READ_KERN(vma->vm_next);
+    // }
 
 
     return 0;

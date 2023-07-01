@@ -1,11 +1,11 @@
 package event
 
 import (
-	"bytes"
-	"encoding/binary"
-	"fmt"
-	"stackplz/pkg/util"
-	"stackplz/user/config"
+    "bytes"
+    "encoding/binary"
+    "fmt"
+    "stackplz/pkg/util"
+    "stackplz/user/config"
 )
 
 type EventType uint8
@@ -123,7 +123,7 @@ func (this *CommonEvent) ToChildEvent() IEventStruct {
         {
             // panic(fmt.Sprintf("ToChildEvent failed!!! %s", this.event_context.String()))
             event = this
-            // fmt.Printf("yes, CommonEvent %d\n", this.event_context.EventId)
+            fmt.Printf("yes, CommonEvent %d\n", this.event_context.EventId)
         }
     }
     return event
