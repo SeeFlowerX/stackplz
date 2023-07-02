@@ -12,7 +12,7 @@ DEBUG_PRINT := -DDEBUG_PRINT
 endif
 
 .PHONY: all
-all: ebpf genbtf assets build
+all: ebpf_stack ebpf_perf_mmap genbtf assets build
 	@echo $(shell date)
 
 
@@ -23,8 +23,8 @@ clean:
 	$(CMD_RM) -f assets/ebpf_probe.go
 	$(CMD_RM) -f bin/stackplz
 
-.PHONY: ebpf
-ebpf:
+.PHONY: ebpf_stack
+ebpf_stack:
 	clang \
 	-D__TARGET_ARCH_$(LINUX_ARCH) \
 	--target=bpf \
@@ -39,6 +39,22 @@ ebpf:
 	-MD -MF user/assets/stack.d \
 	-o user/assets/stack.o \
 	src/stack.c
+
+.PHONY: ebpf_perf_mmap
+ebpf_perf_mmap:
+	clang \
+	-D__TARGET_ARCH_$(LINUX_ARCH) \
+	--target=bpf \
+	-c \
+	-nostdlibinc \
+	-no-canonical-prefixes \
+	-O2 \
+	$(DEBUG_PRINT)	\
+	-I       external/libbpf/src \
+	-I       src \
+	-g \
+	-o user/assets/perf_mmap.o \
+	src/perf_mmap.c
 
 .PHONY: genbtf
 genbtf:

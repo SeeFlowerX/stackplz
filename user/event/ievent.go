@@ -2,7 +2,6 @@ package event
 
 import (
     "bytes"
-    "encoding/binary"
     "fmt"
     "stackplz/pkg/util"
     "stackplz/user/config"
@@ -12,6 +11,7 @@ type EventType uint8
 
 const (
     EventTypeSoInfoData = iota
+    EventTypeComm
     EventTypeSysCallData
     EventTypeModuleData
 )
@@ -83,7 +83,8 @@ func (this *CommonEvent) GetUUID() string {
 // }
 
 func (this *CommonEvent) EventType() EventType {
-    panic("CommonEvent.EventType() not implemented yet")
+    // panic("CommonEvent.EventType() not implemented yet")
+    return EventTypeComm
 }
 
 func (this *CommonEvent) Clone() IEventStruct {
@@ -97,11 +98,16 @@ func (this *CommonEvent) Decode() (err error) {
 }
 
 func (this *CommonEvent) ParseContext() (err error) {
-    // 先把基础信息解析出来 后面再根据 eventid 进一步解析传递的参数
-    this.buf = bytes.NewBuffer(this.payload)
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.event_context); err != nil {
-        return err
+    fmt.Printf("this.payload len:%d\n", len(this.payload))
+    if len(this.payload) == 0 {
+        return
     }
+    fmt.Println("this.payload\n" + util.HexDump(this.payload, util.COLORRED))
+    // 先把基础信息解析出来 后面再根据 eventid 进一步解析传递的参数
+    // this.buf = bytes.NewBuffer(this.payload)
+    // if err = binary.Read(this.buf, binary.LittleEndian, &this.event_context); err != nil {
+    //     return err
+    // }
     // fmt.Printf("CommonEvent this.buf:%p cap:%d len:%d\n", this.buf, this.buf.Cap(), this.buf.Len())
     return nil
 }

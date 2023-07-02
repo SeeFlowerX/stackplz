@@ -36,7 +36,6 @@ func (this *MStack) Init(ctx context.Context, logger *log.Logger, conf config.IC
     if ok {
         this.mconf = p
     }
-    fmt.Println("...", this.mconf.Uid, this.mconf.Pid, this.mconf.Tid)
     this.Module.SetChild(this)
     this.eventMaps = make([]*ebpf.Map, 0, 2)
     this.eventFuncMaps = make(map[*ebpf.Map]event.IEventStruct)
@@ -385,5 +384,5 @@ func init() {
     mod := &MStack{}
     mod.name = MODULE_NAME_STACK
     mod.mType = PROBE_TYPE_UPROBE
-    Register(mod)
+    // Register(mod)
 }

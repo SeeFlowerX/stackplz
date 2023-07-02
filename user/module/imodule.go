@@ -194,17 +194,19 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 
     map_value := reflect.ValueOf(em)
     map_name := map_value.Elem().FieldByName("name")
-    // IsSoInfoMap := map_name.String() == "soinfo_events"
+    IsMmapEvent := map_name.String() == "fake_events"
+    fmt.Println("map_name:" + map_name.String())
 
     var rd *perf.Reader
     var err error
-    // soinfo 不管如何都不需要或者堆栈和寄存器信息
-    // if IsSoInfoMap {
-    // rd, err = perf.NewReader(em, os.Getpagesize()*512, false, false)
-    if this.sconf.RegName != "" {
-        rd, err = perf.NewReader(em, this.getPerCPUBuffer(), this.sconf.UnwindStack, true)
+    if IsMmapEvent {
+        rd, err = perf.NewReaderWithOptions(em, this.getPerCPUBuffer(), perf.ReaderOptions{}, false, false, true)
     } else {
-        rd, err = perf.NewReader(em, this.getPerCPUBuffer(), this.sconf.UnwindStack, this.sconf.ShowRegs)
+        if this.sconf.RegName != "" {
+            rd, err = perf.NewReaderWithOptions(em, this.getPerCPUBuffer(), perf.ReaderOptions{}, this.sconf.UnwindStack, true, false)
+        } else {
+            rd, err = perf.NewReaderWithOptions(em, this.getPerCPUBuffer(), perf.ReaderOptions{}, this.sconf.UnwindStack, this.sconf.ShowRegs, false)
+        }
     }
     if err != nil {
         errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)
@@ -224,9 +226,9 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 
             var record perf.Record
             // 根据预设的flag决定以何种方式读取事件数据
-            // if IsSoInfoMap {
-            //     record, err = rd.Read()
-            if this.sconf.UnwindStack {
+            if IsMmapEvent {
+                record, err = rd.Read()
+            } else if this.sconf.UnwindStack {
                 record, err = rd.ReadWithUnwindStack()
             } else if this.sconf.ShowRegs {
                 record, err = rd.ReadWithRegs()

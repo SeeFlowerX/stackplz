@@ -208,7 +208,7 @@ func runFunc(command *cobra.Command, args []string) {
     var wg sync.WaitGroup
 
     // 现在合并成只有一个模块了 所以直接通过名字获取
-    mod := module.GetModuleByName(module.MODULE_NAME_STACK)
+    mod := module.GetModuleByName(module.MODULE_NAME_PERF)
 
     mod.Init(ctx, logger, mconfig)
     err := mod.Run()
