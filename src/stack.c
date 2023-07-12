@@ -250,6 +250,18 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     // 除了实现对指定进程的系统调用跟踪 也要将其产生的子进程 加入追踪范围
     // 为了实现这个目的 fork 系统调用结束之后 应当检查其 父进程是否归属于当前被追踪的进程
 
+    program_data_t p = {};
+    if (!init_program_data(&p, ctx))
+        return 0;
+
+    if (!should_trace(&p))
+        return 0;
+
+    args_t saved_args;
+    if (load_args(&saved_args, SYSCALL_ENTER) != 0) {
+        return 0;
+    }
+
     u32 filter_key = 0;
     struct syscall_filter_t* filter = bpf_map_lookup_elem(&syscall_filter, &filter_key);
     if (filter == NULL) {

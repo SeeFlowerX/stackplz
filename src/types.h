@@ -7,6 +7,9 @@ typedef struct common_filter {
     u32 uid;
     u32 pid;
     u32 tid;
+    u32 blacklist_pids;
+    u32 blacklist_tids;
+    u32 blacklist_comms;
     u32 is_32bit;
 } common_filter_t;
 
@@ -15,8 +18,16 @@ typedef struct args {
 } args_t;
 
 typedef struct config_entry {
+    u32 filter_mode;
     u32 stackplz_pid;
 } config_entry_t;
+
+enum filter_mode_e
+{
+    UID_MODE,
+    PID_MODE,
+    PID_TID_MODE
+};
 
 enum event_id_e
 {
