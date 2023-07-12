@@ -207,6 +207,7 @@ type ModuleConfig struct {
 
 func NewModuleConfig(logger *log.Logger) *ModuleConfig {
     config := &ModuleConfig{}
+    config.SelfPid = uint32(os.Getpid())
     // 首先把 logger 设置上
     config.SetLogger(logger)
     // 虽然会通过全局配置进程覆盖 但是还是做好在初始化时就进行默认赋值
@@ -276,7 +277,7 @@ func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
 
 func (this *ModuleConfig) GetConfigMap() ConfigMap {
     config := ConfigMap{}
-    config.stackplz_pid = uint32(os.Getpid())
+    config.stackplz_pid = this.SelfPid
     if this.Debug {
         this.logger.Printf("ConfigMap{stackplz_pid=%d}", config.stackplz_pid)
     }

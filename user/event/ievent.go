@@ -2,9 +2,14 @@ package event
 
 import (
     "bytes"
+    "errors"
     "fmt"
+    "log"
     "stackplz/pkg/util"
     "stackplz/user/config"
+
+    "github.com/cilium/ebpf/perf"
+    "golang.org/x/sys/unix"
 )
 
 type EventType uint8
@@ -17,9 +22,8 @@ const (
 )
 
 const (
-    SECURITY_FILE_MPROTECT uint32 = iota + 456
-    SU_FILE_ACCESS
-    DO_MMAP
+    SYSCALL_ENTER uint32 = iota + 456
+    SYSCALL_EXIT
 )
 
 type IEventStruct interface {
@@ -28,11 +32,12 @@ type IEventStruct interface {
     Clone() IEventStruct
     EventType() EventType
     GetUUID() string
-    ToChildEvent() IEventStruct
+    ToChildEvent() (IEventStruct, error)
     ParseContext() error
     GetEventContext() *EventContext
-    SetConf(config.IConfig)
-    SetPayload(payload []byte)
+    SetLogger(logger *log.Logger)
+    SetConf(conf config.IConfig)
+    SetRecord(rec perf.Record)
     SetUnwindStack(unwind_stack bool)
     SetShowRegs(show_regs bool)
 }
@@ -52,7 +57,8 @@ type RegsBuf struct {
 
 type CommonEvent struct {
     mconf         *config.ModuleConfig
-    payload       []byte
+    logger        *log.Logger
+    rec           perf.Record
     event_context EventContext
     unwind_stack  bool
     show_regs     bool
@@ -72,7 +78,7 @@ func (this *CommonEvent) GetUUID() string {
 // func (this *CommonEvent) PrePareUUID() (err error) {
 //     // 在完整payload正式交由单独的worker处理前 在 processer 拿到事件后
 //     // 先简单解析下pid和tid信息 为每一个线程设置一个worker
-//     this.buf = bytes.NewBuffer(this.payload)
+//     this.buf = bytes.NewBuffer(this.rec.RawSample)
 //     if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
 //         return err
 //     }
@@ -98,17 +104,11 @@ func (this *CommonEvent) Decode() (err error) {
 }
 
 func (this *CommonEvent) ParseContext() (err error) {
-    fmt.Printf("this.payload len:%d\n", len(this.payload))
-    if len(this.payload) == 0 {
+    this.logger.Printf("[CommonEvent] RawSample len:%d\n", len(this.rec.RawSample))
+    if len(this.rec.RawSample) == 0 {
         return
     }
-    fmt.Println("this.payload\n" + util.HexDump(this.payload, util.COLORRED))
-    // 先把基础信息解析出来 后面再根据 eventid 进一步解析传递的参数
-    // this.buf = bytes.NewBuffer(this.payload)
-    // if err = binary.Read(this.buf, binary.LittleEndian, &this.event_context); err != nil {
-    //     return err
-    // }
-    // fmt.Printf("CommonEvent this.buf:%p cap:%d len:%d\n", this.buf, this.buf.Cap(), this.buf.Len())
+    this.logger.Printf("[CommonEvent] RawSample\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
     return nil
 }
 
@@ -116,27 +116,100 @@ func (this *CommonEvent) GetEventContext() *EventContext {
     return &this.event_context
 }
 
-func (this *CommonEvent) ToChildEvent() IEventStruct {
-    // 根据具体的 eventid 转换到具体的 event
-    var event IEventStruct
-    switch this.event_context.EventId {
-    case DO_MMAP:
-        {
-            event = &VmaInfoEvent{*this, "", 0, 0, 0}
-            // fmt.Printf("yes, DO_MMAP %d\n", this.event_context.EventId)
-        }
-    default:
-        {
-            // panic(fmt.Sprintf("ToChildEvent failed!!! %s", this.event_context.String()))
-            event = this
-            fmt.Printf("yes, CommonEvent %d\n", this.event_context.EventId)
-        }
-    }
+func (this *CommonEvent) NewMmap2Event() IEventStruct {
+    event := &Mmap2Event{CommonEvent: *this}
+    event.ParseContext()
     return event
 }
 
-func (this *CommonEvent) SetPayload(payload []byte) {
-    this.payload = payload
+func (this *CommonEvent) NewCommEvent() IEventStruct {
+    event := &CommEvent{CommonEvent: *this}
+    event.ParseContext()
+    return event
+}
+
+func (this *CommonEvent) NewForkEvent() IEventStruct {
+    event := &ForkEvent{CommonEvent: *this}
+    event.ParseContext()
+    return event
+}
+
+func (this *CommonEvent) NewExitEvent() IEventStruct {
+    event := &ExitEvent{CommonEvent: *this}
+    event.ParseContext()
+    return event
+}
+
+func (this *CommonEvent) NewSyscallEvent() IEventStruct {
+    event := &SyscallEvent{CommonEvent: *this}
+    event.ParseContext()
+    event.GetUUID()
+    return event
+}
+
+func (this *CommonEvent) ToChildEvent() (IEventStruct, error) {
+
+    // 先根据 record 类型转为对应的 event
+    // 然后对数据进行解析 为什么不给到 worker 处理呢
+    // 这是因为当前的设计是基于 pid + tid 做了区分的
+    // 每一个 pid + tid 组合都是单独的一个 worker
+    // 另外也要注意 PERF_RECORD_MMAP2 事件和 syscall 等事件的区别
+    // 前者无法预先设置过滤 后者可以
+
+    var err error
+    var event IEventStruct
+    switch this.rec.RecordType {
+    case unix.PERF_RECORD_COMM:
+        {
+            event = this.NewCommEvent()
+        }
+    case unix.PERF_RECORD_MMAP2:
+        {
+            event = this.NewMmap2Event()
+        }
+    case unix.PERF_RECORD_EXIT:
+        {
+            event = this.NewExitEvent()
+        }
+    case unix.PERF_RECORD_FORK:
+        {
+            event = this.NewForkEvent()
+        }
+    case unix.PERF_RECORD_SAMPLE:
+        {
+            // 先把需要的基础信息解析出来
+            err := this.ParseContext()
+            if err != nil {
+                return nil, err
+            }
+            // 理论上不应该出现这个 但是先做个判断看看
+            if this.event_context.EventId == 0 {
+                this.logger.Printf("PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
+                return nil, errors.New(fmt.Sprintf("PERF_RECORD_SAMPLE EventId is 0, "))
+            }
+            // 最后具体的 eventid 转换到具体的 event
+            switch this.event_context.EventId {
+            case SYSCALL_ENTER:
+                {
+                    event = this.NewSyscallEvent()
+                }
+            default:
+                {
+                    event = this
+                    this.logger.Printf("yes, CommonEvent EventId:%d\n", this.event_context.EventId)
+                }
+            }
+        }
+    default:
+        {
+            return nil, errors.New(fmt.Sprintf("unsupported RecordType:%d", this.rec.RecordType))
+        }
+    }
+    return event, err
+}
+
+func (this *CommonEvent) SetRecord(rec perf.Record) {
+    this.rec = rec
 }
 
 func (this *CommonEvent) SetUnwindStack(unwind_stack bool) {
@@ -145,6 +218,10 @@ func (this *CommonEvent) SetUnwindStack(unwind_stack bool) {
 
 func (this *CommonEvent) SetShowRegs(show_regs bool) {
     this.show_regs = show_regs
+}
+
+func (this *CommonEvent) SetLogger(logger *log.Logger) {
+    this.logger = logger
 }
 
 func (this *CommonEvent) SetConf(conf config.IConfig) {

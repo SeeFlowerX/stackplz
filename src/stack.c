@@ -247,6 +247,9 @@ static int inline send_data_arg_str(struct bpf_raw_tracepoint_args* ctx, struct 
 SEC("raw_tracepoint/sys_enter")
 int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
+    // 除了实现对指定进程的系统调用跟踪 也要将其产生的子进程 加入追踪范围
+    // 为了实现这个目的 fork 系统调用结束之后 应当检查其 父进程是否归属于当前被追踪的进程
+
     u32 filter_key = 0;
     struct syscall_filter_t* filter = bpf_map_lookup_elem(&syscall_filter, &filter_key);
     if (filter == NULL) {
@@ -258,14 +261,22 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     u64 current_pid_tgid = bpf_get_current_pid_tgid();
     u32 pid = current_pid_tgid >> 32;
     u32 tid = current_pid_tgid & 0xffffffff;
-    // uid 过滤
-    if (filter->uid != MAGIC_UID && filter->uid != uid) {
+
+    // u32 skip_check = 0;
+
+    // tid 过滤
+    if (filter->tid != MAGIC_TID && filter->tid != tid) {
         return 0;
     }
     // pid 过滤
     if (filter->pid != MAGIC_PID && filter->pid != pid) {
         return 0;
     }
+    // uid 过滤
+    if (filter->uid != MAGIC_UID && filter->uid != uid) {
+        return 0;
+    }
+
     // tid 黑名单过滤
     #pragma unroll
     for (int i = 0; i < MAX_COUNT; i++) {
@@ -320,6 +331,8 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     // 读取参数 字符串类型的根据预设mask读取并分组发送
     struct pt_regs *regs = (struct pt_regs*)(ctx->args[0]);
 
+    bpf_printk("[syscall] filter uid:%d pid:%d tid:%d\n", filter->uid, filter->pid, filter->tid);
+    bpf_printk("[syscall] current uid:%d pid:%d tid:%d\n", uid, pid, tid);
     u32 zero = 0;
     struct syscall_data_t* data = bpf_map_lookup_elem(&syscall_data_buffer_heap, &zero);
     if (data == NULL) {
@@ -379,6 +392,8 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     bpf_probe_read_kernel(&data->pc, sizeof(data->pc), &regs->pc);
     bpf_probe_read_kernel(&data->sp, sizeof(data->sp), &regs->sp);
     __builtin_memset(&data->arg_str, 0, sizeof(data->arg_str));
+    
+    
     data->type = EventTypeSysEnter;
     bpf_perf_event_output(ctx, &syscall_events, BPF_F_CURRENT_CPU, data, sizeof(struct syscall_data_t));
 
@@ -508,6 +523,10 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     }
     // pid过滤
     if (filter->pid != MAGIC_PID && filter->pid != pid) {
+        return 0;
+    }
+    // tid 过滤
+    if (filter->tid != MAGIC_TID && filter->tid != tid) {
         return 0;
     }
     // tid 黑名单过滤
@@ -690,76 +709,76 @@ struct vmainfo_filter_t {
     u32 pid;
 };
 
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u32);
-    __type(value, struct vmainfo_filter_t);
-    __uint(max_entries, 1);
-} vmainfo_filter SEC(".maps");
+// struct {
+//     __uint(type, BPF_MAP_TYPE_HASH);
+//     __type(key, u32);
+//     __type(value, struct vmainfo_filter_t);
+//     __uint(max_entries, 1);
+// } vmainfo_filter SEC(".maps");
 
 // SEC("kprobe/do_mmap")
 // TRACE_ENT_FUNC(do_mmap, DO_MMAP)
 
-SEC("kretprobe/perf_event_mmap_output")
-int trace_perf_event_mmap_output(struct pt_regs *ctx) {
+// SEC("kretprobe/perf_event_mmap_output")
+// int trace_perf_event_mmap_output(struct pt_regs *ctx) {
 
-    program_data_t p = {};
-    if (!init_program_data(&p, ctx))
-        return 0;
+//     program_data_t p = {};
+//     if (!init_program_data(&p, ctx))
+//         return 0;
 
-    if (!should_trace(&p))
-        return 0;
+//     if (!should_trace(&p))
+//         return 0;
 
-    bpf_printk("[cccc] p_event  ccc\n");
-    args_t saved_args;
-    if (load_args(&saved_args, DO_MMAP) != 0) {
-        // missed entry or not traced
-        return 0;
-    }
+//     bpf_printk("[cccc] p_event  ccc\n");
+//     args_t saved_args;
+//     if (load_args(&saved_args, DO_MMAP) != 0) {
+//         // missed entry or not traced
+//         return 0;
+//     }
 
     
-    bpf_printk("[perf_event_mmap_output] p_event:0x%lx p_data:0x%lx\n", saved_args.args[0], saved_args.args[1]);
+//     bpf_printk("[perf_event_mmap_output] p_event:0x%lx p_data:0x%lx\n", saved_args.args[0], saved_args.args[1]);
 
-    // struct mm_struct *mm = (struct mm_struct *) READ_KERN(p.event->task->mm);
-    // struct vm_area_struct* vma = (struct vm_area_struct *) READ_KERN(mm->mmap);
+//     // struct mm_struct *mm = (struct mm_struct *) READ_KERN(p.event->task->mm);
+//     // struct vm_area_struct* vma = (struct vm_area_struct *) READ_KERN(mm->mmap);
     
-    // for (int i = 0; i < 20; i++) {
+//     // for (int i = 0; i < 20; i++) {
 
-    //     program_data_t loop_p = {};
-    //     if (!init_program_data(&loop_p, ctx))
-    //         return 0;
+//     //     program_data_t loop_p = {};
+//     //     if (!init_program_data(&loop_p, ctx))
+//     //         return 0;
 
-    //     // struct vm_area_struct* vma = (struct vm_area_struct *) BPF_CORE_READ(p.event, task->mm->mmap);
+//     //     // struct vm_area_struct* vma = (struct vm_area_struct *) BPF_CORE_READ(p.event, task->mm->mmap);
 
-    //     // struct vm_area_struct* vma = (struct vm_area_struct *) saved_args.args[0];
-    //     struct file *file = (struct file *) READ_KERN(vma->vm_file);
+//     //     // struct vm_area_struct* vma = (struct vm_area_struct *) saved_args.args[0];
+//     //     struct file *file = (struct file *) READ_KERN(vma->vm_file);
         
-    //     void *file_path = get_path_str(&file->f_path);
+//     //     void *file_path = get_path_str(&file->f_path);
         
-    //     // // // Get per-cpu string buffer
-    //     // buf_t *string_p = get_buf(STRING_BUF_IDX);
-    //     // if (string_p == NULL)
-    //     //     return 0;
+//     //     // // // Get per-cpu string buffer
+//     //     // buf_t *string_p = get_buf(STRING_BUF_IDX);
+//     //     // if (string_p == NULL)
+//     //     //     return 0;
 
-    //     // bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
-    //     // size_t str_len = mystrlen((char *)&string_p->buf);
-    //     // if (str_len > 0) {
-    //     //     // bpf_printk("[vmainfo] ctx_pid:%d ctx_tid:%d\n", p.event->context.pid, p.event->context.tid);
-    //     //     bpf_printk("[vmainfo] ctx_pid:%d len:%d path:%s\n", p.event->context.pid, str_len, string_p->buf);
-    //     // }
-    //     unsigned long vm_flags = get_vma_flags(vma);
-    //     unsigned long vm_start = get_vma_start(vma);
-    //     unsigned long vm_end = get_vma_end(vma);
-    //     save_str_to_buf(loop_p.event, file_path, 0);
-    //     save_to_submit_buf(loop_p.event, &vm_flags, sizeof(int), 1);
-    //     save_to_submit_buf(loop_p.event, &vm_start, sizeof(int), 2);
-    //     save_to_submit_buf(loop_p.event, &vm_end, sizeof(int), 3);
-    //     bpf_printk("[vmainfo] i:%d 0x%lx-0x%lx\n", i, vm_start, vm_end);
+//     //     // bpf_probe_read_str(&string_p->buf, PATH_MAX, file_path);
+//     //     // size_t str_len = mystrlen((char *)&string_p->buf);
+//     //     // if (str_len > 0) {
+//     //     //     // bpf_printk("[vmainfo] ctx_pid:%d ctx_tid:%d\n", p.event->context.pid, p.event->context.tid);
+//     //     //     bpf_printk("[vmainfo] ctx_pid:%d len:%d path:%s\n", p.event->context.pid, str_len, string_p->buf);
+//     //     // }
+//     //     unsigned long vm_flags = get_vma_flags(vma);
+//     //     unsigned long vm_start = get_vma_start(vma);
+//     //     unsigned long vm_end = get_vma_end(vma);
+//     //     save_str_to_buf(loop_p.event, file_path, 0);
+//     //     save_to_submit_buf(loop_p.event, &vm_flags, sizeof(int), 1);
+//     //     save_to_submit_buf(loop_p.event, &vm_start, sizeof(int), 2);
+//     //     save_to_submit_buf(loop_p.event, &vm_end, sizeof(int), 3);
+//     //     bpf_printk("[vmainfo] i:%d 0x%lx-0x%lx\n", i, vm_start, vm_end);
 
-    //     events_perf_submit(&loop_p, DO_MMAP);
-    //     vma = (struct vm_area_struct *) READ_KERN(vma->vm_next);
-    // }
+//     //     events_perf_submit(&loop_p, DO_MMAP);
+//     //     vma = (struct vm_area_struct *) READ_KERN(vma->vm_next);
+//     // }
 
 
-    return 0;
-}
+//     return 0;
+// }

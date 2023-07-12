@@ -81,14 +81,16 @@ func (this *eventWorker) Display() {
 
 // 解析类型，输出
 func (this *eventWorker) parserEvent(e event.IEventStruct) {
+	logger := this.processor.GetLogger()
+
 	// this.processor.GetLogger().Printf("parserEvent UUID:%s", this.UUID)
 
 	err := e.Decode()
 	if err != nil {
-		this.processor.GetLogger().Printf("Decode failed UUID:%s, err:%v", this.UUID, err)
+		logger.Printf("Decode failed UUID:%s, err:%v", this.UUID, err)
 	}
 	// 打印输出
-	this.processor.GetLogger().Printf(e.String())
+	logger.Printf(e.String())
 
 	// this.processor.GetLogger().Printf("%d %s", this.tickerCount, e.String())
 	// 根据 event 选取对应的 解析器

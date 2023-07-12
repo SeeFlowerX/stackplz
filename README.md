@@ -277,6 +277,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 ./stackplz --name com.starbucks.cn --syscall openat
 ./stackplz --name com.starbucks.cn --syscall execve -o tmp.log
 ./stackplz --name com.sfx.ebpf --syscall mmap -o tmp.log
+./stackplz --pid 26857 --syscall execveat -o tmp.log
 ./stackplz --name com.starbucks.cn --syscall all -o tmp.log
 ```
 

@@ -121,6 +121,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // }
 
     // 第二步 通过包名获取uid和库路径 先通过pm命令获取安装位置
+    // 支持设置单独的pid，但是要排除程序本身的pid
     if gconfig.Name != "" {
         err = parseByPackage(gconfig.Name)
         if err != nil {
@@ -131,6 +132,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         if err != nil {
             return err
         }
+    } else if gconfig.Pid != 0 {
+        logger.Printf("watch for pid:%d", gconfig.Pid)
     } else {
         return errors.New("please set --uid or --name")
     }
@@ -205,23 +208,28 @@ func runFunc(command *cobra.Command, args []string) {
     ctx, cancelFun := context.WithCancel(context.TODO())
 
     var runMods uint8
+    var runModules = make(map[string]module.IModule)
     var wg sync.WaitGroup
 
-    // 现在合并成只有一个模块了 所以直接通过名字获取
-    mod := module.GetModuleByName(module.MODULE_NAME_PERF)
+    modNames := []string{module.MODULE_NAME_PERF, module.MODULE_NAME_STACK}
+    for _, modName := range modNames {
+        // 现在合并成只有一个模块了 所以直接通过名字获取
+        mod := module.GetModuleByName(modName)
 
-    mod.Init(ctx, logger, mconfig)
-    err := mod.Run()
-    if err != nil {
-        logger.Printf("%s\tmodule Run failed, [skip it]. error:%+v", mod.Name(), err)
-        os.Exit(1)
-    }
-    if gconfig.Debug {
-        logger.Printf("%s\tmodule started successfully", mod.Name())
-    }
-    wg.Add(1)
-    runMods++
+        mod.Init(ctx, logger, mconfig)
+        err := mod.Run()
+        if err != nil {
+            logger.Printf("%s\tmodule Run failed, [skip it]. error:%+v", mod.Name(), err)
+            os.Exit(1)
+        }
+        runModules[mod.Name()] = mod
+        if gconfig.Debug {
+            logger.Printf("%s\tmodule started successfully", mod.Name())
+        }
+        wg.Add(1)
+        runMods++
 
+    }
     if runMods > 0 {
         logger.Printf("start %d modules", runMods)
         <-stopper
@@ -231,13 +239,14 @@ func runFunc(command *cobra.Command, args []string) {
     }
     cancelFun()
 
-    err = mod.Close()
-    logger.Println("mod Close")
-    wg.Done()
-    if err != nil {
-        logger.Fatalf("%s:module close failed. error:%+v", mod.Name(), err)
+    for _, mod := range runModules {
+        err := mod.Close()
+        logger.Println("mod Close")
+        wg.Done()
+        if err != nil {
+            logger.Fatalf("%s:module close failed. error:%+v", mod.Name(), err)
+        }
     }
-
     wg.Wait()
     os.Exit(0)
 }

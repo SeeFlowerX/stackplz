@@ -20,10 +20,8 @@ typedef struct config_entry {
 
 enum event_id_e
 {
-    SECURITY_FILE_MPROTECT = 456,
-    SU_FILE_ACCESS,
-    DO_MMAP,
-    DO_MUNMAP
+    SYSCALL_ENTER = 456,
+    SYSCALL_EXIT
 };
 
 typedef struct event_context {

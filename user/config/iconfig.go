@@ -16,6 +16,7 @@ type IConfig interface {
 }
 
 type SConfig struct {
+	SelfPid     uint32
 	Uid         uint32
 	Pid         uint32
 	Tid         uint32

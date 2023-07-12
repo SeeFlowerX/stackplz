@@ -52,11 +52,11 @@ func (this *MStack) setupManager() error {
     probes := []*manager.Probe{}
 
     // soinfo hook 配置
-    vmainfo_kprobe := &manager.Probe{
-        Section:          "kretprobe/perf_event_mmap_output",
-        EbpfFuncName:     "trace_perf_event_mmap_output",
-        AttachToFuncName: "perf_event_mmap",
-    }
+    // vmainfo_kprobe := &manager.Probe{
+    //     Section:          "kretprobe/perf_event_mmap_output",
+    //     EbpfFuncName:     "trace_perf_event_mmap_output",
+    //     AttachToFuncName: "perf_event_mmap",
+    // }
     // vmainfo_kretprobe := &manager.Probe{
     //     Section:          "kretprobe/do_mmap",
     //     EbpfFuncName:     "trace_ret_do_mmap",
@@ -77,7 +77,7 @@ func (this *MStack) setupManager() error {
     //     Name: "soinfo_events",
     // }
     // 不管是 stack 还是 syscall 都需要用到 soinfo
-    probes = append(probes, vmainfo_kprobe)
+    // probes = append(probes, vmainfo_kprobe)
     // probes = append(probes, vmainfo_kretprobe)
     maps = append(maps, common_events_map)
 
@@ -248,17 +248,17 @@ func (this *MStack) updateFilter() (err error) {
         this.logger.Printf("update common_filter success")
     }
 
-    vmainfo_filter, err := this.FindMap("vmainfo_filter")
-    if err != nil {
-        return err
-    }
-    err = vmainfo_filter.Update(unsafe.Pointer(&filter_key), this.mconf.GetVmaInfoFilter(), ebpf.UpdateAny)
-    if err != nil {
-        return err
-    }
-    if this.sconf.Debug {
-        this.logger.Printf("update vmainfo_filter success")
-    }
+    // vmainfo_filter, err := this.FindMap("vmainfo_filter")
+    // if err != nil {
+    //     return err
+    // }
+    // err = vmainfo_filter.Update(unsafe.Pointer(&filter_key), this.mconf.GetVmaInfoFilter(), ebpf.UpdateAny)
+    // if err != nil {
+    //     return err
+    // }
+    // if this.sconf.Debug {
+    //     this.logger.Printf("update vmainfo_filter success")
+    // }
 
     // uprobe hook stack 的过滤配置更新
     if this.mconf.StackUprobeConf.IsEnable() {
@@ -384,5 +384,5 @@ func init() {
     mod := &MStack{}
     mod.name = MODULE_NAME_STACK
     mod.mType = PROBE_TYPE_UPROBE
-    // Register(mod)
+    Register(mod)
 }

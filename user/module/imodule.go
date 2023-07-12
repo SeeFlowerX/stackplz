@@ -13,7 +13,6 @@ import (
 
     "github.com/cilium/ebpf"
     "github.com/cilium/ebpf/perf"
-    "github.com/cilium/ebpf/ringbuf"
 )
 
 type IModule interface {
@@ -41,7 +40,7 @@ type IModule interface {
 
     SetChild(module IModule)
 
-    PrePare(*ebpf.Map, []byte) (event.IEventStruct, error)
+    PrePare(*ebpf.Map, perf.Record) (event.IEventStruct, error)
 
     Events() []*ebpf.Map
 
@@ -170,9 +169,9 @@ func (this *Module) readEvents() error {
     // 读取之前从eBPF程序中解析预设的map的事件数据
     for _, ebpfMap := range this.child.Events() {
         switch {
-        case ebpfMap.Type() == ebpf.RingBuf:
-            // 暂时没有用上这个类型的 暂时保留
-            this.ringbufEventReader(errChan, ebpfMap)
+        // case ebpfMap.Type() == ebpf.RingBuf:
+        //     // 暂时没有用上这个类型的 暂时保留
+        //     this.ringbufEventReader(errChan, ebpfMap)
         case ebpfMap.Type() == ebpf.PerfEventArray:
             this.perfEventReader(errChan, ebpfMap)
         default:
@@ -254,7 +253,7 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 
             // 只做简单的准备 数据解析不要在这个部分做
             var e event.IEventStruct
-            e, err = this.child.PrePare(em, record.RawSample)
+            e, err = this.child.PrePare(em, record)
             if err != nil {
                 this.logger.Printf("%s\tthis.child.decode error:%v", this.child.Name(), err)
                 continue
@@ -266,49 +265,49 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     }()
 }
 
-func (this *Module) ringbufEventReader(errChan chan error, em *ebpf.Map) {
-    rd, err := ringbuf.NewReader(em)
-    if err != nil {
-        errChan <- fmt.Errorf("%s\tcreating %s reader dns: %s", this.child.Name(), em.String(), err)
-        return
-    }
-    this.reader = append(this.reader, rd)
-    go func() {
-        for {
-            //判断ctx是不是结束
-            select {
-            case _ = <-this.ctx.Done():
-                this.logger.Printf("%s\tringbufEventReader received close signal from context.Done().", this.child.Name())
-                return
-            default:
-            }
+// func (this *Module) ringbufEventReader(errChan chan error, em *ebpf.Map) {
+//     rd, err := ringbuf.NewReader(em)
+//     if err != nil {
+//         errChan <- fmt.Errorf("%s\tcreating %s reader dns: %s", this.child.Name(), em.String(), err)
+//         return
+//     }
+//     this.reader = append(this.reader, rd)
+//     go func() {
+//         for {
+//             //判断ctx是不是结束
+//             select {
+//             case _ = <-this.ctx.Done():
+//                 this.logger.Printf("%s\tringbufEventReader received close signal from context.Done().", this.child.Name())
+//                 return
+//             default:
+//             }
 
-            record, err := rd.Read()
-            if err != nil {
-                if errors.Is(err, ringbuf.ErrClosed) {
-                    this.logger.Printf("%s\tReceived signal, exiting..", this.child.Name())
-                    return
-                }
-                errChan <- fmt.Errorf("%s\treading from ringbuf reader: %s", this.child.Name(), err)
-                return
-            }
+//             record, err := rd.Read()
+//             if err != nil {
+//                 if errors.Is(err, ringbuf.ErrClosed) {
+//                     this.logger.Printf("%s\tReceived signal, exiting..", this.child.Name())
+//                     return
+//                 }
+//                 errChan <- fmt.Errorf("%s\treading from ringbuf reader: %s", this.child.Name(), err)
+//                 return
+//             }
 
-            var e event.IEventStruct
-            e, err = this.child.PrePare(em, record.RawSample)
-            if err != nil {
-                this.logger.Printf("%s\tthis.child.decode error:%v", this.child.Name(), err)
-                continue
-            }
-            // 直接将解析数据交给 processor 做
-            // 从而加快读取环形缓冲区的数据 减缓数据丢失的概率
-            this.processor.Write(e)
-            // // 上报数据
-            // this.Dispatcher(e)
-        }
-    }()
-}
+//             var e event.IEventStruct
+//             e, err = this.child.PrePare(em, record)
+//             if err != nil {
+//                 this.logger.Printf("%s\tthis.child.decode error:%v", this.child.Name(), err)
+//                 continue
+//             }
+//             // 直接将解析数据交给 processor 做
+//             // 从而加快读取环形缓冲区的数据 减缓数据丢失的概率
+//             this.processor.Write(e)
+//             // // 上报数据
+//             // this.Dispatcher(e)
+//         }
+//     }()
+// }
 
-func (this *Module) PrePare(em *ebpf.Map, b []byte) (event event.IEventStruct, err error) {
+func (this *Module) PrePare(em *ebpf.Map, rec perf.Record) (event event.IEventStruct, err error) {
     // 首先根据map得到最开始设置好的用于解析的结构体引用（这样描述可能不对）
     es, found := this.child.DecodeFun(em)
     if !found {
@@ -318,15 +317,22 @@ func (this *Module) PrePare(em *ebpf.Map, b []byte) (event event.IEventStruct, e
     // 通过结构体引用生成一个真正用于解析事件数据的实例
     // 注意这里会设置好 event_type 后续上报数据需要根据这个类型判断使用何种上报方式
     te := es.Clone()
+    te.SetLogger(this.logger)
     te.SetConf(this.child.GetConf())
-    te.SetPayload(b)
-    te.SetUnwindStack(this.sconf.UnwindStack)
-    // 正式解析，传入是否进行堆栈回溯的标志
-    if this.sconf.RegName != "" {
-        te.SetShowRegs(true)
-    } else {
-        te.SetShowRegs(this.sconf.ShowRegs)
-    }
+    te.SetRecord(rec)
+
+    // 在读取的时候 Record 就包含了 UnwindStack ShowRegs 这些信息
+    // 这里改成直接记录 Record 那么就不必再去设置一遍
+    // 另外一个好处是 对于 PERF_RECORD_MMAP2 这样的数据
+    // 通过修改 ebpf 库 记录了对应的类型
+
+    // te.SetUnwindStack(this.sconf.UnwindStack)
+    // // 正式解析，传入是否进行堆栈回溯的标志
+    // if this.sconf.RegName != "" {
+    //     te.SetShowRegs(true)
+    // } else {
+    //     te.SetShowRegs(this.sconf.ShowRegs)
+    // }
     return te, nil
 }
 

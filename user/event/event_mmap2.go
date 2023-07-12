@@ -1,10 +1,7 @@
 package event
 
-// #include <load_so.h>
-// #cgo LDFLAGS: -ldl
-import "C"
-
 import (
+    "bytes"
     "encoding/binary"
     "fmt"
     "stackplz/pkg/util"
@@ -132,70 +129,93 @@ func (this *EventContext) String() (s string) {
 //     CommonEvent
 // }
 
-type VmaInfoEvent struct {
+type Mmap2Event struct {
     CommonEvent
-    file_path string
-    vm_flags  uint32
-    vm_start  uint32
-    vm_end    uint32
+    pid            uint32
+    tid            uint32
+    addr           uint64
+    len            uint64
+    pgoff          uint64
+    maj            uint32
+    min            uint32
+    ino            uint64
+    ino_generation uint64
+    prot           uint32
+    flags          uint32
+    filename       string
+    sample_id      []byte
 }
 
 // func (this *CommonEvent) Decode() (err error) {
 //     panic("CommonEvent.Decode() not implemented yet")
 // }
 
-func (this *VmaInfoEvent) ReadIndex() (index uint8, err error) {
+func (this *Mmap2Event) ReadIndex() (index uint8, err error) {
     err = binary.Read(this.buf, binary.LittleEndian, &index)
     return index, err
 }
 
-func (this *VmaInfoEvent) Decode() (err error) {
-    // 根据 event_context->Argnum 可用于检查传递的参数个数是否匹配
-    var size uint32
-
-    // fmt.Print(util.HexDumpGreen(this.payload))
-
-    // read file_path, type: string
-    this.ReadIndex()
-    // index0, err := this.ReadIndex()
-    // fmt.Printf("[VmaInfoEvent] index0:%d err:%v\n", index0, err)
-    if err = binary.Read(this.buf, binary.LittleEndian, &size); err != nil {
+func (this *Mmap2Event) Decode() (err error) {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.addr); err != nil {
         return err
     }
-    // fmt.Printf("[VmaInfoEvent] file_path size:%v\n", size)
-    var tmp = make([]byte, size)
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.len); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.pgoff); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.maj); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.min); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.ino); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.ino_generation); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.prot); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.flags); err != nil {
+        return err
+    }
+    var tmp = make([]byte, this.buf.Len())
     if err = binary.Read(this.buf, binary.LittleEndian, &tmp); err != nil {
         return err
     }
-    this.file_path = string(tmp)
-
-    // read vm_flags, type: uint32
-    this.ReadIndex()
-    // index1, err := this.ReadIndex()
-    // fmt.Printf("[VmaInfoEvent] index1:%d err:%v\n", index1, err)
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.vm_flags); err != nil {
-        return err
-    }
-    this.ReadIndex()
-    // index2, err := this.ReadIndex()
-    // fmt.Printf("[VmaInfoEvent] index2:%d err:%v\n", index2, err)
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.vm_start); err != nil {
-        return err
-    }
-    this.ReadIndex()
-    // index3, err := this.ReadIndex()
-    // fmt.Printf("[VmaInfoEvent] index3:%d err:%v\n", index3, err)
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.vm_end); err != nil {
-        return err
-    }
-    // fmt.Printf("VmaInfoEvent read left:%d\n", this.buf.Len())
+    this.filename = util.B2STrim(tmp)
     // maps_helper.UpdateMaps(this)
     return nil
 }
 
-func (this *VmaInfoEvent) String() string {
+func (this *Mmap2Event) String() string {
     var s string
-    s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.event_context.Comm[:]))
-    s += fmt.Sprintf(", Base:0x%x Size:0x%x Perm:0x%x <%s>", this.vm_start, this.vm_end, this.vm_flags, this.file_path)
+    // s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.event_context.Comm[:]))
+    s += fmt.Sprintf("[PERF_RECORD_MMAP2] %s Base:0x%x Size:0x%x Perm:0x%x Prot:0x%x <%s>", this.GetUUID(), this.addr, this.len, this.flags, this.prot, this.filename)
     return s
+}
+
+func (this *Mmap2Event) GetUUID() string {
+    return fmt.Sprintf("%d_%d", this.pid, this.tid)
+}
+
+func (this *Mmap2Event) ParseContext() (err error) {
+    // this.logger.Printf("[Mmap2Event] RawSample len:%d\n", len(this.rec.RawSample))
+    // if len(this.rec.RawSample) == 0 {
+    //     return
+    // }
+    // this.logger.Printf("[Mmap2Event] RawSample\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
+    // 先把基础信息解析出来 后面再根据 eventid 进一步解析传递的参数
+    this.buf = bytes.NewBuffer(this.rec.RawSample)
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.pid); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.tid); err != nil {
+        return err
+    }
+    return nil
 }
