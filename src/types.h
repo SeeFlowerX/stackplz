@@ -24,6 +24,7 @@ typedef struct config_entry {
 
 enum filter_mode_e
 {
+    UNKNOWN_MODE,
     UID_MODE,
     PID_MODE,
     PID_TID_MODE

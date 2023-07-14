@@ -127,15 +127,35 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         if err != nil {
             return err
         }
+        // 如果说是系统APP 那么这里解析出来的uid是2000 应该用 PID_MODE
+        if gconfig.Uid == 2000 {
+            // 这里现在还有一种情况没有继续适配
+            // 如果系统APP这个时候还没有运行 那么实际上没有pid...
+            mconfig.FilterMode = util.PID_MODE
+            panic("watch system app by --name not supported yet, plz use --pid")
+        } else {
+            mconfig.FilterMode = util.UID_MODE
+        }
     } else if gconfig.Uid != config.MAGIC_UID {
         err = parseByUid(gconfig.Uid)
         if err != nil {
             return err
         }
+        mconfig.FilterMode = util.UID_MODE
     } else if gconfig.Pid != 0 {
-        logger.Printf("watch for pid:%d", gconfig.Pid)
+        if gconfig.Tid != config.MAGIC_TID {
+            mconfig.FilterMode = util.PID_TID_MODE
+            logger.Printf("watch for pid:%d + tid:%d", gconfig.Pid, gconfig.Tid)
+        } else {
+            mconfig.FilterMode = util.PID_MODE
+            logger.Printf("watch for pid:%d", gconfig.Pid)
+        }
+        err = parseByPid(gconfig.Pid)
+        if err != nil {
+            return err
+        }
     } else {
-        return errors.New("please set --uid or --name")
+        return errors.New("please set --uid/--name/--pid/--pid + --tid")
     }
 
     // 检查符号情况 用于判断部分选项是否能启用
@@ -292,6 +312,68 @@ func parseByUid(uid uint32) error {
     return parseByPackage(name[1])
 }
 
+func parseByPid(pid uint32) error {
+
+    pid_str := strconv.FormatUint(uint64(pid), 10)
+    maps_path := "/proc/" + pid_str + "/maps"
+
+    // uid=$(ps -o user= -p 22812) && id -u $uid
+    // 先通过这样的命令获取到进程的 uid 判断是不是APP进程
+    lines, err := runCommand("sh", "-c", fmt.Sprintf("uid=$(ps -o user= -p %s ) && id -u $uid", pid_str))
+    if err != nil {
+        return err
+    }
+    if gconfig.Debug {
+        logger.Printf("[parseByPid] get uid by pid=%d result:\n\t%s", pid, lines)
+    }
+    value, _ := strconv.ParseUint(lines, 10, 32)
+    uid := uint32(value)
+    // 这个范围内的是常规的 APP 进程
+    if uid > 10000 && uid < 20000 {
+        return parseByUid(uid)
+    }
+    // 特殊的 uid
+    // root 0
+    // system 1000
+    // shell 2000
+    if uid == 1000 {
+        // 考虑到 system app 进程的 uid 都是 1000
+        // 那么这种尝试通过检查 maps 的 app_process 来确定架构以及库文件路径
+        lines, err = runCommand("sh", "-c", fmt.Sprintf("cat %s | grep -m1 bin/app_process", maps_path))
+        if err != nil {
+            return err
+        }
+        if gconfig.Debug {
+            logger.Printf("[parseByPid] check app_process by pid=%d result:\n\t%s", pid, lines)
+        }
+        if strings.HasSuffix(lines, "/app_process64") {
+            gconfig.Is32Bit = false
+        } else if strings.HasSuffix(lines, "/app_process") {
+            gconfig.Is32Bit = true
+        } else {
+            return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
+        }
+    }
+
+    // 通过检查 进程 maps 中 linker 的名字确定是 32 还是 64
+    // cat /proc/22812/maps | grep -m1 bin/linker
+    lines, err = runCommand("sh", "-c", fmt.Sprintf("cat %s | grep -m1 bin/linker", maps_path))
+    if err != nil {
+        return err
+    }
+    if lines == "" {
+        return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
+    }
+    if strings.HasSuffix(lines, "/linker64") {
+        gconfig.Is32Bit = false
+    } else if strings.HasSuffix(lines, "/linker") {
+        gconfig.Is32Bit = true
+    } else {
+        return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
+    }
+    return nil
+}
+
 func findKallsymsSymbol(symbol string) (bool, error) {
     find := false
     content, err := ioutil.ReadFile("/proc/kallsyms")
@@ -350,9 +432,9 @@ func parseByPackage(name string) error {
             switch key {
             case "userId":
                 value, _ := strconv.ParseUint(value, 10, 32)
+                // 考虑到是基于 特定模式 的过滤 对于单个系统APP进程 这里赋值了也没有影响
+                // 不过后续的逻辑发生变更 要注意这里什么情况下才赋值
                 gconfig.Uid = uint32(value)
-                // 只指定了包名的时候 global_config.Uid 是 0 需要修正
-                // gconfig.Uid = gconfig.Uid
             case "legacyNativeLibraryDir":
                 // 考虑到后面会通过其他方式增加搜索路径 所以是数组
                 gconfig.LibraryDirs = append(gconfig.LibraryDirs, value)

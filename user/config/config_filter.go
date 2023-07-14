@@ -26,13 +26,17 @@ type SyscallFilter struct {
 }
 
 type CommonFilter struct {
-	uid      uint32
-	pid      uint32
-	tid      uint32
-	is_32bit uint32
+	uid             uint32
+	pid             uint32
+	tid             uint32
+	blacklist_pids  uint32
+	blacklist_tids  uint32
+	blacklist_comms uint32
+	is_32bit        uint32
 }
 
 type ConfigMap struct {
+	filter_mode  uint32
 	stackplz_pid uint32
 }
 

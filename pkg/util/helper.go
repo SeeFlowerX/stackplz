@@ -125,6 +125,13 @@ func B2STrim(src []byte) string {
 	return string(bytes.TrimSpace(bytes.Trim(src, "\x00")))
 }
 
+const (
+	UNKNOWN_MODE uint32 = iota
+	UID_MODE
+	PID_MODE
+	PID_TID_MODE
+)
+
 // 格式化输出相关
 
 const CHUNK_SIZE = 16

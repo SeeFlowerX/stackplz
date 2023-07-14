@@ -208,6 +208,7 @@ type ModuleConfig struct {
 func NewModuleConfig(logger *log.Logger) *ModuleConfig {
     config := &ModuleConfig{}
     config.SelfPid = uint32(os.Getpid())
+    config.FilterMode = util.UNKNOWN_MODE
     // 首先把 logger 设置上
     config.SetLogger(logger)
     // 虽然会通过全局配置进程覆盖 但是还是做好在初始化时就进行默认赋值
@@ -267,7 +268,10 @@ func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
     filter.uid = this.Uid
     filter.pid = this.Pid
     filter.tid = this.Tid
-    // 暂时硬编码为 false
+    // 这些暂时硬编码
+    filter.blacklist_pids = 0
+    filter.blacklist_tids = 0
+    filter.blacklist_comms = 0
     filter.is_32bit = 0
     if this.Debug {
         this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit)
@@ -278,6 +282,7 @@ func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
 func (this *ModuleConfig) GetConfigMap() ConfigMap {
     config := ConfigMap{}
     config.stackplz_pid = this.SelfPid
+    config.filter_mode = this.FilterMode
     if this.Debug {
         this.logger.Printf("ConfigMap{stackplz_pid=%d}", config.stackplz_pid)
     }
