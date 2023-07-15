@@ -15,9 +15,7 @@ type UprobeStackFilter struct {
 }
 
 type SyscallFilter struct {
-	BaseFilter
-	is_32bit uint32
-	// try_bypass             uint32
+	is_32bit               uint32
 	after_read             uint32
 	syscall_mask           uint32
 	syscall                [MAX_COUNT]uint32
@@ -38,19 +36,6 @@ type CommonFilter struct {
 type ConfigMap struct {
 	filter_mode  uint32
 	stackplz_pid uint32
-}
-
-type VmaInfoFilter struct {
-	uid uint32
-	pid uint32
-}
-
-func (this *SyscallFilter) SetUid(uid uint32) {
-	this.uid = uid
-}
-
-func (this *SyscallFilter) SetPid(pid uint32) {
-	this.pid = pid
 }
 
 // func (this *SyscallFilter) SetSysCall(syscall string, systable_config SysTableConfig) error {

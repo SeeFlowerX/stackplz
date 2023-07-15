@@ -256,51 +256,27 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
     if (!should_trace(&p))
         return 0;
-
-    args_t saved_args;
-    if (load_args(&saved_args, SYSCALL_ENTER) != 0) {
+    // 到这里的说明是命中了 追踪范围
+    // bpf_printk("[syscall] after should_trace uid:%d pid:%d host_pid:%d\n", p.event->context.uid, p.event->context.pid, p.event->context.host_pid);
+    // 先收集下寄存器
+    struct pt_regs *regs = (struct pt_regs*)(ctx->args[0]);
+    args_t args = {};
+    args.args[0] = READ_KERN(regs->regs[0]);
+    args.args[1] = READ_KERN(regs->regs[1]);
+    args.args[2] = READ_KERN(regs->regs[2]);
+    args.args[3] = READ_KERN(regs->regs[3]);
+    args.args[4] = READ_KERN(regs->regs[4]);
+    args.args[5] = READ_KERN(regs->regs[5]);
+    if (save_args(&args, SYSCALL_ENTER) != 0) {
         return 0;
-    }
+    };
+
+    // bpf_printk("[syscall] xx uid:%d pid:%d tid:%d\n", p.event->context.uid, p.event->context.pid, p.event->context.tid);
 
     u32 filter_key = 0;
     struct syscall_filter_t* filter = bpf_map_lookup_elem(&syscall_filter, &filter_key);
     if (filter == NULL) {
         return 0;
-    }
-
-    // 获取信息用于过滤
-    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
-    u64 current_pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = current_pid_tgid >> 32;
-    u32 tid = current_pid_tgid & 0xffffffff;
-
-    // u32 skip_check = 0;
-
-    // tid 过滤
-    if (filter->tid != MAGIC_TID && filter->tid != tid) {
-        return 0;
-    }
-    // pid 过滤
-    if (filter->pid != MAGIC_PID && filter->pid != pid) {
-        return 0;
-    }
-    // uid 过滤
-    if (filter->uid != MAGIC_UID && filter->uid != uid) {
-        return 0;
-    }
-
-    // tid 黑名单过滤
-    #pragma unroll
-    for (int i = 0; i < MAX_COUNT; i++) {
-        if ((filter->tids_blacklist_mask & (1 << i))) {
-            if (filter->tids_blacklist[i] == tid) {
-                // 在tid黑名单直接结束跳过
-                return 0;
-            }
-        } else {
-            // 减少不必要的循环
-            break;
-        }
     }
 
     // syscall 白名单过滤
@@ -341,10 +317,9 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     }
 
     // 读取参数 字符串类型的根据预设mask读取并分组发送
-    struct pt_regs *regs = (struct pt_regs*)(ctx->args[0]);
+    // struct pt_regs *regs = (struct pt_regs*)(ctx->args[0]);
 
-    bpf_printk("[syscall] filter uid:%d pid:%d tid:%d\n", filter->uid, filter->pid, filter->tid);
-    bpf_printk("[syscall] current uid:%d pid:%d tid:%d\n", uid, pid, tid);
+    bpf_printk("[syscall] event uid:%d pid:%d tid:%d\n", p.event->context.uid, p.event->context.pid, p.event->context.tid);
     u32 zero = 0;
     struct syscall_data_t* data = bpf_map_lookup_elem(&syscall_data_buffer_heap, &zero);
     if (data == NULL) {
@@ -390,8 +365,8 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     }
 
     // 基本信息
-    data->pid = pid;
-    data->tid = tid;
+    data->pid = p.event->context.pid;
+    data->tid = p.event->context.tid;
     data->syscall_id = ctx->args[1];
 
     // 先获取 lr sp pc 并发送 这样可以尽早计算调用来源情况
@@ -523,6 +498,11 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     if (filter == NULL) {
         return 0;
     }
+
+    // args_t saved_args;
+    // if (load_args(&saved_args, SYSCALL_ENTER) != 0) {
+    //     return 0;
+    // }
 
     // 获取信息用于过滤
     u32 uid = bpf_get_current_uid_gid() & 0xffffffff;

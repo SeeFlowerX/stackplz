@@ -289,13 +289,6 @@ func (this *ModuleConfig) GetConfigMap() ConfigMap {
     return config
 }
 
-func (this *ModuleConfig) GetVmaInfoFilter() unsafe.Pointer {
-    filter := VmaInfoFilter{}
-    filter.uid = this.Uid
-    filter.pid = this.Pid
-    return unsafe.Pointer(&filter)
-}
-
 func (this *ModuleConfig) GetUprobeStackFilter() UprobeStackFilter {
     filter := UprobeStackFilter{}
     filter.uid = this.Uid
@@ -310,13 +303,6 @@ func (this *ModuleConfig) GetUprobeStackFilter() UprobeStackFilter {
 
 func (this *ModuleConfig) GetSyscallFilter() SyscallFilter {
     filter := SyscallFilter{}
-    filter.uid = this.Uid
-    filter.pid = this.Pid
-    filter.tid = this.Tid
-    filter.tids_blacklist_mask = this.TidsBlacklistMask
-    filter.tids_blacklist = this.TidsBlacklist
-    filter.pids_blacklist_mask = this.PidsBlacklistMask
-    filter.pids_blacklist = this.PidsBlacklist
     filter.SetArch(this.Is32Bit)
     filter.SetAfterRead(this.AfterRead)
     this.SysCallConf.FillFilter(&filter)

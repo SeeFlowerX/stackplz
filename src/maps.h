@@ -30,7 +30,6 @@
 
 BPF_PERCPU_ARRAY(bufs, buf_t, MAX_BUFFERS);                        // percpu global buffer variables
 BPF_PERF_OUTPUT(events, 1024);      // events submission
-BPF_LRU_HASH(vma_map, u64, vma_arg_t, 10240);
 BPF_HASH(args_map, u64, args_t, 1024);                             // persist args between function entry and return
 BPF_HASH(common_filter, u32, common_filter_t, 1);
 BPF_PERCPU_ARRAY(event_data_map, event_data_t, 1);

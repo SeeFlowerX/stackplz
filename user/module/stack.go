@@ -248,18 +248,6 @@ func (this *MStack) updateFilter() (err error) {
         this.logger.Printf("update common_filter success")
     }
 
-    // vmainfo_filter, err := this.FindMap("vmainfo_filter")
-    // if err != nil {
-    //     return err
-    // }
-    // err = vmainfo_filter.Update(unsafe.Pointer(&filter_key), this.mconf.GetVmaInfoFilter(), ebpf.UpdateAny)
-    // if err != nil {
-    //     return err
-    // }
-    // if this.sconf.Debug {
-    //     this.logger.Printf("update vmainfo_filter success")
-    // }
-
     // uprobe hook stack 的过滤配置更新
     if this.mconf.StackUprobeConf.IsEnable() {
         uprobe_stack_filter, err := this.FindMap("uprobe_stack_filter")

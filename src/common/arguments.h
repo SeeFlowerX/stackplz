@@ -2,6 +2,7 @@
 #define __STACKPLZ_EVENTS_ARGS_H__
 
 #include "bpf/bpf_helpers.h"
+#include "common/arch.h"
 #include "maps.h"
 
 static __always_inline int save_args(args_t *args, u32 event_id)
