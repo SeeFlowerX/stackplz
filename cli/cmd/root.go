@@ -158,6 +158,9 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         return errors.New("please set --uid/--name/--pid/--pid + --tid")
     }
 
+    // 检查平台 判断是不是开发板
+    mconfig.ExternalBTF = findBTFAssets()
+
     // 检查符号情况 用于判断部分选项是否能启用
     gconfig.CanReadUser, err = findKallsymsSymbol("bpf_probe_read_user")
     if err != nil {
@@ -310,6 +313,21 @@ func parseByUid(uid uint32) error {
         return fmt.Errorf("get package name by uid=%d failed, sep =>:<=", uid)
     }
     return parseByPackage(name[1])
+}
+
+func findBTFAssets() string {
+    lines, err := runCommand("uname", "-r")
+    if err != nil {
+        panic(fmt.Sprintf("findBTFAssets failed, can not exec uname -r, err:%v", err))
+    }
+    btf_file := "a12-5.10-arm64_min.btf"
+    if strings.Contains(lines, "rockchip") {
+        btf_file = "rock5b-5.10-arm64_min.btf"
+    }
+    if gconfig.Debug {
+        logger.Printf("[findBTFAssets] btf_file=%s", btf_file)
+    }
+    return btf_file
 }
 
 func parseByPid(pid uint32) error {

@@ -134,7 +134,7 @@ func (this *MStack) setupManager() error {
 
 func (this *MStack) setupManagerOptions() {
     // 对于没有开启 CONFIG_DEBUG_INFO_BTF 的加载额外的 btf.Spec
-    byteBuf, err := assets.Asset("user/assets/a12-5.10-arm64_min.btf")
+    byteBuf, err := assets.Asset("user/assets/" + this.mconf.ExternalBTF)
     if err != nil {
         this.logger.Fatalf("[setupManagerOptions] failed, err:%v", err)
         return

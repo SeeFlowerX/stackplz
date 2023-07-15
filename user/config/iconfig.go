@@ -26,6 +26,7 @@ type SConfig struct {
 	GetLR       bool
 	GetPC       bool
 	RegName     string
+	ExternalBTF string
 	Debug       bool
 	Quiet       bool
 	AfterRead   bool

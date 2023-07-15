@@ -58,12 +58,12 @@ ebpf_perf_mmap:
 
 .PHONY: genbtf
 genbtf:
-	# cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf rock5b-5.10-f9d1b1529-arm64.btf a12-5.10-arm64_min.btf stack.o
+	cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf rock5b-5.10-f9d1b1529-arm64.btf rock5b-5.10-arm64_min.btf stack.o
 	cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf a12-5.10-arm64.btf a12-5.10-arm64_min.btf stack.o
 
 .PHONY: assets
 assets:
-	$(CMD_GO) run github.com/shuLhan/go-bindata/cmd/go-bindata -pkg assets -o "assets/ebpf_probe.go" $(wildcard ./user/assets/*.o ./user/assets/a12-5.10-arm64_min.btf ./preload_libs/*.so ./user/config/*.json)
+	$(CMD_GO) run github.com/shuLhan/go-bindata/cmd/go-bindata -pkg assets -o "assets/ebpf_probe.go" $(wildcard ./user/assets/*.o ./user/assets/*_min.btf ./preload_libs/*.so ./user/config/*.json)
 
 .PHONY: build
 build:
