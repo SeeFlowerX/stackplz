@@ -115,6 +115,10 @@ type EventContext struct {
     Padding [7]byte
 }
 
+// func (this *EventContext) GetUUID() string {
+//     return fmt.Sprintf("%d_%d_%s", this.Pid, this.Tid, this.Comm)
+// }
+
 func (this *EventContext) String() (s string) {
     // 输出 event_context 解析结果 debug用
     s += fmt.Sprintf("event_id:%d ts:%d", this.EventId, this.Ts)

@@ -62,9 +62,9 @@ func (this *MStack) setupManager() error {
     //     EbpfFuncName:     "trace_ret_do_mmap",
     //     AttachToFuncName: "do_mmap",
     // }
-    common_events_map := &manager.Map{
-        Name: "events",
-    }
+    // common_events_map := &manager.Map{
+    //     Name: "events",
+    // }
     // soinfo hook 配置
     // soinfo_probe := &manager.Probe{
     //     Section:          "uprobe/soinfo",
@@ -79,7 +79,7 @@ func (this *MStack) setupManager() error {
     // 不管是 stack 还是 syscall 都需要用到 soinfo
     // probes = append(probes, vmainfo_kprobe)
     // probes = append(probes, vmainfo_kretprobe)
-    maps = append(maps, common_events_map)
+    // maps = append(maps, common_events_map)
 
     // stack hook 配置
     stack_probe := &manager.Probe{
@@ -104,8 +104,8 @@ func (this *MStack) setupManager() error {
         Section:      "raw_tracepoint/sys_exit",
         EbpfFuncName: "raw_syscalls_sys_exit",
     }
-    syscall_events_map := &manager.Map{
-        Name: "syscall_events",
+    events_map := &manager.Map{
+        Name: "events",
     }
 
     if this.mconf.StackUprobeConf.IsEnable() {
@@ -122,7 +122,7 @@ func (this *MStack) setupManager() error {
         }
         probes = append(probes, sys_enter_probe)
         probes = append(probes, sys_exit_probe)
-        maps = append(maps, syscall_events_map)
+        maps = append(maps, events_map)
     }
 
     this.bpfManager = &manager.Manager{
@@ -326,13 +326,13 @@ func (this *MStack) initDecodeFun() error {
     }
 
     if this.mconf.SysCallConf.IsEnable() {
-        SysCallEventsMap, err := this.FindMap("syscall_events")
+        EventsMap, err := this.FindMap("events")
         if err != nil {
             return err
         }
-        this.eventMaps = append(this.eventMaps, SysCallEventsMap)
+        this.eventMaps = append(this.eventMaps, EventsMap)
         syscallEvent := &event.SyscallEvent{}
-        this.eventFuncMaps[SysCallEventsMap] = syscallEvent
+        this.eventFuncMaps[EventsMap] = syscallEvent
     }
 
     return nil

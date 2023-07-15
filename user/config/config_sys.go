@@ -43,6 +43,11 @@ func (this *SysTableConfig) ReadNR(syscall_id uint32) string {
 	return (*this)[nr_str].Name
 }
 
+func (this *SysTableConfig) ReadNRConfig(syscall_id uint32) TableConfig {
+	nr_str := fmt.Sprintf("%d", syscall_id)
+	return (*this)[nr_str]
+}
+
 func (this *SysTableConfig) CheckNR(nr uint32) error {
 	// 检查系统调用号是否合法
 	nr_str := strconv.FormatUint(uint64(nr), 10)

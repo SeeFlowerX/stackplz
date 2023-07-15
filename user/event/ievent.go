@@ -33,9 +33,10 @@ type IEventStruct interface {
     EventType() EventType
     GetUUID() string
     RecordType() uint32
+    GetEventId() uint32
     ToChildEvent() (IEventStruct, error)
     ParseContext() error
-    GetEventContext() *EventContext
+    // GetEventContext() *EventContext
     SetLogger(logger *log.Logger)
     SetConf(conf config.IConfig)
     SetRecord(rec perf.Record)
@@ -76,6 +77,10 @@ func (this *CommonEvent) GetUUID() string {
     return fmt.Sprintf("%d_%d", this.event_context.Pid, this.event_context.Tid)
 }
 
+func (this *CommonEvent) GetEventId() uint32 {
+    panic("CommonEvent.GetEventId() not implemented yet")
+}
+
 // func (this *CommonEvent) PrePareUUID() (err error) {
 //     // 在完整payload正式交由单独的worker处理前 在 processer 拿到事件后
 //     // 先简单解析下pid和tid信息 为每一个线程设置一个worker
@@ -113,9 +118,9 @@ func (this *CommonEvent) ParseContext() (err error) {
     return nil
 }
 
-func (this *CommonEvent) GetEventContext() *EventContext {
-    return &this.event_context
-}
+// func (this *CommonEvent) GetEventContext() *EventContext {
+//     return &this.event_context
+// }
 
 func (this *CommonEvent) NewMmap2Event() IEventStruct {
     event := &Mmap2Event{CommonEvent: *this}
@@ -141,11 +146,18 @@ func (this *CommonEvent) NewExitEvent() IEventStruct {
     return event
 }
 
-func (this *CommonEvent) NewSyscallEvent() IEventStruct {
-    event := &SyscallEvent{CommonEvent: *this}
+func (this *CommonEvent) NewContextEvent() IEventStruct {
+    event := &ContextEvent{CommonEvent: *this}
     event.ParseContext()
-    event.GetUUID()
     return event
+}
+
+func (this *CommonEvent) NewSyscallEvent(event IEventStruct) IEventStruct {
+    p, ok := (event).(*ContextEvent)
+    if !ok {
+        panic("CommonEvent.NewSyscallEvent() cast to ContextEvent failed")
+    }
+    return p.NewSyscallEvent()
 }
 
 func (this *CommonEvent) RecordType() uint32 {
@@ -183,25 +195,23 @@ func (this *CommonEvent) ToChildEvent() (IEventStruct, error) {
     case unix.PERF_RECORD_SAMPLE:
         {
             // 先把需要的基础信息解析出来
-            err := this.ParseContext()
+            event = this.NewContextEvent()
             if err != nil {
                 return nil, err
             }
-            // 理论上不应该出现这个 但是先做个判断看看
-            if this.event_context.EventId == 0 {
-                this.logger.Printf("PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
-                return nil, errors.New(fmt.Sprintf("PERF_RECORD_SAMPLE EventId is 0, "))
-            }
+            EventId := event.GetEventId()
             // 最后具体的 eventid 转换到具体的 event
-            switch this.event_context.EventId {
+            switch EventId {
             case SYSCALL_ENTER:
                 {
-                    event = this.NewSyscallEvent()
+                    event = this.NewSyscallEvent(event)
                 }
             default:
                 {
                     event = this
-                    this.logger.Printf("yes, CommonEvent EventId:%d\n", this.event_context.EventId)
+                    this.logger.Printf("CommonEvent.ToChildEvent() unsupported EventId:%d\n", EventId)
+                    this.logger.Printf("CommonEvent.ToChildEvent() PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
+                    return nil, errors.New(fmt.Sprintf("PERF_RECORD_SAMPLE EventId is %d", EventId))
                 }
             }
         }

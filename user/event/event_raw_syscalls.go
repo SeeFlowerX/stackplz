@@ -1,9 +1,9 @@
 package event
 
 import (
-    "bytes"
     "encoding/binary"
     "encoding/json"
+    "errors"
     "fmt"
     "io/ioutil"
     "stackplz/pkg/util"
@@ -31,130 +31,184 @@ func (this *Timespec) String() string {
 }
 
 type SyscallEvent struct {
-    event_type EventType
-    CommonEvent
-    UUID         string
-    Stackinfo    string
-    RegsBuffer   RegsBuf
-    UnwindBuffer UnwindBuf
-    // Pid          uint32
-    // Tid          uint32
-    mtype      uint32
-    syscall_id uint32
-    lr         uint64
-    sp         uint64
-    pc         uint64
-    ret        uint64
-    arg_index  uint64
-    args       [6]uint64
-    Comm       [16]byte
-    arg_str    [512]byte
+    ContextEvent
+    event_type    EventType
+    UUID          string
+    Stackinfo     string
+    RegsBuffer    RegsBuf
+    UnwindBuffer  UnwindBuf
+    nr            Arg_nr
+    lr            Arg_reg
+    sp            Arg_reg
+    pc            Arg_reg
+    ret           uint64
+    arg_index     uint64
+    args          [6]uint64
+    arg_str       [512]byte
+    arg_enter_str string
+}
+
+type Arg_nr struct {
+    Index uint8
+    Value int32
+}
+type Arg_reg struct {
+    Index   uint8
+    Address uint64
+}
+type Arg_str struct {
+    Index uint8
+    Len   uint32
 }
 
 func (this *SyscallEvent) Decode() (err error) {
-    // buf := bytes.NewBuffer(payload)
-    // if err = binary.Read(buf, binary.LittleEndian, &this.Pid); err != nil {
-    //     return
-    // }
-    // if err = binary.Read(buf, binary.LittleEndian, &this.Tid); err != nil {
-    //     return
-    // }
-    buf := this.buf
-    if err = binary.Read(buf, binary.LittleEndian, &this.mtype); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.syscall_id); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.lr); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.sp); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.pc); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.ret); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.arg_index); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.args); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.Comm); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.arg_str); err != nil {
-        return
-    }
     return nil
 }
 
-// func (this *SyscallEvent) GetUUID() string {
-//     return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
-// }
+func (this *SyscallEvent) ReadIndex() (error, uint32) {
+    var index uint8 = 0
+    if err := binary.Read(this.buf, binary.LittleEndian, &index); err != nil {
+        return errors.New(fmt.Sprintf("SyscallEvent.ReadIndex() failed, err:%v", err)), uint32(index)
+    }
+    return nil, uint32(index)
+}
+
+const (
+    TYPE_POINTER uint32 = iota
+    TYPE_NUM
+    TYPE_STRING
+)
+
+func (this *SyscallEvent) ParseContext() (err error) {
+    // this.logger.Printf("SyscallEvent.ParseContext() RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
+    // 处理参数 常规参数的构成 是 索引 + 值
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.nr); err != nil {
+        return
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
+        return
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
+        return
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
+        return
+    }
+    // 根据调用号解析剩余参数
+    nr := this.mconf.SysCallConf.SysTable.ReadNRConfig(uint32(this.nr.Value))
+    // switch nr.Name {
+    // case "openat":
+    //     {
+
+    //     }
+    // }
+    var args []string
+    var arg Arg_reg
+    left_argnum := uint32(this.argnum - 4)
+    arg_index := 0
+    arg_type := TYPE_POINTER
+    for i := 0; i < int(left_argnum); i++ {
+        if arg_index >= int(nr.Count) {
+            // 后续优化到 ebpf 中过滤，减少浪费
+            break
+        }
+        switch arg_type {
+        case TYPE_POINTER:
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+                break
+            }
+            args = append(args, fmt.Sprintf("0x%x", arg.Address))
+            if nr.Mask&(1<<arg_index) != 0 {
+                arg_type = TYPE_STRING
+            }
+            arg_index += 1
+            break
+        case TYPE_NUM:
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+                break
+            }
+            args = append(args, fmt.Sprintf("0x%x", arg.Address))
+            arg_index += 1
+            break
+        case TYPE_STRING:
+            var arg_str Arg_str
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg_str); err != nil {
+                break
+            }
+            payload := make([]byte, arg_str.Len)
+            if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+                break
+            }
+            args = append(args, util.B2STrim(payload))
+            arg_type = TYPE_POINTER
+            break
+        default:
+            panic(fmt.Sprintf("unknown arg_type %d", arg_type))
+        }
+    }
+    this.arg_enter_str = strings.Join(args, ", ")
+    return nil
+}
+
+func (this *SyscallEvent) GetUUID() string {
+    return fmt.Sprintf("%d|%d|%s", this.pid, this.tid, util.B2STrim(this.comm[:]))
+}
 
 func (this *SyscallEvent) String() string {
-    conf := this.mconf
-    nr := this.mconf.SysCallConf.SysTable.ReadNR(this.syscall_id)
+    nr := this.mconf.SysCallConf.SysTable.ReadNR(uint32(this.nr.Value))
     var base_str string
-    if conf.Debug {
-        base_str = fmt.Sprintf("[%s_%s] type:%d %s", this.GetUUID(), util.B2STrim(this.Comm[:]), this.mtype, nr)
-    } else {
-        base_str = fmt.Sprintf("[%s_%s] %s", this.GetUUID(), util.B2STrim(this.Comm[:]), nr)
-    }
+    base_str = fmt.Sprintf("[%s] nr:%s %s", this.GetUUID(), nr, this.arg_enter_str)
+    base_str = fmt.Sprintf("%s LR:0x%x PC:0x%x SP:0x%x", base_str, this.lr.Address, this.pc.Address, this.sp.Address)
     // type 和数据发送的顺序相关
-    switch this.mtype {
-    case EventTypeSysEnter:
-        // --getlr 和 --getpc 建议只使用其中一个
-        if conf.GetLR {
-            // info, err := this.ParseLR()
-            info, err := this.ParseLRV1()
-            if err != nil {
-                return fmt.Sprintf("ParseLR err:%v\n", err)
-            }
-            return fmt.Sprintf("%s LR:0x%x Info:\n%s\n", base_str, this.lr, info)
-        }
-        if conf.GetPC {
-            // info, err := this.ParsePC()
-            info, err := this.ParsePCV1()
-            if err != nil {
-                return fmt.Sprintf("ParsePC err:%v\n", err)
-            }
-            return fmt.Sprintf("%s PC:0x%x Info:\n%s\n", base_str, this.pc, info)
-        }
-    case EventTypeSysEnterArgs:
-        var arg_str string
-        if nr == "nanosleep" {
-            var spec Timespec
-            t_buf := bytes.NewBuffer(this.arg_str[:])
-            if err := binary.Read(t_buf, binary.LittleEndian, &spec); err != nil {
-                return fmt.Sprintf("%s", err)
-            }
-            arg_str = spec.String()
-        } else {
-            arg_str = strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
-        }
-        return fmt.Sprintf("%s arg_%d arg_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
-    case EventTypeSysEnterRegs:
-        return fmt.Sprintf("%s %s", base_str, this.ReadArgs())
-    case EventTypeSysExitReadAfterArgs:
-        arg_str := strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
-        return fmt.Sprintf("%s arg_%d arg_after_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
-    case EventTypeSysExitArgs:
-        arg_str := strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
-        return fmt.Sprintf("%s arg_%d arg_ret_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
-    case EventTypeSysExitRet:
-        return fmt.Sprintf("%s ret:0x%x", base_str, this.ret)
-    }
+    // switch this.mtype {
+    // case EventTypeSysEnter:
+    //     // --getlr 和 --getpc 建议只使用其中一个
+    //     if conf.GetLR {
+    //         // info, err := this.ParseLR()
+    //         info, err := this.ParseLRV1()
+    //         if err != nil {
+    //             return fmt.Sprintf("ParseLR err:%v\n", err)
+    //         }
+    //         return fmt.Sprintf("%s LR:0x%x Info:\n%s\n", base_str, this.lr, info)
+    //     }
+    //     if conf.GetPC {
+    //         // info, err := this.ParsePC()
+    //         info, err := this.ParsePCV1()
+    //         if err != nil {
+    //             return fmt.Sprintf("ParsePC err:%v\n", err)
+    //         }
+    //         return fmt.Sprintf("%s PC:0x%x Info:\n%s\n", base_str, this.pc, info)
+    //     }
+    // case EventTypeSysEnterArgs:
+    //     var arg_str string
+    //     if nr == "nanosleep" {
+    //         var spec Timespec
+    //         t_buf := bytes.NewBuffer(this.arg_str[:])
+    //         if err := binary.Read(t_buf, binary.LittleEndian, &spec); err != nil {
+    //             return fmt.Sprintf("%s", err)
+    //         }
+    //         arg_str = spec.String()
+    //     } else {
+    //         arg_str = strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
+    //     }
+    //     return fmt.Sprintf("%s arg_%d arg_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
+    // case EventTypeSysEnterRegs:
+    //     return fmt.Sprintf("%s %s", base_str, this.ReadArgs())
+    // case EventTypeSysExitReadAfterArgs:
+    //     arg_str := strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
+    //     return fmt.Sprintf("%s arg_%d arg_after_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
+    // case EventTypeSysExitArgs:
+    //     arg_str := strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
+    //     return fmt.Sprintf("%s arg_%d arg_ret_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
+    // case EventTypeSysExitRet:
+    //     return fmt.Sprintf("%s ret:0x%x", base_str, this.ret)
+    // }
+    // this.logger.Printf("SyscallEvent.String() base_str:" + base_str)
     return base_str
 }
 
 func (this *SyscallEvent) ParseLRV1() (string, error) {
-    return maps_helper.GetOffset(this.event_context.Pid, this.lr), nil
+    return maps_helper.GetOffset(this.event_context.Pid, this.lr.Address), nil
 }
 
 func (this *SyscallEvent) ParseLR() (string, error) {
@@ -178,8 +232,8 @@ func (this *SyscallEvent) ParseLR() (string, error) {
         reader := strings.NewReader(line)
         n, err := fmt.Fscanf(reader, "%x-%x %s %x %s %d %s", &seg_start, &seg_end, &permission, &seg_offset, &device, &inode, &seg_path)
         if err == nil && n == 7 {
-            if this.lr >= seg_start && this.lr < seg_end {
-                offset := seg_offset + (this.lr - seg_start)
+            if this.lr.Address >= seg_start && this.lr.Address < seg_end {
+                offset := seg_offset + (this.lr.Address - seg_start)
                 info = fmt.Sprintf("%s + 0x%x", seg_path, offset)
                 break
             }
@@ -191,7 +245,7 @@ func (this *SyscallEvent) ParseLR() (string, error) {
 func (this *SyscallEvent) ParsePCV1() (string, error) {
     // 通过在启动阶段收集到的库基址信息来计算偏移
     // 由于每个进程的加载情况不一样 这里要传递 pid
-    return maps_helper.GetOffset(this.event_context.Pid, this.pc), nil
+    return maps_helper.GetOffset(this.event_context.Pid, this.pc.Address), nil
 }
 
 func (this *SyscallEvent) ParsePC() (string, error) {
@@ -215,8 +269,8 @@ func (this *SyscallEvent) ParsePC() (string, error) {
         reader := strings.NewReader(line)
         n, err := fmt.Fscanf(reader, "%x-%x %s %x %s %d %s", &seg_start, &seg_end, &permission, &seg_offset, &device, &inode, &seg_path)
         if err == nil && n == 7 {
-            if this.pc >= seg_start && this.pc < seg_end {
-                offset := seg_offset + (this.pc - seg_start)
+            if this.pc.Address >= seg_start && this.pc.Address < seg_end {
+                offset := seg_offset + (this.pc.Address - seg_start)
                 info = fmt.Sprintf("%s + 0x%x", seg_path, offset)
                 break
             }
@@ -226,7 +280,7 @@ func (this *SyscallEvent) ParsePC() (string, error) {
 }
 
 func (this *SyscallEvent) ReadArgs() string {
-    config := this.mconf.SysCallConf.SysTable[fmt.Sprintf("%d", this.syscall_id)]
+    config := this.mconf.SysCallConf.SysTable[fmt.Sprintf("%d", this.nr.Value)]
     regs := make(map[string]string)
     for i := 0; i < int(config.Count); i++ {
         regs[fmt.Sprintf("x%d", i)] = fmt.Sprintf("0x%x", this.args[i])
