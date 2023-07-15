@@ -77,6 +77,7 @@ const (
     TYPE_POINTER uint32 = iota
     TYPE_NUM
     TYPE_STRING
+    TYPE_STRUCT
 )
 
 func (this *SyscallEvent) ParseContext() (err error) {
