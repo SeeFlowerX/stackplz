@@ -379,16 +379,23 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     // data->syscall_id = regs->syscallno;
 
     // 先获取 lr sp pc 并发送 这样可以尽早计算调用来源情况
+    // READ_KERN 好像有问题
     if(filter->is_32bit) {
-        // bpf_probe_read_kernel(&data->lr, sizeof(data->lr), &regs->regs[14]);
-        save_to_submit_buf(p.event, (void *) READ_KERN(regs->regs[14]), sizeof(u64), 1);
+        u64 lr = 0;
+        bpf_probe_read_kernel(&lr, sizeof(lr), &regs->regs[14]);
+        save_to_submit_buf(p.event, (void *) &lr, sizeof(u64), 1);
     }
     else {
-        save_to_submit_buf(p.event, (void *) READ_KERN(regs->regs[30]), sizeof(u64), 1);
-        // bpf_probe_read_kernel(&data->lr, sizeof(data->lr), &regs->regs[30]);
+        u64 lr = 0;
+        bpf_probe_read_kernel(&lr, sizeof(lr), &regs->regs[30]);
+        save_to_submit_buf(p.event, (void *) &lr, sizeof(u64), 1);
     }
-    save_to_submit_buf(p.event, (void *) READ_KERN(regs->pc), sizeof(u64), 2);
-    save_to_submit_buf(p.event, (void *) READ_KERN(regs->sp), sizeof(u64), 3);
+    u64 pc = 0;
+    u64 sp = 0;
+    bpf_probe_read_kernel(&pc, sizeof(pc), &regs->pc);
+    bpf_probe_read_kernel(&sp, sizeof(sp), &regs->sp);
+    save_to_submit_buf(p.event, (void *) &pc, sizeof(u64), 2);
+    save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 3);
     int next_arg_index = 4;
 
     // struct arg_mask_t* arg_mask = bpf_map_lookup_elem(&arg_mask_map, &regs->syscallno);
