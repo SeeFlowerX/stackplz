@@ -17,6 +17,8 @@ package event_processor
 import (
 	"stackplz/user/event"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 type IWorker interface {
@@ -89,8 +91,21 @@ func (this *eventWorker) parserEvent(e event.IEventStruct) {
 	if err != nil {
 		logger.Printf("Decode failed UUID:%s, err:%v", this.UUID, err)
 	}
+	switch e.RecordType() {
+	case unix.PERF_RECORD_COMM:
+	case unix.PERF_RECORD_MMAP2:
+	case unix.PERF_RECORD_EXIT:
+	case unix.PERF_RECORD_FORK:
+		{
+			// 这几种暂时不需要输出
+			break
+		}
+	default:
+		{
+			logger.Printf(e.String())
+		}
+	}
 	// 打印输出
-	logger.Printf(e.String())
 
 	// this.processor.GetLogger().Printf("%d %s", this.tickerCount, e.String())
 	// 根据 event 选取对应的 解析器

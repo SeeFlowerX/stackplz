@@ -32,6 +32,7 @@ type IEventStruct interface {
     Clone() IEventStruct
     EventType() EventType
     GetUUID() string
+    RecordType() uint32
     ToChildEvent() (IEventStruct, error)
     ParseContext() error
     GetEventContext() *EventContext
@@ -145,6 +146,10 @@ func (this *CommonEvent) NewSyscallEvent() IEventStruct {
     event.ParseContext()
     event.GetUUID()
     return event
+}
+
+func (this *CommonEvent) RecordType() uint32 {
+    return this.rec.RecordType
 }
 
 func (this *CommonEvent) ToChildEvent() (IEventStruct, error) {
