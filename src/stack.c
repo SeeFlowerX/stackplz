@@ -504,6 +504,9 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         }
         next_arg_index = read_args(p, point_arg, saved_args.args[i], next_arg_index);
     }
+    u64 ret = READ_KERN(regs->regs[0]);
+    save_to_submit_buf(p.event, (void *) &ret, sizeof(ret), next_arg_index);
+    next_arg_index += 1;
     events_perf_submit(&p, SYSCALL_EXIT);
     return 0;
 }

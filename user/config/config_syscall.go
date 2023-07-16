@@ -186,11 +186,6 @@ var TIMESPEC = ArgType{TYPE_TIMESPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.
 var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrAny{}))}
 
 func init() {
-	// syscall.Openat()
-	// syscall.Uname()
-	// syscall.Connect()
-	// syscall.Nanosleep()
-
 	// 结构体成员相关 某些参数的成员是指针类型的情况
 	// Register(&PArgs{"sockaddr", []PArg{{"sockfd", INT}, {"addr", SOCKADDR}, {"addrlen", UINT32}}})
 
@@ -198,6 +193,7 @@ func init() {
 	Register(&SArgs{0, PArgs{"io_setup", []PArg{A("nr_events", UINT), A("ctx_idp", POINTER)}}})
 	Register(&SArgs{17, PArgs{"getcwd", []PArg{B("buf", STRING), A("size", UINT64)}}})
 	Register(&SArgs{56, PArgs{"openat", []PArg{A("dirfd", INT), A("pathname", STRING), A("flags", INT), A("mode", UINT32)}}})
+	Register(&SArgs{78, PArgs{"readlinkat", []PArg{A("dirfd", INT), A("pathname", STRING), B("buf", STRING), A("bufsiz", INT)}}})
 	Register(&SArgs{101, PArgs{"nanosleep", []PArg{A("req", TIMESPEC), A("rem", TIMESPEC)}}})
 	Register(&SArgs{203, PArgs{"connect", []PArg{A("sockfd", INT), A("addr", SOCKADDR), A("addrlen", UINT32)}}})
 }

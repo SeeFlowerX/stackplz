@@ -177,6 +177,13 @@ func (this *SyscallEvent) ParseContext() (err error) {
         }
     }
     this.arg_str = "(" + strings.Join(results, ", ") + ")"
+    if this.eventid == SYSCALL_EXIT {
+        var ptr Arg_reg
+        if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        this.arg_str = fmt.Sprintf("[ret=0x%x]", ptr.Address) + this.arg_str
+    }
     return nil
 }
 
