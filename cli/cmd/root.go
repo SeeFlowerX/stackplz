@@ -297,6 +297,11 @@ func runCommand(executable string, args ...string) (string, error) {
 func parseByUid(uid uint32) error {
     // pm list package --uid 10245
 
+    if uid == 1000 || uid == 2000 || uid == 0 {
+        gconfig.Is32Bit = false
+        return nil
+    }
+
     lines, err := runCommand("pm", "list", "package", "--uid", strconv.FormatUint(uint64(uid), 10))
     if err != nil {
         return err

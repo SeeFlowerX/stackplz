@@ -43,11 +43,19 @@ enum arg_type_e
 	TYPE_INT,
 	TYPE_UINT,
 	TYPE_UINT32,
+	TYPE_UINT64,
 	TYPE_STRING,
 	TYPE_POINTER,
 	TYPE_STRUCT,
 	TYPE_TIMESPEC,
 	TYPE_SOCKADDR
+};
+
+enum read_type_e
+{
+	FORBIDDEN = 0,
+	SYS_ENTER,
+	SYS_EXIT
 };
 
 typedef struct event_context {

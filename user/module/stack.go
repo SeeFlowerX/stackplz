@@ -100,10 +100,10 @@ func (this *MStack) setupManager() error {
         Section:      "raw_tracepoint/sys_enter",
         EbpfFuncName: "raw_syscalls_sys_enter",
     }
-    // sys_exit_probe := &manager.Probe{
-    //     Section:      "raw_tracepoint/sys_exit",
-    //     EbpfFuncName: "raw_syscalls_sys_exit",
-    // }
+    sys_exit_probe := &manager.Probe{
+        Section:      "raw_tracepoint/sys_exit",
+        EbpfFuncName: "raw_syscalls_sys_exit",
+    }
     events_map := &manager.Map{
         Name: "events",
     }
@@ -121,7 +121,7 @@ func (this *MStack) setupManager() error {
             this.logger.Printf("Syscall:%s", this.mconf.SysCallConf.Info())
         }
         probes = append(probes, sys_enter_probe)
-        // probes = append(probes, sys_exit_probe)
+        probes = append(probes, sys_exit_probe)
         maps = append(maps, events_map)
     }
 
@@ -169,9 +169,9 @@ func (this *MStack) Clone() IModule {
 
 func (this *MStack) start() error {
     // 保不齐什么时候写出bug了 这里再次检查uid
-    if this.mconf.Uid == 0 {
-        return fmt.Errorf("uid is 0, %s", this.GetConf())
-    }
+    // if this.mconf.Uid == 0 {
+    //     return fmt.Errorf("uid is 0, %s", this.GetConf())
+    // }
 
     // 先判断有是只hook其中一个 还是两个都要
     if !this.mconf.StackUprobeConf.IsEnable() && !this.mconf.SysCallConf.IsEnable() {

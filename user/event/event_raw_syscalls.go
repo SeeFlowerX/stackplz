@@ -33,21 +33,20 @@ func (this *Timespec) String() string {
 
 type SyscallEvent struct {
     ContextEvent
-    event_type    EventType
-    UUID          string
-    Stackinfo     string
-    RegsBuffer    RegsBuf
-    UnwindBuffer  UnwindBuf
-    nr_point      *config.SysCallArgs
-    nr            Arg_nr
-    lr            Arg_reg
-    sp            Arg_reg
-    pc            Arg_reg
-    ret           uint64
-    arg_index     uint64
-    args          [6]uint64
-    arg_str       [512]byte
-    arg_enter_str string
+    Etype        uint32
+    event_type   EventType
+    UUID         string
+    Stackinfo    string
+    RegsBuffer   RegsBuf
+    UnwindBuffer UnwindBuf
+    nr_point     *config.SysCallArgs
+    nr           Arg_nr
+    lr           Arg_reg
+    sp           Arg_reg
+    pc           Arg_reg
+    ret          uint64
+    args         [6]uint64
+    arg_str      string
 }
 
 type Arg_nr struct {
@@ -83,19 +82,21 @@ func (this *SyscallEvent) ReadIndex() (error, uint32) {
 }
 
 func (this *SyscallEvent) ParseContext() (err error) {
-    // this.logger.Printf("SyscallEvent.ParseContext() RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
+    // this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
     // 处理参数 常规参数的构成 是 索引 + 值
     if err = binary.Read(this.buf, binary.LittleEndian, &this.nr); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+    if this.eventid == SYSCALL_ENTER {
+        if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
     }
     // 根据调用号解析剩余参数
     // nr := this.mconf.SysCallConf.SysTable.ReadNRConfig(uint32(this.nr.Value))
@@ -108,19 +109,28 @@ func (this *SyscallEvent) ParseContext() (err error) {
 
     var results []string
     for _, point_arg := range this.nr_point.Args {
-        // this.logger.Printf("SyscallEvent.ParseContext() point_arg.AliasType:%d", point_arg.AliasType)
+        // this.logger.Printf(".... AliasType:%d %d %d", point_arg.AliasType, this.eventid, point_arg.ReadFlag)
+        var ptr Arg_reg
+        if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
+        if point_arg.Type == config.TYPE_NUM {
+            results = append(results, base_arg_str)
+            continue
+        }
+        if this.eventid == SYSCALL_ENTER && point_arg.ReadFlag == config.SYS_EXIT {
+            results = append(results, base_arg_str)
+            continue
+        }
+        if this.eventid == SYSCALL_EXIT && point_arg.ReadFlag == config.SYS_ENTER {
+            results = append(results, base_arg_str)
+            continue
+        }
         switch point_arg.AliasType {
-        case config.TYPE_NUM, config.TYPE_INT, config.TYPE_UINT32:
-            var value Arg_reg
-            if err = binary.Read(this.buf, binary.LittleEndian, &value); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
-            results = append(results, fmt.Sprintf("%s=0x%x", point_arg.ArgName, value.Address))
+        case config.TYPE_NUM:
+            break
         case config.TYPE_STRING:
-            var ptr Arg_reg
-            if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
             var arg_str Arg_str
             if err = binary.Read(this.buf, binary.LittleEndian, &arg_str); err != nil {
                 panic(fmt.Sprintf("binary.Read err:%v", err))
@@ -129,30 +139,22 @@ func (this *SyscallEvent) ParseContext() (err error) {
             if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
                 panic(fmt.Sprintf("binary.Read err:%v", err))
             }
-            results = append(results, fmt.Sprintf("%s=0x%x(%s)", point_arg.ArgName, ptr.Address, util.B2STrim(payload)))
+            results = append(results, fmt.Sprintf("%s(%s)", base_arg_str, util.B2STrim(payload)))
         case config.TYPE_POINTER:
             // 先解析参数寄存器本身的值
-            var ptr Arg_reg
             var ptr_value Arg_reg
-            if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
             // 再解析参数寄存器指向地址的值
             if err = binary.Read(this.buf, binary.LittleEndian, &ptr_value); err != nil {
                 panic(fmt.Sprintf("binary.Read err:%v", err))
             }
-            results = append(results, fmt.Sprintf("%s=0x%x(0x%x)", point_arg.ArgName, ptr.Address, ptr_value.Address))
+            results = append(results, fmt.Sprintf("%s(0x%x)", base_arg_str, ptr_value.Address))
         case config.TYPE_STRUCT:
             payload := make([]byte, point_arg.Size)
             if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
                 panic(fmt.Sprintf("binary.Read err:%v", err))
             }
-            results = append(results, fmt.Sprintf("%s=[hex]%x", point_arg.ArgName, payload))
+            results = append(results, fmt.Sprintf("%s([hex]%x)", base_arg_str, payload))
         case config.TYPE_TIMESPEC:
-            var ptr Arg_reg
-            if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
             var time_fmt string
             if ptr.Address != 0 {
                 var arg_time Arg_Timespec
@@ -163,7 +165,7 @@ func (this *SyscallEvent) ParseContext() (err error) {
             } else {
                 time_fmt = "NULL"
             }
-            results = append(results, fmt.Sprintf("%s=0x%x(%s)", point_arg.ArgName, ptr.Address, time_fmt))
+            results = append(results, fmt.Sprintf("%s(%s)", base_arg_str, time_fmt))
         case config.TYPE_SOCKADDR:
             var sockaddr syscall.RawSockaddrAny
             if err = binary.Read(this.buf, binary.LittleEndian, &sockaddr); err != nil {
@@ -174,8 +176,7 @@ func (this *SyscallEvent) ParseContext() (err error) {
             panic(fmt.Sprintf("unknown point_arg.AliasType %d", point_arg.AliasType))
         }
     }
-    this.arg_enter_str = "(" + strings.Join(results, ", ") + ")"
-    // this.logger.Println(this.arg_enter_str)
+    this.arg_str = "(" + strings.Join(results, ", ") + ")"
     return nil
 }
 
@@ -185,7 +186,7 @@ func (this *SyscallEvent) GetUUID() string {
 
 func (this *SyscallEvent) String() string {
     var base_str string
-    base_str = fmt.Sprintf("[%s] nr:%s%s", this.GetUUID(), this.nr_point.PointName, this.arg_enter_str)
+    base_str = fmt.Sprintf("[%s] nr:%s%s", this.GetUUID(), this.nr_point.PointName, this.arg_str)
     base_str = fmt.Sprintf("%s LR:0x%x PC:0x%x SP:0x%x", base_str, this.lr.Address, this.pc.Address, this.sp.Address)
     // type 和数据发送的顺序相关
     // switch this.mtype {

@@ -13,16 +13,30 @@ import (
 const MAX_POINT_ARG_COUNT = 6
 
 type ArgType struct {
-	AliasType uint32 `json:"AliasType"`
-	Type      uint32 `json:"Type"`
-	Size      uint32 `json:"Size"`
+	AliasType uint32
+	Type      uint32
+	Size      uint32
+}
+
+type FilterArgType struct {
+	ReadFlag uint32
+	ArgType
 }
 
 type PointArg struct {
-	ArgName string `json:"Name"`
+	ArgName  string
+	ReadFlag uint32
 	ArgType
 }
 type PArg = PointArg
+
+func A(arg_name string, arg_type ArgType) PArg {
+	return PArg{arg_name, SYS_ENTER, arg_type}
+}
+
+func B(arg_name string, arg_type ArgType) PArg {
+	return PArg{arg_name, SYS_EXIT, arg_type}
+}
 
 type PointArgs struct {
 	PointName string
@@ -32,7 +46,7 @@ type PArgs = PointArgs
 
 type PointTypes struct {
 	Count    uint32
-	ArgTypes [MAX_POINT_ARG_COUNT]ArgType
+	ArgTypes [MAX_POINT_ARG_COUNT]FilterArgType
 }
 
 type SysCallArgs struct {
@@ -61,12 +75,13 @@ func (this *PointArgs) Name() string {
 }
 
 func (this *PointArgs) GetConfig() *PointTypes {
-	var point_arg_types [MAX_POINT_ARG_COUNT]ArgType
+	var point_arg_types [MAX_POINT_ARG_COUNT]FilterArgType
 	for i := 0; i < MAX_POINT_ARG_COUNT; i++ {
 		if i+1 > len(this.Args) {
 			break
 		}
-		point_arg_types[i] = this.Args[i].ArgType
+		point_arg_types[i].ReadFlag = this.Args[i].ReadFlag
+		point_arg_types[i].ArgType = this.Args[i].ArgType
 	}
 	config := &PointTypes{
 		Count:    uint32(len(this.Args)),
@@ -146,6 +161,7 @@ const (
 	TYPE_INT
 	TYPE_UINT
 	TYPE_UINT32
+	TYPE_UINT64
 	TYPE_STRING
 	TYPE_POINTER
 	TYPE_STRUCT
@@ -153,14 +169,21 @@ const (
 	TYPE_SOCKADDR
 )
 
-var ARG_TYPE_NONE = ArgType{TYPE_NONE, TYPE_NONE, 0}
-var ARG_TYPE_INT = ArgType{TYPE_INT, TYPE_NUM, uint32(unsafe.Sizeof(int(0)))}
-var ARG_TYPE_UINT = ArgType{TYPE_UINT, TYPE_NUM, uint32(unsafe.Sizeof(int(0)))}
-var ARG_TYPE_UINT32 = ArgType{TYPE_UINT32, TYPE_NUM, uint32(unsafe.Sizeof(uint(0)))}
-var ARG_TYPE_STRING = ArgType{TYPE_STRING, TYPE_STRING, uint32(unsafe.Sizeof(uint64(0)))}
-var ARG_TYPE_POINTER = ArgType{TYPE_POINTER, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0)))}
-var ARG_TYPE_TIMESPEC = ArgType{TYPE_TIMESPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timespec{}))}
-var ARG_TYPE_SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrAny{}))}
+const (
+	FORBIDDEN uint32 = iota
+	SYS_ENTER
+	SYS_EXIT
+)
+
+var NONE = ArgType{TYPE_NONE, TYPE_NONE, 0}
+var INT = ArgType{TYPE_INT, TYPE_NUM, uint32(unsafe.Sizeof(int(0)))}
+var UINT = ArgType{TYPE_UINT, TYPE_NUM, uint32(unsafe.Sizeof(int(0)))}
+var UINT32 = ArgType{TYPE_UINT32, TYPE_NUM, uint32(unsafe.Sizeof(uint(0)))}
+var UINT64 = ArgType{TYPE_UINT64, TYPE_NUM, uint32(unsafe.Sizeof(uint64(0)))}
+var STRING = ArgType{TYPE_STRING, TYPE_STRING, uint32(unsafe.Sizeof(uint64(0)))}
+var POINTER = ArgType{TYPE_POINTER, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0)))}
+var TIMESPEC = ArgType{TYPE_TIMESPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timespec{}))}
+var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrAny{}))}
 
 func init() {
 	// syscall.Openat()
@@ -169,11 +192,12 @@ func init() {
 	// syscall.Nanosleep()
 
 	// 结构体成员相关 某些参数的成员是指针类型的情况
-	// Register(&PArgs{"sockaddr", []PArg{{"sockfd", ARG_TYPE_INT}, {"addr", ARG_TYPE_SOCKADDR}, {"addrlen", ARG_TYPE_UINT32}}})
+	// Register(&PArgs{"sockaddr", []PArg{{"sockfd", INT}, {"addr", SOCKADDR}, {"addrlen", UINT32}}})
 
 	// syscall相关
-	Register(&SArgs{0, PArgs{"io_setup", []PArg{{"nr_events", ARG_TYPE_UINT}, {"ctx_idp", ARG_TYPE_POINTER}}}})
-	Register(&SArgs{56, PArgs{"openat", []PArg{{"dirfd", ARG_TYPE_INT}, {"pathname", ARG_TYPE_STRING}, {"flags", ARG_TYPE_INT}, {"mode", ARG_TYPE_UINT32}}}})
-	Register(&SArgs{101, PArgs{"nanosleep", []PArg{{"req", ARG_TYPE_TIMESPEC}, {"rem", ARG_TYPE_TIMESPEC}}}})
-	Register(&SArgs{203, PArgs{"connect", []PArg{{"sockfd", ARG_TYPE_INT}, {"addr", ARG_TYPE_SOCKADDR}, {"addrlen", ARG_TYPE_UINT32}}}})
+	Register(&SArgs{0, PArgs{"io_setup", []PArg{A("nr_events", UINT), A("ctx_idp", POINTER)}}})
+	Register(&SArgs{17, PArgs{"getcwd", []PArg{B("buf", STRING), A("size", UINT64)}}})
+	Register(&SArgs{56, PArgs{"openat", []PArg{A("dirfd", INT), A("pathname", STRING), A("flags", INT), A("mode", UINT32)}}})
+	Register(&SArgs{101, PArgs{"nanosleep", []PArg{A("req", TIMESPEC), A("rem", TIMESPEC)}}})
+	Register(&SArgs{203, PArgs{"connect", []PArg{A("sockfd", INT), A("addr", SOCKADDR), A("addrlen", UINT32)}}})
 }

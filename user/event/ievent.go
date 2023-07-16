@@ -202,7 +202,7 @@ func (this *CommonEvent) ToChildEvent() (IEventStruct, error) {
             EventId := event.GetEventId()
             // 最后具体的 eventid 转换到具体的 event
             switch EventId {
-            case SYSCALL_ENTER:
+            case SYSCALL_ENTER, SYSCALL_EXIT:
                 {
                     event = this.NewSyscallEvent(event)
                 }
