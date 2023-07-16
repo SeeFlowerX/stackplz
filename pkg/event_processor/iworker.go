@@ -40,6 +40,7 @@ const (
 
 type eventWorker struct {
 	incoming chan event.IEventStruct
+	// last_event event.IEventStruct
 	//events      []user.IEventStruct
 	ticker      *time.Ticker
 	tickerCount uint8
@@ -84,9 +85,6 @@ func (this *eventWorker) Display() {
 // 解析类型，输出
 func (this *eventWorker) parserEvent(e event.IEventStruct) {
 	logger := this.processor.GetLogger()
-
-	// this.processor.GetLogger().Printf("parserEvent UUID:%s", this.UUID)
-
 	err := e.Decode()
 	if err != nil {
 		logger.Printf("Decode failed UUID:%s, err:%v", this.UUID, err)
@@ -103,6 +101,31 @@ func (this *eventWorker) parserEvent(e event.IEventStruct) {
 	default:
 		{
 			logger.Printf(e.String())
+			// switch e.GetEventId() {
+			// case event.SYSCALL_ENTER:
+			// 	p, ok := (e).(*event.SyscallEvent)
+			// 	if !ok {
+			// 		panic("cast event.SYSCALL_ENTER to event.SyscallEvent failed")
+			// 	}
+			// 	if p.WaitNextEvent() {
+			// 		this.last_event = p
+			// 	} else {
+			// 		logger.Printf(p.String())
+			// 	}
+			// case event.SYSCALL_EXIT:
+			// 	if this.last_event == nil {
+			// 		logger.Printf(e.String())
+			// 	}
+			// 	p, ok := (this.last_event).(*event.SyscallEvent)
+			// 	if !ok {
+			// 		panic("cast event.SYSCALL_ENTER to event.SyscallEvent failed")
+			// 	}
+			// 	this.last_event = nil
+			// 	p.MergeEvent(e)
+			// 	logger.Printf(p.String())
+			// default:
+			// 	logger.Printf(e.String())
+			// }
 		}
 	}
 	// 打印输出

@@ -27,26 +27,38 @@ type PointArg struct {
 	ArgName  string
 	ReadFlag uint32
 	ArgType
+	ArgValue string
 }
+
+func (this *PointArg) SetValue(value string) {
+	this.ArgValue = value
+}
+
+func (this *PointArg) AppendValue(value string) {
+	this.ArgValue += value
+}
+
 type PArg = PointArg
 
 func A(arg_name string, arg_type ArgType) PArg {
-	return PArg{arg_name, SYS_ENTER, arg_type}
+	return PArg{arg_name, SYS_ENTER, arg_type, "???"}
 }
 
 func B(arg_name string, arg_type ArgType) PArg {
-	return PArg{arg_name, SYS_EXIT, arg_type}
+	return PArg{arg_name, SYS_EXIT, arg_type, "???"}
 }
 
 type PointArgs struct {
 	PointName string
+	Ret       PointArg
 	Args      []PointArg
 }
 type PArgs = PointArgs
 
 type PointTypes struct {
-	Count    uint32
-	ArgTypes [MAX_POINT_ARG_COUNT]FilterArgType
+	Count      uint32
+	ArgTypes   [MAX_POINT_ARG_COUNT]FilterArgType
+	ArgTypeRet FilterArgType
 }
 
 type SysCallArgs struct {
@@ -58,6 +70,7 @@ type SArgs = SysCallArgs
 func (this *PointArgs) Clone() IWatchPoint {
 	args := new(PointArgs)
 	args.PointName = this.PointName
+	args.Ret = this.Ret
 	args.Args = this.Args
 	return args
 }
@@ -83,9 +96,13 @@ func (this *PointArgs) GetConfig() *PointTypes {
 		point_arg_types[i].ReadFlag = this.Args[i].ReadFlag
 		point_arg_types[i].ArgType = this.Args[i].ArgType
 	}
+	var point_arg_type_ret FilterArgType
+	point_arg_type_ret.ReadFlag = this.Ret.ReadFlag
+	point_arg_type_ret.ArgType = this.Ret.ArgType
 	config := &PointTypes{
-		Count:    uint32(len(this.Args)),
-		ArgTypes: point_arg_types,
+		Count:      uint32(len(this.Args)),
+		ArgTypes:   point_arg_types,
+		ArgTypeRet: point_arg_type_ret,
 	}
 	return config
 }
@@ -151,10 +168,6 @@ func GetWatchPointByName(pointName string) IWatchPoint {
 	return nil
 }
 
-type IArgType interface {
-	GetType() uint32
-}
-
 const (
 	TYPE_NONE uint32 = iota
 	TYPE_NUM
@@ -166,6 +179,7 @@ const (
 	TYPE_POINTER
 	TYPE_STRUCT
 	TYPE_TIMESPEC
+	TYPE_UTSNAME
 	TYPE_SOCKADDR
 )
 
@@ -183,6 +197,7 @@ var UINT64 = ArgType{TYPE_UINT64, TYPE_NUM, uint32(unsafe.Sizeof(uint64(0)))}
 var STRING = ArgType{TYPE_STRING, TYPE_STRING, uint32(unsafe.Sizeof(uint64(0)))}
 var POINTER = ArgType{TYPE_POINTER, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0)))}
 var TIMESPEC = ArgType{TYPE_TIMESPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timespec{}))}
+var UTSNAME = ArgType{TYPE_UTSNAME, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Utsname{}))}
 var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrAny{}))}
 
 func init() {
@@ -190,10 +205,11 @@ func init() {
 	// Register(&PArgs{"sockaddr", []PArg{{"sockfd", INT}, {"addr", SOCKADDR}, {"addrlen", UINT32}}})
 
 	// syscall相关
-	Register(&SArgs{0, PArgs{"io_setup", []PArg{A("nr_events", UINT), A("ctx_idp", POINTER)}}})
-	Register(&SArgs{17, PArgs{"getcwd", []PArg{B("buf", STRING), A("size", UINT64)}}})
-	Register(&SArgs{56, PArgs{"openat", []PArg{A("dirfd", INT), A("pathname", STRING), A("flags", INT), A("mode", UINT32)}}})
-	Register(&SArgs{78, PArgs{"readlinkat", []PArg{A("dirfd", INT), A("pathname", STRING), B("buf", STRING), A("bufsiz", INT)}}})
-	Register(&SArgs{101, PArgs{"nanosleep", []PArg{A("req", TIMESPEC), A("rem", TIMESPEC)}}})
-	Register(&SArgs{203, PArgs{"connect", []PArg{A("sockfd", INT), A("addr", SOCKADDR), A("addrlen", UINT32)}}})
+	Register(&SArgs{0, PArgs{"io_setup", B("ret", UINT64), []PArg{A("nr_events", UINT), A("ctx_idp", POINTER)}}})
+	Register(&SArgs{17, PArgs{"getcwd", B("ret", UINT64), []PArg{B("buf", STRING), A("size", UINT64)}}})
+	Register(&SArgs{56, PArgs{"openat", B("ret", UINT64), []PArg{A("dirfd", INT), A("pathname", STRING), A("flags", INT), A("mode", UINT32)}}})
+	Register(&SArgs{78, PArgs{"readlinkat", B("ret", UINT64), []PArg{A("dirfd", INT), A("pathname", STRING), B("buf", STRING), A("bufsiz", INT)}}})
+	Register(&SArgs{101, PArgs{"nanosleep", B("ret", UINT64), []PArg{A("req", TIMESPEC), A("rem", TIMESPEC)}}})
+	Register(&SArgs{160, PArgs{"uname", B("ret", UINT64), []PArg{B("buf", UTSNAME)}}})
+	Register(&SArgs{203, PArgs{"connect", B("ret", UINT64), []PArg{A("sockfd", INT), A("addr", SOCKADDR), A("addrlen", UINT32)}}})
 }

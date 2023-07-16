@@ -148,6 +148,7 @@ typedef struct syscall_point_args_t {
     // u32 nr;
     u32 count;
     point_arg point_args[MAX_POINT_ARG_COUNT];
+    point_arg point_arg_ret;
 } syscall_point_args;
 
 // struct {
@@ -495,7 +496,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     }
     // #pragma unroll
     for (int i = 0; i < point_arg_count; i++) {
-        // 先保存寄存器
+        // 保存参数的寄存器
         save_to_submit_buf(p.event, (void *)&saved_args.args[i], sizeof(u64), next_arg_index);
         next_arg_index += 1;
         struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_args[i];
@@ -504,9 +505,15 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         }
         next_arg_index = read_args(p, point_arg, saved_args.args[i], next_arg_index);
     }
+    // 读取返回值
     u64 ret = READ_KERN(regs->regs[0]);
+    // 保存之
     save_to_submit_buf(p.event, (void *) &ret, sizeof(ret), next_arg_index);
     next_arg_index += 1;
+    // 取返回值的参数配置 并尝试进一步读取
+    struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_arg_ret;
+    next_arg_index = read_args(p, point_arg, ret, next_arg_index);
+    // 发送数据
     events_perf_submit(&p, SYSCALL_EXIT);
     return 0;
 }
