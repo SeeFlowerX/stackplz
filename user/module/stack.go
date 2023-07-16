@@ -100,10 +100,10 @@ func (this *MStack) setupManager() error {
         Section:      "raw_tracepoint/sys_enter",
         EbpfFuncName: "raw_syscalls_sys_enter",
     }
-    sys_exit_probe := &manager.Probe{
-        Section:      "raw_tracepoint/sys_exit",
-        EbpfFuncName: "raw_syscalls_sys_exit",
-    }
+    // sys_exit_probe := &manager.Probe{
+    //     Section:      "raw_tracepoint/sys_exit",
+    //     EbpfFuncName: "raw_syscalls_sys_exit",
+    // }
     events_map := &manager.Map{
         Name: "events",
     }
@@ -121,7 +121,7 @@ func (this *MStack) setupManager() error {
             this.logger.Printf("Syscall:%s", this.mconf.SysCallConf.Info())
         }
         probes = append(probes, sys_enter_probe)
-        probes = append(probes, sys_exit_probe)
+        // probes = append(probes, sys_exit_probe)
         maps = append(maps, events_map)
     }
 
@@ -266,27 +266,16 @@ func (this *MStack) updateFilter() (err error) {
 
     // raw syscall hook 的过滤配置更新
     if this.mconf.SysCallConf.IsEnable() {
-        arg_mask_map, err := this.FindMap("arg_mask_map")
+        syscall_point_args_map, err := this.FindMap("syscall_point_args_map")
         if err != nil {
             return err
         }
-        err = this.mconf.SysCallConf.UpdateArgMaskMap(arg_mask_map)
-        if err != nil {
-            return err
-        }
-        if this.sconf.Debug {
-            this.logger.Printf("update arg_mask_map success")
-        }
-        arg_ret_mask_map, err := this.FindMap("arg_ret_mask_map")
-        if err != nil {
-            return err
-        }
-        err = this.mconf.SysCallConf.UpdateArgRetMaskMap(arg_ret_mask_map)
+        err = this.mconf.SysCallConf.UpdatePointArgsMap(syscall_point_args_map)
         if err != nil {
             return err
         }
         if this.sconf.Debug {
-            this.logger.Printf("update arg_ret_mask_map success")
+            this.logger.Printf("update syscall_point_args_map success")
         }
         syscall_filter, err := this.FindMap("syscall_filter")
         if err != nil {

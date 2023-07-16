@@ -42,6 +42,43 @@ static __always_inline int save_to_submit_buf(event_data_t *event, void *ptr, u3
     return 0;
 }
 
+static __always_inline int save_bytes_to_buf(event_data_t *event, void *ptr, u32 size, u8 index)
+{
+    // Data saved to submit buf: [index][size][ ... bytes ... ]
+
+    if (size == 0)
+        return 0;
+
+    if (event->buf_off > ARGS_BUF_SIZE - 1)
+        return 0;
+
+    // Save argument index
+    event->args[event->buf_off] = index;
+
+    if (event->buf_off > ARGS_BUF_SIZE - (sizeof(int) + 1))
+        return 0;
+
+    // Save size to buffer
+    if (bpf_probe_read(&(event->args[event->buf_off + 1]), sizeof(int), &size) != 0) {
+        return 0;
+    }
+
+    if (event->buf_off > ARGS_BUF_SIZE - (MAX_BYTES_ARR_SIZE + 1 + sizeof(int)))
+        return 0;
+
+    // Read bytes into buffer
+    if (bpf_probe_read(&(event->args[event->buf_off + 1 + sizeof(int)]),
+                       size & (MAX_BYTES_ARR_SIZE - 1),
+                       ptr) == 0) {
+        // We update buf_off only if all writes were successful
+        event->buf_off += size + 1 + sizeof(int);
+        event->context.argnum++;
+        return 1;
+    }
+
+    return 0;
+}
+
 static __always_inline int save_str_to_buf(event_data_t *event, void *ptr, u8 index)
 {
     // Data saved to submit buf: [index][size][ ... string ... ]

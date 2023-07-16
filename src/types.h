@@ -36,6 +36,19 @@ enum event_id_e
     SYSCALL_EXIT
 };
 
+enum arg_type_e
+{
+	TYPE_NONE = 0,
+	TYPE_NUM,
+	TYPE_INT,
+	TYPE_UINT32,
+	TYPE_STRING,
+	TYPE_POINTER,
+	TYPE_STRUCT,
+	TYPE_TIMESPEC,
+	TYPE_SOCKADDR
+};
+
 typedef struct event_context {
     u64 ts;
     u32 eventid;

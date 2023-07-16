@@ -98,6 +98,19 @@ func (this *SyscallConfig) UpdateArgRetMaskMap(argRetMaskMap *ebpf.Map) error {
     return nil
 }
 
+func (this *SyscallConfig) UpdatePointArgsMap(SyscallPointArgsMap *ebpf.Map) error {
+    // 取 syscall 参数配置 syscall_point_args_map
+    points := GetAllWatchPoints()
+    for nr_name, point := range points {
+        nr_point, ok := (point).(*SysCallArgs)
+        if !ok {
+            panic(fmt.Sprintf("cast [%s] point to SysCallArgs failed", nr_name))
+        }
+        SyscallPointArgsMap.Update(unsafe.Pointer(&nr_point.NR), unsafe.Pointer(nr_point.GetConfig()), ebpf.UpdateAny)
+    }
+    return nil
+}
+
 func (this *SyscallConfig) SetUp(is_32bit bool) error {
     var table_path string
     if is_32bit {
