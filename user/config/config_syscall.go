@@ -144,6 +144,7 @@ const (
 	TYPE_NONE uint32 = iota
 	TYPE_NUM
 	TYPE_INT
+	TYPE_UINT
 	TYPE_UINT32
 	TYPE_STRING
 	TYPE_POINTER
@@ -154,7 +155,8 @@ const (
 
 var ARG_TYPE_NONE = ArgType{TYPE_NONE, TYPE_NONE, 0}
 var ARG_TYPE_INT = ArgType{TYPE_INT, TYPE_NUM, uint32(unsafe.Sizeof(int(0)))}
-var ARG_TYPE_UINT32 = ArgType{TYPE_UINT32, TYPE_NUM, uint32(unsafe.Sizeof(uint32(0)))}
+var ARG_TYPE_UINT = ArgType{TYPE_UINT, TYPE_NUM, uint32(unsafe.Sizeof(int(0)))}
+var ARG_TYPE_UINT32 = ArgType{TYPE_UINT32, TYPE_NUM, uint32(unsafe.Sizeof(uint(0)))}
 var ARG_TYPE_STRING = ArgType{TYPE_STRING, TYPE_STRING, uint32(unsafe.Sizeof(uint64(0)))}
 var ARG_TYPE_POINTER = ArgType{TYPE_POINTER, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0)))}
 var ARG_TYPE_TIMESPEC = ArgType{TYPE_TIMESPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timespec{}))}
@@ -170,6 +172,7 @@ func init() {
 	// Register(&PArgs{"sockaddr", []PArg{{"sockfd", ARG_TYPE_INT}, {"addr", ARG_TYPE_SOCKADDR}, {"addrlen", ARG_TYPE_UINT32}}})
 
 	// syscall相关
+	Register(&SArgs{0, PArgs{"io_setup", []PArg{{"nr_events", ARG_TYPE_UINT}, {"ctx_idp", ARG_TYPE_POINTER}}}})
 	Register(&SArgs{56, PArgs{"openat", []PArg{{"dirfd", ARG_TYPE_INT}, {"pathname", ARG_TYPE_STRING}, {"flags", ARG_TYPE_INT}, {"mode", ARG_TYPE_UINT32}}}})
 	Register(&SArgs{101, PArgs{"nanosleep", []PArg{{"req", ARG_TYPE_TIMESPEC}, {"rem", ARG_TYPE_TIMESPEC}}}})
 	Register(&SArgs{203, PArgs{"connect", []PArg{{"sockfd", ARG_TYPE_INT}, {"addr", ARG_TYPE_SOCKADDR}, {"addrlen", ARG_TYPE_UINT32}}}})

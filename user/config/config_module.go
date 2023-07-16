@@ -92,11 +92,16 @@ func (this *SyscallConfig) UpdatePointArgsMap(SyscallPointArgsMap *ebpf.Map) err
 }
 
 func (this *SyscallConfig) SetUp(is_32bit bool) error {
+    for i := 0; i < len(this.syscall); i++ {
+        this.syscall[i] = MAGIC_SYSCALL
+    }
+    for i := 0; i < len(this.syscall); i++ {
+        this.syscall_blacklist[i] = MAGIC_SYSCALL
+    }
     return nil
 }
 
 func (this *SyscallConfig) SetSysCall(syscall string) error {
-    fmt.Println("ccccccccccccccc")
     this.Enable = true
     if syscall == "all" {
         return nil
@@ -146,7 +151,7 @@ func (this *SyscallConfig) Check() error {
 func (this *SyscallConfig) Info() string {
     var watchlist []string
     for _, v := range this.syscall {
-        if v == 0 {
+        if v == MAGIC_SYSCALL {
             continue
         }
         point := GetWatchPointByNR(v)

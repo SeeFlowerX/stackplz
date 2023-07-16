@@ -236,6 +236,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     for (int i = 0; i < MAX_COUNT; i++) {
         if ((filter->syscall_mask & (1 << i))) {
             if (filter->syscall[i] == (u32)syscallno) {
+                // bpf_printk("[syscall] xx syscallno:%d mask:%d\n", syscallno, filter->syscall_mask);
                 has_find = true;
                 break;
             }
@@ -341,7 +342,6 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
             // 这种具体类型转换交给前端做
             continue;
         }
-        // bpf_printk("[syscall] xx point_arg_count:%d type:%d\n", point_arg_count, point_arg->type);
         if (point_arg->type == TYPE_STRING) {
             u32 buf_off = 0;
             buf_t *string_p = get_buf(STRING_BUF_IDX);

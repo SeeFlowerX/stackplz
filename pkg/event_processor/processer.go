@@ -53,7 +53,7 @@ func (this *EventProcessor) dispatch(e event.IEventStruct) {
 		this.logger.Printf("ToChildEvent faild, err:%v", err)
 		return
 	}
-
+	// 单就输出日志来说 下面这样做反而给人一种输出有延迟的感觉 如果没有必要就去掉这部分吧
 	var uuid string = e.GetUUID()
 	found, eWorker := this.getWorkerByUUID(uuid)
 	if !found {
