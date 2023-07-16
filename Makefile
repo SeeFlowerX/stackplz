@@ -63,7 +63,7 @@ genbtf:
 
 .PHONY: assets
 assets:
-	$(CMD_GO) run github.com/shuLhan/go-bindata/cmd/go-bindata -pkg assets -o "assets/ebpf_probe.go" $(wildcard ./user/assets/*.o ./user/assets/*_min.btf ./preload_libs/*.so ./user/config/*.json)
+	$(CMD_GO) run github.com/shuLhan/go-bindata/cmd/go-bindata -pkg assets -o "assets/ebpf_probe.go" $(wildcard ./user/assets/*.o ./user/assets/*_min.btf ./preload_libs/*.so)
 
 .PHONY: build
 build:

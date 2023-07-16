@@ -2,7 +2,6 @@ package event
 
 import (
     "encoding/binary"
-    "encoding/json"
     "errors"
     "fmt"
     "io/ioutil"
@@ -39,6 +38,7 @@ type SyscallEvent struct {
     Stackinfo     string
     RegsBuffer    RegsBuf
     UnwindBuffer  UnwindBuf
+    nr_point      *config.SysCallArgs
     nr            Arg_nr
     lr            Arg_reg
     sp            Arg_reg
@@ -104,9 +104,10 @@ func (this *SyscallEvent) ParseContext() (err error) {
     if !ok {
         panic(fmt.Sprintf("cast nr[%d] point to SysCallArgs failed", this.nr.Value))
     }
+    this.nr_point = nr_point
 
     var results []string
-    for _, point_arg := range nr_point.Args {
+    for _, point_arg := range this.nr_point.Args {
         // this.logger.Printf("SyscallEvent.ParseContext() point_arg.AliasType:%d", point_arg.AliasType)
         switch point_arg.AliasType {
         case config.TYPE_NUM, config.TYPE_INT, config.TYPE_UINT32:
@@ -183,9 +184,8 @@ func (this *SyscallEvent) GetUUID() string {
 }
 
 func (this *SyscallEvent) String() string {
-    nr := this.mconf.SysCallConf.SysTable.ReadNR(uint32(this.nr.Value))
     var base_str string
-    base_str = fmt.Sprintf("[%s] nr:%s%s", this.GetUUID(), nr, this.arg_enter_str)
+    base_str = fmt.Sprintf("[%s] nr:%s%s", this.GetUUID(), this.nr_point.PointName, this.arg_enter_str)
     base_str = fmt.Sprintf("%s LR:0x%x PC:0x%x SP:0x%x", base_str, this.lr.Address, this.pc.Address, this.sp.Address)
     // type 和数据发送的顺序相关
     // switch this.mtype {
@@ -307,21 +307,21 @@ func (this *SyscallEvent) ParsePC() (string, error) {
     return info, err
 }
 
-func (this *SyscallEvent) ReadArgs() string {
-    config := this.mconf.SysCallConf.SysTable[fmt.Sprintf("%d", this.nr.Value)]
-    regs := make(map[string]string)
-    for i := 0; i < int(config.Count); i++ {
-        regs[fmt.Sprintf("x%d", i)] = fmt.Sprintf("0x%x", this.args[i])
-    }
-    regs["lr"] = fmt.Sprintf("0x%x", this.lr)
-    regs["sp"] = fmt.Sprintf("0x%x", this.sp)
-    regs["pc"] = fmt.Sprintf("0x%x", this.pc)
-    regs_info, err := json.Marshal(regs)
-    if err != nil {
-        regs_info = make([]byte, 0)
-    }
-    return string(regs_info)
-}
+// func (this *SyscallEvent) ReadArgs() string {
+//     config := this.mconf.SysCallConf.SysTable[fmt.Sprintf("%d", this.nr.Value)]
+//     regs := make(map[string]string)
+//     for i := 0; i < int(config.Count); i++ {
+//         regs[fmt.Sprintf("x%d", i)] = fmt.Sprintf("0x%x", this.args[i])
+//     }
+//     regs["lr"] = fmt.Sprintf("0x%x", this.lr)
+//     regs["sp"] = fmt.Sprintf("0x%x", this.sp)
+//     regs["pc"] = fmt.Sprintf("0x%x", this.pc)
+//     regs_info, err := json.Marshal(regs)
+//     if err != nil {
+//         regs_info = make([]byte, 0)
+//     }
+//     return string(regs_info)
+// }
 
 func (this *SyscallEvent) EventType() EventType {
     return this.event_type

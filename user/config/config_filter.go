@@ -38,51 +38,6 @@ type ConfigMap struct {
 	stackplz_pid uint32
 }
 
-// func (this *SyscallFilter) SetSysCall(syscall string, systable_config SysTableConfig) error {
-// 	items := strings.Split(syscall, ",")
-// 	if len(items) > MAX_COUNT {
-// 		return fmt.Errorf("max syscall whitelist count is %d, provided count:%d", MAX_COUNT, len(items))
-// 	}
-// 	for i, v := range items {
-// 		nr, err := systable_config.GetNR(v)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		this.syscall[i] = uint32(nr)
-// 		this.syscall_mask |= (1 << i)
-// 	}
-// 	return nil
-// }
-
-// func (this *SyscallFilter) SetSysCallBlacklist(syscall_blacklist string, systable_config SysTableConfig) error {
-// 	items := strings.Split(syscall_blacklist, ",")
-// 	if len(items) > MAX_COUNT {
-// 		return fmt.Errorf("max syscall blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
-// 	}
-// 	for i, v := range items {
-// 		nr, err := systable_config.GetNR(v)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		this.syscall_blacklist[i] = uint32(nr)
-// 		this.syscall_blacklist_mask |= (1 << i)
-// 	}
-// 	return nil
-// }
-
-// func (this *SyscallFilter) SetTidBlacklist(tids_blacklist string) error {
-// 	items := strings.Split(tids_blacklist, ",")
-// 	if len(items) > MAX_COUNT {
-// 		return fmt.Errorf("max tid blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
-// 	}
-// 	for i, v := range items {
-// 		value, _ := strconv.ParseUint(v, 10, 32)
-// 		this.tids_blacklist[i] = uint32(value)
-// 		this.tids_blacklist_mask |= (1 << i)
-// 	}
-// 	return nil
-// }
-
 func (this *SyscallFilter) SetArch(is_32bit bool) {
 	if is_32bit {
 		this.is_32bit = 1
@@ -90,14 +45,6 @@ func (this *SyscallFilter) SetArch(is_32bit bool) {
 		this.is_32bit = 0
 	}
 }
-
-// func (this *SyscallFilter) SetByPass(try_bypass bool) {
-// 	if try_bypass {
-// 		this.try_bypass = 1
-// 	} else {
-// 		this.try_bypass = 0
-// 	}
-// }
 
 func (this *SyscallFilter) SetAfterRead(after_read bool) {
 	if after_read {

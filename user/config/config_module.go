@@ -1,11 +1,9 @@
 package config
 
 import (
-    "encoding/json"
     "fmt"
     "log"
     "os"
-    "stackplz/assets"
     "stackplz/pkg/util"
     "strconv"
     "strings"
@@ -56,10 +54,10 @@ func (this *StackUprobeConfig) Check() error {
 
 type SyscallConfig struct {
     SConfig
-    UnwindStack            bool
-    ShowRegs               bool
-    Config                 string
-    SysTable               SysTableConfig
+    UnwindStack bool
+    ShowRegs    bool
+    Config      string
+    // SysTable               SysTableConfig
     Enable                 bool
     syscall_mask           uint32
     syscall                [MAX_COUNT]uint32
@@ -80,24 +78,6 @@ func (this *SyscallConfig) FillFilter(filter *SyscallFilter) {
     filter.syscall_blacklist_mask = this.syscall_blacklist_mask
 }
 
-func (this *SyscallConfig) UpdateArgMaskMap(argMaskMap *ebpf.Map) error {
-    // 更新用于获取字符串信息的map
-    for nr, table_config := range this.SysTable {
-        nr_key, _ := strconv.ParseUint(nr, 10, 32)
-        argMaskMap.Update(unsafe.Pointer(&nr_key), unsafe.Pointer(&table_config.Mask), ebpf.UpdateAny)
-    }
-    return nil
-}
-
-func (this *SyscallConfig) UpdateArgRetMaskMap(argRetMaskMap *ebpf.Map) error {
-    // 和上面一样 只是也许会跟随配置文件形式发生变化 所以写了两份
-    for nr, table_config := range this.SysTable {
-        nr_key, _ := strconv.ParseUint(nr, 10, 32)
-        argRetMaskMap.Update(unsafe.Pointer(&nr_key), unsafe.Pointer(&table_config.RetMask), ebpf.UpdateAny)
-    }
-    return nil
-}
-
 func (this *SyscallConfig) UpdatePointArgsMap(SyscallPointArgsMap *ebpf.Map) error {
     // 取 syscall 参数配置 syscall_point_args_map
     points := GetAllWatchPoints()
@@ -112,33 +92,11 @@ func (this *SyscallConfig) UpdatePointArgsMap(SyscallPointArgsMap *ebpf.Map) err
 }
 
 func (this *SyscallConfig) SetUp(is_32bit bool) error {
-    var table_path string
-    if is_32bit {
-        table_path = "user/config/table32.json"
-    } else {
-        table_path = "user/config/table64.json"
-    }
-    this.SysTable = NewSysTableConfig()
-    // 获取syscall读取参数的mask配置
-    table_buffer, err := assets.Asset(table_path)
-    if err != nil {
-        return err
-    }
-    var tmp_config map[string][]interface{}
-    json.Unmarshal(table_buffer, &tmp_config)
-    for nr, config_arr := range tmp_config {
-        table_config := TableConfig{
-            Count:   uint32(config_arr[0].(float64)),
-            Name:    config_arr[1].(string),
-            Mask:    uint32(config_arr[2].(float64)),
-            RetMask: uint32(config_arr[3].(float64)),
-        }
-        this.SysTable[nr] = table_config
-    }
     return nil
 }
 
 func (this *SyscallConfig) SetSysCall(syscall string) error {
+    fmt.Println("ccccccccccccccc")
     this.Enable = true
     if syscall == "all" {
         return nil
@@ -148,11 +106,12 @@ func (this *SyscallConfig) SetSysCall(syscall string) error {
         return fmt.Errorf("max syscall whitelist count is %d, provided count:%d", MAX_COUNT, len(items))
     }
     for i, v := range items {
-        nr, err := this.SysTable.GetNR(v)
-        if err != nil {
-            return err
+        point := GetWatchPointByName(v)
+        nr_point, ok := (point).(*SysCallArgs)
+        if !ok {
+            panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
         }
-        this.syscall[i] = uint32(nr)
+        this.syscall[i] = uint32(nr_point.NR)
         this.syscall_mask |= (1 << i)
     }
     return nil
@@ -164,11 +123,12 @@ func (this *SyscallConfig) SetSysCallBlacklist(syscall_blacklist string) error {
         return fmt.Errorf("max syscall blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
     }
     for i, v := range items {
-        nr, err := this.SysTable.GetNR(v)
-        if err != nil {
-            return err
+        point := GetWatchPointByName(v)
+        nr_point, ok := (point).(*SysCallArgs)
+        if !ok {
+            panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
         }
-        this.syscall_blacklist[i] = uint32(nr)
+        this.syscall_blacklist[i] = uint32(nr_point.NR)
         this.syscall_blacklist_mask |= (1 << i)
     }
     return nil
@@ -184,27 +144,20 @@ func (this *SyscallConfig) Check() error {
 }
 
 func (this *SyscallConfig) Info() string {
-    // 调用号信息
-    var name_lsit []string
+    var watchlist []string
     for _, v := range this.syscall {
         if v == 0 {
             continue
         }
-        name_lsit = append(name_lsit, this.SysTable.GetName(v))
+        point := GetWatchPointByNR(v)
+        nr_point, ok := (point).(*SysCallArgs)
+        if !ok {
+            panic(fmt.Sprintf("cast [%d] watchpoint to SysCallArgs failed", v))
+        }
+        watchlist = append(watchlist, nr_point.Name())
     }
-    return fmt.Sprintf("nr(s):%s", strings.Join(name_lsit[:], ","))
+    return fmt.Sprintf("watch:%s", strings.Join(watchlist, ","))
 }
-
-// func (this *SyscallConfig) GetFilter() SyscallFilter {
-//     filter := SyscallFilter{
-//         // uid:                this.Uid,
-//         // pid:                this.Pid,
-//         // nr:                 uint32(this.NR),
-//         // tid_blacklist_mask: this.TidsBlacklistMask,
-//         // tid_blacklist:      this.TidsBlacklist,
-//     }
-//     return filter
-// }
 
 type ModuleConfig struct {
     SConfig

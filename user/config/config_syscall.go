@@ -131,7 +131,7 @@ func GetWatchPointByNR(nr uint32) IWatchPoint {
 func GetWatchPointByName(pointName string) IWatchPoint {
 	m, f := watchpoints[pointName]
 	if f {
-		return m.Clone()
+		return m
 	}
 	return nil
 }
