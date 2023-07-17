@@ -249,6 +249,8 @@ func init() {
 	Register(&SArgs{49, PA("chdir", []PArg{A("path", STRING)})})
 	Register(&SArgs{50, PA("fchdir", []PArg{A("fd", INT)})})
 	Register(&SArgs{51, PA("chroot", []PArg{A("path", STRING)})})
+	Register(&SArgs{52, PA("fchmod", []PArg{A("fd", INT), A("mode", INT)})})
+	Register(&SArgs{53, PA("fchmodat", []PArg{A("dirfd", INT), A("pathname", STRING), A("mode", INT), A("flags", INT)})})
 	Register(&SArgs{56, PA("openat", []PArg{A("dirfd", INT), A("pathname", STRING), A("flags", INT), A("mode", UINT32)})})
 	Register(&SArgs{59, PA("pipe2", []PArg{B("pipefd", POINTER), A("flags", INT)})})
 	Register(&SArgs{78, PA("readlinkat", []PArg{A("dirfd", INT), A("pathname", STRING), B("buf", STRING), A("bufsiz", INT)})})
