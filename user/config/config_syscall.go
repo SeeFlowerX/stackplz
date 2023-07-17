@@ -233,7 +233,10 @@ func init() {
 	Register(&SArgs{23, PA("dup", []PArg{A("oldfd", INT)})})
 	Register(&SArgs{24, PA("dup3", []PArg{A("oldfd", INT), A("newfd", UINT64), A("flags", INT)})})
 	Register(&SArgs{29, PA("ioctl", []PArg{A("fd", INT), A("request", UINT64), A("arg0", INT), A("arg1", INT), A("arg2", INT), A("arg3", INT)})})
+	Register(&SArgs{34, PA("mkdirat", []PArg{A("dirfd", INT), A("pathname", STRING), A("mode", INT)})})
 	Register(&SArgs{35, PA("unlinkat", []PArg{A("dirfd", INT), A("pathname", STRING), A("flags", INT)})})
+	Register(&SArgs{36, PA("symlinkat", []PArg{A("target", STRING), A("newdirfd", INT), A("linkpath", STRING)})})
+	Register(&SArgs{37, PA("linkat", []PArg{A("olddirfd", INT), A("oldpath", STRING), A("newdirfd", INT), A("newpath", STRING), A("flags", INT)})})
 	Register(&SArgs{38, PA("renameat", []PArg{A("olddirfd", INT), A("oldpath", STRING), A("newdirfd", INT), A("newpath", STRING)})})
 	Register(&SArgs{39, PA("umount2", []PArg{A("target", STRING), A("flags", INT)})})
 	Register(&SArgs{40, PA("mount", []PArg{A("source", INT), A("target", STRING), A("filesystemtype", STRING), A("mountflags", INT), A("data", POINTER)})})
@@ -248,10 +251,8 @@ func init() {
 	Register(&SArgs{78, PA("readlinkat", []PArg{A("dirfd", INT), A("pathname", STRING), B("buf", STRING), A("bufsiz", INT)})})
 	Register(&SArgs{79, PA("newfstatat", []PArg{A("dirfd", INT), A("pathname", STRING), B("statbuf", STAT), A("flags", INT)})})
 	Register(&SArgs{80, PA("fstat", []PArg{A("fd", INT), B("statbuf", STAT)})})
-
 	Register(&SArgs{93, PArgs{"exit", B("ret", NONE), []PArg{A("status", INT)}}})
 	Register(&SArgs{94, PArgs{"exit_group", B("ret", NONE), []PArg{A("status", INT)}}})
-
 	Register(&SArgs{101, PA("nanosleep", []PArg{A("req", TIMESPEC), A("rem", TIMESPEC)})})
 	Register(&SArgs{117, PA("ptrace", []PArg{A("request", INT), A("pid", INT), A("addr", POINTER), A("data", POINTER)})})
 	Register(&SArgs{129, PA("kill", []PArg{A("pid", INT), A("sig", INT)})})
