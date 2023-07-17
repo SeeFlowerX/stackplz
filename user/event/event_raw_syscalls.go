@@ -79,6 +79,11 @@ type Arg_Sigaction struct {
     Len   uint32
     config.Sigaction
 }
+type Arg_Pollfd struct {
+    Index uint8
+    Len   uint32
+    config.Pollfd
+}
 type Arg_Stat_t struct {
     Index uint8
     Len   uint32
@@ -212,7 +217,23 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr_value); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.SetValue(fmt.Sprintf("(0x%x)", ptr_value.Address))
+        point_arg.AppendValue(fmt.Sprintf("(0x%x)", ptr_value.Address))
+    case config.TYPE_SIGSET:
+        var sigs [8]uint32
+        if err = binary.Read(this.buf, binary.LittleEndian, &sigs); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        var fmt_sigs []string
+        for i := 0; i < len(sigs); i++ {
+            fmt_sigs = append(fmt_sigs, fmt.Sprintf("0x%x", sigs[i]))
+        }
+        point_arg.AppendValue(fmt.Sprintf("(sigs=[%s])", strings.Join(fmt_sigs, ",")))
+    case config.TYPE_POLLFD:
+        var pollfd Arg_Pollfd
+        if err = binary.Read(this.buf, binary.LittleEndian, &pollfd); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        point_arg.AppendValue(fmt.Sprintf("(fd=%d, events=%d, revents=%d)", pollfd.Fd, pollfd.Events, pollfd.Revents))
     case config.TYPE_STRUCT:
         payload := make([]byte, point_arg.Size)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {

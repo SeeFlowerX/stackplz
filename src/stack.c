@@ -180,7 +180,7 @@ struct {
 // syscall过滤配置
 struct syscall_filter_t {
     u32 is_32bit;
-    u32 after_read;
+    u32 syscall_all;
     // u32 tids_blacklist_mask;
     // u32 tids_blacklist[MAX_COUNT];
     // u32 pids_blacklist_mask;
@@ -272,10 +272,23 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
     if (!should_trace(&p))
         return 0;
-    // 到这里的说明是命中了 追踪范围
-    // bpf_printk("[syscall] after should_trace uid:%d pid:%d host_pid:%d\n", p.event->context.uid, p.event->context.pid, p.event->context.host_pid);
-    // 先收集下寄存器
+
     struct pt_regs *regs = (struct pt_regs*)(ctx->args[0]);
+    u64 syscallno = READ_KERN(regs->syscallno);
+    // 先根据调用号确定有没有对应的参数获取方案 没有直接结束
+    struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &syscallno);
+    if (syscall_point_args == NULL) {
+        // bpf_printk("[syscall] unsupport nr:%d\n", syscallno);
+        return 0;
+    }
+
+    u32 filter_key = 0;
+    struct syscall_filter_t* filter = bpf_map_lookup_elem(&syscall_filter, &filter_key);
+    if (filter == NULL) {
+        return 0;
+    }
+    // 到这里的说明是命中了 追踪范围
+    // 先收集下寄存器
     args_t args = {};
     args.args[0] = READ_KERN(regs->regs[0]);
     args.args[1] = READ_KERN(regs->regs[1]);
@@ -286,49 +299,43 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         return 0;
     };
 
-    u64 syscallno = READ_KERN(regs->syscallno);
-
-    u32 filter_key = 0;
-    struct syscall_filter_t* filter = bpf_map_lookup_elem(&syscall_filter, &filter_key);
-    if (filter == NULL) {
-        return 0;
-    }
-
-    // syscall 白名单过滤
-    bool has_find = false;
-    #pragma unroll
-    for (int i = 0; i < MAX_COUNT; i++) {
-        if ((filter->syscall_mask & (1 << i))) {
-            if (filter->syscall[i] == (u32)syscallno) {
-                // bpf_printk("[syscall] xx syscallno:%d mask:%d\n", syscallno, filter->syscall_mask);
-                has_find = true;
+    if (filter->syscall_all == 0) {
+        // syscall 白名单过滤
+        bool has_find = false;
+        #pragma unroll
+        for (int i = 0; i < MAX_COUNT; i++) {
+            if ((filter->syscall_mask & (1 << i))) {
+                if (filter->syscall[i] == (u32)syscallno) {
+                    // bpf_printk("[syscall] xx syscallno:%d mask:%d\n", syscallno, filter->syscall_mask);
+                    has_find = true;
+                    break;
+                }
+            } else {
+                if (i == 0) {
+                    // 如果没有设置白名单 则将 has_find 置为 true
+                    has_find = true;
+                }
+                // 减少不必要的循环
                 break;
             }
-        } else {
-            if (i == 0) {
-                // 如果没有设置白名单 则将 has_find 置为 true
-                has_find = true;
-            }
-            // 减少不必要的循环
-            break;
         }
-    }
-    // 不满足白名单规则 则跳过
-    if (!has_find) {
-        return 0;
-    }
+        // 不满足白名单规则 则跳过
+        if (!has_find) {
+            return 0;
+        }
 
-    // syscall 黑名单过滤
-    #pragma unroll
-    for (int i = 0; i < MAX_COUNT; i++) {
-        if ((filter->syscall_blacklist_mask & (1 << i))) {
-            if (filter->syscall_blacklist[i] == (u32)syscallno) {
-                // 在syscall黑名单直接结束跳过
-                return 0;
+        // syscall 黑名单过滤
+        #pragma unroll
+        for (int i = 0; i < MAX_COUNT; i++) {
+            if ((filter->syscall_blacklist_mask & (1 << i))) {
+                if (filter->syscall_blacklist[i] == (u32)syscallno) {
+                    // 在syscall黑名单直接结束跳过
+                    return 0;
+                }
+            } else {
+                // 减少不必要的循环
+                break;
             }
-        } else {
-            // 减少不必要的循环
-            break;
         }
     }
 
@@ -383,10 +390,6 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     save_to_submit_buf(p.event, (void *) &pc, sizeof(u64), 2);
     save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 3);
 
-    struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &syscallno);
-    if (syscall_point_args == NULL) {
-        return 0;
-    }
     u32 point_arg_count = MAX_POINT_ARG_COUNT;
     if (syscall_point_args->count <= point_arg_count) {
         point_arg_count = syscall_point_args->count;
@@ -418,6 +421,14 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     if (!should_trace(&p))
         return 0;
 
+    struct pt_regs *regs = (struct pt_regs*)(ctx->args[0]);
+    u64 syscallno = READ_KERN(regs->syscallno);
+
+    struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &syscallno);
+    if (syscall_point_args == NULL) {
+        return 0;
+    }
+
     u32 filter_key = 0;
     struct syscall_filter_t* filter = bpf_map_lookup_elem(&syscall_filter, &filter_key);
     if (filter == NULL) {
@@ -429,43 +440,42 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         return 0;
     }
 
-    struct pt_regs *regs = (struct pt_regs*)(ctx->args[0]);
-    u64 syscallno = READ_KERN(regs->syscallno);
-
-    // syscall 白名单过滤
-    bool has_find = false;
-    #pragma unroll
-    for (int i = 0; i < MAX_COUNT; i++) {
-        if ((filter->syscall_mask & (1 << i))) {
-            if (filter->syscall[i] == (u32)syscallno) {
-                has_find = true;
+    if (filter->syscall_all == 0) {
+        // syscall 白名单过滤
+        bool has_find = false;
+        #pragma unroll
+        for (int i = 0; i < MAX_COUNT; i++) {
+            if ((filter->syscall_mask & (1 << i))) {
+                if (filter->syscall[i] == (u32)syscallno) {
+                    has_find = true;
+                    break;
+                }
+            } else {
+                if (i == 0) {
+                    // 如果没有设置白名单 则将 has_find 置为 true
+                    has_find = true;
+                }
+                // 减少不必要的循环
                 break;
             }
-        } else {
-            if (i == 0) {
-                // 如果没有设置白名单 则将 has_find 置为 true
-                has_find = true;
-            }
-            // 减少不必要的循环
-            break;
         }
-    }
-    // 不满足白名单规则 则跳过
-    if (!has_find) {
-        return 0;
-    }
+        // 不满足白名单规则 则跳过
+        if (!has_find) {
+            return 0;
+        }
 
-    // syscall 黑名单过滤
-    #pragma unroll
-    for (int i = 0; i < MAX_COUNT; i++) {
-        if ((filter->syscall_blacklist_mask & (1 << i))) {
-            if (filter->syscall_blacklist[i] == (u32)syscallno) {
-                // 在syscall黑名单直接结束跳过
-                return 0;
+        // syscall 黑名单过滤
+        #pragma unroll
+        for (int i = 0; i < MAX_COUNT; i++) {
+            if ((filter->syscall_blacklist_mask & (1 << i))) {
+                if (filter->syscall_blacklist[i] == (u32)syscallno) {
+                    // 在syscall黑名单直接结束跳过
+                    return 0;
+                }
+            } else {
+                // 减少不必要的循环
+                break;
             }
-        } else {
-            // 减少不必要的循环
-            break;
         }
     }
 
@@ -494,11 +504,6 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         if (need_skip) {
             return 0;
         }
-    }
-
-    struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &syscallno);
-    if (syscall_point_args == NULL) {
-        return 0;
     }
 
     int next_arg_index = 0;

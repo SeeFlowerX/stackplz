@@ -54,10 +54,10 @@ func (this *StackUprobeConfig) Check() error {
 
 type SyscallConfig struct {
     SConfig
-    UnwindStack bool
-    ShowRegs    bool
-    Config      string
-    // SysTable               SysTableConfig
+    UnwindStack            bool
+    ShowRegs               bool
+    Config                 string
+    HookALL                bool
     Enable                 bool
     syscall_mask           uint32
     syscall                [MAX_COUNT]uint32
@@ -69,6 +69,14 @@ func NewSyscallConfig() *SyscallConfig {
     config := &SyscallConfig{}
     config.Enable = false
     return config
+}
+
+func (this *SyscallConfig) GetSyscallFilter() SyscallFilter {
+    filter := SyscallFilter{}
+    filter.SetArch(this.Is32Bit)
+    filter.SetHookALL(this.HookALL)
+    this.FillFilter(&filter)
+    return filter
 }
 
 func (this *SyscallConfig) FillFilter(filter *SyscallFilter) {
@@ -101,9 +109,16 @@ func (this *SyscallConfig) SetUp(is_32bit bool) error {
     return nil
 }
 
+const (
+    SYSCALL_GROUP_ALL uint32 = iota
+    SYSCALL_GROUP_KILL
+    SYSCALL_GROUP_EXIT
+)
+
 func (this *SyscallConfig) SetSysCall(syscall string) error {
     this.Enable = true
     if syscall == "all" {
+        this.HookALL = true
         return nil
     }
     items := strings.Split(syscall, ",")
@@ -269,13 +284,5 @@ func (this *ModuleConfig) GetUprobeStackFilter() UprobeStackFilter {
     filter.tids_blacklist = this.TidsBlacklist
     filter.pids_blacklist_mask = this.PidsBlacklistMask
     filter.pids_blacklist = this.PidsBlacklist
-    return filter
-}
-
-func (this *ModuleConfig) GetSyscallFilter() SyscallFilter {
-    filter := SyscallFilter{}
-    filter.SetArch(this.Is32Bit)
-    filter.SetAfterRead(this.AfterRead)
-    this.SysCallConf.FillFilter(&filter)
     return filter
 }

@@ -183,7 +183,6 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.GetPC = gconfig.GetPC
     mconfig.Debug = gconfig.Debug
     mconfig.Quiet = gconfig.Quiet
-    mconfig.AfterRead = gconfig.AfterRead
     mconfig.Is32Bit = gconfig.Is32Bit
     err = mconfig.SetTidsBlacklist(gconfig.TidsBlacklist)
     if err != nil {
@@ -535,7 +534,6 @@ func init() {
     // syscall hook
     rootCmd.PersistentFlags().StringVar(&gconfig.SysCall, "syscall", "", "filter syscalls")
     rootCmd.PersistentFlags().StringVar(&gconfig.SysCallBlacklist, "no-syscall", "", "syscall black list, max 20")
-    rootCmd.PersistentFlags().BoolVar(&gconfig.AfterRead, "after", false, "read arg str after syscall")
     // 批量hook先放一边
     // rootCmd.PersistentFlags().StringVar(&gconfig.Config, "config", "", "hook config file")
 }

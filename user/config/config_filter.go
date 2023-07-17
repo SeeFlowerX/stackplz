@@ -16,7 +16,7 @@ type UprobeStackFilter struct {
 
 type SyscallFilter struct {
 	is_32bit               uint32
-	after_read             uint32
+	syscall_all            uint32
 	syscall_mask           uint32
 	syscall                [MAX_COUNT]uint32
 	syscall_blacklist_mask uint32
@@ -46,10 +46,10 @@ func (this *SyscallFilter) SetArch(is_32bit bool) {
 	}
 }
 
-func (this *SyscallFilter) SetAfterRead(after_read bool) {
-	if after_read {
-		this.after_read = 1
+func (this *SyscallFilter) SetHookALL(all bool) {
+	if all {
+		this.syscall_all = 1
 	} else {
-		this.after_read = 0
+		this.syscall_all = 0
 	}
 }

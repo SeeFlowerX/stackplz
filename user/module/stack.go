@@ -281,7 +281,7 @@ func (this *MStack) updateFilter() (err error) {
         if err != nil {
             return err
         }
-        filter := this.mconf.GetSyscallFilter()
+        filter := this.mconf.SysCallConf.GetSyscallFilter()
         err = syscall_filter.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
         if err != nil {
             return err

@@ -32,7 +32,6 @@ type SConfig struct {
 	ExternalBTF string
 	Debug       bool
 	Quiet       bool
-	AfterRead   bool
 	Is32Bit     bool
 	Buffer      uint32
 	logger      *log.Logger

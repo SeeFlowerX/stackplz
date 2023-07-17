@@ -180,6 +180,12 @@ type Sigaction struct {
 	Sa_restorer  uint64
 }
 
+type Pollfd struct {
+	Fd      int
+	Events  uint16
+	Revents uint16
+}
+
 const (
 	TYPE_NONE uint32 = iota
 	TYPE_NUM
@@ -197,6 +203,9 @@ const (
 	TYPE_SIGACTION
 	TYPE_UTSNAME
 	TYPE_SOCKADDR
+	TYPE_SIGSET
+	TYPE_POLLFD
+	TYPE_ARGASSIZE
 )
 
 const (
@@ -220,6 +229,22 @@ var SIGACTION = ArgType{TYPE_SIGACTION, TYPE_STRUCT, uint32(unsafe.Sizeof(Sigact
 var UTSNAME = ArgType{TYPE_UTSNAME, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Utsname{}))}
 var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrAny{}))}
 
+// 64 位下这个是 unsigned long sig[_NSIG_WORDS]
+// #define _NSIG       64
+// #define _NSIG_BPW   __BITS_PER_LONG
+// #define _NSIG_WORDS (_NSIG / _NSIG_BPW)
+// unsigned long -> 4
+var SIGSET = ArgType{TYPE_SIGSET, TYPE_STRUCT, 4 * 8}
+var POLLFD = ArgType{TYPE_POLLFD, TYPE_STRUCT, uint32(unsafe.Sizeof(Pollfd{}))}
+
+// 这是一种比较特殊的类型 即某个指针类型的参数 要在执行之后才有实际的值
+// 但是最终要读取的大小/数量由另外一个参数决定 比如 pipe2的pipefd read的buf
+var ARGASSIZE_BYTE = ArgType{TYPE_ARGASSIZE, TYPE_ARGASSIZE, 1}
+var ARGASSIZE_INT = ArgType{TYPE_ARGASSIZE, TYPE_ARGASSIZE, 4}
+var ARGASSIZE_UINT = ArgType{TYPE_ARGASSIZE, TYPE_ARGASSIZE, 4}
+var ARGASSIZE_INT64 = ArgType{TYPE_ARGASSIZE, TYPE_ARGASSIZE, 8}
+var ARGASSIZE_UINT64 = ArgType{TYPE_ARGASSIZE, TYPE_ARGASSIZE, 8}
+
 func init() {
 	// 结构体成员相关 某些参数的成员是指针类型的情况
 	// Register(&PArgs{"sockaddr", []PArg{{"sockfd", INT}, {"addr", SOCKADDR}, {"addrlen", UINT32}}})
@@ -230,6 +255,7 @@ func init() {
 	Register(&SArgs{9, PA("lgetxattr", []PArg{A("path", STRING), A("name", STRING), A("value", POINTER), A("size", INT)})})
 	Register(&SArgs{10, PA("fgetxattr", []PArg{A("fd", INT), A("name", STRING), A("value", POINTER), A("size", INT)})})
 	Register(&SArgs{17, PA("getcwd", []PArg{B("buf", STRING), A("size", UINT64)})})
+	Register(&SArgs{22, PA("epoll_pwait", []PArg{A("epfd", INT), A("events", POINTER), A("maxevents", INT), A("timeout", INT)})})
 	Register(&SArgs{23, PA("dup", []PArg{A("oldfd", INT)})})
 	Register(&SArgs{24, PA("dup3", []PArg{A("oldfd", INT), A("newfd", UINT64), A("flags", INT)})})
 	Register(&SArgs{29, PA("ioctl", []PArg{A("fd", INT), A("request", UINT64), A("arg0", INT), A("arg1", INT), A("arg2", INT), A("arg3", INT)})})
@@ -257,18 +283,28 @@ func init() {
 	Register(&SArgs{57, PA("close", []PArg{A("fd", INT)})})
 	Register(&SArgs{58, PA("vhangup", []PArg{})})
 	Register(&SArgs{59, PA("pipe2", []PArg{B("pipefd", POINTER), A("flags", INT)})})
+	Register(&SArgs{60, PA("quotactl", []PArg{A("cmd", INT), A("special", STRING), A("id", INT), A("addr", INT)})})
+	Register(&SArgs{61, PA("getdents64", []PArg{A("fd", INT), B("dirp", POINTER), A("count", INT)})})
+	Register(&SArgs{63, PA("read", []PArg{A("fd", INT), B("buf", INT), A("count", INT)})})
+	Register(&SArgs{64, PA("write", []PArg{A("fd", INT), A("buf", INT), A("count", INT)})})
+	// 后续适配 指针+结构体 的情况
+	Register(&SArgs{73, PA("ppoll", []PArg{A("fds", INT), A("nfds", INT), A("tmo_p", TIMESPEC), A("sigmask", INT)})})
 	Register(&SArgs{78, PA("readlinkat", []PArg{A("dirfd", INT), A("pathname", STRING), B("buf", STRING), A("bufsiz", INT)})})
 	Register(&SArgs{79, PA("newfstatat", []PArg{A("dirfd", INT), A("pathname", STRING), B("statbuf", STAT), A("flags", INT)})})
 	Register(&SArgs{80, PA("fstat", []PArg{A("fd", INT), B("statbuf", STAT)})})
 	Register(&SArgs{93, PArgs{"exit", B("ret", NONE), []PArg{A("status", INT)}}})
 	Register(&SArgs{94, PArgs{"exit_group", B("ret", NONE), []PArg{A("status", INT)}}})
+	Register(&SArgs{98, PA("futex", []PArg{A("uaddr", INT), A("futex_op", INT), A("val", INT), A("timeout", TIMESPEC)})})
 	Register(&SArgs{101, PA("nanosleep", []PArg{A("req", TIMESPEC), A("rem", TIMESPEC)})})
 	Register(&SArgs{117, PA("ptrace", []PArg{A("request", INT), A("pid", INT), A("addr", POINTER), A("data", POINTER)})})
 	Register(&SArgs{129, PA("kill", []PArg{A("pid", INT), A("sig", INT)})})
 	Register(&SArgs{130, PA("tkill", []PArg{A("tid", INT), A("sig", INT)})})
 	Register(&SArgs{131, PA("tgkill", []PArg{A("tgid", INT), A("tid", INT), A("sig", INT)})})
+	Register(&SArgs{133, PA("rt_sigsuspend", []PArg{A("mask", SIGSET)})})
 	Register(&SArgs{134, PA("rt_sigaction", []PArg{A("signum", INT), A("act", SIGACTION), A("oldact", SIGACTION)})})
 	Register(&SArgs{135, PA("rt_sigprocmask", []PArg{A("how", INT), A("set", UINT64), A("oldset", UINT64), A("sigsetsize", INT)})})
+	Register(&SArgs{154, PA("setpgid", []PArg{A("pid", INT), A("pgid", INT)})})
+	Register(&SArgs{155, PA("getpgid", []PArg{A("pid", INT)})})
 	Register(&SArgs{160, PA("uname", []PArg{B("buf", UTSNAME)})})
 	Register(&SArgs{166, PA("umask", []PArg{A("mode", INT)})})
 	Register(&SArgs{167, PA("prctl", []PArg{A("option", INT), A("arg2", UINT64), A("arg3", UINT64), A("arg4", UINT64), A("arg5", UINT64)})})
