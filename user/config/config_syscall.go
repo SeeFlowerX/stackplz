@@ -254,6 +254,7 @@ func init() {
 	Register(&SArgs{54, PA("fchownat", []PArg{A("dirfd", INT), A("pathname", STRING), A("owner", INT), A("group", INT), A("flags", INT)})})
 	Register(&SArgs{55, PA("fchown", []PArg{A("fd", INT), A("owner", INT), A("group", INT)})})
 	Register(&SArgs{56, PA("openat", []PArg{A("dirfd", INT), A("pathname", STRING), A("flags", INT), A("mode", UINT32)})})
+	Register(&SArgs{57, PA("close", []PArg{A("fd", INT)})})
 	Register(&SArgs{59, PA("pipe2", []PArg{B("pipefd", POINTER), A("flags", INT)})})
 	Register(&SArgs{78, PA("readlinkat", []PArg{A("dirfd", INT), A("pathname", STRING), B("buf", STRING), A("bufsiz", INT)})})
 	Register(&SArgs{79, PA("newfstatat", []PArg{A("dirfd", INT), A("pathname", STRING), B("statbuf", STAT), A("flags", INT)})})
