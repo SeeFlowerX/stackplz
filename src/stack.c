@@ -218,6 +218,11 @@ static __always_inline u32 read_args(program_data_t p, struct point_arg_t* point
         next_arg_index += 1;
         return next_arg_index;
     }
+    if (point_arg->type == TYPE_STRING_ARR && ptr != 0) {
+        save_str_arr_to_buf(p.event, (const char *const *) ptr /*ptr*/, next_arg_index);
+        next_arg_index += 1;
+        return next_arg_index;
+    }
     if (point_arg->type == TYPE_POINTER) {
         // 指针类型 通常读一下对应指针的数据即可 后续记得考虑兼容下32位
         

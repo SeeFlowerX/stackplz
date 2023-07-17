@@ -107,9 +107,9 @@ func (this *EventProcessor) Write(e event.IEventStruct) {
 }
 
 func (this *EventProcessor) Close() error {
-	// 关闭模块的时候 变更 worker 状态 让它自己退出
+	// 关闭模块的时候 变更 tickerCount 大小 让它自己退出
 	for _, worker := range this.workerQueue {
-		worker.(*eventWorker).NeedExit = true
+		worker.(*eventWorker).tickerCount = MAX_TICKER_COUNT + 1
 	}
 	// 等待 0.3s
 	time.Sleep(3 * 100 * time.Millisecond)

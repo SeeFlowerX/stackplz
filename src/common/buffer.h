@@ -79,6 +79,82 @@ static __always_inline int save_bytes_to_buf(event_data_t *event, void *ptr, u32
     return 0;
 }
 
+// #define MAX_STR_ARR_ELEM      38
+#define MAX_STR_ARR_ELEM      128
+#define __user
+
+static __always_inline int save_str_arr_to_buf(event_data_t *event, const char __user *const __user *ptr, u8 index) {
+    // Data saved to submit buf: [index][string count][str1 size][str1][str2 size][str2]...
+
+    u8 elem_num = 0;
+
+    if (event->buf_off > ARGS_BUF_SIZE - 1)
+        return 0;
+
+    // Save argument index
+    event->args[event->buf_off] = index;
+
+    // Save space for number of elements (1 byte)
+    u32 orig_off = event->buf_off + 1;
+    event->buf_off += 2;
+
+#pragma unroll
+    for (int i = 0; i < MAX_STR_ARR_ELEM; i++) {
+        const char *argp = NULL;
+        bpf_probe_read_user(&argp, sizeof(argp), &ptr[i]);
+        if (!argp)
+            goto out;
+
+        if (event->buf_off > ARGS_BUF_SIZE - MAX_STRING_SIZE - sizeof(int))
+            // not enough space - return
+            goto out;
+
+        // Read into buffer
+        int sz =
+            bpf_probe_read_user_str(&(event->args[event->buf_off + sizeof(int)]), MAX_STRING_SIZE, argp);
+            bpf_printk("[syscall] 11 bpf_probe_read_user_str len:%d\n", sz);
+        if (sz > 0) {
+            if (event->buf_off > ARGS_BUF_SIZE - sizeof(int))
+                // Satisfy validator
+                goto out;
+            // bpf_probe_read_user(&(event->args[event->buf_off]), sizeof(int), &sz);
+            __builtin_memcpy(&(event->args[event->buf_off]), &sz, sizeof(int));
+            event->buf_off += sz + sizeof(int);
+            elem_num++;
+            continue;
+        } else {
+            goto out;
+        }
+    }
+    // handle truncated argument list
+    char ellipsis[] = "...";
+    if (event->buf_off > ARGS_BUF_SIZE - MAX_STRING_SIZE - sizeof(int))
+        // not enough space - return
+        goto out;
+
+    // Read into buffer
+    int sz =
+        bpf_probe_read_user_str(&(event->args[event->buf_off + sizeof(int)]), MAX_STRING_SIZE, ellipsis);
+        bpf_printk("[syscall] 22 bpf_probe_read_user_str len:%d\n", sz);
+    if (sz > 0) {
+        if (event->buf_off > ARGS_BUF_SIZE - sizeof(int))
+            // Satisfy validator
+            goto out;
+        // bpf_probe_read_user(&(event->args[event->buf_off]), sizeof(int), &sz);
+        __builtin_memcpy(&(event->args[event->buf_off]), &sz, sizeof(int));
+        event->buf_off += sz + sizeof(int);
+        elem_num++;
+    }
+out:
+    // save number of elements in the array
+    if (orig_off > ARGS_BUF_SIZE - 1)
+        return 0;
+    event->args[orig_off] = elem_num;
+    event->context.argnum++;
+    return 1;
+}
+
+
 static __always_inline int save_str_to_buf(event_data_t *event, void *ptr, u8 index)
 {
     // Data saved to submit buf: [index][size][ ... string ... ]
@@ -110,6 +186,7 @@ static __always_inline int save_str_to_buf(event_data_t *event, void *ptr, u8 in
 
     return 0;
 }
+
 
 static __always_inline int events_perf_submit(program_data_t *p, u32 id)
 {

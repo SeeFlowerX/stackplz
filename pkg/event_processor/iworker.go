@@ -47,7 +47,6 @@ type eventWorker struct {
 	UUID        string
 	processor   *EventProcessor
 	parser      IParser
-	NeedExit    bool
 }
 
 func NewEventWorker(uuid string, processor *EventProcessor) IWorker {
@@ -64,8 +63,6 @@ func (this *eventWorker) init(uuid string, processor *EventProcessor) {
 	this.incoming = make(chan event.IEventStruct, MAX_CHAN_LEN)
 	this.UUID = uuid
 	this.processor = processor
-	// 由 processer 变更
-	this.NeedExit = false
 }
 
 func (this *eventWorker) GetUUID() string {
@@ -151,39 +148,18 @@ func (this *eventWorker) Run() {
 	for {
 		select {
 		case _ = <-this.ticker.C:
+			if this.tickerCount > MAX_TICKER_COUNT {
+				this.Close()
+				return
+			}
 			this.tickerCount++
-			if this.NeedExit {
-				this.Close()
-				return
-			}
 		case e := <-this.incoming:
+			// reset tickerCount
+			this.tickerCount = 0
 			this.parserEvent(e)
-			if this.NeedExit {
-				this.Close()
-				return
-			}
 		}
 	}
 }
-
-// func (this *eventWorker) Run() {
-// 	for {
-// 		select {
-// 		case _ = <-this.ticker.C:
-// 			// 输出包
-// 			if this.tickerCount > MAX_TICKER_COUNT {
-// 				this.processor.GetLogger().Printf("eventWorker TickerCount > %d, event closed.", MAX_TICKER_COUNT)
-// 				this.Close()
-// 				return
-// 			}
-// 			this.tickerCount++
-// 		case e := <-this.incoming:
-// 			// reset tickerCount
-// 			this.tickerCount = 0
-// 			this.parserEvent(e)
-// 		}
-// 	}
-// }
 
 func (this *eventWorker) Close() {
 	// 即将关闭， 必须输出结果

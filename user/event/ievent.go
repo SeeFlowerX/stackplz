@@ -58,23 +58,24 @@ type RegsBuf struct {
 }
 
 type CommonEvent struct {
-    mconf         *config.ModuleConfig
-    logger        *log.Logger
-    rec           perf.Record
-    event_context EventContext
-    unwind_stack  bool
-    show_regs     bool
-    buf           *bytes.Buffer
+    mconf  *config.ModuleConfig
+    logger *log.Logger
+    rec    perf.Record
+    // event_context EventContext
+    unwind_stack bool
+    show_regs    bool
+    buf          *bytes.Buffer
 }
 
 func (this *CommonEvent) String() string {
-    var s string
-    s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.event_context.Comm[:]))
-    return s
+    // var s string
+    // s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.event_context.Comm[:]))
+    // return s
+    panic("CommonEvent String")
 }
 
 func (this *CommonEvent) GetUUID() string {
-    return fmt.Sprintf("%d_%d", this.event_context.Pid, this.event_context.Tid)
+    panic("CommonEvent GetUUID")
 }
 
 func (this *CommonEvent) GetEventId() uint32 {
@@ -124,31 +125,46 @@ func (this *CommonEvent) ParseContext() (err error) {
 
 func (this *CommonEvent) NewMmap2Event() IEventStruct {
     event := &Mmap2Event{CommonEvent: *this}
-    event.ParseContext()
+    err := event.ParseContext()
+    if err != nil {
+        panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+    }
     return event
 }
 
 func (this *CommonEvent) NewCommEvent() IEventStruct {
     event := &CommEvent{CommonEvent: *this}
-    event.ParseContext()
+    err := event.ParseContext()
+    if err != nil {
+        panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+    }
     return event
 }
 
 func (this *CommonEvent) NewForkEvent() IEventStruct {
     event := &ForkEvent{CommonEvent: *this}
-    event.ParseContext()
+    err := event.ParseContext()
+    if err != nil {
+        panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+    }
     return event
 }
 
 func (this *CommonEvent) NewExitEvent() IEventStruct {
     event := &ExitEvent{CommonEvent: *this}
-    event.ParseContext()
+    err := event.ParseContext()
+    if err != nil {
+        panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+    }
     return event
 }
 
 func (this *CommonEvent) NewContextEvent() IEventStruct {
     event := &ContextEvent{CommonEvent: *this}
-    event.ParseContext()
+    err := event.ParseContext()
+    if err != nil {
+        panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+    }
     return event
 }
 

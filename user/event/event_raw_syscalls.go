@@ -49,6 +49,10 @@ type SyscallEvent struct {
     arg_str      string
 }
 
+type IArg interface {
+    Format() string
+}
+
 type Arg_nr struct {
     Index uint8
     Value uint32
@@ -61,11 +65,84 @@ type Arg_str struct {
     Index uint8
     Len   uint32
 }
+type Arg_str_arr struct {
+    Index uint8
+    Count uint8
+}
 type Arg_Timespec struct {
     Index uint8
     Len   uint32
     syscall.Timespec
 }
+type Arg_Sigaction struct {
+    Index uint8
+    Len   uint32
+    config.Sigaction
+}
+type Arg_Stat_t struct {
+    Index uint8
+    Len   uint32
+    syscall.Stat_t
+}
+type Arg_Statfs_t struct {
+    Index uint8
+    Len   uint32
+    syscall.Statfs_t
+}
+
+// vscode 配置下面的部分 这样才有正确的代码提示
+// "go.toolsEnvVars": {
+//     "GOOS": "android",
+//     "GOARCH": "arm64"
+// }
+
+func (this *Arg_Stat_t) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("dev=%d", this.Dev))
+    fields = append(fields, fmt.Sprintf("ino=%d", this.Ino))
+    fields = append(fields, fmt.Sprintf("nlink=%d", this.Nlink))
+    fields = append(fields, fmt.Sprintf("mode=%d", this.Mode))
+    fields = append(fields, fmt.Sprintf("uid=%d", this.Uid))
+    fields = append(fields, fmt.Sprintf("gid=%d", this.Gid))
+    fields = append(fields, fmt.Sprintf("rdev=%d", this.Rdev))
+    fields = append(fields, fmt.Sprintf("x__pad1=%d", this.X__pad1))
+    fields = append(fields, fmt.Sprintf("size=%d", this.Size))
+    fields = append(fields, fmt.Sprintf("blksize=%d", this.Blksize))
+    fields = append(fields, fmt.Sprintf("x__pad2=%d", this.X__pad2))
+    fields = append(fields, fmt.Sprintf("blocks=%d", this.Blocks))
+    fields = append(fields, fmt.Sprintf("atim={tv_sec=%d, tv_nsec=%d}", this.Atim.Sec, this.Atim.Nsec))
+    fields = append(fields, fmt.Sprintf("mtim={tv_sec=%d, tv_nsec=%d}", this.Mtim.Sec, this.Mtim.Nsec))
+    fields = append(fields, fmt.Sprintf("ctim={tv_sec=%d, tv_nsec=%d}", this.Ctim.Sec, this.Ctim.Nsec))
+    fields = append(fields, fmt.Sprintf("x__glibc_reserved=0x%x,0x%x", this.X__glibc_reserved[0], this.X__glibc_reserved[1]))
+    return fmt.Sprintf("stat{%s}", strings.Join(fields, ", "))
+}
+func (this *Arg_Statfs_t) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("type=%d", this.Type))
+    fields = append(fields, fmt.Sprintf("bsize=%d", this.Bsize))
+    fields = append(fields, fmt.Sprintf("blocks=%d", this.Blocks))
+    fields = append(fields, fmt.Sprintf("bfree=%d", this.Bfree))
+    fields = append(fields, fmt.Sprintf("bavail=%d", this.Bavail))
+    fields = append(fields, fmt.Sprintf("files=%d", this.Files))
+    fields = append(fields, fmt.Sprintf("ffree=%d", this.Ffree))
+    fields = append(fields, fmt.Sprintf("fsid=0x%x,0x%x", this.Fsid.X__val[0], this.Fsid.X__val[1]))
+    fields = append(fields, fmt.Sprintf("namelen=%d", this.Namelen))
+    fields = append(fields, fmt.Sprintf("frsize=%d", this.Frsize))
+    fields = append(fields, fmt.Sprintf("flags=%d", this.Flags))
+    fields = append(fields, fmt.Sprintf("spare=0x%x,0x%x,0x%x,0x%x", this.Spare[0], this.Spare[1], this.Spare[2], this.Spare[3]))
+    return fmt.Sprintf("statfs{%s}", strings.Join(fields, ", "))
+}
+
+func (this *Arg_Sigaction) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("sa_handler=0x%x", this.Sa_handler))
+    fields = append(fields, fmt.Sprintf("sa_sigaction=0x%x", this.Sa_sigaction))
+    fields = append(fields, fmt.Sprintf("sa_mask=0x%x", this.Sa_mask))
+    fields = append(fields, fmt.Sprintf("sa_flags=0x%x", this.Sa_flags))
+    fields = append(fields, fmt.Sprintf("sa_restorer=0x%x", this.Sa_restorer))
+    return fmt.Sprintf("sigaction{%s}", strings.Join(fields, ", "))
+}
+
 type Arg_Utsname struct {
     Index uint8
     Len   uint32
@@ -77,7 +154,7 @@ func B2S(bs []int8) string {
     for _, b := range bs {
         ba = append(ba, byte(b))
     }
-    return string(ba)
+    return util.B2STrim(ba)
 }
 
 type Arg_bytes = Arg_str
@@ -96,6 +173,8 @@ func (this *SyscallEvent) ReadIndex() (error, uint32) {
 
 func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err error) {
     switch point_arg.AliasType {
+    case config.TYPE_NONE:
+        break
     case config.TYPE_NUM:
         break
     case config.TYPE_STRING:
@@ -108,6 +187,24 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
         point_arg.AppendValue(fmt.Sprintf("(%s)", util.B2STrim(payload)))
+    case config.TYPE_STRING_ARR:
+        var arg_str_arr Arg_str_arr
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg_str_arr); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        var str_arr []string
+        for i := 0; i < int(arg_str_arr.Count); i++ {
+            var len uint32
+            if err = binary.Read(this.buf, binary.LittleEndian, &len); err != nil {
+                panic(fmt.Sprintf("binary.Read err:%v", err))
+            }
+            payload := make([]byte, len)
+            if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+                panic(fmt.Sprintf("binary.Read err:%v", err))
+            }
+            str_arr = append(str_arr, util.B2STrim(payload))
+        }
+        point_arg.AppendValue(fmt.Sprintf("[%s]", strings.Join(str_arr, ", ")))
     case config.TYPE_POINTER:
         // 先解析参数寄存器本身的值
         var ptr_value Arg_reg
@@ -134,6 +231,49 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
             time_fmt = "NULL"
         }
         point_arg.SetValue(fmt.Sprintf("(%s)", time_fmt))
+    case config.TYPE_STAT:
+        var stat_fmt string
+        if ptr.Address != 0 {
+            var arg_stat_t Arg_Stat_t
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg_stat_t); err != nil {
+                // 根据实际测试 mount 进程的某一个 newfstatat 系统调用 无法获取到参数 原因未知
+                if this.nr.Value == 79 && util.B2STrim(this.comm[:]) == "mount" {
+                    stat_fmt = "why mount newfstatat not correct"
+                    break
+                } else {
+                    this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
+                    panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.comm[:]), err))
+                }
+            }
+            stat_fmt = arg_stat_t.Format()
+        } else {
+            stat_fmt = "NULL"
+        }
+        point_arg.SetValue(fmt.Sprintf("(%s)", stat_fmt))
+    case config.TYPE_STATFS:
+        var statfs_fmt string
+        if ptr.Address != 0 {
+            var arg_statfs_t Arg_Statfs_t
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg_statfs_t); err != nil {
+                panic(fmt.Sprintf("binary.Read err:%v", err))
+            }
+            statfs_fmt = arg_statfs_t.Format()
+        } else {
+            statfs_fmt = "NULL"
+        }
+        point_arg.SetValue(fmt.Sprintf("(%s)", statfs_fmt))
+    case config.TYPE_SIGACTION:
+        var fmt_str string
+        if ptr.Address != 0 {
+            var arg_sigaction Arg_Sigaction
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg_sigaction); err != nil {
+                panic(fmt.Sprintf("binary.Read err:%v", err))
+            }
+            fmt_str = arg_sigaction.Format()
+        } else {
+            fmt_str = "NULL"
+        }
+        point_arg.SetValue(fmt.Sprintf("(%s)", fmt_str))
     case config.TYPE_UTSNAME:
         var name_fmt string
         if ptr.Address != 0 {
@@ -191,6 +331,7 @@ func (this *SyscallEvent) ParseContextSysEnter() (err error) {
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
         point_arg.SetValue(base_arg_str)
         if point_arg.Type == config.TYPE_NUM {
+            // 目前会全部输出为 hex 后续优化改进
             results = append(results, point_arg.ArgValue)
             continue
         }
@@ -224,7 +365,13 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     for _, point_arg := range this.nr_point.Args {
         var ptr Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            if this.nr.Value == 79 && util.B2STrim(this.comm[:]) == "mount" {
+                results = append(results, "why mount newfstatat not correct")
+                break
+            } else {
+                this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
+                panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.comm[:]), err))
+            }
         }
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
         point_arg.SetValue(base_arg_str)
@@ -242,7 +389,11 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     // 处理返回参数
     var ptr Arg_reg
     if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        if this.nr.Value == 79 && util.B2STrim(this.comm[:]) == "mount" {
+            results = append(results, "why mount newfstatat not correct")
+        } else {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
     }
     point_arg := this.nr_point.Ret
     base_arg_str := fmt.Sprintf("0x%x", ptr.Address)
@@ -356,13 +507,13 @@ func (this *SyscallEvent) String() string {
 }
 
 func (this *SyscallEvent) ParseLRV1() (string, error) {
-    return maps_helper.GetOffset(this.event_context.Pid, this.lr.Address), nil
+    return maps_helper.GetOffset(this.pid, this.lr.Address), nil
 }
 
 func (this *SyscallEvent) ParseLR() (string, error) {
     info := "UNKNOWN"
     // 直接读取maps信息 计算lr在什么地方 定位syscall调用也就一目了然了
-    filename := fmt.Sprintf("/proc/%d/maps", this.event_context.Pid)
+    filename := fmt.Sprintf("/proc/%d/maps", this.pid)
     content, err := ioutil.ReadFile(filename)
     if err != nil {
         return info, fmt.Errorf("Error when opening file:%v", err)
@@ -393,13 +544,13 @@ func (this *SyscallEvent) ParseLR() (string, error) {
 func (this *SyscallEvent) ParsePCV1() (string, error) {
     // 通过在启动阶段收集到的库基址信息来计算偏移
     // 由于每个进程的加载情况不一样 这里要传递 pid
-    return maps_helper.GetOffset(this.event_context.Pid, this.pc.Address), nil
+    return maps_helper.GetOffset(this.pid, this.pc.Address), nil
 }
 
 func (this *SyscallEvent) ParsePC() (string, error) {
     info := "UNKNOWN"
     // 直接读取maps信息 计算pc在什么地方 定位syscall调用也就一目了然了
-    filename := fmt.Sprintf("/proc/%d/maps", this.event_context.Pid)
+    filename := fmt.Sprintf("/proc/%d/maps", this.pid)
     content, err := ioutil.ReadFile(filename)
     if err != nil {
         return info, fmt.Errorf("Error when opening file:%v", err)
