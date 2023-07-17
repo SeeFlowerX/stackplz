@@ -237,6 +237,7 @@ func init() {
 	Register(&SArgs{38, PA("renameat", []PArg{A("olddirfd", INT), A("oldpath", STRING), A("newdirfd", INT), A("newpath", STRING)})})
 	Register(&SArgs{39, PA("umount2", []PArg{A("target", STRING), A("flags", INT)})})
 	Register(&SArgs{40, PA("mount", []PArg{A("source", INT), A("target", STRING), A("filesystemtype", STRING), A("mountflags", INT), A("data", POINTER)})})
+	Register(&SArgs{43, PA("statfs", []PArg{A("path", STRING), B("buf", STATFS)})})
 	Register(&SArgs{44, PA("fstatfs", []PArg{A("fd", INT), B("buf", STATFS)})})
 	Register(&SArgs{48, PA("faccessat", []PArg{A("dirfd", INT), A("pathname", STRING), A("flags", INT), A("mode", UINT32)})})
 	Register(&SArgs{49, PA("chdir", []PArg{A("path", STRING)})})
