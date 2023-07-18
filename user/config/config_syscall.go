@@ -204,6 +204,7 @@ const (
 	TYPE_UTSNAME
 	TYPE_SOCKADDR
 	TYPE_RUSAGE
+	TYPE_IOVEC
 	TYPE_SIGSET
 	TYPE_POLLFD
 	TYPE_ARGASSIZE
@@ -230,6 +231,7 @@ var SIGACTION = ArgType{TYPE_SIGACTION, TYPE_STRUCT, uint32(unsafe.Sizeof(Sigact
 var UTSNAME = ArgType{TYPE_UTSNAME, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Utsname{}))}
 var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrAny{}))}
 var RUSAGE = ArgType{TYPE_RUSAGE, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Rusage{}))}
+var IOVEC = ArgType{TYPE_IOVEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Iovec{}))}
 
 // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
 // #define _NSIG       64
@@ -289,6 +291,8 @@ func init() {
 	Register(&SArgs{61, PA("getdents64", []PArg{A("fd", INT), B("dirp", POINTER), A("count", INT)})})
 	Register(&SArgs{63, PA("read", []PArg{A("fd", INT), B("buf", INT), A("count", INT)})})
 	Register(&SArgs{64, PA("write", []PArg{A("fd", INT), A("buf", INT), A("count", INT)})})
+	Register(&SArgs{65, PA("readv", []PArg{A("fd", INT), B("iov", IOVEC), A("iovcnt", INT)})})
+	Register(&SArgs{66, PA("writev", []PArg{A("fd", INT), A("iov", IOVEC), A("iovcnt", INT)})})
 	// 后续适配 指针+结构体 的情况
 	Register(&SArgs{73, PA("ppoll", []PArg{A("fds", INT), A("nfds", INT), A("tmo_p", TIMESPEC), A("sigmask", INT)})})
 	Register(&SArgs{78, PA("readlinkat", []PArg{A("dirfd", INT), A("pathname", STRING), B("buf", STRING), A("bufsiz", INT)})})
