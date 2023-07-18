@@ -19,7 +19,7 @@ static __always_inline u64 should_trace(program_data_t *p)
     // 无论如何都必须把自己排除
     // 话说这里用 context.pid 应该更合理吧
     // 不过 tracee 是这样写的 暂且保持一致
-    if (config->stackplz_pid == context->host_pid) {
+    if (config->stackplz_pid == context->pid) {
         return 0;
     }
 
