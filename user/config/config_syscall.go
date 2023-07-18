@@ -305,6 +305,7 @@ func init() {
 	Register(&SArgs{133, PA("rt_sigsuspend", []PArg{A("mask", SIGSET)})})
 	Register(&SArgs{134, PA("rt_sigaction", []PArg{A("signum", INT), A("act", SIGACTION), A("oldact", SIGACTION)})})
 	Register(&SArgs{135, PA("rt_sigprocmask", []PArg{A("how", INT), A("set", UINT64), A("oldset", UINT64), A("sigsetsize", INT)})})
+	Register(&SArgs{139, PA("rt_sigreturn", []PArg{A("mask", INT)})})
 	Register(&SArgs{154, PA("setpgid", []PArg{A("pid", INT), A("pgid", INT)})})
 	Register(&SArgs{155, PA("getpgid", []PArg{A("pid", INT)})})
 	Register(&SArgs{160, PA("uname", []PArg{B("buf", UTSNAME)})})
