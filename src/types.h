@@ -4,13 +4,13 @@
 #include "common/consts.h"
 
 typedef struct common_filter {
+    u32 is_32bit;
     u32 uid;
     u32 pid;
     u32 tid;
-    u32 blacklist_pids;
-    u32 blacklist_tids;
+    u32 blacklist_pids[20];
+    u32 blacklist_tids[20];
     u32 blacklist_comms;
-    u32 is_32bit;
 } common_filter_t;
 
 typedef struct args {

@@ -201,6 +201,12 @@ func NewModuleConfig(logger *log.Logger) *ModuleConfig {
     config.Uid = MAGIC_UID
     config.Pid = MAGIC_PID
     config.Tid = MAGIC_TID
+    for i := 0; i < len(config.PidsBlacklist); i++ {
+        config.PidsBlacklist[i] = MAGIC_PID
+    }
+    for i := 0; i < len(config.TidsBlacklist); i++ {
+        config.PidsBlacklist[i] = MAGIC_TID
+    }
     // fmt.Printf("uid:%d pid:%d tid:%d", config.Uid, config.Pid, config.Tid)
     return config
 }
@@ -251,14 +257,18 @@ func (this *ModuleConfig) SetPidsBlacklist(pids_blacklist string) error {
 
 func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
     filter := CommonFilter{}
+    filter.is_32bit = 0
     filter.uid = this.Uid
     filter.pid = this.Pid
     filter.tid = this.Tid
     // 这些暂时硬编码
-    filter.blacklist_pids = 0
-    filter.blacklist_tids = 0
+    for i := 0; i < MAX_COUNT; i++ {
+        filter.blacklist_pids[i] = this.PidsBlacklist[i]
+    }
+    for i := 0; i < MAX_COUNT; i++ {
+        filter.blacklist_tids[i] = this.TidsBlacklist[i]
+    }
     filter.blacklist_comms = 0
-    filter.is_32bit = 0
     if this.Debug {
         this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit)
     }

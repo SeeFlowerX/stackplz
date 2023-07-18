@@ -62,12 +62,18 @@ static __always_inline u64 should_trace(program_data_t *p)
             return 0;
         }
         if (filter->uid == context->uid) {
-            // 如果是黑名单中的 pid 不追踪（后面再改成列表）
-            if (filter->blacklist_pids == context->pid) {
-                return 0;
+            for (int i = 0; i < MAX_COUNT; i++) {
+                // 因为列表肯定是挨着填充的 所以遇到 MAGIC 就可以直接结束循环了
+                if (filter->blacklist_pids[i] == MAGIC_PID) break;
+                if (filter->blacklist_pids[i] == context->pid) {
+                    return 0;
+                };
             }
-            if (filter->blacklist_tids == context->tid) {
-                return 0;
+            for (int i = 0; i < MAX_COUNT; i++) {
+                if (filter->blacklist_tids[i] == MAGIC_TID) break;
+                if (filter->blacklist_tids[i] == context->tid) {
+                    return 0;
+                };
             }
             // 线程名黑名单 通过命中关键词来确定 注意最多16字节
             // if (filter->blacklist_comms == context->comm) {
@@ -82,9 +88,11 @@ static __always_inline u64 should_trace(program_data_t *p)
             return 0;
         }
         if (filter->pid == context->pid) {
-            // 如果是黑名单中的 pid 不追踪（后面再改成列表）
-            if (filter->blacklist_tids == context->tid) {
-                return 0;
+            for (int i = 0; i < MAX_COUNT; i++) {
+                if (filter->blacklist_tids[i] == MAGIC_TID) break;
+                if (filter->blacklist_tids[i] == context->tid) {
+                    return 0;
+                };
             }
             // 线程名黑名单 通过命中关键词来确定 注意最多16字节
             // if (filter->blacklist_comms == context->comm) {
