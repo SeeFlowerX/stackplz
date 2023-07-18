@@ -263,6 +263,9 @@ func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
     filter.tid = this.Tid
     // 这些暂时硬编码
     for i := 0; i < MAX_COUNT; i++ {
+        filter.pid_list[i] = MAGIC_PID
+    }
+    for i := 0; i < MAX_COUNT; i++ {
         filter.blacklist_pids[i] = this.PidsBlacklist[i]
     }
     for i := 0; i < MAX_COUNT; i++ {

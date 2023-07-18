@@ -55,12 +55,11 @@ static __always_inline u64 should_trace(program_data_t *p)
     // 考虑到指明了过滤模式 那么就不需要使用 MAGIC_PID 去判断了 因为对应的模式下对应参数必须有值
 
     u32 filter_key = 0;
-
+    common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
+    if (filter == NULL) {
+        return 0;
+    }
     if (config->filter_mode == UID_MODE) {
-        common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
-        if (filter == NULL) {
-            return 0;
-        }
         if (filter->uid == context->uid) {
             for (int i = 0; i < MAX_COUNT; i++) {
                 // 因为列表肯定是挨着填充的 所以遇到 MAGIC 就可以直接结束循环了
@@ -83,10 +82,6 @@ static __always_inline u64 should_trace(program_data_t *p)
         }
         return 0;
     } else if (config->filter_mode == PID_MODE) {
-        common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
-        if (filter == NULL) {
-            return 0;
-        }
         if (filter->pid == context->pid) {
             for (int i = 0; i < MAX_COUNT; i++) {
                 if (filter->blacklist_tids[i] == MAGIC_TID) break;
@@ -102,10 +97,6 @@ static __always_inline u64 should_trace(program_data_t *p)
         }
         return 0;
     } else if (config->filter_mode == PID_TID_MODE) {
-        common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
-        if (filter == NULL) {
-            return 0;
-        }
         if (filter->pid == context->pid && filter->tid == context->tid) {
             return 1;
         }
@@ -113,23 +104,6 @@ static __always_inline u64 should_trace(program_data_t *p)
     } else {
         return 0;
     }
-
-    // 首先取出 common_filter
-    // u32 trace_flag = 0;
-    // u32 filter_key = 0;
-    // common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
-    // if (filter == NULL) {
-    //     return 0;
-    // }
-    // if (trace_flag != 1 && filter->uid != MAGIC_UID && filter->uid == context->uid) {
-    //     trace_flag = 1;
-    // }
-    // if (trace_flag != 1 && filter->pid != MAGIC_PID && filter->pid == context->pid) {
-    //     trace_flag = 1;
-    // }
-    // if (trace_flag != 1 && filter->tid != MAGIC_TID && filter->tid == context->tid) {
-    //     trace_flag = 1;
-    // }
 
     // 有时候希望对一些额外的进程进行追踪或者屏蔽
     // 还需要提供 uid pid tid 的黑白名单列表以达成更加精细的追踪

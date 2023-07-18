@@ -11,6 +11,7 @@
 
 #define TASK_COMM_LEN 16
 #define MAX_COUNT 20
+#define MAX_WATCH_PROC_COUNT 256
 #define MAX_PATH_COMPONENTS   48
 
 // clang-format off

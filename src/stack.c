@@ -124,6 +124,13 @@ int probe_stack(struct pt_regs* ctx) {
     return 0;
 }
 
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, u32);
+    __type(value, u32);
+    __uint(max_entries, MAX_WATCH_PROC_COUNT);
+} watch_proc_map SEC(".maps");
+
 // raw_tracepoint hook
 
 struct {
@@ -139,10 +146,6 @@ typedef struct point_arg_t {
 } point_arg;
 
 #define MAX_POINT_ARG_COUNT 6
-// typedef struct point_args_t {
-//     u32 count;
-//     point_arg_t point_args[MAX_POINT_ARG_COUNT];
-// } point_args;
 
 typedef struct syscall_point_args_t {
     // u32 nr;
@@ -151,13 +154,6 @@ typedef struct syscall_point_args_t {
     point_arg point_arg_ret;
 } syscall_point_args;
 
-// struct {
-//     __uint(type, BPF_MAP_TYPE_HASH);
-//     __type(key, u32);
-//     __type(value, struct point_args_t);
-//     __uint(max_entries, 512);
-// } point_args_map SEC(".maps");
-
 // syscall_point_args_map 的 key 就是 nr
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -165,17 +161,6 @@ struct {
     __type(value, struct syscall_point_args_t);
     __uint(max_entries, 512);
 } syscall_point_args_map SEC(".maps");
-
-// struct arg_ret_mask_t {
-//     u32 ret_mask;
-// };
-
-// struct {
-//     __uint(type, BPF_MAP_TYPE_HASH);
-//     __type(key, u32);
-//     __type(value, struct arg_ret_mask_t);
-//     __uint(max_entries, 512);
-// } arg_ret_mask_map SEC(".maps");
 
 // syscall过滤配置
 struct syscall_filter_t {
@@ -253,6 +238,34 @@ static __always_inline u32 read_args(program_data_t p, struct point_arg_t* point
         return next_arg_index;
     }
     return next_arg_index;
+}
+
+SEC("raw_tracepoint/sched_process_fork")
+int tracepoint__sched__sched_process_fork(struct bpf_raw_tracepoint_args *ctx)
+{
+    long ret = 0;
+    program_data_t p = {};
+    if (!init_program_data(&p, ctx))
+        return 0;
+
+    struct task_struct *parent = (struct task_struct *) ctx->args[0];
+    struct task_struct *child = (struct task_struct *) ctx->args[1];
+
+    // 为了实现仅指定单个pid时 能追踪其产生的子进程的相关系统调用 设计如下
+    // 维护一个 map
+    // - 其 key 为进程 pid 
+    // - 其 value 为其父进程 pid
+    // 逻辑如下
+    // 当进入此处后，先获取进程本身信息，然后通过自己的父进程 pid 去 map 中取出对应的value
+    // 如果没有取到则说明这个进程不是要追踪的进程
+    // 取到了，则说明这个是之前产生的进程，然后向map存入进程信息 key 就是进程本身 pid 而 value则是父进程pid
+    // 那么最开始的 pid 从哪里来呢 答案是从首次通过 sys_enter 的过滤之后 向该map存放第一个key value
+    // 1. parent_child_map => {}
+    // 2. 出现第一个通过 sys_enter 处的过滤的进程，则更新map -> parent_child_map => {12345: 12345}
+    // 3. sched_process_fork 获取进程的父进程信息，检查map，发现父进程存在其中，则更新map -> parent_child_map => {12345: 12345, 22222: 12345}
+    // 4. sys_enter/sys_exit 有限次遍历 parent_child_map 取出key逐个比较当前进程的pid
+    // 待实现...
+    return 0;
 }
 
 SEC("raw_tracepoint/sys_enter")

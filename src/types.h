@@ -8,8 +8,9 @@ typedef struct common_filter {
     u32 uid;
     u32 pid;
     u32 tid;
-    u32 blacklist_pids[20];
-    u32 blacklist_tids[20];
+    u32 pid_list[MAX_WATCH_PROC_COUNT];
+    u32 blacklist_pids[MAX_COUNT];
+    u32 blacklist_tids[MAX_COUNT];
     u32 blacklist_comms;
 } common_filter_t;
 

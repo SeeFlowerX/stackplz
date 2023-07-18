@@ -3,6 +3,7 @@ package config
 import "log"
 
 const MAX_COUNT = 20
+const MAX_WATCH_PROC_COUNT = 256
 
 // stackplz => 737461636b706c7a
 const MAGIC_UID = 0x73746163
