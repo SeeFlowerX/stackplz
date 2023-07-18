@@ -329,6 +329,7 @@ func init() {
 	Register(&SArgs{260, PA("wait4", []PArg{A("pid", INT), A("wstatus", POINTER), A("options", INT), B("rusage", RUSAGE)})})
 	Register(&SArgs{276, PA("renameat2", []PArg{A("olddirfd", INT), A("oldpath", STRING), A("newdirfd", INT), A("newpath", STRING), A("flags", INT)})})
 	Register(&SArgs{277, PA("seccomp", []PArg{A("operation", INT), A("flags", INT), A("args", POINTER)})})
+	Register(&SArgs{278, PA("getrandom", []PArg{B("buf", POINTER), A("buflen", INT), A("flags", INT)})})
 	Register(&SArgs{279, PA("memfd_create", []PArg{A("name", STRING), A("flags", INT)})})
 	Register(&SArgs{280, PA("bpf", []PArg{A("cmd", INT), A("attr", POINTER), A("size", INT)})})
 	Register(&SArgs{288, PA("pkey_mprotect", []PArg{B("addr", POINTER), A("length", INT), A("prot", INT), A("pkey", INT)})})
