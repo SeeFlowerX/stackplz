@@ -203,6 +203,7 @@ const (
 	TYPE_SIGACTION
 	TYPE_UTSNAME
 	TYPE_SOCKADDR
+	TYPE_RUSAGE
 	TYPE_SIGSET
 	TYPE_POLLFD
 	TYPE_ARGASSIZE
@@ -228,6 +229,7 @@ var STATFS = ArgType{TYPE_STATFS, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Stat
 var SIGACTION = ArgType{TYPE_SIGACTION, TYPE_STRUCT, uint32(unsafe.Sizeof(Sigaction{}))}
 var UTSNAME = ArgType{TYPE_UTSNAME, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Utsname{}))}
 var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrAny{}))}
+var RUSAGE = ArgType{TYPE_RUSAGE, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Rusage{}))}
 
 // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
 // #define _NSIG       64
@@ -306,6 +308,7 @@ func init() {
 	Register(&SArgs{154, PA("setpgid", []PArg{A("pid", INT), A("pgid", INT)})})
 	Register(&SArgs{155, PA("getpgid", []PArg{A("pid", INT)})})
 	Register(&SArgs{160, PA("uname", []PArg{B("buf", UTSNAME)})})
+	Register(&SArgs{165, PA("getrusage", []PArg{A("who", INT), B("usage", RUSAGE)})})
 	Register(&SArgs{166, PA("umask", []PArg{A("mode", INT)})})
 	Register(&SArgs{167, PA("prctl", []PArg{A("option", INT), A("arg2", UINT64), A("arg3", UINT64), A("arg4", UINT64), A("arg5", UINT64)})})
 	Register(&SArgs{220, PA("clone", []PArg{A("fn", POINTER), A("stack", POINTER), A("flags", INT), A("arg0", INT), A("arg1", INT), A("arg2", INT)})})

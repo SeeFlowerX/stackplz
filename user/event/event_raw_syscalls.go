@@ -154,6 +154,32 @@ type Arg_Utsname struct {
     Len   uint32
     syscall.Utsname
 }
+type Arg_Rusage struct {
+    Index uint8
+    Len   uint32
+    syscall.Rusage
+}
+
+func (this *Arg_Rusage) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("utime=timeval{sec=%d, sec=%d}", this.Utime.Sec, this.Utime.Usec))
+    fields = append(fields, fmt.Sprintf("stime=timeval{sec=%d, sec=%d}", this.Stime.Sec, this.Stime.Usec))
+    fields = append(fields, fmt.Sprintf("Maxrss=0x%x", this.Maxrss))
+    fields = append(fields, fmt.Sprintf("Ixrss=0x%x", this.Ixrss))
+    fields = append(fields, fmt.Sprintf("Idrss=0x%x", this.Idrss))
+    fields = append(fields, fmt.Sprintf("Isrss=0x%x", this.Isrss))
+    fields = append(fields, fmt.Sprintf("Minflt=0x%x", this.Minflt))
+    fields = append(fields, fmt.Sprintf("Majflt=0x%x", this.Majflt))
+    fields = append(fields, fmt.Sprintf("Nswap=0x%x", this.Nswap))
+    fields = append(fields, fmt.Sprintf("Inblock=0x%x", this.Inblock))
+    fields = append(fields, fmt.Sprintf("Oublock=0x%x", this.Oublock))
+    fields = append(fields, fmt.Sprintf("Msgsnd=0x%x", this.Msgsnd))
+    fields = append(fields, fmt.Sprintf("Msgrcv=0x%x", this.Msgrcv))
+    fields = append(fields, fmt.Sprintf("Nsignals=0x%x", this.Nsignals))
+    fields = append(fields, fmt.Sprintf("Nvcsw=0x%x", this.Nvcsw))
+    fields = append(fields, fmt.Sprintf("Nivcsw=0x%x", this.Nivcsw))
+    return fmt.Sprintf("rusage{%s}", strings.Join(fields, ", "))
+}
 
 func B2S(bs []int8) string {
     ba := make([]byte, 0, len(bs))
@@ -316,6 +342,18 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
         point_arg.AppendValue(fmt.Sprintf("({family: %d, data: [hex]%x, pad: [hex]%x})", sockaddr.Addr.Family, sockaddr.Addr.Data, sockaddr.Pad))
+    case config.TYPE_RUSAGE:
+        var arg_fmt string
+        if ptr.Address != 0 {
+            var arg_rusage Arg_Rusage
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg_rusage); err != nil {
+                panic(fmt.Sprintf("binary.Read err:%v", err))
+            }
+            arg_fmt = arg_rusage.Format()
+        } else {
+            arg_fmt = "NULL"
+        }
+        point_arg.AppendValue(fmt.Sprintf("(%s)", arg_fmt))
     default:
         panic(fmt.Sprintf("unknown point_arg.AliasType %d", point_arg.AliasType))
     }
