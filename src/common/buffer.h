@@ -112,7 +112,6 @@ static __always_inline int save_str_arr_to_buf(event_data_t *event, const char _
         // Read into buffer
         int sz =
             bpf_probe_read_user_str(&(event->args[event->buf_off + sizeof(int)]), MAX_STRING_SIZE, argp);
-            bpf_printk("[syscall] 11 bpf_probe_read_user_str len:%d\n", sz);
         if (sz > 0) {
             if (event->buf_off > ARGS_BUF_SIZE - sizeof(int))
                 // Satisfy validator
@@ -135,7 +134,6 @@ static __always_inline int save_str_arr_to_buf(event_data_t *event, const char _
     // Read into buffer
     int sz =
         bpf_probe_read_user_str(&(event->args[event->buf_off + sizeof(int)]), MAX_STRING_SIZE, ellipsis);
-        bpf_printk("[syscall] 22 bpf_probe_read_user_str len:%d\n", sz);
     if (sz > 0) {
         if (event->buf_off > ARGS_BUF_SIZE - sizeof(int))
             // Satisfy validator

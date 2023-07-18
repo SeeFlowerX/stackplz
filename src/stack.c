@@ -213,15 +213,9 @@ static __always_inline u32 read_args(program_data_t p, struct point_arg_t* point
         if (string_p == NULL) {
             return next_arg_index;
         }
-        // if ((ptr & 0xff00000000000000) != 0) {
-        //     // MTE 这种测试使用 bpf_probe_read_user 可能无法读取到数据...
-        //     // shell 执行rm的时候 unlinkat
-        //     bpf_probe_read_user_str(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
-        // }
         int status = bpf_probe_read_user(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
-        if (status != 0) {
-            // 不是 MTE 也会有读取不到的情况 很迷...
-            // 比如在shell中执行 ln -s /path/to/file /path/to/new => symlinkat
+        if (status < 0) {
+            // MTE 其实也正常读取到了
             bpf_probe_read_user_str(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
         }
         save_str_to_buf(p.event, &string_p->buf[buf_off], next_arg_index);
@@ -253,7 +247,8 @@ static __always_inline u32 read_args(program_data_t p, struct point_arg_t* point
         if (point_arg->size <= struct_size) {
             struct_size = point_arg->size;
         }
-        save_bytes_to_buf(p.event, (void *)ptr, struct_size, next_arg_index);
+        // 修复 MTE 读取可能不正常的情况
+        save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), struct_size, next_arg_index);
         next_arg_index += 1;
         return next_arg_index;
     }

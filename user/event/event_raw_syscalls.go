@@ -9,6 +9,7 @@ import (
     "stackplz/user/config"
     "strings"
     "syscall"
+    "time"
 )
 
 // type EventTypeSys uint32
@@ -189,6 +190,7 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         }
         payload := make([]byte, arg_str.Len)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+            this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORGREEN))
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
         point_arg.AppendValue(fmt.Sprintf("(%s)", util.B2STrim(payload)))
@@ -239,7 +241,7 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.SetValue(fmt.Sprintf("([hex]%x)", payload))
+        point_arg.AppendValue(fmt.Sprintf("([hex]%x)", payload))
     case config.TYPE_TIMESPEC:
         var time_fmt string
         if ptr.Address != 0 {
@@ -251,26 +253,21 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         } else {
             time_fmt = "NULL"
         }
-        point_arg.SetValue(fmt.Sprintf("(%s)", time_fmt))
+        point_arg.AppendValue(fmt.Sprintf("(%s)", time_fmt))
     case config.TYPE_STAT:
         var stat_fmt string
         if ptr.Address != 0 {
             var arg_stat_t Arg_Stat_t
             if err = binary.Read(this.buf, binary.LittleEndian, &arg_stat_t); err != nil {
-                // 根据实际测试 mount 进程的某一个 newfstatat 系统调用 无法获取到参数 原因未知
-                if this.nr.Value == 79 && util.B2STrim(this.comm[:]) == "mount" {
-                    stat_fmt = "why mount newfstatat not correct"
-                    break
-                } else {
-                    this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
-                    panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.comm[:]), err))
-                }
+                this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
+                time.Sleep(3 * 1000 * time.Millisecond)
+                panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.comm[:]), err))
             }
             stat_fmt = arg_stat_t.Format()
         } else {
             stat_fmt = "NULL"
         }
-        point_arg.SetValue(fmt.Sprintf("(%s)", stat_fmt))
+        point_arg.AppendValue(fmt.Sprintf("(%s)", stat_fmt))
     case config.TYPE_STATFS:
         var statfs_fmt string
         if ptr.Address != 0 {
@@ -282,7 +279,7 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         } else {
             statfs_fmt = "NULL"
         }
-        point_arg.SetValue(fmt.Sprintf("(%s)", statfs_fmt))
+        point_arg.AppendValue(fmt.Sprintf("(%s)", statfs_fmt))
     case config.TYPE_SIGACTION:
         var fmt_str string
         if ptr.Address != 0 {
@@ -294,7 +291,7 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         } else {
             fmt_str = "NULL"
         }
-        point_arg.SetValue(fmt.Sprintf("(%s)", fmt_str))
+        point_arg.AppendValue(fmt.Sprintf("(%s)", fmt_str))
     case config.TYPE_UTSNAME:
         var name_fmt string
         if ptr.Address != 0 {
@@ -312,13 +309,13 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         } else {
             name_fmt = "NULL"
         }
-        point_arg.SetValue(fmt.Sprintf("(%s)", name_fmt))
+        point_arg.AppendValue(fmt.Sprintf("(%s)", name_fmt))
     case config.TYPE_SOCKADDR:
         var sockaddr syscall.RawSockaddrAny
         if err = binary.Read(this.buf, binary.LittleEndian, &sockaddr); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.SetValue(fmt.Sprintf("({family: %d, data: [hex]%x, pad: [hex]%x})", sockaddr.Addr.Family, sockaddr.Addr.Data, sockaddr.Pad))
+        point_arg.AppendValue(fmt.Sprintf("({family: %d, data: [hex]%x, pad: [hex]%x})", sockaddr.Addr.Family, sockaddr.Addr.Data, sockaddr.Pad))
     default:
         panic(fmt.Sprintf("unknown point_arg.AliasType %d", point_arg.AliasType))
     }
@@ -386,13 +383,8 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     for _, point_arg := range this.nr_point.Args {
         var ptr Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-            if this.nr.Value == 79 && util.B2STrim(this.comm[:]) == "mount" {
-                results = append(results, "why mount newfstatat not correct")
-                break
-            } else {
-                this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
-                panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.comm[:]), err))
-            }
+            this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
+            panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.comm[:]), err))
         }
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
         point_arg.SetValue(base_arg_str)
@@ -410,11 +402,7 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     // 处理返回参数
     var ptr Arg_reg
     if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-        if this.nr.Value == 79 && util.B2STrim(this.comm[:]) == "mount" {
-            results = append(results, "why mount newfstatat not correct")
-        } else {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
-        }
+        panic(fmt.Sprintf("binary.Read err:%v", err))
     }
     point_arg := this.nr_point.Ret
     base_arg_str := fmt.Sprintf("0x%x", ptr.Address)
