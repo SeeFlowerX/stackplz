@@ -205,6 +205,7 @@ const (
 	TYPE_SOCKADDR
 	TYPE_RUSAGE
 	TYPE_IOVEC
+	TYPE_EPOLLEVENT
 	TYPE_SIGSET
 	TYPE_POLLFD
 	TYPE_ARGASSIZE
@@ -232,6 +233,7 @@ var UTSNAME = ArgType{TYPE_UTSNAME, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Ut
 var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrAny{}))}
 var RUSAGE = ArgType{TYPE_RUSAGE, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Rusage{}))}
 var IOVEC = ArgType{TYPE_IOVEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Iovec{}))}
+var EPOLLEVENT = ArgType{TYPE_EPOLLEVENT, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.EpollEvent{}))}
 
 // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
 // #define _NSIG       64
@@ -259,6 +261,7 @@ func init() {
 	Register(&SArgs{9, PA("lgetxattr", []PArg{A("path", STRING), A("name", STRING), A("value", POINTER), A("size", INT)})})
 	Register(&SArgs{10, PA("fgetxattr", []PArg{A("fd", INT), A("name", STRING), A("value", POINTER), A("size", INT)})})
 	Register(&SArgs{17, PA("getcwd", []PArg{B("buf", STRING), A("size", UINT64)})})
+	Register(&SArgs{21, PA("epoll_ctl", []PArg{A("epfd", INT), A("op", INT), A("fd", INT), A("event", EPOLLEVENT)})})
 	Register(&SArgs{22, PA("epoll_pwait", []PArg{A("epfd", INT), A("events", POINTER), A("maxevents", INT), A("timeout", INT)})})
 	Register(&SArgs{23, PA("dup", []PArg{A("oldfd", INT)})})
 	Register(&SArgs{24, PA("dup3", []PArg{A("oldfd", INT), A("newfd", UINT64), A("flags", INT)})})

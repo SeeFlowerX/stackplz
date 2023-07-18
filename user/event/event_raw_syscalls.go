@@ -169,6 +169,21 @@ func (this *Arg_Iovec) Format() string {
     return fmt.Sprintf("iovec{%s}", strings.Join(fields, ", "))
 }
 
+type Arg_EpollEvent struct {
+    Index uint8
+    Len   uint32
+    syscall.EpollEvent
+}
+
+func (this *Arg_EpollEvent) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("events=0x%x", this.Events))
+    fields = append(fields, fmt.Sprintf("_=*"))
+    fields = append(fields, fmt.Sprintf("fd=%d", this.Fd))
+    fields = append(fields, fmt.Sprintf("pad=%d", this.Pad))
+    return fmt.Sprintf("epollevent{%s}", strings.Join(fields, ", "))
+}
+
 type Arg_Rusage struct {
     Index uint8
     Len   uint32
@@ -377,6 +392,18 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
                 panic(fmt.Sprintf("binary.Read err:%v", err))
             }
             arg_fmt = arg_iovec.Format()
+        } else {
+            arg_fmt = "NULL"
+        }
+        point_arg.AppendValue(fmt.Sprintf("(%s)", arg_fmt))
+    case config.TYPE_EPOLLEVENT:
+        var arg_fmt string
+        if ptr.Address != 0 {
+            var arg_epollevent Arg_EpollEvent
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg_epollevent); err != nil {
+                panic(fmt.Sprintf("binary.Read err:%v", err))
+            }
+            arg_fmt = arg_epollevent.Format()
         } else {
             arg_fmt = "NULL"
         }
