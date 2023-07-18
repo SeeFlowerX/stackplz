@@ -211,6 +211,30 @@ func (this *Arg_Rusage) Format() string {
     return fmt.Sprintf("rusage{%s}", strings.Join(fields, ", "))
 }
 
+type Arg_Sysinfo_t struct {
+    Index uint8
+    Len   uint32
+    syscall.Sysinfo_t
+}
+
+func (this *Arg_Sysinfo_t) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("uptime=0x%x", this.Uptime))
+    fields = append(fields, fmt.Sprintf("loads=0x%x,0x%x,0x%x", this.Loads[0], this.Loads[1], this.Loads[2]))
+    fields = append(fields, fmt.Sprintf("totalram=0x%x", this.Totalram))
+    fields = append(fields, fmt.Sprintf("freeram=0x%x", this.Freeram))
+    fields = append(fields, fmt.Sprintf("sharedram=0x%x", this.Sharedram))
+    fields = append(fields, fmt.Sprintf("bufferram=0x%x", this.Bufferram))
+    fields = append(fields, fmt.Sprintf("totalswap=0x%x", this.Totalswap))
+    fields = append(fields, fmt.Sprintf("freeswap=0x%x", this.Freeswap))
+    fields = append(fields, fmt.Sprintf("procs=0x%x", this.Procs))
+    fields = append(fields, fmt.Sprintf("pad=0x%x", this.Pad))
+    fields = append(fields, fmt.Sprintf("totalhigh=0x%x", this.Totalhigh))
+    fields = append(fields, fmt.Sprintf("freehigh=0x%x", this.Freehigh))
+    fields = append(fields, fmt.Sprintf("unit=0x%x", this.Unit))
+    return fmt.Sprintf("rusage{%s}", strings.Join(fields, ", "))
+}
+
 func B2S(bs []int8) string {
     ba := make([]byte, 0, len(bs))
     for _, b := range bs {
@@ -404,6 +428,18 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
                 panic(fmt.Sprintf("binary.Read err:%v", err))
             }
             arg_fmt = arg_epollevent.Format()
+        } else {
+            arg_fmt = "NULL"
+        }
+        point_arg.AppendValue(fmt.Sprintf("(%s)", arg_fmt))
+    case config.TYPE_SYSINFO:
+        var arg_fmt string
+        if ptr.Address != 0 {
+            var arg Arg_Sysinfo_t
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+                panic(fmt.Sprintf("binary.Read err:%v", err))
+            }
+            arg_fmt = arg.Format()
         } else {
             arg_fmt = "NULL"
         }

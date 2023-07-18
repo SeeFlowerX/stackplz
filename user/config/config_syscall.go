@@ -209,6 +209,7 @@ const (
 	TYPE_SIGSET
 	TYPE_POLLFD
 	TYPE_ARGASSIZE
+	TYPE_SYSINFO
 )
 
 const (
@@ -234,6 +235,7 @@ var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.
 var RUSAGE = ArgType{TYPE_RUSAGE, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Rusage{}))}
 var IOVEC = ArgType{TYPE_IOVEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Iovec{}))}
 var EPOLLEVENT = ArgType{TYPE_EPOLLEVENT, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.EpollEvent{}))}
+var SYSINFO = ArgType{TYPE_SYSINFO, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Sysinfo_t{}))}
 
 // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
 // #define _NSIG       64
@@ -320,10 +322,20 @@ func init() {
 	Register(&SArgs{139, PA("rt_sigreturn", []PArg{A("mask", INT)})})
 	Register(&SArgs{154, PA("setpgid", []PArg{A("pid", INT), A("pgid", INT)})})
 	Register(&SArgs{155, PA("getpgid", []PArg{A("pid", INT)})})
+	Register(&SArgs{156, PA("getsid", []PArg{A("pid", INT)})})
+	Register(&SArgs{157, PA("setsid", []PArg{})})
 	Register(&SArgs{160, PA("uname", []PArg{B("buf", UTSNAME)})})
 	Register(&SArgs{165, PA("getrusage", []PArg{A("who", INT), B("usage", RUSAGE)})})
 	Register(&SArgs{166, PA("umask", []PArg{A("mode", INT)})})
 	Register(&SArgs{167, PA("prctl", []PArg{A("option", INT), A("arg2", UINT64), A("arg3", UINT64), A("arg4", UINT64), A("arg5", UINT64)})})
+	Register(&SArgs{172, PA("getpid", []PArg{})})
+	Register(&SArgs{173, PA("getppid", []PArg{})})
+	Register(&SArgs{174, PA("getuid", []PArg{})})
+	Register(&SArgs{175, PA("geteuid", []PArg{})})
+	Register(&SArgs{176, PA("getgid", []PArg{})})
+	Register(&SArgs{177, PA("getegid", []PArg{})})
+	Register(&SArgs{178, PA("gettid", []PArg{})})
+	Register(&SArgs{179, PA("sysinfo", []PArg{B("info", SYSINFO)})})
 	Register(&SArgs{215, PA("munmap", []PArg{A("addr", INT), A("length", INT)})})
 	Register(&SArgs{216, PA("mremap", []PArg{A("old_address", POINTER), A("old_size", INT), A("new_size", INT), A("flags", INT)})})
 	Register(&SArgs{220, PA("clone", []PArg{A("fn", POINTER), A("stack", POINTER), A("flags", INT), A("arg0", INT), A("arg1", INT), A("arg2", INT)})})

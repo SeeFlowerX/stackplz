@@ -60,6 +60,7 @@ enum arg_type_e
 	TYPE_SIGSET,
 	TYPE_POLLFD,
 	TYPE_ARGASSIZE,
+	TYPE_SYSINFO,
 };
 
 enum read_type_e
