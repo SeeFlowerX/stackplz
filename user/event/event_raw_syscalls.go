@@ -235,6 +235,21 @@ func (this *Arg_Sysinfo_t) Format() string {
     return fmt.Sprintf("rusage{%s}", strings.Join(fields, ", "))
 }
 
+type Arg_SigInfo struct {
+    Index uint8
+    Len   uint32
+    config.SigInfo
+}
+
+func (this *Arg_SigInfo) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("si_signo=0x%x", this.Si_signo))
+    fields = append(fields, fmt.Sprintf("si_errno=0x%x", this.Si_errno))
+    fields = append(fields, fmt.Sprintf("si_code=0x%x", this.Si_code))
+    // fields = append(fields, fmt.Sprintf("sifields=0x%x", this.Sifields))
+    return fmt.Sprintf("rusage{%s}", strings.Join(fields, ", "))
+}
+
 func B2S(bs []int8) string {
     ba := make([]byte, 0, len(bs))
     for _, b := range bs {
@@ -436,6 +451,19 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         var arg_fmt string
         if ptr.Address != 0 {
             var arg Arg_Sysinfo_t
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+                panic(fmt.Sprintf("binary.Read err:%v", err))
+            }
+            arg_fmt = arg.Format()
+        } else {
+            arg_fmt = "NULL"
+        }
+        point_arg.AppendValue(fmt.Sprintf("(%s)", arg_fmt))
+    case config.TYPE_SIGINFO:
+        // 这个读取出来有问题
+        var arg_fmt string
+        if ptr.Address != 0 {
+            var arg Arg_SigInfo
             if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
                 panic(fmt.Sprintf("binary.Read err:%v", err))
             }

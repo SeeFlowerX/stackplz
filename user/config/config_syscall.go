@@ -186,6 +186,14 @@ type Pollfd struct {
 	Revents uint16
 }
 
+type SigInfo struct {
+	Si_signo int
+	Si_errno int
+	Si_code  int
+	// 这是个union字段 大小好像不确定
+	// Sifields uint64
+}
+
 const (
 	TYPE_NONE uint32 = iota
 	TYPE_NUM
@@ -210,6 +218,7 @@ const (
 	TYPE_POLLFD
 	TYPE_ARGASSIZE
 	TYPE_SYSINFO
+	TYPE_SIGINFO
 )
 
 const (
@@ -236,6 +245,7 @@ var RUSAGE = ArgType{TYPE_RUSAGE, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Rusa
 var IOVEC = ArgType{TYPE_IOVEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Iovec{}))}
 var EPOLLEVENT = ArgType{TYPE_EPOLLEVENT, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.EpollEvent{}))}
 var SYSINFO = ArgType{TYPE_SYSINFO, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Sysinfo_t{}))}
+var SIGINFO = ArgType{TYPE_SIGINFO, TYPE_STRUCT, uint32(unsafe.Sizeof(SigInfo{}))}
 
 // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
 // #define _NSIG       64
@@ -343,6 +353,7 @@ func init() {
 	Register(&SArgs{222, PA("mmap", []PArg{B("addr", POINTER), A("length", INT), A("prot", INT), A("flags", INT)})})
 	Register(&SArgs{226, PA("mprotect", []PArg{A("addr", POINTER), A("length", INT), A("prot", INT)})})
 	Register(&SArgs{233, PA("madvise", []PArg{A("addr", POINTER), A("len", INT), A("advice", INT)})})
+	Register(&SArgs{240, PA("rt_tgsigqueueinfo", []PArg{A("tgid", INT), A("tid", INT), A("sig", INT), A("siginfo", POINTER)})})
 	Register(&SArgs{260, PA("wait4", []PArg{A("pid", INT), A("wstatus", POINTER), A("options", INT), B("rusage", RUSAGE)})})
 	Register(&SArgs{276, PA("renameat2", []PArg{A("olddirfd", INT), A("oldpath", STRING), A("newdirfd", INT), A("newpath", STRING), A("flags", INT)})})
 	Register(&SArgs{277, PA("seccomp", []PArg{A("operation", INT), A("flags", INT), A("args", POINTER)})})
