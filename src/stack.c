@@ -236,7 +236,7 @@ static __always_inline u32 read_args(program_data_t p, struct point_arg_t* point
         // 这个后面增补
 
         u64 addr = 0;
-        bpf_probe_read_kernel(&addr, sizeof(addr), (void*) ptr);
+        bpf_probe_read_user(&addr, sizeof(addr), (void*) ptr);
         save_to_submit_buf(p.event, (void *) &addr, sizeof(u64), next_arg_index);
         next_arg_index += 1;
         return next_arg_index;
