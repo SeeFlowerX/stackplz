@@ -120,7 +120,7 @@ func (this *Arg_Stat_t) Format() string {
     fields = append(fields, fmt.Sprintf("mtim={tv_sec=%d, tv_nsec=%d}", this.Mtim.Sec, this.Mtim.Nsec))
     fields = append(fields, fmt.Sprintf("ctim={tv_sec=%d, tv_nsec=%d}", this.Ctim.Sec, this.Ctim.Nsec))
     fields = append(fields, fmt.Sprintf("x__glibc_reserved=0x%x,0x%x", this.X__glibc_reserved[0], this.X__glibc_reserved[1]))
-    return fmt.Sprintf("stat{%s}", strings.Join(fields, ", "))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 func (this *Arg_Statfs_t) Format() string {
     var fields []string
@@ -136,7 +136,7 @@ func (this *Arg_Statfs_t) Format() string {
     fields = append(fields, fmt.Sprintf("frsize=%d", this.Frsize))
     fields = append(fields, fmt.Sprintf("flags=%d", this.Flags))
     fields = append(fields, fmt.Sprintf("spare=0x%x,0x%x,0x%x,0x%x", this.Spare[0], this.Spare[1], this.Spare[2], this.Spare[3]))
-    return fmt.Sprintf("statfs{%s}", strings.Join(fields, ", "))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 func (this *Arg_Sigaction) Format() string {
@@ -146,7 +146,7 @@ func (this *Arg_Sigaction) Format() string {
     fields = append(fields, fmt.Sprintf("sa_mask=0x%x", this.Sa_mask))
     fields = append(fields, fmt.Sprintf("sa_flags=0x%x", this.Sa_flags))
     fields = append(fields, fmt.Sprintf("sa_restorer=0x%x", this.Sa_restorer))
-    return fmt.Sprintf("sigaction{%s}", strings.Join(fields, ", "))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 type Arg_Utsname struct {
@@ -166,7 +166,7 @@ func (this *Arg_Iovec) Format() string {
     var fields []string
     fields = append(fields, fmt.Sprintf("base=0x%x", this.Base))
     fields = append(fields, fmt.Sprintf("len=0x%x", this.BufLen))
-    return fmt.Sprintf("iovec{%s}", strings.Join(fields, ", "))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 type Arg_EpollEvent struct {
@@ -181,7 +181,7 @@ func (this *Arg_EpollEvent) Format() string {
     fields = append(fields, fmt.Sprintf("_=*"))
     fields = append(fields, fmt.Sprintf("fd=%d", this.Fd))
     fields = append(fields, fmt.Sprintf("pad=%d", this.Pad))
-    return fmt.Sprintf("epollevent{%s}", strings.Join(fields, ", "))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 type Arg_Rusage struct {
@@ -208,7 +208,7 @@ func (this *Arg_Rusage) Format() string {
     fields = append(fields, fmt.Sprintf("Nsignals=0x%x", this.Nsignals))
     fields = append(fields, fmt.Sprintf("Nvcsw=0x%x", this.Nvcsw))
     fields = append(fields, fmt.Sprintf("Nivcsw=0x%x", this.Nivcsw))
-    return fmt.Sprintf("rusage{%s}", strings.Join(fields, ", "))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 type Arg_Sysinfo_t struct {
@@ -232,7 +232,7 @@ func (this *Arg_Sysinfo_t) Format() string {
     fields = append(fields, fmt.Sprintf("totalhigh=0x%x", this.Totalhigh))
     fields = append(fields, fmt.Sprintf("freehigh=0x%x", this.Freehigh))
     fields = append(fields, fmt.Sprintf("unit=0x%x", this.Unit))
-    return fmt.Sprintf("rusage{%s}", strings.Join(fields, ", "))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 type Arg_SigInfo struct {
@@ -247,7 +247,7 @@ func (this *Arg_SigInfo) Format() string {
     fields = append(fields, fmt.Sprintf("si_errno=0x%x", this.Si_errno))
     fields = append(fields, fmt.Sprintf("si_code=0x%x", this.Si_code))
     // fields = append(fields, fmt.Sprintf("sifields=0x%x", this.Sifields))
-    return fmt.Sprintf("rusage{%s}", strings.Join(fields, ", "))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 func B2S(bs []int8) string {
@@ -273,6 +273,10 @@ func (this *SyscallEvent) ReadIndex() (error, uint32) {
 }
 
 func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err error) {
+    if ptr.Address == 0 {
+        point_arg.AppendValue("(NULL)")
+        return nil
+    }
     switch point_arg.AliasType {
     case config.TYPE_NONE:
         break
@@ -338,73 +342,45 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         }
         point_arg.AppendValue(fmt.Sprintf("([hex]%x)", payload))
     case config.TYPE_TIMESPEC:
-        var time_fmt string
-        if ptr.Address != 0 {
-            var arg_time Arg_Timespec
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_time); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
-            time_fmt = fmt.Sprintf("timespec{tv_sec=%d, tv_nsec=%d}", arg_time.Sec, arg_time.Nsec)
-        } else {
-            time_fmt = "NULL"
+        var arg_time Arg_Timespec
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg_time); err != nil {
+            this.logger.Printf("SyscallEvent eventid:%d ptr:0x%x RawSample:\n%s", this.eventid, ptr.Address, util.HexDump(this.rec.RawSample, util.COLORRED))
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("(%s)", time_fmt))
+        point_arg.AppendValue(fmt.Sprintf("{tv_sec=%d, tv_nsec=%d}", arg_time.Sec, arg_time.Nsec))
     case config.TYPE_STAT:
-        var stat_fmt string
-        if ptr.Address != 0 {
-            var arg_stat_t Arg_Stat_t
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_stat_t); err != nil {
-                this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
-                time.Sleep(3 * 1000 * time.Millisecond)
-                panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.comm[:]), err))
-            }
-            stat_fmt = arg_stat_t.Format()
-        } else {
-            stat_fmt = "NULL"
+        var arg_stat_t Arg_Stat_t
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg_stat_t); err != nil {
+            this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
+            time.Sleep(3 * 1000 * time.Millisecond)
+            panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.comm[:]), err))
         }
-        point_arg.AppendValue(fmt.Sprintf("(%s)", stat_fmt))
+        point_arg.AppendValue(arg_stat_t.Format())
     case config.TYPE_STATFS:
-        var statfs_fmt string
-        if ptr.Address != 0 {
-            var arg_statfs_t Arg_Statfs_t
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_statfs_t); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
-            statfs_fmt = arg_statfs_t.Format()
-        } else {
-            statfs_fmt = "NULL"
+        var arg_statfs_t Arg_Statfs_t
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg_statfs_t); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("(%s)", statfs_fmt))
+        point_arg.AppendValue(arg_statfs_t.Format())
     case config.TYPE_SIGACTION:
-        var fmt_str string
-        if ptr.Address != 0 {
-            var arg_sigaction Arg_Sigaction
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_sigaction); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
-            fmt_str = arg_sigaction.Format()
-        } else {
-            fmt_str = "NULL"
+        var arg_sigaction Arg_Sigaction
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg_sigaction); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("(%s)", fmt_str))
+        point_arg.AppendValue(arg_sigaction.Format())
     case config.TYPE_UTSNAME:
-        var name_fmt string
-        if ptr.Address != 0 {
-            var arg_name Arg_Utsname
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_name); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
-            sysname := B2S(arg_name.Sysname[:])
-            nodename := B2S(arg_name.Nodename[:])
-            release := B2S(arg_name.Release[:])
-            version := B2S(arg_name.Version[:])
-            machine := B2S(arg_name.Machine[:])
-            domainname := B2S(arg_name.Domainname[:])
-            name_fmt = fmt.Sprintf("utsname{sysname=%s, nodename=%s, release=%s, version=%s, machine=%s, domainname=%s}", sysname, nodename, release, version, machine, domainname)
-        } else {
-            name_fmt = "NULL"
+        var arg_name Arg_Utsname
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg_name); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("(%s)", name_fmt))
+        sysname := B2S(arg_name.Sysname[:])
+        nodename := B2S(arg_name.Nodename[:])
+        release := B2S(arg_name.Release[:])
+        version := B2S(arg_name.Version[:])
+        machine := B2S(arg_name.Machine[:])
+        domainname := B2S(arg_name.Domainname[:])
+        var name_fmt = fmt.Sprintf("{sysname=%s, nodename=%s, release=%s, version=%s, machine=%s, domainname=%s}", sysname, nodename, release, version, machine, domainname)
+        point_arg.AppendValue(name_fmt)
     case config.TYPE_SOCKADDR:
         var sockaddr syscall.RawSockaddrAny
         if err = binary.Read(this.buf, binary.LittleEndian, &sockaddr); err != nil {
@@ -412,66 +388,36 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         }
         point_arg.AppendValue(fmt.Sprintf("({family: %d, data: [hex]%x, pad: [hex]%x})", sockaddr.Addr.Family, sockaddr.Addr.Data, sockaddr.Pad))
     case config.TYPE_RUSAGE:
-        var arg_fmt string
-        if ptr.Address != 0 {
-            var arg_rusage Arg_Rusage
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_rusage); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
-            arg_fmt = arg_rusage.Format()
-        } else {
-            arg_fmt = "NULL"
+        var arg_rusage Arg_Rusage
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg_rusage); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("(%s)", arg_fmt))
+        point_arg.AppendValue(arg_rusage.Format())
     case config.TYPE_IOVEC:
-        var arg_fmt string
-        if ptr.Address != 0 {
-            var arg_iovec Arg_Iovec
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_iovec); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
-            arg_fmt = arg_iovec.Format()
-        } else {
-            arg_fmt = "NULL"
+        var arg_iovec Arg_Iovec
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg_iovec); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("(%s)", arg_fmt))
+        point_arg.AppendValue(arg_iovec.Format())
     case config.TYPE_EPOLLEVENT:
-        var arg_fmt string
-        if ptr.Address != 0 {
-            var arg_epollevent Arg_EpollEvent
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_epollevent); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
-            arg_fmt = arg_epollevent.Format()
-        } else {
-            arg_fmt = "NULL"
+        var arg_epollevent Arg_EpollEvent
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg_epollevent); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("(%s)", arg_fmt))
+        point_arg.AppendValue(arg_epollevent.Format())
     case config.TYPE_SYSINFO:
-        var arg_fmt string
-        if ptr.Address != 0 {
-            var arg Arg_Sysinfo_t
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
-            arg_fmt = arg.Format()
-        } else {
-            arg_fmt = "NULL"
+        var arg Arg_Sysinfo_t
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("(%s)", arg_fmt))
+        point_arg.AppendValue(arg.Format())
     case config.TYPE_SIGINFO:
         // 这个读取出来有问题
-        var arg_fmt string
-        if ptr.Address != 0 {
-            var arg Arg_SigInfo
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
-            }
-            arg_fmt = arg.Format()
-        } else {
-            arg_fmt = "NULL"
+        var arg Arg_SigInfo
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("(%s)", arg_fmt))
+        point_arg.AppendValue(arg.Format())
     default:
         panic(fmt.Sprintf("unknown point_arg.AliasType %d", point_arg.AliasType))
     }
@@ -566,7 +512,9 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     if point_arg.Type != config.TYPE_NUM {
         this.ParseArg(&point_arg, ptr)
     }
-    this.arg_str = "(" + point_arg.ArgValue + " => " + strings.Join(results, ", ") + ")"
+    if len(results) == 0 {
+        results = append(results, "(void)")
+    }
     this.arg_str = fmt.Sprintf("(%s => %s)", point_arg.ArgValue, strings.Join(results, ", "))
     return nil
 }

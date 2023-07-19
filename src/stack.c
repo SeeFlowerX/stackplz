@@ -233,8 +233,19 @@ static __always_inline u32 read_args(program_data_t p, struct point_arg_t* point
             struct_size = point_arg->size;
         }
         // 修复 MTE 读取可能不正常的情况
-        save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), struct_size, next_arg_index);
-        next_arg_index += 1;
+        int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), struct_size, next_arg_index);
+        if (status == 0) {
+            // 保存失败的情况 比如 ptr 是一个非法的地址 ...
+            buf_t *zero_p = get_buf(ZERO_BUF_IDX);
+            if (zero_p == NULL) {
+                return next_arg_index;
+            }
+            // 这个时候填充一个全0的内容进去 不然前端不好解析
+            save_bytes_to_buf(p.event, &zero_p->buf[0], struct_size, next_arg_index);
+            next_arg_index += 1;
+        } else {
+            next_arg_index += 1;
+        }
         return next_arg_index;
     }
     return next_arg_index;

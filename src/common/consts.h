@@ -24,7 +24,7 @@
 enum buf_idx_e
 {
     STRING_BUF_IDX,
-    FILE_BUF_IDX,
+    ZERO_BUF_IDX,
     MAX_BUFFERS
 };
 
