@@ -240,7 +240,7 @@ var STAT = ArgType{TYPE_STAT, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Stat_t{}
 var STATFS = ArgType{TYPE_STATFS, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Statfs_t{}))}
 var SIGACTION = ArgType{TYPE_SIGACTION, TYPE_STRUCT, uint32(unsafe.Sizeof(Sigaction{}))}
 var UTSNAME = ArgType{TYPE_UTSNAME, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Utsname{}))}
-var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrAny{}))}
+var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrUnix{}))}
 var RUSAGE = ArgType{TYPE_RUSAGE, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Rusage{}))}
 var IOVEC = ArgType{TYPE_IOVEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Iovec{}))}
 var EPOLLEVENT = ArgType{TYPE_EPOLLEVENT, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.EpollEvent{}))}
@@ -346,6 +346,8 @@ func init() {
 	Register(&SArgs{177, PA("getegid", []PArg{})})
 	Register(&SArgs{178, PA("gettid", []PArg{})})
 	Register(&SArgs{179, PA("sysinfo", []PArg{B("info", SYSINFO)})})
+	Register(&SArgs{206, PA("sendto", []PArg{A("sockfd", INT), A("buf", INT), A("len", INT), A("flags", INT), A("dest_addr", SOCKADDR), A("addrlen", INT)})})
+	Register(&SArgs{207, PA("recvfrom", []PArg{A("sockfd", INT), B("buf", INT), A("len", INT), A("flags", INT)})})
 	Register(&SArgs{215, PA("munmap", []PArg{A("addr", INT), A("length", INT)})})
 	Register(&SArgs{216, PA("mremap", []PArg{A("old_address", POINTER), A("old_size", INT), A("new_size", INT), A("flags", INT)})})
 	Register(&SArgs{220, PA("clone", []PArg{A("fn", POINTER), A("stack", POINTER), A("flags", INT), A("arg0", INT), A("arg1", INT), A("arg2", INT)})})

@@ -5,11 +5,13 @@ import (
     "errors"
     "fmt"
     "io/ioutil"
+    "net"
     "stackplz/pkg/util"
     "stackplz/user/config"
     "strings"
     "syscall"
     "time"
+    "unsafe"
 )
 
 // type EventTypeSys uint32
@@ -154,6 +156,38 @@ type Arg_Utsname struct {
     Len   uint32
     syscall.Utsname
 }
+type Arg_RawSockaddrUnix struct {
+    Index uint8
+    Len   uint32
+    syscall.RawSockaddrUnix
+}
+
+func (this *Arg_RawSockaddrUnix) Format() string {
+    var fields []string
+    if this.Family == syscall.AF_FILE {
+        fields = append(fields, "family=AF_FILE")
+        fields = append(fields, fmt.Sprintf("path=%s", B2S(this.Path[:])))
+    } else if this.Family == syscall.AF_INET {
+        fields = append(fields, "family=AF_INET")
+        sockaddr := (*syscall.RawSockaddrInet4)(unsafe.Pointer(&this.RawSockaddrUnix))
+        fields = append(fields, fmt.Sprintf("port=%d", sockaddr.Port))
+        fields = append(fields, fmt.Sprintf("addr=%s", net.IP(sockaddr.Addr[:]).String()))
+        fields = append(fields, fmt.Sprintf("zero=%x", sockaddr.Zero))
+    } else if this.Family == syscall.AF_INET6 {
+        fields = append(fields, "family=AF_INET6")
+        sockaddr6 := (*syscall.RawSockaddrInet6)(unsafe.Pointer(&this.RawSockaddrUnix))
+        fields = append(fields, fmt.Sprintf("port=%d", sockaddr6.Port))
+        fields = append(fields, fmt.Sprintf("flowinfo=%d", sockaddr6.Flowinfo))
+        // 好像还是会解析成ipv4
+        fields = append(fields, fmt.Sprintf("addr=%s", net.IP(sockaddr6.Addr[:]).String()))
+        fields = append(fields, fmt.Sprintf("scope_id=%d", sockaddr6.Scope_id))
+    } else {
+        fields = append(fields, fmt.Sprintf("family=0x%x", this.Family))
+        fields = append(fields, fmt.Sprintf("path=\n%s", util.HexDump(I2B(this.Path[:]), util.COLORGREEN)))
+    }
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
 type Arg_Iovec struct {
     Index  uint8
     Len    uint32
@@ -258,6 +292,14 @@ func B2S(bs []int8) string {
     return util.B2STrim(ba)
 }
 
+func I2B(bs []int8) []byte {
+    ba := make([]byte, 0, len(bs))
+    for _, b := range bs {
+        ba = append(ba, byte(b))
+    }
+    return ba
+}
+
 type Arg_bytes = Arg_str
 
 func (this *SyscallEvent) Decode() (err error) {
@@ -344,7 +386,6 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
     case config.TYPE_TIMESPEC:
         var arg_time Arg_Timespec
         if err = binary.Read(this.buf, binary.LittleEndian, &arg_time); err != nil {
-            this.logger.Printf("SyscallEvent eventid:%d ptr:0x%x RawSample:\n%s", this.eventid, ptr.Address, util.HexDump(this.rec.RawSample, util.COLORRED))
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
         point_arg.AppendValue(fmt.Sprintf("{tv_sec=%d, tv_nsec=%d}", arg_time.Sec, arg_time.Nsec))
@@ -382,11 +423,11 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         var name_fmt = fmt.Sprintf("{sysname=%s, nodename=%s, release=%s, version=%s, machine=%s, domainname=%s}", sysname, nodename, release, version, machine, domainname)
         point_arg.AppendValue(name_fmt)
     case config.TYPE_SOCKADDR:
-        var sockaddr syscall.RawSockaddrAny
-        if err = binary.Read(this.buf, binary.LittleEndian, &sockaddr); err != nil {
+        var arg Arg_RawSockaddrUnix
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("({family: %d, data: [hex]%x, pad: [hex]%x})", sockaddr.Addr.Family, sockaddr.Addr.Data, sockaddr.Pad))
+        point_arg.AppendValue(fmt.Sprintf("{%s}", arg.Format()))
     case config.TYPE_RUSAGE:
         var arg_rusage Arg_Rusage
         if err = binary.Read(this.buf, binary.LittleEndian, &arg_rusage); err != nil {
