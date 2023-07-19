@@ -77,6 +77,40 @@ type Arg_Timespec struct {
     Len   uint32
     syscall.Timespec
 }
+
+func (this *Arg_Timespec) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("sec=%d", this.Sec))
+    fields = append(fields, fmt.Sprintf("nsec=%d", this.Nsec))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
+type Arg_TimeZone_t struct {
+    Index uint8
+    Len   uint32
+    config.TimeZone_t
+}
+
+func (this *Arg_TimeZone_t) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("tz_minuteswest=%d", this.Tz_minuteswest))
+    fields = append(fields, fmt.Sprintf("tz_dsttime=%d", this.Tz_dsttime))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
+type Arg_Timeval struct {
+    Index uint8
+    Len   uint32
+    syscall.Timeval
+}
+
+func (this *Arg_Timeval) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("sec=%d", this.Sec))
+    fields = append(fields, fmt.Sprintf("usec=%d", this.Usec))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
 type Arg_Sigaction struct {
     Index uint8
     Len   uint32
@@ -181,6 +215,10 @@ func (this *Arg_RawSockaddrUnix) Format() string {
         // 好像还是会解析成ipv4
         fields = append(fields, fmt.Sprintf("addr=%s", net.IP(sockaddr6.Addr[:]).String()))
         fields = append(fields, fmt.Sprintf("scope_id=%d", sockaddr6.Scope_id))
+    } else if this.Family == syscall.AF_UNSPEC {
+        // 暂时不知道这个怎么解析比较好
+        fields = append(fields, "family=AF_UNSPEC")
+        fields = append(fields, fmt.Sprintf("path=\n%s", util.HexDump(I2B(this.Path[:]), util.COLORGREEN)))
     } else {
         fields = append(fields, fmt.Sprintf("family=0x%x", this.Family))
         fields = append(fields, fmt.Sprintf("path=\n%s", util.HexDump(I2B(this.Path[:]), util.COLORGREEN)))
@@ -226,8 +264,8 @@ type Arg_Rusage struct {
 
 func (this *Arg_Rusage) Format() string {
     var fields []string
-    fields = append(fields, fmt.Sprintf("utime=timeval{sec=%d, sec=%d}", this.Utime.Sec, this.Utime.Usec))
-    fields = append(fields, fmt.Sprintf("stime=timeval{sec=%d, sec=%d}", this.Stime.Sec, this.Stime.Usec))
+    fields = append(fields, fmt.Sprintf("utime=timeval{sec=%d, usec=%d}", this.Utime.Sec, this.Utime.Usec))
+    fields = append(fields, fmt.Sprintf("stime=timeval{sec=%d, usec=%d}", this.Stime.Sec, this.Stime.Usec))
     fields = append(fields, fmt.Sprintf("Maxrss=0x%x", this.Maxrss))
     fields = append(fields, fmt.Sprintf("Ixrss=0x%x", this.Ixrss))
     fields = append(fields, fmt.Sprintf("Idrss=0x%x", this.Idrss))
@@ -281,6 +319,51 @@ func (this *Arg_SigInfo) Format() string {
     fields = append(fields, fmt.Sprintf("si_errno=0x%x", this.Si_errno))
     fields = append(fields, fmt.Sprintf("si_code=0x%x", this.Si_code))
     // fields = append(fields, fmt.Sprintf("sifields=0x%x", this.Sifields))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
+type Arg_Msghdr struct {
+    Index uint8
+    Len   uint32
+    config.Msghdr
+}
+
+func (this *Arg_Msghdr) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("name=0x%x", this.Name))
+    fields = append(fields, fmt.Sprintf("namelen=0x%x", this.Namelen))
+    fields = append(fields, fmt.Sprintf("iov=0x%x", this.Iov))
+    fields = append(fields, fmt.Sprintf("iovlen=0x%x", this.Iovlen))
+    fields = append(fields, fmt.Sprintf("control=0x%x", this.Control))
+    fields = append(fields, fmt.Sprintf("controllen=0x%x", this.Controllen))
+    fields = append(fields, fmt.Sprintf("flags=0x%x", this.Flags))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
+type Arg_ItTmerspec struct {
+    Index uint8
+    Len   uint32
+    config.ItTmerspec
+}
+
+func (this *Arg_ItTmerspec) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("it_interval={sec=%d, nsec=%d}", this.It_interval.Sec, this.It_interval.Nsec))
+    fields = append(fields, fmt.Sprintf("it_value={sec=%d, nsec=%d}", this.It_value.Sec, this.It_value.Nsec))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
+type Arg_Stack_t struct {
+    Index uint8
+    Len   uint32
+    config.Stack_t
+}
+
+func (this *Arg_Stack_t) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("ss_sp=0x%x", this.Ss_sp))
+    fields = append(fields, fmt.Sprintf("ss_flags=%d", this.Ss_flags))
+    fields = append(fields, fmt.Sprintf("ss_size=%d", this.Ss_size))
     return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
@@ -383,12 +466,25 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
         point_arg.AppendValue(fmt.Sprintf("([hex]%x)", payload))
-    case config.TYPE_TIMESPEC:
-        var arg_time Arg_Timespec
-        if err = binary.Read(this.buf, binary.LittleEndian, &arg_time); err != nil {
+    case config.TYPE_TIMEZONE:
+        var arg Arg_TimeZone_t
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("{tv_sec=%d, tv_nsec=%d}", arg_time.Sec, arg_time.Nsec))
+        point_arg.AppendValue(arg.Format())
+    case config.TYPE_TIMEVAL:
+        var arg Arg_Timeval
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        point_arg.AppendValue(arg.Format())
+    case config.TYPE_TIMESPEC:
+        var arg Arg_Timespec
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        point_arg.AppendValue(arg.Format())
     case config.TYPE_STAT:
         var arg_stat_t Arg_Stat_t
         if err = binary.Read(this.buf, binary.LittleEndian, &arg_stat_t); err != nil {
@@ -455,6 +551,24 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
     case config.TYPE_SIGINFO:
         // 这个读取出来有问题
         var arg Arg_SigInfo
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        point_arg.AppendValue(arg.Format())
+    case config.TYPE_MSGHDR:
+        var arg Arg_Msghdr
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        point_arg.AppendValue(arg.Format())
+    case config.TYPE_ITIMERSPEC:
+        var arg Arg_ItTmerspec
+        if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        point_arg.AppendValue(arg.Format())
+    case config.TYPE_STACK_T:
+        var arg Arg_Stack_t
         if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }

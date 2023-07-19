@@ -297,7 +297,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     // 先根据调用号确定有没有对应的参数获取方案 没有直接结束
     struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &syscallno);
     if (syscall_point_args == NULL) {
-        // bpf_printk("[syscall] unsupport nr:%d\n", syscallno);
+        bpf_printk("[syscall] unsupport nr:%d\n", syscallno);
         return 0;
     }
 

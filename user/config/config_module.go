@@ -1,6 +1,7 @@
 package config
 
 import (
+    "errors"
     "fmt"
     "log"
     "os"
@@ -129,7 +130,7 @@ func (this *SyscallConfig) SetSysCall(syscall string) error {
         point := GetWatchPointByName(v)
         nr_point, ok := (point).(*SysCallArgs)
         if !ok {
-            panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
+            return errors.New(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
         }
         this.syscall[i] = uint32(nr_point.NR)
         this.syscall_mask |= (1 << i)

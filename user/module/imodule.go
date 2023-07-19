@@ -194,7 +194,6 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     map_value := reflect.ValueOf(em)
     map_name := map_value.Elem().FieldByName("name")
     IsMmapEvent := map_name.String() == "fake_events"
-    fmt.Println("map_name:" + map_name.String())
 
     var rd *perf.Reader
     var err error
