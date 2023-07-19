@@ -13,9 +13,21 @@ import (
 const MAX_POINT_ARG_COUNT = 6
 
 type ArgType struct {
-	AliasType uint32
-	Type      uint32
-	Size      uint32
+	AliasType      uint32
+	Type           uint32
+	Size           uint32
+	ItemPerSize    uint32
+	ItemCountIndex int32
+}
+
+func (this *ArgType) SetIndex(index int32) ArgType {
+	this.ItemCountIndex = index
+	return *this
+}
+
+func (this *ArgType) SetItemPerSize(persize uint32) ArgType {
+	this.ItemPerSize = persize
+	return *this
 }
 
 type FilterArgType struct {
@@ -39,6 +51,10 @@ func (this *PointArg) AppendValue(value string) {
 }
 
 type PArg = PointArg
+
+func AT(arg_alias_type, arg_type, size uint32) ArgType {
+	return ArgType{arg_alias_type, arg_type, size, 1, -1}
+}
 
 func A(arg_name string, arg_type ArgType) PArg {
 	return PArg{arg_name, SYS_ENTER, arg_type, "???"}
@@ -248,54 +264,59 @@ const (
 	TYPE_STACK_T
 	TYPE_TIMEVAL
 	TYPE_TIMEZONE
+	TYPE_BUFFER_T
 )
 
 const (
 	FORBIDDEN uint32 = iota
+	SYS_ENTER_EXIT
 	SYS_ENTER
 	SYS_EXIT
 )
 
-var NONE = ArgType{TYPE_NONE, TYPE_NONE, 0}
-var INT = ArgType{TYPE_INT, TYPE_NUM, uint32(unsafe.Sizeof(int(0)))}
-var UINT = ArgType{TYPE_UINT, TYPE_NUM, uint32(unsafe.Sizeof(int(0)))}
-var UINT32 = ArgType{TYPE_UINT32, TYPE_NUM, uint32(unsafe.Sizeof(uint(0)))}
-var UINT64 = ArgType{TYPE_UINT64, TYPE_NUM, uint32(unsafe.Sizeof(uint64(0)))}
-var STRING = ArgType{TYPE_STRING, TYPE_STRING, uint32(unsafe.Sizeof(uint64(0)))}
-var STRING_ARR = ArgType{TYPE_STRING_ARR, TYPE_STRING_ARR, uint32(unsafe.Sizeof(uint64(0)))}
-var POINTER = ArgType{TYPE_POINTER, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0)))}
-var TIMESPEC = ArgType{TYPE_TIMESPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timespec{}))}
-var STAT = ArgType{TYPE_STAT, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Stat_t{}))}
-var STATFS = ArgType{TYPE_STATFS, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Statfs_t{}))}
-var SIGACTION = ArgType{TYPE_SIGACTION, TYPE_STRUCT, uint32(unsafe.Sizeof(Sigaction{}))}
-var UTSNAME = ArgType{TYPE_UTSNAME, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Utsname{}))}
-var SOCKADDR = ArgType{TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrUnix{}))}
-var RUSAGE = ArgType{TYPE_RUSAGE, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Rusage{}))}
-var IOVEC = ArgType{TYPE_IOVEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Iovec{}))}
-var EPOLLEVENT = ArgType{TYPE_EPOLLEVENT, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.EpollEvent{}))}
-var SYSINFO = ArgType{TYPE_SYSINFO, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Sysinfo_t{}))}
-var SIGINFO = ArgType{TYPE_SIGINFO, TYPE_STRUCT, uint32(unsafe.Sizeof(SigInfo{}))}
-var MSGHDR = ArgType{TYPE_MSGHDR, TYPE_STRUCT, uint32(unsafe.Sizeof(Msghdr{}))}
-var ITIMERSPEC = ArgType{TYPE_ITIMERSPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(ItTmerspec{}))}
-var STACK_T = ArgType{TYPE_STACK_T, TYPE_STRUCT, uint32(unsafe.Sizeof(Stack_t{}))}
-var TIMEVAL = ArgType{TYPE_TIMEVAL, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timeval{}))}
-var TIMEZONE = ArgType{TYPE_TIMEZONE, TYPE_STRUCT, uint32(unsafe.Sizeof(TimeZone_t{}))}
+var NONE = AT(TYPE_NONE, TYPE_NONE, 0)
+var INT = AT(TYPE_INT, TYPE_NUM, uint32(unsafe.Sizeof(int(0))))
+var UINT = AT(TYPE_UINT, TYPE_NUM, uint32(unsafe.Sizeof(int(0))))
+var UINT32 = AT(TYPE_UINT32, TYPE_NUM, uint32(unsafe.Sizeof(uint(0))))
+var UINT64 = AT(TYPE_UINT64, TYPE_NUM, uint32(unsafe.Sizeof(uint64(0))))
+var STRING = AT(TYPE_STRING, TYPE_STRING, uint32(unsafe.Sizeof(uint64(0))))
+var STRING_ARR = AT(TYPE_STRING_ARR, TYPE_STRING_ARR, uint32(unsafe.Sizeof(uint64(0))))
+var POINTER = AT(TYPE_POINTER, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
+var TIMESPEC = AT(TYPE_TIMESPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timespec{})))
+var STAT = AT(TYPE_STAT, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Stat_t{})))
+var STATFS = AT(TYPE_STATFS, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Statfs_t{})))
+var SIGACTION = AT(TYPE_SIGACTION, TYPE_STRUCT, uint32(unsafe.Sizeof(Sigaction{})))
+var UTSNAME = AT(TYPE_UTSNAME, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Utsname{})))
+var SOCKADDR = AT(TYPE_SOCKADDR, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.RawSockaddrUnix{})))
+var RUSAGE = AT(TYPE_RUSAGE, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Rusage{})))
+var IOVEC = AT(TYPE_IOVEC, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Iovec{})))
+var EPOLLEVENT = AT(TYPE_EPOLLEVENT, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.EpollEvent{})))
+var SYSINFO = AT(TYPE_SYSINFO, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Sysinfo_t{})))
+var SIGINFO = AT(TYPE_SIGINFO, TYPE_STRUCT, uint32(unsafe.Sizeof(SigInfo{})))
+var MSGHDR = AT(TYPE_MSGHDR, TYPE_STRUCT, uint32(unsafe.Sizeof(Msghdr{})))
+var ITIMERSPEC = AT(TYPE_ITIMERSPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(ItTmerspec{})))
+var STACK_T = AT(TYPE_STACK_T, TYPE_STRUCT, uint32(unsafe.Sizeof(Stack_t{})))
+var TIMEVAL = AT(TYPE_TIMEVAL, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timeval{})))
+var TIMEZONE = AT(TYPE_TIMEZONE, TYPE_STRUCT, uint32(unsafe.Sizeof(TimeZone_t{})))
+var BUFFER_T = AT(TYPE_BUFFER_T, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
+var READ_BUFFER_T = BUFFER_T.SetIndex(2)
+var WRITE_BUFFER_T = BUFFER_T.SetIndex(2)
 
 // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
 // #define _NSIG       64
 // #define _NSIG_BPW   __BITS_PER_LONG
 // #define _NSIG_WORDS (_NSIG / _NSIG_BPW)
 // unsigned long -> 4
-var SIGSET = ArgType{TYPE_SIGSET, TYPE_STRUCT, 4 * 8}
-var POLLFD = ArgType{TYPE_POLLFD, TYPE_STRUCT, uint32(unsafe.Sizeof(Pollfd{}))}
+var SIGSET = AT(TYPE_SIGSET, TYPE_STRUCT, 4*8)
+var POLLFD = AT(TYPE_POLLFD, TYPE_STRUCT, uint32(unsafe.Sizeof(Pollfd{})))
 
 // 这是一种比较特殊的类型 即某个指针类型的参数 要在执行之后才有实际的值
 // 但是最终要读取的大小/数量由另外一个参数决定 比如 pipe2的pipefd read的buf
-var ARGASSIZE_BYTE = ArgType{TYPE_ARGASSIZE, TYPE_ARGASSIZE, 1}
-var ARGASSIZE_INT = ArgType{TYPE_ARGASSIZE, TYPE_ARGASSIZE, 4}
-var ARGASSIZE_UINT = ArgType{TYPE_ARGASSIZE, TYPE_ARGASSIZE, 4}
-var ARGASSIZE_INT64 = ArgType{TYPE_ARGASSIZE, TYPE_ARGASSIZE, 8}
-var ARGASSIZE_UINT64 = ArgType{TYPE_ARGASSIZE, TYPE_ARGASSIZE, 8}
+var ARGASSIZE_BYTE = AT(TYPE_ARGASSIZE, TYPE_ARGASSIZE, 1)
+var ARGASSIZE_INT = AT(TYPE_ARGASSIZE, TYPE_ARGASSIZE, 4)
+var ARGASSIZE_UINT = AT(TYPE_ARGASSIZE, TYPE_ARGASSIZE, 4)
+var ARGASSIZE_INT64 = AT(TYPE_ARGASSIZE, TYPE_ARGASSIZE, 8)
+var ARGASSIZE_UINT64 = AT(TYPE_ARGASSIZE, TYPE_ARGASSIZE, 8)
 
 func init() {
 	// 结构体成员相关 某些参数的成员是指针类型的情况
@@ -365,8 +386,8 @@ func init() {
 	Register(&SArgs{60, PA("quotactl", []PArg{A("cmd", INT), A("special", STRING), A("id", INT), A("addr", INT)})})
 	Register(&SArgs{61, PA("getdents64", []PArg{A("fd", INT), B("dirp", POINTER), A("count", INT)})})
 	Register(&SArgs{62, PA("lseek", []PArg{A("fd", INT), A("offset", INT), A("whence", INT)})})
-	Register(&SArgs{63, PA("read", []PArg{A("fd", INT), B("buf", INT), A("count", INT)})})
-	Register(&SArgs{64, PA("write", []PArg{A("fd", INT), A("buf", INT), A("count", INT)})})
+	Register(&SArgs{63, PA("read", []PArg{A("fd", INT), B("buf", READ_BUFFER_T), A("count", INT)})})
+	Register(&SArgs{64, PA("write", []PArg{A("fd", INT), A("buf", WRITE_BUFFER_T), A("count", INT)})})
 	Register(&SArgs{65, PA("readv", []PArg{A("fd", INT), B("iov", IOVEC), A("iovcnt", INT)})})
 	Register(&SArgs{66, PA("writev", []PArg{A("fd", INT), A("iov", IOVEC), A("iovcnt", INT)})})
 	Register(&SArgs{67, PA("pread64", []PArg{A("fd", INT), B("buf", INT), A("count", INT), A("offset", INT)})})

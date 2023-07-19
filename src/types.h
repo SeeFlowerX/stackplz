@@ -68,11 +68,13 @@ enum arg_type_e
 	TYPE_STACK_T,
 	TYPE_TIMEVAL,
 	TYPE_TIMEZONE,
+	TYPE_BUFFER_T,
 };
 
 enum read_type_e
 {
 	FORBIDDEN = 0,
+	SYS_ENTER_EXIT,
 	SYS_ENTER,
 	SYS_EXIT
 };
