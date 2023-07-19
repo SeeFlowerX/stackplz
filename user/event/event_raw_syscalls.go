@@ -548,7 +548,7 @@ func (this *SyscallEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) (err
         if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        point_arg.AppendValue(fmt.Sprintf("{%s}", arg.Format()))
+        point_arg.AppendValue(arg.Format())
     case config.TYPE_RUSAGE:
         var arg_rusage Arg_Rusage
         if err = binary.Read(this.buf, binary.LittleEndian, &arg_rusage); err != nil {
