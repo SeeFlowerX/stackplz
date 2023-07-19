@@ -301,6 +301,7 @@ var TIMEZONE = AT(TYPE_TIMEZONE, TYPE_STRUCT, uint32(unsafe.Sizeof(TimeZone_t{})
 var BUFFER_T = AT(TYPE_BUFFER_T, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
 var READ_BUFFER_T = BUFFER_T.SetIndex(2)
 var WRITE_BUFFER_T = BUFFER_T.SetIndex(2)
+var IOVEC_T = IOVEC.SetIndex(2)
 
 // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
 // #define _NSIG       64
@@ -390,8 +391,8 @@ func init() {
 	Register(&SArgs{64, PA("write", []PArg{A("fd", INT), A("buf", WRITE_BUFFER_T), A("count", INT)})})
 	Register(&SArgs{65, PA("readv", []PArg{A("fd", INT), B("iov", IOVEC), A("iovcnt", INT)})})
 	Register(&SArgs{66, PA("writev", []PArg{A("fd", INT), A("iov", IOVEC), A("iovcnt", INT)})})
-	Register(&SArgs{67, PA("pread64", []PArg{A("fd", INT), B("buf", INT), A("count", INT), A("offset", INT)})})
-	Register(&SArgs{68, PA("pwrite64", []PArg{A("fd", INT), A("buf", INT), A("count", INT), A("offset", INT)})})
+	Register(&SArgs{67, PA("pread64", []PArg{A("fd", INT), B("buf", READ_BUFFER_T), A("count", INT), A("offset", INT)})})
+	Register(&SArgs{68, PA("pwrite64", []PArg{A("fd", INT), A("buf", WRITE_BUFFER_T), A("count", INT), A("offset", INT)})})
 	Register(&SArgs{69, PA("preadv", []PArg{A("fd", INT), B("iov", IOVEC), A("iovcnt", INT), A("offset", INT)})})
 	Register(&SArgs{70, PA("pwritev", []PArg{A("fd", INT), A("iov", IOVEC), A("iovcnt", INT), A("offset", INT)})})
 	Register(&SArgs{71, PA("sendfile", []PArg{A("out_fd", INT), A("in_fd", INT), A("offset", INT), A("count", INT)})})

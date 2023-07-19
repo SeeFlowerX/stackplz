@@ -185,93 +185,22 @@ struct {
     __uint(max_entries, 1);
 } syscall_filter SEC(".maps");
 
-
-// static __always_inline u32 read_args(program_data_t p, struct syscall_point_args_t* syscall_point_args, args_t* args, u32 check_flag, u32 next_arg_index, u32 read_) {
-//     u32 point_arg_count = MAX_POINT_ARG_COUNT;
-//     if (syscall_point_args->count <= point_arg_count) {
-//         point_arg_count = syscall_point_args->count;
-//     }
-//     for (int i = 0; i < point_arg_count; i++) {
-//         u64 ptr = args->args[i];
-//         // 保存参数的寄存器
-//         save_to_submit_buf(p.event, (void *)ptr, sizeof(u64), next_arg_index);
-//         next_arg_index += 1;
-//         struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_args[i];
-//         if (point_arg->read_flag != SYS_ENTER_EXIT) {
-//             if (point_arg->read_flag != check_flag) {
-//                 continue;
-//             }
-//         }
-//         if (point_arg->type == TYPE_NONE) {
-//             continue;
-//         }
-//         if (point_arg->type == TYPE_NUM) {
-//             // 这种具体类型转换交给前端做
-//             continue;
-//         }
-//         if (point_arg->type == TYPE_STRING) {
-//             u32 buf_off = 0;
-//             buf_t *string_p = get_buf(STRING_BUF_IDX);
-//             if (string_p == NULL) {
-//                 continue;
-//             }
-//             int status = bpf_probe_read_user(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
-//             if (status < 0) {
-//                 // MTE 其实也正常读取到了
-//                 bpf_probe_read_user_str(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
-//             }
-//             save_str_to_buf(p.event, &string_p->buf[buf_off], next_arg_index);
-//             next_arg_index += 1;
-//             continue;
-//         }
-//         if (point_arg->type == TYPE_STRING_ARR && ptr != 0) {
-//             save_str_arr_to_buf(p.event, (const char *const *) ptr /*ptr*/, next_arg_index);
-//             next_arg_index += 1;
-//             continue;
-//         }
-//         if (point_arg->type == TYPE_POINTER) {
-//             // 指针类型 通常读一下对应指针的数据即可 后续记得考虑兼容下32位
-            
-//             // point_arg->alias_type
-//             // 某些成员是指针 有可能有必要再深入读取
-//             // 这个时候可以根据 alias_type 取出对应的参数配置 然后解析保存
-//             // 这个后面增补
-
-//             // if (point_arg->alias_type == TYPE_BY) {
-                
-//             // }
-
-//             u64 addr = 0;
-//             bpf_probe_read_user(&addr, sizeof(addr), (void*) ptr);
-//             save_to_submit_buf(p.event, (void *) &addr, sizeof(u64), next_arg_index);
-//             next_arg_index += 1;
-//             continue;
-//         }
-//         if (point_arg->type == TYPE_STRUCT && ptr != 0) {
-//             // 结构体类型 直接读取对应大小的数据 具体转换交给前端
-//             u32 struct_size = MAX_BYTES_ARR_SIZE;
-//             if (point_arg->size <= struct_size) {
-//                 struct_size = point_arg->size;
-//             }
-//             // 修复 MTE 读取可能不正常的情况
-//             int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), struct_size, next_arg_index);
-//             if (status == 0) {
-//                 // 保存失败的情况 比如 ptr 是一个非法的地址 ...
-//                 buf_t *zero_p = get_buf(ZERO_BUF_IDX);
-//                 if (zero_p == NULL) {
-//                     continue;
-//                 }
-//                 // 这个时候填充一个全0的内容进去 不然前端不好解析
-//                 save_bytes_to_buf(p.event, &zero_p->buf[0], struct_size, next_arg_index);
-//                 next_arg_index += 1;
-//             } else {
-//                 next_arg_index += 1;
-//             }
-//         }
-//     }
-//     return next_arg_index;
-// }
-static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_arg, u64 ptr, u32 read_len, u32 next_arg_index) {
+static __always_inline u32 save_bytes_with_len(program_data_t p, u64 ptr, u32 read_len, u32 next_arg_index) {
+    if (read_len > MAX_BUF_READ_SIZE) {
+        read_len = MAX_BUF_READ_SIZE;
+    }
+    int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), read_len, next_arg_index);
+    if (status == 0) {
+        buf_t *zero_p = get_buf(ZERO_BUF_IDX);
+        if (zero_p == NULL) {
+            return next_arg_index;
+        }
+        save_bytes_to_buf(p.event, &zero_p->buf[0], read_len, next_arg_index);
+    }
+    next_arg_index += 1;
+    return next_arg_index;
+}
+static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_arg, u64 ptr, u32 read_count, u32 next_arg_index) {
     if (point_arg->type == TYPE_NONE) {
         return next_arg_index;
     }
@@ -306,13 +235,10 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         // 某些成员是指针 有可能有必要再深入读取
         // 这个时候可以根据 alias_type 取出对应的参数配置 然后解析保存
         // 这个后面增补
-
         if (point_arg->alias_type == TYPE_BUFFER_T) {
-            u32 aaa = MAX_BUF_READ_SIZE
-            if (read_len <= aaa) {
-                aaa = read_len;
-            }
-            int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), aaa, next_arg_index);
+            // buffer 的单个元素长度就是 1 所以这里就是 read_count
+            u32 read_len = read_count * 1;
+            int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), read_len, next_arg_index);
             if (status == 0) {
                 buf_t *zero_p = get_buf(ZERO_BUF_IDX);
                 if (zero_p == NULL) {
@@ -333,6 +259,32 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         return next_arg_index;
     }
     if (point_arg->type == TYPE_STRUCT && ptr != 0) {
+
+        if (point_arg->alias_type == TYPE_IOVEC) {
+            struct iovec iovec_ptr;
+            int errno = bpf_probe_read_user(&iovec_ptr, sizeof(iovec_ptr), (void*) ptr);
+            if (errno == 0) {
+                save_to_submit_buf(p.event, (void *)&iovec_ptr, sizeof(iovec_ptr), next_arg_index);
+                next_arg_index += 1;
+                // 目前这样只是读取了第一个 iov 实际上要多次读取 数量是 iovcnt
+                // 但是注意多个缓冲区并不是连续的
+                u64 iov_base = (u64)iovec_ptr.iov_base;
+                u32 iov_len = (u64)iovec_ptr.iov_len;
+                // u32 read_len = read_count * iov_len;
+                u32 read_len = iov_len;
+                if (read_len > MAX_BUF_READ_SIZE) {
+                    read_len = MAX_BUF_READ_SIZE;
+                }
+                // save_to_submit_buf(p.event, (void *)&iov_base, sizeof(iov_base), next_arg_index);
+                // next_arg_index += 1;
+                // // 注意 这里存放的大小是 u64 与结构体大小保持一致
+                // save_to_submit_buf(p.event, (void *)&read_len, sizeof(read_len), next_arg_index);
+                // next_arg_index += 1;
+                next_arg_index = save_bytes_with_len(p, iov_base, read_len, next_arg_index);
+                return next_arg_index;
+            }
+        }
+
         // 结构体类型 直接读取对应大小的数据 具体转换交给前端
         u32 struct_size = MAX_BYTES_ARR_SIZE;
         if (point_arg->size <= struct_size) {
@@ -520,9 +472,6 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         point_arg_count = syscall_point_args->count;
     }
 
-
-    // int next_arg_index = read_args(p, syscall_point_args, &args, SYS_ENTER, 4);
-
     int next_arg_index = 4;
     // #pragma unroll
     for (int i = 0; i < point_arg_count; i++) {
@@ -533,31 +482,23 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         if (point_arg->read_flag != SYS_ENTER) {
             continue;
         }
-        // 如果是要读取 buffer 
-        // u32 read_len = 0;
-        // if (point_arg->alias_type == TYPE_BUFFER_T) {
-        //     u32 item_count = args.args[point_arg->item_countindex];
-        //     u32 item_persize = point_arg->item_persize;
-        //     if (item_count <= MAX_BUF_READ_SIZE && item_persize < MAX_BUF_READ_SIZE) {
-        //         read_len = item_count * item_persize;
-        //     }
-        //     // u32 item_count = args.args[point_arg->item_countindex];
-        //     // if (item_count <= MAX_BUF_READ_SIZE) {
-        //     //     read_len = item_count;
-        //     // } else {
-        //     //     read_len = MAX_BUF_READ_SIZE;
-        //     // }
-        // }
-        // if (read_len >= MAX_BUF_READ_SIZE) {
-        //     read_len = MAX_BUF_READ_SIZE;
-        // }
-
-        u32 read_len = MAX_BUF_READ_SIZE;
-        if (args.args[point_arg->item_countindex] <= read_len) {
-            read_len = args.args[point_arg->item_countindex];
+        u32 read_count = MAX_BUF_READ_SIZE;
+        if (point_arg->item_countindex >= 0) {
+            // math between fp pointer and register with unbounded min value is not allowed
+            // 后面取寄存器可能存在越界 所以必须保证索引必须是在正确的范围内
+            // 这里必须把 item_countindex 赋值给临时变量 并且必须转换类型
+            // 然后通过 if 比较来明确它不会越界 然后后面再用它作为取寄存器的索引
+            // 最后计算要读取数据的最终大小 当然这里也必须有一个上限大小
+            u32 item_index = (u32) point_arg->item_countindex;
+            if (item_index >= 6) {
+                return 0;
+            }
+            u32 item_count = (u32) args.args[item_index];
+            if (item_count <= read_count) {
+                read_count = item_count;
+            }
         }
-
-        next_arg_index = read_arg(p, point_arg, args.args[i], read_len, next_arg_index);
+        next_arg_index = read_arg(p, point_arg, args.args[i], read_count, next_arg_index);
     }
     events_perf_submit(&p, SYSCALL_ENTER);
     return 0;
@@ -662,8 +603,6 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     save_to_submit_buf(p.event, (void *) &syscallno, sizeof(u32), next_arg_index);
     next_arg_index += 1;
 
-    // next_arg_index = read_args(p, syscall_point_args, &saved_args, SYS_EXIT, next_arg_index);
-
     u32 point_arg_count = MAX_POINT_ARG_COUNT;
     if (syscall_point_args->count <= point_arg_count) {
         point_arg_count = syscall_point_args->count;
@@ -677,7 +616,23 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         if (point_arg->read_flag != SYS_EXIT) {
             continue;
         }
-        next_arg_index = read_arg(p, point_arg, saved_args.args[i], 0, next_arg_index);
+        u32 read_count = MAX_BUF_READ_SIZE;
+        if (point_arg->item_countindex >= 0) {
+            // math between fp pointer and register with unbounded min value is not allowed
+            // 后面取寄存器可能存在越界 所以必须保证索引必须是在正确的范围内
+            // 这里必须把 item_countindex 赋值给临时变量 并且必须转换类型
+            // 然后通过 if 比较来明确它不会越界 然后后面再用它作为取寄存器的索引
+            // 最后计算要读取数据的最终大小 当然这里也必须有一个上限大小
+            u32 item_index = (u32) point_arg->item_countindex;
+            if (item_index >= 6) {
+                return 0;
+            }
+            u32 item_count = (u32) saved_args.args[item_index];
+            if (item_count <= read_count) {
+                read_count = item_count;
+            }
+        }
+        next_arg_index = read_arg(p, point_arg, saved_args.args[i], read_count, next_arg_index);
     }
     // 读取返回值
     u64 ret = READ_KERN(regs->regs[0]);

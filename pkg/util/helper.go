@@ -191,9 +191,26 @@ func dumpByteSlice(b []byte, perfix string) *bytes.Buffer {
 	return bb
 }
 
+func PrettyByteSlice(buffer []byte) string {
+	var out strings.Builder
+	for _, b := range buffer {
+		if b >= 32 && b <= 126 {
+			out.WriteByte(b)
+		} else {
+			out.WriteString(fmt.Sprintf("\\x%02x", b))
+		}
+	}
+	return out.String()
+}
+
 func HexDump(buffer []byte, color string) string {
 	b := dumpByteSlice(buffer, color)
 	b.WriteString(COLORRESET)
+	return b.String()
+}
+
+func HexDumpPure(buffer []byte) string {
+	b := dumpByteSlice(buffer, "")
 	return b.String()
 }
 
