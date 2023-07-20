@@ -115,10 +115,6 @@ type EventContext struct {
     Padding [7]byte
 }
 
-// func (this *EventContext) GetUUID() string {
-//     return fmt.Sprintf("%d_%d_%s", this.Pid, this.Tid, this.Comm)
-// }
-
 func (this *EventContext) String() (s string) {
     // 输出 event_context 解析结果 debug用
     s += fmt.Sprintf("event_id:%d ts:%d", this.EventId, this.Ts)
@@ -127,11 +123,6 @@ func (this *EventContext) String() (s string) {
     s += fmt.Sprintf(", comm:%s, argnum:%d", util.B2STrim(this.Comm[:]), this.Argnum)
     return s
 }
-
-// type CommonEvent struct {
-//     event_type EventType
-//     CommonEvent
-// }
 
 type Mmap2Event struct {
     CommonEvent
@@ -149,10 +140,6 @@ type Mmap2Event struct {
     filename       string
     sample_id      []byte
 }
-
-// func (this *CommonEvent) Decode() (err error) {
-//     panic("CommonEvent.Decode() not implemented yet")
-// }
 
 func (this *Mmap2Event) ReadIndex() (index uint8, err error) {
     err = binary.Read(this.buf, binary.LittleEndian, &index)
@@ -198,7 +185,6 @@ func (this *Mmap2Event) Decode() (err error) {
 
 func (this *Mmap2Event) String() string {
     var s string
-    // s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.event_context.Comm[:]))
     s += fmt.Sprintf("[PERF_RECORD_MMAP2] %s Base:0x%x Size:0x%x Perm:0x%x Prot:0x%x <%s>", this.GetUUID(), this.addr, this.len, this.flags, this.prot, this.filename)
     return s
 }
@@ -208,12 +194,6 @@ func (this *Mmap2Event) GetUUID() string {
 }
 
 func (this *Mmap2Event) ParseContext() (err error) {
-    // this.logger.Printf("[Mmap2Event] RawSample len:%d\n", len(this.rec.RawSample))
-    // if len(this.rec.RawSample) == 0 {
-    //     return
-    // }
-    // this.logger.Printf("[Mmap2Event] RawSample\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
-    // 先把基础信息解析出来 后面再根据 eventid 进一步解析传递的参数
     this.buf = bytes.NewBuffer(this.rec.RawSample)
     if err = binary.Read(this.buf, binary.LittleEndian, &this.pid); err != nil {
         return err

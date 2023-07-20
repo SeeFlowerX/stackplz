@@ -36,7 +36,6 @@ type IEventStruct interface {
     GetEventId() uint32
     ToChildEvent() (IEventStruct, error)
     ParseContext() error
-    // GetEventContext() *EventContext
     SetLogger(logger *log.Logger)
     SetConf(conf config.IConfig)
     SetRecord(rec perf.Record)
@@ -58,19 +57,15 @@ type RegsBuf struct {
 }
 
 type CommonEvent struct {
-    mconf  *config.ModuleConfig
-    logger *log.Logger
-    rec    perf.Record
-    // event_context EventContext
+    mconf        *config.ModuleConfig
+    logger       *log.Logger
+    rec          perf.Record
     unwind_stack bool
     show_regs    bool
     buf          *bytes.Buffer
 }
 
 func (this *CommonEvent) String() string {
-    // var s string
-    // s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.event_context.Comm[:]))
-    // return s
     panic("CommonEvent String")
 }
 
@@ -81,19 +76,6 @@ func (this *CommonEvent) GetUUID() string {
 func (this *CommonEvent) GetEventId() uint32 {
     panic("CommonEvent.GetEventId() not implemented yet")
 }
-
-// func (this *CommonEvent) PrePareUUID() (err error) {
-//     // 在完整payload正式交由单独的worker处理前 在 processer 拿到事件后
-//     // 先简单解析下pid和tid信息 为每一个线程设置一个worker
-//     this.buf = bytes.NewBuffer(this.rec.RawSample)
-//     if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
-//         return err
-//     }
-//     if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
-//         return err
-//     }
-//     return nil
-// }
 
 func (this *CommonEvent) EventType() EventType {
     // panic("CommonEvent.EventType() not implemented yet")
@@ -118,10 +100,6 @@ func (this *CommonEvent) ParseContext() (err error) {
     this.logger.Printf("[CommonEvent] RawSample\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
     return nil
 }
-
-// func (this *CommonEvent) GetEventContext() *EventContext {
-//     return &this.event_context
-// }
 
 func (this *CommonEvent) NewMmap2Event() IEventStruct {
     event := &Mmap2Event{CommonEvent: *this}
