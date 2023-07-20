@@ -1,6 +1,6 @@
 package config
 
-import "log"
+import "github.com/sirupsen/logrus"
 
 const MAX_COUNT = 20
 const MAX_WATCH_PROC_COUNT = 256
@@ -35,10 +35,10 @@ type SConfig struct {
 	Quiet       bool
 	Is32Bit     bool
 	Buffer      uint32
-	logger      *log.Logger
+	logger      *logrus.Logger
 }
 
-func (this *SConfig) SetLogger(logger *log.Logger) {
+func (this *SConfig) SetLogger(logger *logrus.Logger) {
 	this.logger = logger
 }
 

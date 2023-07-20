@@ -383,7 +383,6 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         for (int i = 0; i < MAX_COUNT; i++) {
             if ((filter->syscall_mask & (1 << i))) {
                 if (filter->syscall[i] == (u32)syscallno) {
-                    // bpf_printk("[syscall] xx syscallno:%d mask:%d\n", syscallno, filter->syscall_mask);
                     has_find = true;
                     break;
                 }

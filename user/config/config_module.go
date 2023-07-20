@@ -3,7 +3,6 @@ package config
 import (
     "errors"
     "fmt"
-    "log"
     "os"
     "stackplz/pkg/util"
     "strconv"
@@ -192,12 +191,12 @@ type ModuleConfig struct {
     Config            string
 }
 
-func NewModuleConfig(logger *log.Logger) *ModuleConfig {
+func NewModuleConfig() *ModuleConfig {
     config := &ModuleConfig{}
     config.SelfPid = uint32(os.Getpid())
     config.FilterMode = util.UNKNOWN_MODE
     // 首先把 logger 设置上
-    config.SetLogger(logger)
+    // config.SetLogger(logger)
     // 虽然会通过全局配置进程覆盖 但是还是做好在初始化时就进行默认赋值
     config.Uid = MAGIC_UID
     config.Pid = MAGIC_PID
@@ -208,7 +207,6 @@ func NewModuleConfig(logger *log.Logger) *ModuleConfig {
     for i := 0; i < len(config.TidsBlacklist); i++ {
         config.PidsBlacklist[i] = MAGIC_TID
     }
-    // fmt.Printf("uid:%d pid:%d tid:%d", config.Uid, config.Pid, config.Tid)
     return config
 }
 

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"path/filepath"
 	"stackplz/assets"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	manager "github.com/ehids/ebpfmanager"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
@@ -28,7 +28,7 @@ type PerfMMAP struct {
 	hookBpfFile string
 }
 
-func (this *PerfMMAP) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
+func (this *PerfMMAP) Init(ctx context.Context, logger *logrus.Logger, conf config.IConfig) error {
 	this.Module.Init(ctx, logger, conf)
 	p, ok := (conf).(*config.ModuleConfig)
 	if ok {

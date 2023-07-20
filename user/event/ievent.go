@@ -1,15 +1,15 @@
 package event
 
 import (
-    "bytes"
-    "errors"
-    "fmt"
-    "log"
-    "stackplz/pkg/util"
-    "stackplz/user/config"
+	"bytes"
+	"errors"
+	"fmt"
+	"stackplz/pkg/util"
+	"stackplz/user/config"
 
-    "github.com/cilium/ebpf/perf"
-    "golang.org/x/sys/unix"
+	"github.com/cilium/ebpf/perf"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
 type EventType uint8
@@ -34,9 +34,9 @@ type IEventStruct interface {
     GetUUID() string
     RecordType() uint32
     GetEventId() uint32
-    ToChildEvent() (IEventStruct, error)
+    ParseEvent() (IEventStruct, error)
     ParseContext() error
-    SetLogger(logger *log.Logger)
+    SetLogger(logger *logrus.Logger)
     SetConf(conf config.IConfig)
     SetRecord(rec perf.Record)
     SetUnwindStack(unwind_stack bool)
@@ -58,7 +58,7 @@ type RegsBuf struct {
 
 type CommonEvent struct {
     mconf        *config.ModuleConfig
-    logger       *log.Logger
+    logger       *logrus.Logger
     rec          perf.Record
     unwind_stack bool
     show_regs    bool
@@ -93,11 +93,11 @@ func (this *CommonEvent) Decode() (err error) {
 }
 
 func (this *CommonEvent) ParseContext() (err error) {
-    this.logger.Printf("[CommonEvent] RawSample len:%d\n", len(this.rec.RawSample))
     if len(this.rec.RawSample) == 0 {
+        this.logger.Printf("[CommonEvent] RawSample len:%d\n", len(this.rec.RawSample))
         return
     }
-    this.logger.Printf("[CommonEvent] RawSample\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
+    this.logger.Printf("[CommonEvent] RawSample:%s\n", util.HexDump(this.rec.RawSample, util.COLORRED))
     return nil
 }
 
@@ -158,7 +158,7 @@ func (this *CommonEvent) RecordType() uint32 {
     return this.rec.RecordType
 }
 
-func (this *CommonEvent) ToChildEvent() (IEventStruct, error) {
+func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
 
     // 先根据 record 类型转为对应的 event
     // 然后对数据进行解析 为什么不给到 worker 处理呢
@@ -229,7 +229,7 @@ func (this *CommonEvent) SetShowRegs(show_regs bool) {
     this.show_regs = show_regs
 }
 
-func (this *CommonEvent) SetLogger(logger *log.Logger) {
+func (this *CommonEvent) SetLogger(logger *logrus.Logger) {
     this.logger = logger
 }
 

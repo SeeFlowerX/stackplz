@@ -9,14 +9,13 @@ import (
     "context"
     "errors"
     "fmt"
-    "io"
     "io/ioutil"
-    "log"
     "os"
     "os/exec"
     "os/signal"
     "path"
     "stackplz/assets"
+    "stackplz/pkg/ebpf"
     "stackplz/pkg/util"
     "stackplz/user/config"
     "stackplz/user/module"
@@ -25,15 +24,43 @@ import (
     "sync"
     "syscall"
 
+    "github.com/rifflock/lfshook"
+    "github.com/sirupsen/logrus"
     "github.com/spf13/cobra"
 )
 
-// var logger = log.New(os.Stdout, "stack_", log.Ltime)
-// 整合为一个模块之后 前缀就没啥必要了 时间也是没有必要的
-var logger = log.New(os.Stdout, "", 0)
-var exec_path = "/data/local/tmp"
+var Logger *logrus.Logger
+
+func NewLogger(log_path string) *logrus.Logger {
+    if Logger != nil {
+        return Logger
+    }
+    Logger = logrus.New()
+    Logger.AddHook(lfshook.NewHook(
+        lfshook.PathMap{
+            logrus.TraceLevel: log_path,
+            logrus.PanicLevel: log_path,
+            logrus.FatalLevel: log_path,
+            logrus.WarnLevel:  log_path,
+            logrus.InfoLevel:  log_path,
+            logrus.ErrorLevel: log_path,
+        },
+        &util.TextFormatter{
+            FullTimestamp:    true,
+            DisableTimestamp: true,
+            ForceFormatting:  true,
+            ForceColors:      gconfig.Color,
+            DisableColors:    !gconfig.Color,
+        },
+    ))
+    // 终端输出会有 INFO[0000] 正常情况 DisableTimestamp 为 true 即可
+    // 但是 logrus-prefixed-formatter 这个只对输出到文件有效果
+    // 不过好在输出到文件不会有
+    return Logger
+}
+
 var gconfig = config.NewGlobalConfig()
-var mconfig = config.NewModuleConfig(logger)
+var mconfig = config.NewModuleConfig()
 
 var rootCmd = &cobra.Command{
     Use:               "stackplz",
@@ -52,32 +79,35 @@ var rootCmd = &cobra.Command{
 
 func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 在执行子命令的时候 上级命令的 PersistentPreRun/PersistentPreRunE 会先执行
-    // 优先通过包名指定要hook的目标 在执行子命令之前先通过包名得到uid
 
     var err error
-    // 首先根据全局设定设置日志输出
 
+    // 首先根据全局设定设置日志输出
+    dir, _ := os.Getwd()
+    log_path := dir + "/" + gconfig.LogFile
     if gconfig.LogFile != "" {
-        log_path := exec_path + "/" + gconfig.LogFile
         _, err := os.Stat(log_path)
         if err != nil {
             if os.IsNotExist(err) {
                 os.Remove(log_path)
+            } else {
+                fmt.Printf("stat %s failed, error:%v", log_path, err)
+                os.Exit(1)
             }
-        }
-        f, err := os.Create(log_path)
-        if err != nil {
-            logger.Fatal(err)
-            os.Exit(1)
-        }
-        if gconfig.Quiet {
-            // 直接设置 则不会输出到终端
-            logger.SetOutput(f)
         } else {
-            // 这样可以同时输出到终端
-            mw := io.MultiWriter(os.Stdout, f)
-            logger.SetOutput(mw)
+            os.Remove(log_path)
         }
+    }
+
+    // 在 init 之后各个选项的 flag 还没有初始化 到这里才初始化 所以在这里最先设置好 logger
+    logger := NewLogger(log_path)
+    mconfig.SetLogger(logger)
+    enable, e := ebpf.IsEnableBPF()
+    if e != nil {
+        logger.Fatalf("Kernel config read failed, error:%v", e)
+    }
+    if !enable {
+        logger.Fatalf("Kernel not support, error:%v", e)
     }
 
     // 第一步先释放用于获取堆栈信息的外部库
@@ -116,9 +146,6 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         fmt.Println("RestoreAssets preload_libs success")
         os.Exit(0)
     }
-    // if gconfig.Pid > 0 {
-    //     target_config.Pid = gconfig.Pid
-    // }
 
     // 第二步 通过包名获取uid和库路径 先通过pm命令获取安装位置
     // 支持设置单独的pid，但是要排除程序本身的pid
@@ -147,6 +174,9 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             mconfig.FilterMode = util.PID_TID_MODE
             logger.Printf("watch for pid:%d + tid:%d", gconfig.Pid, gconfig.Tid)
         } else {
+            if gconfig.Pid == config.MAGIC_PID {
+                logger.Fatalf("please set one of them --pid/--uid/--name")
+            }
             mconfig.FilterMode = util.PID_MODE
             logger.Printf("watch for pid:%d", gconfig.Pid)
         }
@@ -220,6 +250,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
                 return err
             }
         }
+    } else if gconfig.Symbol == "" && gconfig.Offset == 0 {
+        logger.Fatal("hook nothing")
     }
 
     return nil
@@ -239,35 +271,35 @@ func runFunc(command *cobra.Command, args []string) {
         // 现在合并成只有一个模块了 所以直接通过名字获取
         mod := module.GetModuleByName(modName)
 
-        mod.Init(ctx, logger, mconfig)
+        mod.Init(ctx, Logger, mconfig)
         err := mod.Run()
         if err != nil {
-            logger.Printf("%s\tmodule Run failed, [skip it]. error:%+v", mod.Name(), err)
+            Logger.Printf("%s\tmodule Run failed, [skip it]. error:%+v", mod.Name(), err)
             os.Exit(1)
         }
         runModules[mod.Name()] = mod
         if gconfig.Debug {
-            logger.Printf("%s\tmodule started successfully", mod.Name())
+            Logger.Printf("%s\tmodule started successfully", mod.Name())
         }
         wg.Add(1)
         runMods++
 
     }
     if runMods > 0 {
-        logger.Printf("start %d modules", runMods)
+        Logger.Printf("start %d modules", runMods)
         <-stopper
     } else {
-        logger.Println("No runnable modules, Exit(1)")
+        Logger.Println("No runnable modules, Exit(1)")
         os.Exit(1)
     }
     cancelFun()
 
     for _, mod := range runModules {
         err := mod.Close()
-        logger.Println("mod Close")
+        Logger.Println("mod Close")
         wg.Done()
         if err != nil {
-            logger.Fatalf("%s:module close failed. error:%+v", mod.Name(), err)
+            Logger.Fatalf("%s:module close failed. error:%+v", mod.Name(), err)
         }
     }
     wg.Wait()
@@ -330,7 +362,7 @@ func findBTFAssets() string {
         btf_file = "rock5b-5.10-arm64_min.btf"
     }
     if gconfig.Debug {
-        logger.Printf("[findBTFAssets] btf_file=%s", btf_file)
+        Logger.Printf("[findBTFAssets] btf_file=%s", btf_file)
     }
     return btf_file
 }
@@ -347,7 +379,7 @@ func parseByPid(pid uint32) error {
         return err
     }
     if gconfig.Debug {
-        logger.Printf("[parseByPid] get uid by pid=%d result:\n\t%s", pid, lines)
+        Logger.Printf("[parseByPid] get uid by pid=%d result:\n\t%s", pid, lines)
     }
     value, _ := strconv.ParseUint(lines, 10, 32)
     uid := uint32(value)
@@ -367,7 +399,7 @@ func parseByPid(pid uint32) error {
             return err
         }
         if gconfig.Debug {
-            logger.Printf("[parseByPid] check app_process by pid=%d result:\n\t%s", pid, lines)
+            Logger.Printf("[parseByPid] check app_process by pid=%d result:\n\t%s", pid, lines)
         }
         if strings.HasSuffix(lines, "/app_process64") {
             gconfig.Is32Bit = false
@@ -523,6 +555,7 @@ func init() {
     // 日志设定
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Debug, "debug", "d", false, "enable debug logging")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Quiet, "quiet", "q", false, "wont logging to terminal when used")
+    rootCmd.PersistentFlags().BoolVarP(&gconfig.Color, "color", "c", false, "enable color for log file")
     rootCmd.PersistentFlags().StringVarP(&gconfig.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
     // 常规ELF库hook设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.Library, "library", "l", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")

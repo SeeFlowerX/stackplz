@@ -2,10 +2,11 @@ package event_processor
 
 import (
 	"fmt"
-	"log"
 	"stackplz/user/event"
 	"sync"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -21,10 +22,10 @@ type EventProcessor struct {
 	// key为 PID+UID+COMMON等确定唯一的信息
 	workerQueue map[string]IWorker
 
-	logger *log.Logger
+	logger *logrus.Logger
 }
 
-func (this *EventProcessor) GetLogger() *log.Logger {
+func (this *EventProcessor) GetLogger() *logrus.Logger {
 	return this.logger
 }
 
@@ -46,7 +47,7 @@ func (this *EventProcessor) Serve() {
 func (this *EventProcessor) dispatch(e event.IEventStruct) {
 
 	// 做初步解析之后 转换为更明确的 event
-	e, err := e.ToChildEvent()
+	e, err := e.ParseEvent()
 	if err != nil {
 		// 异常日志在 ToChildEvent 进行输出
 		// 因为有的的 Record 需要跳过 并非错误
@@ -119,7 +120,7 @@ func (this *EventProcessor) Close() error {
 	return nil
 }
 
-func NewEventProcessor(logger *log.Logger) *EventProcessor {
+func NewEventProcessor(logger *logrus.Logger) *EventProcessor {
 	var ep *EventProcessor
 	ep = &EventProcessor{}
 	ep.logger = logger

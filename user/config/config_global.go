@@ -6,6 +6,7 @@ type GlobalConfig struct {
     Uid              uint32
     Pid              uint32
     Tid              uint32
+    Color            bool
     UnwindStack      bool
     ShowRegs         bool
     GetLR            bool
