@@ -49,9 +49,9 @@ func (this *EventProcessor) dispatch(e event.IEventStruct) {
 	// 做初步解析之后 转换为更明确的 event
 	e, err := e.ParseEvent()
 	if err != nil {
-		// 异常日志在 ToChildEvent 进行输出
+		// 异常日志在 ParseEvent 进行输出
 		// 因为有的的 Record 需要跳过 并非错误
-		this.logger.Printf("ToChildEvent faild, err:%v", err)
+		this.logger.Printf("ParseEvent faild, err:%v", err)
 		return
 	}
 	// 单就输出日志来说 下面这样做反而给人一种输出有延迟的感觉 如果没有必要就去掉这部分吧

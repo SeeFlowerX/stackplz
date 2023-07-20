@@ -251,7 +251,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             }
         }
     } else if gconfig.Symbol == "" && gconfig.Offset == 0 {
-        logger.Fatal("hook nothing")
+        logger.Fatal("hook nothing, plz set --symbol/--library + --offset")
     }
 
     return nil

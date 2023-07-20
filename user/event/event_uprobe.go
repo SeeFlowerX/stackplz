@@ -15,47 +15,27 @@ import (
     "unsafe"
 )
 
-type UprobeStackEvent struct {
-    event_type EventType
-    CommonEvent
-    mconf     *config.ModuleConfig
-    Pid       uint32
-    Tid       uint32
-    Timestamp uint64
-    Comm      [16]byte
-    // Buffer       [256]byte
-    // BufferHex    string
+type UprobeEvent struct {
+    ContextEvent
+    mconf        *config.ModuleConfig
     Stackinfo    string
     RegsBuffer   RegsBuf
     UnwindBuffer UnwindBuf
-    UnwindStack  bool
-    ShowRegs     bool
     RegName      string
     UUID         string
 }
 
-func (this *UprobeStackEvent) Decode() (err error) {
-    // buf := bytes.NewBuffer(payload)
-    // if err = binary.Read(buf, binary.LittleEndian, &this.Pid); err != nil {
-    //     return
-    // }
-    // if err = binary.Read(buf, binary.LittleEndian, &this.Tid); err != nil {
-    //     return
-    // }
+func (this *UprobeEvent) Decode() (err error) {
     buf := this.buf
-    if err = binary.Read(buf, binary.LittleEndian, &this.Timestamp); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.Comm); err != nil {
-        return
-    }
     // // 感觉输出 指定地址/寄存器 的内存视图很鸡肋 为什么不用其他工具呢 先不要了吧
     // if err = binary.Read(buf, binary.LittleEndian, &this.Buffer); err != nil {
     //     return
     // }
     // this.BufferHex = util.HexDumpGreen(this.Buffer[:])
 
-    if this.unwind_stack {
+    fmt.Println("lll", this.rec.Regs, this.rec.UnwindStack)
+
+    if this.rec.UnwindStack {
         // 理论上应该是不需要读取这4字节 但是实测需要 原因未知
         var pad uint32
         if err = binary.Read(buf, binary.LittleEndian, &pad); err != nil {
@@ -67,10 +47,10 @@ func (this *UprobeStackEvent) Decode() (err error) {
         }
         // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
-        stack_str := C.get_stack(C.int(this.Pid), C.ulong(((1 << 33) - 1)), unsafe.Pointer(&this.UnwindBuffer))
+        stack_str := C.get_stack(C.int(this.pid), C.ulong(((1 << 33) - 1)), unsafe.Pointer(&this.UnwindBuffer))
         // char* 转到 go 的 string
         this.Stackinfo = C.GoString(stack_str)
-    } else if this.show_regs {
+    } else if this.rec.Regs {
         var pad uint32
         if err = binary.Read(buf, binary.LittleEndian, &pad); err != nil {
             return
@@ -86,28 +66,23 @@ func (this *UprobeStackEvent) Decode() (err error) {
     return nil
 }
 
-func (this *UprobeStackEvent) Clone() IEventStruct {
-    event := new(UprobeStackEvent)
-    event.event_type = EventTypeModuleData
+func (this *UprobeEvent) Clone() IEventStruct {
+    event := new(UprobeEvent)
     return event
 }
 
-func (this *UprobeStackEvent) EventType() EventType {
-    return this.event_type
-}
-
-// func (this *UprobeStackEvent) GetUUID() string {
-//     return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
+// func (this *UprobeEvent) GetUUID() string {
+//     return fmt.Sprintf("%d|%d|%s", this.pid, this.Tid, util.B2STrim(this.comm[:]))
 // }
 
-func (this *UprobeStackEvent) String() string {
+func (this *UprobeEvent) String() string {
     var s string
-    s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.Comm[:]))
+    s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.comm[:]))
     if this.RegName != "" {
         // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
         // 当然前提是取了寄存器数据
         var tmp_regs [33]uint64
-        if this.UnwindStack {
+        if this.rec.UnwindStack {
             tmp_regs = this.UnwindBuffer.Regs
         } else {
             tmp_regs = this.RegsBuffer.Regs
@@ -128,7 +103,7 @@ func (this *UprobeStackEvent) String() string {
         }
         if has_reg_value {
             // 读取maps 获取偏移信息
-            info, err := util.ParseReg(this.Pid, regvalue)
+            info, err := util.ParseReg(this.pid, regvalue)
             if err != nil {
                 fmt.Printf("ParseReg for %s=0x%x failed", this.RegName, regvalue)
             } else {
@@ -136,9 +111,9 @@ func (this *UprobeStackEvent) String() string {
             }
         }
     }
-    if this.ShowRegs {
+    if this.rec.Regs {
         var tmp_regs [33]uint64
-        if this.UnwindStack {
+        if this.rec.UnwindStack {
             tmp_regs = this.UnwindBuffer.Regs
         } else {
             tmp_regs = this.RegsBuffer.Regs
@@ -157,7 +132,7 @@ func (this *UprobeStackEvent) String() string {
         s += ", Regs:\n" + string(regs_info)
     }
     if this.Stackinfo != "" {
-        if this.ShowRegs {
+        if this.rec.Regs {
             s += fmt.Sprintf("\nStackinfo:\n%s", this.Stackinfo)
         } else {
             s += fmt.Sprintf(", Stackinfo:\n%s", this.Stackinfo)

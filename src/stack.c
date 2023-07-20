@@ -1,5 +1,4 @@
 #include "utils.h"
-// #include "soinfo_android12_r3.h"
 #include <stdbool.h>
 
 #include "types.h"
@@ -12,131 +11,7 @@
 #include "common/filtering.h"
 #include "common/probes.h"
 
-
-// uprobe hook
-
-struct uprobe_stack_event_t {
-    u32 pid;
-    u32 tid;
-    u64 timestamp_ns;
-    char comm[TASK_COMM_LEN];
-};
-
-struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-} stack_events SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
-    __type(key, u32);
-    __type(value, struct uprobe_stack_event_t);
-    __uint(max_entries, 1);
-} uprobe_stack_event_heap SEC(".maps");
-
-// 用于设置过滤配置
-struct uprobe_stack_filter_t {
-    u32 uid;
-    u32 pid;
-    u32 tid;
-    u32 tids_blacklist_mask;
-    u32 tids_blacklist[MAX_COUNT];
-    u32 pids_blacklist_mask;
-    u32 pids_blacklist[MAX_COUNT];
-};
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u32);
-    __type(value, struct uprobe_stack_filter_t);
-    __uint(max_entries, 1);
-} uprobe_stack_filter SEC(".maps");
-
-SEC("uprobe/stack")
-int probe_stack(struct pt_regs* ctx) {
-    u32 filter_key = 0;
-    struct uprobe_stack_filter_t* filter = bpf_map_lookup_elem(&uprobe_stack_filter, &filter_key);
-    if (filter == NULL) {
-        return 0;
-    }
-
-    // 获取信息用于过滤
-    u32 uid = bpf_get_current_uid_gid() & 0xffffffff;
-    u64 current_pid_tgid = bpf_get_current_pid_tgid();
-    u32 pid = current_pid_tgid >> 32;
-    u32 tid = current_pid_tgid & 0xffffffff;
-    // uid 过滤
-    if (filter->uid != MAGIC_UID && filter->uid != uid) {
-        return 0;
-    }
-    // pid 过滤
-    if (filter->pid != MAGIC_PID && filter->pid != pid) {
-        return 0;
-    }
-    // tid 过滤
-    if (filter->tid != MAGIC_TID && filter->tid != tid) {
-        return 0;
-    }
-
-    // tid 黑名单过滤
-    #pragma unroll
-    for (int i = 0; i < MAX_COUNT; i++) {
-        if ((filter->tids_blacklist_mask & (1 << i))) {
-            if (filter->tids_blacklist[i] == tid) {
-                return 0;
-            }
-        } else {
-            break;
-        }
-    }
-    // pid 黑名单过滤
-    #pragma unroll
-    for (int i = 0; i < MAX_COUNT; i++) {
-        if ((filter->pids_blacklist_mask & (1 << i))) {
-            if (filter->pids_blacklist[i] == tid) {
-                return 0;
-            }
-        } else {
-            break;
-        }
-    }
-
-    u32 zero = 0;
-    struct uprobe_stack_event_t* event = bpf_map_lookup_elem(&uprobe_stack_event_heap, &zero);
-    if (event == NULL) {
-        return 0;
-    }
-
-    event->pid = pid;
-    event->tid = tid;
-    event->timestamp_ns = bpf_ktime_get_ns();
-
-    bpf_get_current_comm(&event->comm, sizeof(event->comm));
-
-    long status = bpf_perf_event_output(ctx, &stack_events, BPF_F_CURRENT_CPU, event, sizeof(struct uprobe_stack_event_t));
-
-    #ifdef DEBUG_PRINT
-    if (status != 0) {
-        char perf_msg_fmt[] = "bpf_perf_event_output, uid:%d pid:%d tid:%d status:%d\n";
-        bpf_trace_printk(perf_msg_fmt, sizeof(perf_msg_fmt), uid, pid, tid, status);
-    }
-    #endif
-
-    return 0;
-}
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u32);
-    __type(value, u32);
-    __uint(max_entries, MAX_WATCH_PROC_COUNT);
-} watch_proc_map SEC(".maps");
-
-// raw_tracepoint hook
-
-struct {
-    __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
-} syscall_events SEC(".maps");
-
+#define MAX_POINT_ARG_COUNT 6
 
 typedef struct point_arg_t {
     u32 read_flag;
@@ -147,7 +22,15 @@ typedef struct point_arg_t {
 	s32 item_countindex;
 } point_arg;
 
-#define MAX_POINT_ARG_COUNT 6
+// syscall过滤配置
+struct syscall_filter_t {
+    u32 is_32bit;
+    u32 syscall_all;
+    u32 syscall_mask;
+    u32 syscall[MAX_COUNT];
+    u32 syscall_blacklist_mask;
+    u32 syscall_blacklist[MAX_COUNT];
+};
 
 typedef struct syscall_point_args_t {
     // u32 nr;
@@ -155,6 +38,13 @@ typedef struct syscall_point_args_t {
     point_arg point_args[MAX_POINT_ARG_COUNT];
     point_arg point_arg_ret;
 } syscall_point_args;
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, u32);
+    __type(value, u32);
+    __uint(max_entries, MAX_WATCH_PROC_COUNT);
+} watch_proc_map SEC(".maps");
 
 // syscall_point_args_map 的 key 就是 nr
 struct {
@@ -164,26 +54,38 @@ struct {
     __uint(max_entries, 512);
 } syscall_point_args_map SEC(".maps");
 
-// syscall过滤配置
-struct syscall_filter_t {
-    u32 is_32bit;
-    u32 syscall_all;
-    // u32 tids_blacklist_mask;
-    // u32 tids_blacklist[MAX_COUNT];
-    // u32 pids_blacklist_mask;
-    // u32 pids_blacklist[MAX_COUNT];
-    u32 syscall_mask;
-    u32 syscall[MAX_COUNT];
-    u32 syscall_blacklist_mask;
-    u32 syscall_blacklist[MAX_COUNT];
-};
-
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
     __type(key, u32);
     __type(value, struct syscall_filter_t);
     __uint(max_entries, 1);
 } syscall_filter SEC(".maps");
+
+typedef struct uprobe_point_args_t {
+    u32 count;
+    point_arg point_args[MAX_POINT_ARG_COUNT];
+} uprobe_point_args;
+
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, u32);
+    __type(value, struct uprobe_point_args_t);
+    __uint(max_entries, 512);
+} uprobe_point_args_map SEC(".maps");
+
+SEC("uprobe/stack")
+int probe_stack(struct pt_regs* ctx) {
+
+    program_data_t p = {};
+    if (!init_program_data(&p, ctx))
+        return 0;
+
+    if (!should_trace(&p))
+        return 0;
+    // 后续加入读取参数的功能
+    events_perf_submit(&p, UPROBE_ENTER);
+    return 0;
+}
 
 static __always_inline u32 save_bytes_with_len(program_data_t p, u64 ptr, u32 read_len, u32 next_arg_index) {
     if (read_len > MAX_BUF_READ_SIZE) {

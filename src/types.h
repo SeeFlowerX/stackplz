@@ -34,7 +34,8 @@ enum filter_mode_e
 enum event_id_e
 {
     SYSCALL_ENTER = 456,
-    SYSCALL_EXIT
+    SYSCALL_EXIT,
+    UPROBE_ENTER
 };
 
 enum arg_type_e

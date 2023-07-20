@@ -1,36 +1,27 @@
 package event
 
 import (
-	"bytes"
-	"errors"
-	"fmt"
-	"stackplz/pkg/util"
-	"stackplz/user/config"
+    "bytes"
+    "errors"
+    "fmt"
+    "stackplz/pkg/util"
+    "stackplz/user/config"
 
-	"github.com/cilium/ebpf/perf"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
-)
-
-type EventType uint8
-
-const (
-    EventTypeSoInfoData = iota
-    EventTypeComm
-    EventTypeSysCallData
-    EventTypeModuleData
+    "github.com/cilium/ebpf/perf"
+    "github.com/sirupsen/logrus"
+    "golang.org/x/sys/unix"
 )
 
 const (
     SYSCALL_ENTER uint32 = iota + 456
     SYSCALL_EXIT
+    UPROBE_ENTER
 )
 
 type IEventStruct interface {
     Decode() (err error)
     String() string
     Clone() IEventStruct
-    EventType() EventType
     GetUUID() string
     RecordType() uint32
     GetEventId() uint32
@@ -75,11 +66,6 @@ func (this *CommonEvent) GetUUID() string {
 
 func (this *CommonEvent) GetEventId() uint32 {
     panic("CommonEvent.GetEventId() not implemented yet")
-}
-
-func (this *CommonEvent) EventType() EventType {
-    // panic("CommonEvent.EventType() not implemented yet")
-    return EventTypeComm
 }
 
 func (this *CommonEvent) Clone() IEventStruct {
@@ -153,6 +139,13 @@ func (this *CommonEvent) NewSyscallEvent(event IEventStruct) IEventStruct {
     }
     return p.NewSyscallEvent()
 }
+func (this *CommonEvent) NewUprobeEvent(event IEventStruct) IEventStruct {
+    p, ok := (event).(*ContextEvent)
+    if !ok {
+        panic("CommonEvent.NewUprobeEvent() cast to ContextEvent failed")
+    }
+    return p.NewUprobeEvent()
+}
 
 func (this *CommonEvent) RecordType() uint32 {
     return this.rec.RecordType
@@ -200,11 +193,15 @@ func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
                 {
                     event = this.NewSyscallEvent(event)
                 }
+            case UPROBE_ENTER:
+                {
+                    event = this.NewUprobeEvent(event)
+                }
             default:
                 {
                     event = this
-                    this.logger.Printf("CommonEvent.ToChildEvent() unsupported EventId:%d\n", EventId)
-                    this.logger.Printf("CommonEvent.ToChildEvent() PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
+                    this.logger.Printf("CommonEvent.ParseEvent() unsupported EventId:%d\n", EventId)
+                    this.logger.Printf("CommonEvent.ParseEvent() PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
                     return nil, errors.New(fmt.Sprintf("PERF_RECORD_SAMPLE EventId is %d", EventId))
                 }
             }

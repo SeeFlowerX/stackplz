@@ -29,6 +29,16 @@ func (this *ContextEvent) NewSyscallEvent() IEventStruct {
     return event
 }
 
+func (this *ContextEvent) NewUprobeEvent() IEventStruct {
+    event := &UprobeEvent{ContextEvent: *this}
+    // UprobeEvent 目前没有传额外的内容 暂时不需要 ParseContext
+    // err := event.ParseContext()
+    // if err != nil {
+    //     panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+    // }
+    return event
+}
+
 func (this *ContextEvent) Decode() (err error) {
     return nil
 }

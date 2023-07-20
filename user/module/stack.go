@@ -51,36 +51,6 @@ func (this *MStack) setupManager() error {
     maps := []*manager.Map{}
     probes := []*manager.Probe{}
 
-    // soinfo hook 配置
-    // vmainfo_kprobe := &manager.Probe{
-    //     Section:          "kretprobe/perf_event_mmap_output",
-    //     EbpfFuncName:     "trace_perf_event_mmap_output",
-    //     AttachToFuncName: "perf_event_mmap",
-    // }
-    // vmainfo_kretprobe := &manager.Probe{
-    //     Section:          "kretprobe/do_mmap",
-    //     EbpfFuncName:     "trace_ret_do_mmap",
-    //     AttachToFuncName: "do_mmap",
-    // }
-    // common_events_map := &manager.Map{
-    //     Name: "events",
-    // }
-    // soinfo hook 配置
-    // soinfo_probe := &manager.Probe{
-    //     Section:          "uprobe/soinfo",
-    //     EbpfFuncName:     "probe_soinfo",
-    //     AttachToFuncName: "__dl__ZN6soinfo17call_constructorsEv",
-    //     BinaryPath:       "/apex/com.android.runtime/bin/linker64",
-    //     UprobeOffset:     0,
-    // }
-    // soinfo_events_map := &manager.Map{
-    //     Name: "soinfo_events",
-    // }
-    // 不管是 stack 还是 syscall 都需要用到 soinfo
-    // probes = append(probes, vmainfo_kprobe)
-    // probes = append(probes, vmainfo_kretprobe)
-    // maps = append(maps, common_events_map)
-
     // stack hook 配置
     stack_probe := &manager.Probe{
         Section:          "uprobe/stack",
@@ -90,9 +60,6 @@ func (this *MStack) setupManager() error {
         UprobeOffset:     this.mconf.StackUprobeConf.Offset,
         // 这样每个hook点都使用独立的程序
         // UID: util.RandStringBytes(8),
-    }
-    stack_events_map := &manager.Map{
-        Name: "stack_events",
     }
 
     // syscall hook 配置
@@ -107,13 +74,13 @@ func (this *MStack) setupManager() error {
     events_map := &manager.Map{
         Name: "events",
     }
+    maps = append(maps, events_map)
 
     if this.mconf.StackUprobeConf.IsEnable() {
         if this.mconf.Debug {
             this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.mconf.StackUprobeConf.Symbol, this.mconf.StackUprobeConf.Library, this.mconf.StackUprobeConf.Offset)
         }
         probes = append(probes, stack_probe)
-        maps = append(maps, stack_events_map)
     }
 
     if this.mconf.SysCallConf.IsEnable() {
@@ -122,7 +89,6 @@ func (this *MStack) setupManager() error {
         }
         probes = append(probes, sys_enter_probe)
         probes = append(probes, sys_exit_probe)
-        maps = append(maps, events_map)
     }
 
     this.bpfManager = &manager.Manager{
@@ -250,18 +216,7 @@ func (this *MStack) updateFilter() (err error) {
 
     // uprobe hook stack 的过滤配置更新
     if this.mconf.StackUprobeConf.IsEnable() {
-        uprobe_stack_filter, err := this.FindMap("uprobe_stack_filter")
-        if err != nil {
-            return err
-        }
-        filter := this.mconf.GetUprobeStackFilter()
-        err = uprobe_stack_filter.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-        if this.sconf.Debug {
-            this.logger.Printf("hook for stack, update uprobe_stack_filter success")
-        }
+        // 这里后续设置参数读取配置
     }
 
     // raw syscall hook 的过滤配置更新
@@ -303,23 +258,18 @@ func (this *MStack) initDecodeFun() error {
     commonEvent := &event.CommonEvent{}
     this.eventFuncMaps[CommonEventsMap] = commonEvent
 
+    EventsMap, err := this.FindMap("events")
+    if err != nil {
+        return err
+    }
+    this.eventMaps = append(this.eventMaps, EventsMap)
     // 根据设置添加 map 不然即使不使用的map也会创建缓冲区
     if this.mconf.StackUprobeConf.IsEnable() {
-        StackEventsMap, err := this.FindMap("stack_events")
-        if err != nil {
-            return err
-        }
-        this.eventMaps = append(this.eventMaps, StackEventsMap)
-        uprobestackEvent := &event.UprobeStackEvent{}
-        this.eventFuncMaps[StackEventsMap] = uprobestackEvent
+        uprobestackEvent := &event.UprobeEvent{}
+        this.eventFuncMaps[EventsMap] = uprobestackEvent
     }
 
     if this.mconf.SysCallConf.IsEnable() {
-        EventsMap, err := this.FindMap("events")
-        if err != nil {
-            return err
-        }
-        this.eventMaps = append(this.eventMaps, EventsMap)
         syscallEvent := &event.SyscallEvent{}
         this.eventFuncMaps[EventsMap] = syscallEvent
     }
@@ -351,10 +301,10 @@ func (this *MStack) DecodeFun(em *ebpf.Map) (event.IEventStruct, bool) {
 //     // 事件类型指定为 EventTypeModuleData 直接使用当前方法处理
 //     // 如果需要多处联动收集信息 比如做统计之类的 那么使用 EventTypeEventProcessor 类型 并设计处理模式更合理
 
-//     e.(*event.UprobeStackEvent).RegName = this.sconf.RegName
-//     e.(*event.UprobeStackEvent).ShowRegs = this.sconf.ShowRegs
-//     e.(*event.UprobeStackEvent).UnwindStack = this.sconf.UnwindStack
-//     this.logger.Println(e.(*event.UprobeStackEvent).String())
+//     e.(*event.UprobeEvent).RegName = this.sconf.RegName
+//     e.(*event.UprobeEvent).ShowRegs = this.sconf.ShowRegs
+//     e.(*event.UprobeEvent).UnwindStack = this.sconf.UnwindStack
+//     this.logger.Println(e.(*event.UprobeEvent).String())
 // }
 
 func init() {

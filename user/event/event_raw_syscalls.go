@@ -37,7 +37,6 @@ func (this *Timespec) String() string {
 type SyscallEvent struct {
     ContextEvent
     WaitExit     bool
-    event_type   EventType
     UUID         string
     Stackinfo    string
     RegsBuffer   RegsBuf
@@ -892,12 +891,7 @@ func (this *SyscallEvent) ParsePC() (string, error) {
 //     return string(regs_info)
 // }
 
-func (this *SyscallEvent) EventType() EventType {
-    return this.event_type
-}
-
 func (this *SyscallEvent) Clone() IEventStruct {
     event := new(SyscallEvent)
-    event.event_type = EventTypeSysCallData
     return event
 }

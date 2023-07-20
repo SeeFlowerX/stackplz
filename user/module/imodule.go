@@ -335,19 +335,6 @@ func (this *Module) PrePare(em *ebpf.Map, rec perf.Record) (event event.IEventSt
     return te, nil
 }
 
-// 写入数据，或者上传到远程数据库，写入到其他chan 等。
-// func (this *Module) Dispatcher(e event.IEventStruct) {
-//     switch e.EventType() {
-//     case event.EventTypeModuleData:
-//         // Save to cache
-//         this.child.Dispatcher(e)
-//     case event.EventTypeSoInfoData:
-//         this.logger.Println(e.(*event.CommonEvent).String())
-//     case event.EventTypeSysCallData:
-//         this.logger.Println(e.(*event.SyscallEvent).String())
-//     }
-// }
-
 func (this *Module) Close() error {
     this.logger.Printf("TotalLost => %d\n", this.TotalLost)
     if this.sconf.Debug {
