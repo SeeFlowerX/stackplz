@@ -286,15 +286,3 @@ func (this *ModuleConfig) GetConfigMap() ConfigMap {
     }
     return config
 }
-
-func (this *ModuleConfig) GetUprobeStackFilter() UprobeStackFilter {
-    filter := UprobeStackFilter{}
-    filter.uid = this.Uid
-    filter.pid = this.Pid
-    filter.tid = this.Tid
-    filter.tids_blacklist_mask = this.TidsBlacklistMask
-    filter.tids_blacklist = this.TidsBlacklist
-    filter.pids_blacklist_mask = this.PidsBlacklistMask
-    filter.pids_blacklist = this.PidsBlacklist
-    return filter
-}
