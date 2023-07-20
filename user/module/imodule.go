@@ -227,7 +227,7 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
             if IsMmapEvent {
                 record, err = rd.Read()
             } else if this.sconf.UnwindStack {
-                record, err = rd.ReadWithUnwindStack()
+                record, err = rd.ReadWithUnwindStack(this.sconf.ShowRegs)
             } else if this.sconf.ShowRegs {
                 record, err = rd.ReadWithRegs()
             } else if this.sconf.RegName != "" {

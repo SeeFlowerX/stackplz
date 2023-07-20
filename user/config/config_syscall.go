@@ -11,6 +11,32 @@ type SysCallArgs struct {
 }
 type SArgs = SysCallArgs
 
+type SPointTypes struct {
+	Count      uint32
+	ArgTypes   [MAX_POINT_ARG_COUNT]FilterArgType
+	ArgTypeRet FilterArgType
+}
+
+func (this *SysCallArgs) GetConfig() *SPointTypes {
+	var point_arg_types [MAX_POINT_ARG_COUNT]FilterArgType
+	for i := 0; i < MAX_POINT_ARG_COUNT; i++ {
+		if i+1 > len(this.Args) {
+			break
+		}
+		point_arg_types[i].ReadFlag = this.Args[i].ReadFlag
+		point_arg_types[i].ArgType = this.Args[i].ArgType
+	}
+	var point_arg_type_ret FilterArgType
+	point_arg_type_ret.ReadFlag = this.Ret.ReadFlag
+	point_arg_type_ret.ArgType = this.Ret.ArgType
+	config := &SPointTypes{
+		Count:      uint32(len(this.Args)),
+		ArgTypes:   point_arg_types,
+		ArgTypeRet: point_arg_type_ret,
+	}
+	return config
+}
+
 type Sigaction struct {
 	Sa_handler   uint64
 	Sa_sigaction uint64

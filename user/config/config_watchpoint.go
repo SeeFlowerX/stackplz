@@ -53,12 +53,6 @@ type PointArg struct {
 
 type PArg = PointArg
 
-type PointTypes struct {
-	Count      uint32
-	ArgTypes   [MAX_POINT_ARG_COUNT]FilterArgType
-	ArgTypeRet FilterArgType
-}
-
 func (this *ArgType) SetIndex(index int32) ArgType {
 	this.ItemCountIndex = index
 	return *this
@@ -105,26 +99,6 @@ func (this *PointArgs) Name() string {
 	return this.PointName
 }
 
-func (this *PointArgs) GetConfig() *PointTypes {
-	var point_arg_types [MAX_POINT_ARG_COUNT]FilterArgType
-	for i := 0; i < MAX_POINT_ARG_COUNT; i++ {
-		if i+1 > len(this.Args) {
-			break
-		}
-		point_arg_types[i].ReadFlag = this.Args[i].ReadFlag
-		point_arg_types[i].ArgType = this.Args[i].ArgType
-	}
-	var point_arg_type_ret FilterArgType
-	point_arg_type_ret.ReadFlag = this.Ret.ReadFlag
-	point_arg_type_ret.ArgType = this.Ret.ArgType
-	config := &PointTypes{
-		Count:      uint32(len(this.Args)),
-		ArgTypes:   point_arg_types,
-		ArgTypeRet: point_arg_type_ret,
-	}
-	return config
-}
-
 func NewWatchPoint(name string) IWatchPoint {
 	point := &PointArgs{}
 	point.PointName = name
@@ -152,8 +126,6 @@ func Register(p IWatchPoint) {
 			panic(fmt.Sprintf("Register called twice for nrwatchpoints %s", name))
 		}
 		nrwatchpoints[nr_point.NR] = nr_point
-	} else {
-		panic(fmt.Sprintf("Register cast [%s] point to SysCallArgs failed", p.Name()))
 	}
 }
 
