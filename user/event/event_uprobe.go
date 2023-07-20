@@ -1,8 +1,8 @@
 package event
 
-// #include <load_so.h>
-// #cgo LDFLAGS: -ldl
-import "C"
+// // #include <load_so.h>
+// // #cgo LDFLAGS: -ldl
+// import "C"
 
 import (
     "encoding/binary"
@@ -12,7 +12,6 @@ import (
     "stackplz/user/config"
     "strconv"
     "strings"
-    "unsafe"
 )
 
 type UprobeEvent struct {
@@ -33,8 +32,6 @@ func (this *UprobeEvent) Decode() (err error) {
     // }
     // this.BufferHex = util.HexDumpGreen(this.Buffer[:])
 
-    fmt.Println("lll", this.rec.Regs, this.rec.UnwindStack)
-
     if this.rec.UnwindStack {
         // 理论上应该是不需要读取这4字节 但是实测需要 原因未知
         var pad uint32
@@ -47,9 +44,7 @@ func (this *UprobeEvent) Decode() (err error) {
         }
         // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
-        stack_str := C.get_stack(C.int(this.pid), C.ulong(((1 << 33) - 1)), unsafe.Pointer(&this.UnwindBuffer))
-        // char* 转到 go 的 string
-        this.Stackinfo = C.GoString(stack_str)
+        this.Stackinfo = ParseStack(this.pid, this.UnwindBuffer)
     } else if this.rec.Regs {
         var pad uint32
         if err = binary.Read(buf, binary.LittleEndian, &pad); err != nil {
@@ -71,9 +66,9 @@ func (this *UprobeEvent) Clone() IEventStruct {
     return event
 }
 
-// func (this *UprobeEvent) GetUUID() string {
-//     return fmt.Sprintf("%d|%d|%s", this.pid, this.Tid, util.B2STrim(this.comm[:]))
-// }
+func (this *UprobeEvent) GetUUID() string {
+    return fmt.Sprintf("%d|%d|%s", this.pid, this.tid, util.B2STrim(this.comm[:]))
+}
 
 func (this *UprobeEvent) String() string {
     var s string
