@@ -19,7 +19,7 @@
 #define PATH_MAX    4096
 #define MAX_STRING_SIZE    4096       // same as PATH_MAX
 #define MAX_BYTES_ARR_SIZE    4096       // same as PATH_MAX
-#define MAX_BUF_READ_SIZE    256
+#define MAX_BUF_READ_SIZE    4096
 #define ARGS_BUF_SIZE       32000
 
 enum buf_idx_e
