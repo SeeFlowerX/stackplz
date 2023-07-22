@@ -456,7 +456,7 @@ func (this *SyscallEvent) ParseContextSysEnter() (err error) {
             continue
         }
         // 这一类参数要等执行结束后读取 这里只获取参数所对应的寄存器值就可以了
-        if point_arg.ReadFlag == config.SYS_ENTER {
+        if point_arg.ReadFlag == config.SYS_EXIT {
             results = append(results, point_arg.ArgValue)
             continue
         }
