@@ -7,7 +7,7 @@ typedef const char* (*FPTR)(int, uint64_t, void*);
 FPTR fptr = NULL;
 int has_dlopen = 0;
 
-const char* get_stack(int pid, uint64_t reg_mask, void* unwind_buf)
+const char* get_stack(char* dl_path, int pid, uint64_t reg_mask, void* unwind_buf)
 {
     // printf("[get_stack], has_dlopen:%d\n", has_dlopen);
     // fflush(stdout);
@@ -16,7 +16,7 @@ const char* get_stack(int pid, uint64_t reg_mask, void* unwind_buf)
     }
     
     void* handle;
-    char dl_path[] = "/data/local/tmp/preload_libs";
+    // char dl_path[] = "/data/local/tmp/preload_libs";
 
     char full_path[256];
     sprintf(full_path, "%s/%s", dl_path, "libbase.so");

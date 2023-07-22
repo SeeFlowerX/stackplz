@@ -8,4 +8,4 @@ struct UnwindBuf {
     uint64_t dyn_size;
 };
 
-const char* get_stack(int pid, uint64_t reg_mask, void* unwind_buf);
+const char* get_stack(char* dl_path, int pid, uint64_t reg_mask, void* unwind_buf);
