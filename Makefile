@@ -12,7 +12,7 @@ DEBUG_PRINT := -DDEBUG_PRINT
 endif
 
 .PHONY: all
-all: ebpf_stack ebpf_perf_mmap genbtf assets build
+all: ebpf_stack ebpf_syscall ebpf_perf_mmap genbtf assets build
 	@echo $(shell date)
 
 
@@ -20,7 +20,7 @@ all: ebpf_stack ebpf_perf_mmap genbtf assets build
 clean:
 	$(CMD_RM) -f user/bytecode/*.d
 	$(CMD_RM) -f user/bytecode/*.o
-	$(CMD_RM) -f assets/ebpf_probe.go
+	# $(CMD_RM) -f assets/ebpf_probe.go
 	$(CMD_RM) -f bin/stackplz
 
 .PHONY: ebpf_stack
@@ -36,9 +36,24 @@ ebpf_stack:
 	-I       external/libbpf/src \
 	-I       src \
 	-g \
-	-MD -MF user/assets/stack.d \
 	-o user/assets/stack.o \
 	src/stack.c
+
+.PHONY: ebpf_syscall
+ebpf_syscall:
+	clang \
+	-D__TARGET_ARCH_$(LINUX_ARCH) \
+	--target=bpf \
+	-c \
+	-nostdlibinc \
+	-no-canonical-prefixes \
+	-O2 \
+	$(DEBUG_PRINT)	\
+	-I       external/libbpf/src \
+	-I       src \
+	-g \
+	-o user/assets/syscall.o \
+	src/syscall.c
 
 .PHONY: ebpf_perf_mmap
 ebpf_perf_mmap:
@@ -58,8 +73,8 @@ ebpf_perf_mmap:
 
 .PHONY: genbtf
 genbtf:
-	cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf rock5b-5.10-f9d1b1529-arm64.btf rock5b-5.10-arm64_min.btf stack.o
-	cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf a12-5.10-arm64.btf a12-5.10-arm64_min.btf stack.o
+	cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf rock5b-5.10-f9d1b1529-arm64.btf rock5b-5.10-arm64_min.btf stack.o syscall.o
+	cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf a12-5.10-arm64.btf a12-5.10-arm64_min.btf stack.o syscall.o
 
 .PHONY: assets
 assets:
