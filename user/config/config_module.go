@@ -36,22 +36,25 @@ func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
             hook_point.LibPath = this.LibPath
             sym_or_off := match[1]
             hook_point.PointName = sym_or_off
-            if strings.HasPrefix(sym_or_off, "+0x") {
-                offset, err := strconv.ParseUint(strings.TrimPrefix(sym_or_off, "+0x"), 16, 32)
+            if strings.HasPrefix(sym_or_off, "0x") {
+                offset, err := strconv.ParseUint(strings.TrimPrefix(sym_or_off, "0x"), 16, 64)
                 if err != nil {
                     return errors.New(fmt.Sprintf("parse for %s failed, sym_or_off:%s err:%v", config_str, sym_or_off, err))
                 }
                 hook_point.Offset = offset
+                hook_point.Symbol = ""
             } else {
                 hook_point.Symbol = sym_or_off
             }
             off := match[2]
             if off != "" {
-                offset, err := strconv.ParseUint(off, 16, 32)
-                if err != nil {
-                    return errors.New(fmt.Sprintf("parse for %s failed, off:%s err:%v", config_str, off, err))
+                if strings.HasPrefix(off, "+0x") {
+                    offset, err := strconv.ParseUint(strings.TrimPrefix(off, "+0x"), 16, 64)
+                    if err != nil {
+                        return errors.New(fmt.Sprintf("parse for %s failed, off:%s err:%v", config_str, off, err))
+                    }
+                    hook_point.Offset = offset
                 }
-                hook_point.Offset += offset
             }
             if match[3] != "" {
                 hook_point.ArgsStr = match[3][1 : len(match[3])-1]

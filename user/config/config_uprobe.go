@@ -3,11 +3,12 @@ package config
 import "fmt"
 
 type UprobeArgs struct {
-	Index   uint32
-	LibPath string
-	Symbol  string
-	Offset  uint64
-	ArgsStr string
+	Index     uint32
+	LibPath   string
+	Symbol    string
+	SymOffset uint64
+	Offset    uint64
+	ArgsStr   string
 	PointArgs
 }
 
@@ -33,7 +34,11 @@ func (this *UprobeArgs) GetConfig() *UPointTypes {
 }
 
 func (this *UprobeArgs) String() string {
-	return fmt.Sprintf("[%s]sym:%s off:0x%x %s", this.LibPath, this.Symbol, this.Offset, this.ArgsStr)
+	if this.Symbol == "" {
+		return fmt.Sprintf("[%s + 0x%x] %s", this.LibPath, this.Offset, this.ArgsStr)
+	} else {
+		return fmt.Sprintf("[%s]sym:%s off:0x%x %s", this.LibPath, this.Symbol, this.Offset, this.ArgsStr)
+	}
 }
 
 type UArgs = UprobeArgs

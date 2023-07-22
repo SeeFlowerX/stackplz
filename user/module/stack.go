@@ -64,19 +64,26 @@ func (this *MStack) setupManager() error {
     for i, uprobe_point := range this.mconf.StackUprobeConf.Points {
         // stack hook 配置
         sym := uprobe_point.Symbol
+        var stack_probe *manager.Probe
         if sym == "" {
             sym = util.RandStringBytes(8)
-        }
-        stack_probe := &manager.Probe{
-            // Section:      "uprobe/stack",
-            // EbpfFuncName: "probe_stack",
-            Section:          fmt.Sprintf("uprobe/stack_%d", i),
-            EbpfFuncName:     fmt.Sprintf("probe_stack_%d", i),
-            AttachToFuncName: sym,
-            BinaryPath:       uprobe_point.LibPath,
-            UprobeOffset:     uprobe_point.Offset,
-            // 这样每个hook点都使用独立的程序
-            // UID: util.RandStringBytes(8),
+            stack_probe = &manager.Probe{
+                Section:          fmt.Sprintf("uprobe/stack_%d", i),
+                EbpfFuncName:     fmt.Sprintf("probe_stack_%d", i),
+                AttachToFuncName: sym,
+                BinaryPath:       uprobe_point.LibPath,
+                // 这个是相对于库文件基址的偏移
+                UAddress: uprobe_point.Offset,
+            }
+        } else {
+            stack_probe = &manager.Probe{
+                Section:          fmt.Sprintf("uprobe/stack_%d", i),
+                EbpfFuncName:     fmt.Sprintf("probe_stack_%d", i),
+                AttachToFuncName: sym,
+                BinaryPath:       uprobe_point.LibPath,
+                // 这个是相对于符号的偏移
+                UprobeOffset: uprobe_point.Offset,
+            }
         }
         if this.mconf.Debug {
             this.logger.Printf("uprobe uprobe_index:%d hook %s", i, uprobe_point.String())
