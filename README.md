@@ -4,18 +4,20 @@ stackplz是一款基于eBPF的堆栈追踪工具，本项目主要参考以下�
 
 - [eCapture(旁观者)](https://github.com/ehids/ecapture)
 - [定制bcc/ebpf在android平台上实现基于dwarf的用户态栈回溯](https://bbs.pediy.com/thread-274546.htm)
+- [Tracee](https://github.com/aquasecurity/tracee)
 
 特性：
 
 - 对原进程影响极小
-- 详细的堆栈信息
+- 详细的参数和堆栈信息
+- 支持所有arm64 syscall追踪和参数打印，包括详细的结构体信息
 
 # 要求
 
 - 手机有root权限
 - 内核大于等于5.10，可使用`uname -r`查看自己手机的内核信息
 - Android 12以及之后的系统版本
-- 仅支持对64位库进行hook
+- 仅支持对64位进制进行hook
 
 ![](./images/Snipaste_2022-11-09_14-26-47.png)
 
@@ -45,45 +47,53 @@ chmod +x /data/local/tmp/stackplz
 **追踪syscall**
 
 ```bash
-./stackplz -n com.starbucks.cn --syscall openat --getpc -o tmp.log
+./stackplz -n com.starbucks.cn --syscall connect,sendto,recvfrom -o tmp.log --dumphex
 ```
 
-![](./images/Snipaste_2023-03-14_09-52-09.png)
+![](./images/Snipaste_2023-07-22_21-17-17.png)
 
 **追踪libc的open**
 
 注：默认设定的库是`/apex/com.android.runtime/lib64/bionic/libc.so`，要自定义请使用`--library`指定
 
 ```bash
-./stackplz -n com.starbucks.cn --stack --symbol open -o tmp.log
+./stackplz -n com.starbucks.cn --point strstr[str,str] --point open[str,int] -o tmp.log         
 ```
 
-![](./images/Snipaste_2022-11-13_14-10-18.png)
+![](./images/Snipaste_2023-07-22_21-21-33.png)
 
 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook
 
 ```bash
-./stackplz --name com.sfx.ebpf --library libnative-lib.so --symbol _Z5func1v --stack
+./stackplz --name com.sfx.ebpf --library libnative-lib.so --point _Z5func1v --stack
 ```
 
 ![](./images/Snipaste_2022-11-13_14-11-03.png)
 
-注意事项：
+使用提示：
 
-- 必须提供包名或者目标的uid，二选一
+- 可以用`--name`指定包名，用`--uid`指定进程所属uid，用`--pid`指定进程
 - 默认hook的库是`/apex/com.android.runtime/lib64/bionic/libc.so`，可以只提供符号进行hook
 - hook目标加载的库时，默认在对应的库目录搜索，所以可以直接指定库名而不需要完整路径
     - 例如 `/data/app/~~t-iSPdaqQLZBOa9bm4keLA==/com.sfx.ebpf-C_ceI-EXetM4Ma7GVPORow==/lib/arm64`
 - 如果要hook的库无法被自动检索到，请提供在内存中加载的完整路径
     - 最准确的做法是当程序运行时，查看程序的`/proc/{pid}/maps`内容，这里的路径是啥就是啥
-- 批量hook请记得把配置文件推送到程序运行的同一目录
+- hook动态库请使用`--point`，可设置多个，语法是{符号/基址偏移}{+符号偏移}{[参数类型,参数类型...]}
+    - --point _Z5func1v
+    - --point strstr[str,str] --point open[str,int]
+    - --point write[int,hex:64]
+    - --point 0x9542c[str,str]
+    - --point strstr+0x4[str,str]
+- hook syscall需要指定`--syscall`选项，多个syscall请使用`,`隔开
+    - --syscall openat
+- 特别的，指定为`all`表示追踪全部syscall
+    - --syscall all
+- `--dumphex`表示将数据打印为hexdump，否则将记录为ascii+hex的形式
+- 输出到日志文件添加`-o/--out tmp.log`，只输出到日志，不输出到终端再加一个`--quiet`即可
 
-查看更多帮助信息使用如下命令：
+进程/线程黑白名单等更多功能，请查看帮助功能：
 
 - `/data/local/tmp/stackplz -h`
-- `/data/local/tmp/stackplz stack -h`
-
-输出到日志文件添加`-o/--out tmp.log`，只输出到日志，不输出到终端再加一个`--quiet`即可
 
 # 编译
 
@@ -157,7 +167,7 @@ adb push bin/stackplz /data/local/tmp
 
 # Q & A
 
-1. 使用时手机卡住并重启怎么办？
+1. 使用时手机卡住并重启怎么办？（5.10+内核的手机一般不会）
 
 经过分析，出现这种情况是因为`bpf_perf_event_output`参数三使用的是`BPF_F_CURRENT_CPU`导致
 
@@ -181,7 +191,7 @@ adb push bin/stackplz /data/local/tmp
 
 经过测试，使用`Pixel 6`，完全停止`starbucks`后，对其全部syscall调用进行追踪，大概需要设置为`120M`
 
-当然每个手机体质不一样，这个数不一定准确，需要自行测试调整
+当然每个手机体质不一样，这个数不一定准确，需要自行测试调整，目前2.0.0已经做了优化，默认一般是够了的
 
 命令示意如下：
 
@@ -232,54 +242,23 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 针对syscall追踪并获取参数单独开了一个项目，整体结构更简单，没有interface，有兴趣请移步[estrace](https://github.com/SeeFlowerX/estrace)
 
+`estrace`的全部功能已经在stackplz中实现，不日将存档
+
 # NEXT
 
 后续功能开发：
 
 - 更合理的获取maps的方案，缓存机制，有变化时再获取
-- 提供选项区分hook类型，而不是拆成两个子命令，简化代码
-- 为高版本内核提供读取数据内存并输出hex、字符串参数等功能
-- 批量hook使用新的配置文件，更细化控制
-- 为特定syscall的参数提供过滤功能，当然这是高版本内核才有的
-- pid、tid等选项的黑名单+白名单过滤支持
+- 为syscall增加调用栈信息
+- 提供选项区分hook类型，而不是拆成两个子命令，简化代码（2023/07/22）
+- 为高版本内核提供读取数据内存并输出hex、字符串参数等功能（2023/07/22）
+- pid、tid等选项的黑名单+白名单过滤支持（2023/07/22）
 
 性价比真机推荐Redmi Note 11T Pro（理由：价格亲民、内核开源、内核版本5.10.66、可解锁
 
 ---
 
-**下一版命令设计：**
-
-`libtest.so + 0x1AB` => `stack` + `lr offset`
-
-`syscall openat` => `pc offset` + `lr offset`
-
-> ./stackplz -l libtest.so -f 0x1AB --syscall openat --stack elf --pc sys --lr elf,sys -o tmp.log
-
-`syscall openat` => `pc offset`
-
-> ./stackplz --syscall openat --pc elf -o tmp.log
-
-`libc recvfrom symbol` => `lr offset`
-
-> ./stackplz -l libc.so -s recvfrom --lr elf -o tmp.log
-
-`use remote http://192.168.2.13/config.json`
-
-> ./stackplz --config 192.168.2.13 -o tmp.log
-
-`dump target register memory`
-
-> ./stackplz -l libtest.so -f 0x1AB --dumphex x0,x1 --dumplen 32
-
----
-
-```bash
-./stackplz --name com.starbucks.cn --syscall newfstatat -o tmp.log --debug
-./stackplz --name com.starbucks.cn --syscall execve -o tmp.log
-./stackplz --name com.sfx.ebpf --syscall mmap -o tmp.log
-./stackplz --pid 26857 --syscall execveat -o tmp.log
-./stackplz --name com.starbucks.cn --syscall all -o tmp.log
-```
+不用管这些
 
 ```bash
 tar -xvf user/assets/a12-5.10-arm64.btf.tar.xz -C user/assets/
