@@ -35,6 +35,8 @@ type SConfig struct {
 	Quiet       bool
 	Is32Bit     bool
 	Buffer      uint32
+	Color       bool
+	DumpHex     bool
 	logger      *logrus.Logger
 }
 

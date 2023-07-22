@@ -21,15 +21,12 @@ type GlobalConfig struct {
     LogFile          string
     DataDir          string
     LibraryDirs      []string
+    HookPoint        []string
     Library          string
-    Symbol           string
-    Offset           uint64
     RegName          string
-    DumpHex          string
-    DumpLen          uint32
+    DumpHex          bool
     SysCall          string
     SysCallBlacklist string
-    Config           string
     CanReadUser      bool
 }
 

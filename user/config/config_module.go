@@ -4,6 +4,7 @@ import (
     "errors"
     "fmt"
     "os"
+    "regexp"
     "stackplz/pkg/util"
     "strconv"
     "strings"
@@ -14,40 +15,107 @@ import (
 
 type StackUprobeConfig struct {
     LibName string
-    Library string
-    Symbol  string
-    Offset  uint64
+    LibPath string
+    Points  []UprobeArgs
 }
 
 func (this *StackUprobeConfig) IsEnable() bool {
-    if this.Symbol == "" && this.Offset == 0 {
-        return false
+    return len(this.Points) > 0
+}
+
+func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
+    // strstr+0x0[str,str] write[int,hex:128,int]
+    for point_index, config_str := range configs {
+        reg := regexp.MustCompile(`(\w+)(\+0x[[:xdigit:]]+)?(\[.+?\])?`)
+        match := reg.FindStringSubmatch(config_str)
+
+        if len(match) > 0 {
+            hook_point := UprobeArgs{}
+            hook_point.Index = uint32(point_index)
+            hook_point.Offset = 0x0
+            hook_point.LibPath = this.LibPath
+            sym_or_off := match[1]
+            hook_point.PointName = sym_or_off
+            if strings.HasPrefix(sym_or_off, "+0x") {
+                offset, err := strconv.ParseUint(strings.TrimPrefix(sym_or_off, "+0x"), 16, 32)
+                if err != nil {
+                    return errors.New(fmt.Sprintf("parse for %s failed, sym_or_off:%s err:%v", config_str, sym_or_off, err))
+                }
+                hook_point.Offset = offset
+            } else {
+                hook_point.Symbol = sym_or_off
+            }
+            off := match[2]
+            if off != "" {
+                offset, err := strconv.ParseUint(off, 16, 32)
+                if err != nil {
+                    return errors.New(fmt.Sprintf("parse for %s failed, off:%s err:%v", config_str, off, err))
+                }
+                hook_point.Offset += offset
+            }
+            if match[3] != "" {
+                hook_point.ArgsStr = match[3][1 : len(match[3])-1]
+                args := strings.Split(hook_point.ArgsStr, ",")
+                for arg_index, arg_str := range args {
+                    arg_name := fmt.Sprintf("arg_%d", arg_index)
+                    arg := PointArg{arg_name, UPROBE_ENTER_READ, INT, "???"}
+                    if arg_str == "str" {
+                        arg.ArgType = STRING
+                    } else if arg_str == "int" {
+                        arg.ArgType = INT
+                    } else if strings.HasPrefix(arg_str, "hex") {
+                        var read_len uint32
+                        items := strings.Split(arg_str, ":")
+                        if len(items) == 1 {
+                            read_len = 256
+                        } else if len(items) == 2 {
+                            var size uint64
+                            if strings.HasPrefix(items[1], "0x") {
+                                size, err = strconv.ParseUint(strings.TrimPrefix(items[1], "0x"), 16, 32)
+                            } else {
+                                size, err = strconv.ParseUint(items[1], 10, 32)
+                            }
+                            if err != nil {
+                                return errors.New(fmt.Sprintf("parse for %s failed, arg_str:%s", config_str, arg_str))
+                            }
+                            read_len = uint32(size)
+                        } else {
+                            return errors.New(fmt.Sprintf("parse for %s failed, arg_str:%s", config_str, arg_str))
+                        }
+                        arg.ArgType = AT(TYPE_BUFFER_T, TYPE_STRUCT, read_len)
+                    } else {
+                        return errors.New(fmt.Sprintf("parse for %s failed, arg_str:%s", config_str, arg_str))
+                    }
+                    hook_point.Args = append(hook_point.Args, arg)
+                }
+            }
+            this.Points = append(this.Points, hook_point)
+        } else {
+            return errors.New(fmt.Sprintf("parse for %s failed", config_str))
+        }
     }
-    return true
+    return nil
+}
+
+func (this *StackUprobeConfig) UpdatePointArgsMap(UprobePointArgsMap *ebpf.Map) error {
+    for _, uprobe_point := range this.Points {
+        err := UprobePointArgsMap.Update(unsafe.Pointer(&uprobe_point.Index), unsafe.Pointer(uprobe_point.GetConfig()), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
+    }
+    return nil
 }
 
 func (this *StackUprobeConfig) Check() error {
-    // 对每一个hook配置进行检查
-    // 1. 要有完整的库路径
-    // 2. 要么指定符号 要么指定偏移
-    _, err := os.Stat(this.Library)
+    if len(this.Points) == 0 {
+        return fmt.Errorf("need hook point count is 0 :(")
+    }
+    _, err := os.Stat(this.LibPath)
     if err != nil {
         return err
     }
-
-    if this.Symbol == "" && this.Offset == 0 {
-        return fmt.Errorf("need symbol or offset, Library:%s\n", this.Library)
-    }
-
-    if this.Symbol != "" && this.Offset > 0 {
-        return fmt.Errorf("just symbol or offset, not all of them\n")
-    }
-
-    // 虽然前面不允许用户同时设置offset和symbol 但是ebpf库必须要有一个symbol 于是这里随机下就好了
-    if this.Offset > 0 {
-        this.Symbol = util.RandStringBytes(8)
-    }
-    parts := strings.Split(this.Library, "/")
+    parts := strings.Split(this.LibPath, "/")
     this.LibName = parts[len(parts)-1]
     return nil
 }
@@ -56,7 +124,6 @@ type SyscallConfig struct {
     SConfig
     UnwindStack            bool
     ShowRegs               bool
-    Config                 string
     HookALL                bool
     Enable                 bool
     syscall_mask           uint32
@@ -94,7 +161,10 @@ func (this *SyscallConfig) UpdatePointArgsMap(SyscallPointArgsMap *ebpf.Map) err
         if !ok {
             panic(fmt.Sprintf("cast [%s] point to SysCallArgs failed", nr_name))
         }
-        SyscallPointArgsMap.Update(unsafe.Pointer(&nr_point.NR), unsafe.Pointer(nr_point.GetConfig()), ebpf.UpdateAny)
+        err := SyscallPointArgsMap.Update(unsafe.Pointer(&nr_point.NR), unsafe.Pointer(nr_point.GetConfig()), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
     }
     return nil
 }
@@ -188,7 +258,6 @@ type ModuleConfig struct {
     Name              string
     StackUprobeConf   StackUprobeConfig
     SysCallConf       SyscallConfig
-    Config            string
 }
 
 func NewModuleConfig() *ModuleConfig {

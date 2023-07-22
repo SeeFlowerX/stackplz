@@ -214,6 +214,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Debug = gconfig.Debug
     mconfig.Quiet = gconfig.Quiet
     mconfig.Is32Bit = gconfig.Is32Bit
+    mconfig.Color = gconfig.Color
+    mconfig.DumpHex = gconfig.DumpHex
     err = mconfig.SetTidsBlacklist(gconfig.TidsBlacklist)
     if err != nil {
         return err
@@ -223,13 +225,11 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         return err
     }
     // 这里暂时是针对 stack 命令 后续整合 syscall 要进行区分
-    mconfig.StackUprobeConf.Library, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
+    mconfig.StackUprobeConf.LibPath, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
     if err != nil {
         logger.Fatal(err)
         os.Exit(1)
     }
-    mconfig.StackUprobeConf.Symbol = gconfig.Symbol
-    mconfig.StackUprobeConf.Offset = gconfig.Offset
 
     // 处理 syscall 的命令
     if gconfig.SysCall != "" {
@@ -250,7 +250,15 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
                 return err
             }
         }
-    } else if gconfig.Symbol == "" && gconfig.Offset == 0 {
+    } else if len(gconfig.HookPoint) != 0 {
+        if len(gconfig.HookPoint) > 20 {
+            logger.Fatal("max uprobe hook point count is 20")
+        }
+        err = mconfig.StackUprobeConf.ParseConfig(gconfig.HookPoint)
+        if err != nil {
+            return err
+        }
+    } else {
         logger.Fatal("hook nothing, plz set --symbol/--library + --offset")
     }
 
@@ -559,14 +567,10 @@ func init() {
     rootCmd.PersistentFlags().StringVarP(&gconfig.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
     // 常规ELF库hook设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.Library, "library", "l", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
-    rootCmd.PersistentFlags().StringVarP(&gconfig.Symbol, "symbol", "s", "", "lib symbol")
-    rootCmd.PersistentFlags().Uint64VarP(&gconfig.Offset, "offset", "f", 0, "lib hook offset")
+    rootCmd.PersistentFlags().StringArrayVar(&gconfig.HookPoint, "point", []string{}, "hook point config, e.g. strstr+0x0[str,str] write[int,hex:128,int]")
     rootCmd.PersistentFlags().StringVar(&gconfig.RegName, "reg", "", "get the offset of reg")
-    rootCmd.PersistentFlags().StringVar(&gconfig.DumpHex, "dumphex", "", "dump target register(s) memory layout")
-    rootCmd.PersistentFlags().Uint32Var(&gconfig.DumpLen, "dumplen", 256, "dump length, max is 1024")
+    rootCmd.PersistentFlags().BoolVarP(&gconfig.DumpHex, "dumphex", "", false, "dump buffer as hex")
     // syscall hook
     rootCmd.PersistentFlags().StringVar(&gconfig.SysCall, "syscall", "", "filter syscalls")
     rootCmd.PersistentFlags().StringVar(&gconfig.SysCallBlacklist, "no-syscall", "", "syscall black list, max 20")
-    // 批量hook先放一边
-    // rootCmd.PersistentFlags().StringVar(&gconfig.Config, "config", "", "hook config file")
 }

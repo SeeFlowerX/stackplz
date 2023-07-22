@@ -15,6 +15,7 @@ const (
 	SYS_ENTER_EXIT
 	SYS_ENTER
 	SYS_EXIT
+	UPROBE_ENTER_READ
 )
 
 type ArgType struct {

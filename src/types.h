@@ -77,7 +77,8 @@ enum read_type_e
 	FORBIDDEN = 0,
 	SYS_ENTER_EXIT,
 	SYS_ENTER,
-	SYS_EXIT
+	SYS_EXIT,
+	UPROBE_ENTER_READ
 };
 
 typedef struct event_context {

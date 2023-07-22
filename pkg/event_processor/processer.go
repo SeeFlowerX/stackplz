@@ -112,8 +112,13 @@ func (this *EventProcessor) Close() error {
 	for _, worker := range this.workerQueue {
 		worker.(*eventWorker).tickerCount = MAX_TICKER_COUNT + 1
 	}
-	// 等待 0.3s
+	// 等待 0.3s 因为输出可能没有那么快结束
+	// 或者考虑在接收到结束信号后 把日志改成只输出到文件
 	time.Sleep(3 * 100 * time.Millisecond)
+	if len(this.workerQueue) > 0 {
+		this.logger.Printf("EventProcessor.Close(): workerQueue is not empty:%d, wait 1s", len(this.workerQueue))
+		time.Sleep(1 * 1000 * time.Millisecond)
+	}
 	if len(this.workerQueue) > 0 {
 		return fmt.Errorf("EventProcessor.Close(): workerQueue is not empty:%d", len(this.workerQueue))
 	}

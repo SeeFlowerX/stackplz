@@ -16,21 +16,64 @@ import (
 
 type UprobeEvent struct {
     ContextEvent
-    mconf        *config.ModuleConfig
     Stackinfo    string
     RegsBuffer   RegsBuf
     UnwindBuffer UnwindBuf
     RegName      string
     UUID         string
+    uprobe_point *config.UprobeArgs
+    probe_index  Arg_probe_index
+    lr           Arg_reg
+    sp           Arg_reg
+    pc           Arg_reg
+    arg_str      string
+}
+
+func (this *UprobeEvent) ParseContext() (err error) {
+    // this.logger.Printf("UprobeEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.probe_index); err != nil {
+        panic(fmt.Sprintf("binary.Read err:%v", err))
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
+        panic(fmt.Sprintf("binary.Read err:%v", err))
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
+        panic(fmt.Sprintf("binary.Read err:%v", err))
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
+        panic(fmt.Sprintf("binary.Read err:%v", err))
+    }
+
+    // 根据预设索引解析参数
+    if (this.probe_index.Value + 1) > uint32(len(this.mconf.StackUprobeConf.Points)) {
+        panic(fmt.Sprintf("probe_index %d bigger than points", this.probe_index.Value))
+    }
+    this.uprobe_point = &this.mconf.StackUprobeConf.Points[this.probe_index.Value]
+    var results []string
+    for _, point_arg := range this.uprobe_point.Args {
+        var ptr Arg_reg
+        if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
+        point_arg.SetValue(base_arg_str)
+        if point_arg.Type == config.TYPE_NUM {
+            results = append(results, point_arg.ArgValue)
+            continue
+        }
+        // if point_arg.ReadFlag == config.UPROBE_ENTER_READ {
+        //     results = append(results, point_arg.ArgValue)
+        //     continue
+        // }
+        this.ParseArg(&point_arg, ptr)
+        results = append(results, point_arg.ArgValue)
+    }
+    this.arg_str = "(" + strings.Join(results, ", ") + ")"
+    return nil
 }
 
 func (this *UprobeEvent) Decode() (err error) {
     buf := this.buf
-    // // 感觉输出 指定地址/寄存器 的内存视图很鸡肋 为什么不用其他工具呢 先不要了吧
-    // if err = binary.Read(buf, binary.LittleEndian, &this.Buffer); err != nil {
-    //     return
-    // }
-    // this.BufferHex = util.HexDumpGreen(this.Buffer[:])
 
     if this.rec.UnwindStack {
         // 理论上应该是不需要读取这4字节 但是实测需要 原因未知
@@ -72,7 +115,8 @@ func (this *UprobeEvent) GetUUID() string {
 
 func (this *UprobeEvent) String() string {
     var s string
-    s = fmt.Sprintf("[%s_%s]", this.GetUUID(), util.B2STrim(this.comm[:]))
+    s = fmt.Sprintf("[%s] %s%s LR:0x%x PC:0x%x SP:0x%x", this.GetUUID(), this.uprobe_point.PointName, this.arg_str, this.lr.Address, this.pc.Address, this.sp.Address)
+
     if this.RegName != "" {
         // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
         // 当然前提是取了寄存器数据

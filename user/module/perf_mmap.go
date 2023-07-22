@@ -131,6 +131,7 @@ func (this *PerfMMAP) initDecodeFun() error {
 
 	this.eventMaps = append(this.eventMaps, FakeEventsMap)
 	commonEvent := &event.CommonEvent{}
+	commonEvent.SetConf(this.mconf)
 	this.eventFuncMaps[FakeEventsMap] = commonEvent
 
 	return nil

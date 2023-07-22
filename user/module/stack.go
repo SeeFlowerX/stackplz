@@ -8,6 +8,7 @@ import (
     "math"
     "path/filepath"
     "stackplz/assets"
+    "stackplz/pkg/util"
     "stackplz/user/config"
     "stackplz/user/event"
     "unsafe"
@@ -39,7 +40,11 @@ func (this *MStack) Init(ctx context.Context, logger *logrus.Logger, conf config
     this.Module.SetChild(this)
     this.eventMaps = make([]*ebpf.Map, 0, 2)
     this.eventFuncMaps = make(map[*ebpf.Map]event.IEventStruct)
-    this.hookBpfFile = "stack.o"
+    if this.mconf.SysCallConf.Enable {
+        this.hookBpfFile = "syscall.o"
+    } else {
+        this.hookBpfFile = "stack.o"
+    }
     return nil
 }
 
@@ -51,34 +56,30 @@ func (this *MStack) setupManager() error {
     maps := []*manager.Map{}
     probes := []*manager.Probe{}
 
-    // stack hook 配置
-    stack_probe := &manager.Probe{
-        Section:          "uprobe/stack",
-        EbpfFuncName:     "probe_stack",
-        AttachToFuncName: this.mconf.StackUprobeConf.Symbol,
-        BinaryPath:       this.mconf.StackUprobeConf.Library,
-        UprobeOffset:     this.mconf.StackUprobeConf.Offset,
-        // 这样每个hook点都使用独立的程序
-        // UID: util.RandStringBytes(8),
-    }
-
-    // syscall hook 配置
-    sys_enter_probe := &manager.Probe{
-        Section:      "raw_tracepoint/sys_enter",
-        EbpfFuncName: "raw_syscalls_sys_enter",
-    }
-    sys_exit_probe := &manager.Probe{
-        Section:      "raw_tracepoint/sys_exit",
-        EbpfFuncName: "raw_syscalls_sys_exit",
-    }
     events_map := &manager.Map{
         Name: "events",
     }
     maps = append(maps, events_map)
 
-    if this.mconf.StackUprobeConf.IsEnable() {
+    for i, uprobe_point := range this.mconf.StackUprobeConf.Points {
+        // stack hook 配置
+        sym := uprobe_point.Symbol
+        if sym == "" {
+            sym = util.RandStringBytes(8)
+        }
+        stack_probe := &manager.Probe{
+            // Section:      "uprobe/stack",
+            // EbpfFuncName: "probe_stack",
+            Section:          fmt.Sprintf("uprobe/stack_%d", i),
+            EbpfFuncName:     fmt.Sprintf("probe_stack_%d", i),
+            AttachToFuncName: sym,
+            BinaryPath:       uprobe_point.LibPath,
+            UprobeOffset:     uprobe_point.Offset,
+            // 这样每个hook点都使用独立的程序
+            // UID: util.RandStringBytes(8),
+        }
         if this.mconf.Debug {
-            this.logger.Printf("Symbol:%s Library:%s Offset:0x%x", this.mconf.StackUprobeConf.Symbol, this.mconf.StackUprobeConf.Library, this.mconf.StackUprobeConf.Offset)
+            this.logger.Printf("uprobe uprobe_index:%d hook %s", i, uprobe_point.String())
         }
         probes = append(probes, stack_probe)
     }
@@ -86,6 +87,15 @@ func (this *MStack) setupManager() error {
     if this.mconf.SysCallConf.IsEnable() {
         if this.mconf.Debug {
             this.logger.Printf("Syscall:%s", this.mconf.SysCallConf.Info())
+        }
+        // syscall hook 配置
+        sys_enter_probe := &manager.Probe{
+            Section:      "raw_tracepoint/sys_enter",
+            EbpfFuncName: "raw_syscalls_sys_enter",
+        }
+        sys_exit_probe := &manager.Probe{
+            Section:      "raw_tracepoint/sys_exit",
+            EbpfFuncName: "raw_syscalls_sys_exit",
         }
         probes = append(probes, sys_enter_probe)
         probes = append(probes, sys_exit_probe)
@@ -216,7 +226,17 @@ func (this *MStack) updateFilter() (err error) {
 
     // uprobe hook stack 的过滤配置更新
     if this.mconf.StackUprobeConf.IsEnable() {
-        // 这里后续设置参数读取配置
+        uprobe_point_args_map, err := this.FindMap("uprobe_point_args_map")
+        if err != nil {
+            return err
+        }
+        err = this.mconf.StackUprobeConf.UpdatePointArgsMap(uprobe_point_args_map)
+        if err != nil {
+            return err
+        }
+        if this.sconf.Debug {
+            this.logger.Printf("update uprobe_point_args_map success")
+        }
     }
 
     // raw syscall hook 的过滤配置更新
@@ -256,6 +276,7 @@ func (this *MStack) initDecodeFun() error {
     }
     this.eventMaps = append(this.eventMaps, CommonEventsMap)
     commonEvent := &event.CommonEvent{}
+    commonEvent.SetConf(this.mconf)
     this.eventFuncMaps[CommonEventsMap] = commonEvent
 
     EventsMap, err := this.FindMap("events")
