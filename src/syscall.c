@@ -255,7 +255,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     if (filter->syscall_all == 0) {
         // syscall 白名单过滤
         bool has_find = false;
-        #pragma unroll
+        // #pragma unroll
         for (int i = 0; i < MAX_COUNT; i++) {
             if ((filter->syscall_mask & (1 << i))) {
                 if (filter->syscall[i] == (u32)syscallno) {
@@ -277,7 +277,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         }
 
         // syscall 黑名单过滤
-        #pragma unroll
+        // #pragma unroll
         for (int i = 0; i < MAX_COUNT; i++) {
             if ((filter->syscall_blacklist_mask & (1 << i))) {
                 if (filter->syscall_blacklist[i] == (u32)syscallno) {
@@ -383,7 +383,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     if (filter->syscall_all == 0) {
         // syscall 白名单过滤
         bool has_find = false;
-        #pragma unroll
+        // #pragma unroll
         for (int i = 0; i < MAX_COUNT; i++) {
             if ((filter->syscall_mask & (1 << i))) {
                 if (filter->syscall[i] == (u32)syscallno) {
@@ -405,7 +405,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         }
 
         // syscall 黑名单过滤
-        #pragma unroll
+        // #pragma unroll
         for (int i = 0; i < MAX_COUNT; i++) {
             if ((filter->syscall_blacklist_mask & (1 << i))) {
                 if (filter->syscall_blacklist[i] == (u32)syscallno) {
