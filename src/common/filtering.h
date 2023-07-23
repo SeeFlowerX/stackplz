@@ -78,6 +78,12 @@ static __always_inline u64 should_trace(program_data_t *p)
             // 这样过滤很方便 思路打开 简而言之就是不要自己维护列表 直接把 map 当列表用最方便
             // 即直接用 黑/白名单 作为key 然后 value 作为 flag 后面也可以改进 uid pid 
             u32 *flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
+            if (filter->thread_name_whitelist == 1) {
+                if (flag != NULL && *flag == 2) {
+                    return 1;
+                }
+                return 0;
+            }
             if (flag != NULL && *flag == 1) {
                 return 0;
             }
@@ -94,6 +100,12 @@ static __always_inline u64 should_trace(program_data_t *p)
                 };
             }
             u32 *flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
+            if (filter->thread_name_whitelist == 1) {
+                if (flag != NULL && *flag == 2) {
+                    return 1;
+                }
+                return 0;
+            }
             if (flag != NULL && *flag == 1) {
                 return 0;
             }
@@ -103,6 +115,12 @@ static __always_inline u64 should_trace(program_data_t *p)
     } else if (config->filter_mode == PID_TID_MODE) {
         if (filter->pid == context->pid && filter->tid == context->tid) {
             u32 *flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
+            if (filter->thread_name_whitelist == 1) {
+                if (flag != NULL && *flag == 2) {
+                    return 1;
+                }
+                return 0;
+            }
             if (flag != NULL && *flag == 1) {
                 return 0;
             }

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strings"
 	"syscall"
@@ -182,7 +183,7 @@ var ITIMERSPEC = AT(TYPE_ITIMERSPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(ItTmerspe
 var STACK_T = AT(TYPE_STACK_T, TYPE_STRUCT, uint32(unsafe.Sizeof(Stack_t{})))
 var TIMEVAL = AT(TYPE_TIMEVAL, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timeval{})))
 var TIMEZONE = AT(TYPE_TIMEZONE, TYPE_STRUCT, uint32(unsafe.Sizeof(TimeZone_t{})))
-var PTHREAD_ATTR = AT(TYPE_PTHREAD_ATTR, TYPE_STRUCT, uint32(unsafe.Sizeof(Pthread_attr_t{})))
+var PTHREAD_ATTR = AT(TYPE_PTHREAD_ATTR, TYPE_STRUCT, uint32(binary.Size(Pthread_attr_t{})))
 var BUFFER_T = AT(TYPE_BUFFER_T, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
 var READ_BUFFER_T = BUFFER_T.SetIndex(2)
 var WRITE_BUFFER_T = BUFFER_T.SetIndex(2)

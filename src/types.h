@@ -11,6 +11,7 @@ typedef struct common_filter {
     u32 pid_list[MAX_WATCH_PROC_COUNT];
     u32 blacklist_pids[MAX_COUNT];
     u32 blacklist_tids[MAX_COUNT];
+    u32 thread_name_whitelist;
 } common_filter_t;
 
 typedef struct args {

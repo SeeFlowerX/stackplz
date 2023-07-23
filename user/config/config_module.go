@@ -396,18 +396,18 @@ func (this *ModuleConfig) UpdateThreadFilter(thread_filter *ebpf.Map) (err error
             return err
         }
     }
-    // for _, v := range this.TNamesWhitelist {
-    //     if len(v) > 16 {
-    //         panic(fmt.Sprintf("[%s] thread name max len is 16", v))
-    //     }
-    //     thread_value := 2
-    //     filter := ThreadFilter{}
-    //     copy(filter.ThreadName[:], v)
-    //     err = thread_filter.Update(unsafe.Pointer(&filter), unsafe.Pointer(&thread_value), ebpf.UpdateAny)
-    //     if err != nil {
-    //         return err
-    //     }
-    // }
+    for _, v := range this.TNamesWhitelist {
+        if len(v) > 16 {
+            panic(fmt.Sprintf("[%s] thread name max len is 16", v))
+        }
+        thread_value := 2
+        filter := ThreadFilter{}
+        copy(filter.ThreadName[:], v)
+        err = thread_filter.Update(unsafe.Pointer(&filter), unsafe.Pointer(&thread_value), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
+    }
     return err
 }
 func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
@@ -426,8 +426,12 @@ func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
     for i := 0; i < MAX_COUNT; i++ {
         filter.blacklist_tids[i] = this.TidsBlacklist[i]
     }
+    filter.thread_name_whitelist = 0
+    if len(this.TNamesWhitelist) > 0 {
+        filter.thread_name_whitelist = 1
+    }
     if this.Debug {
-        this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit)
+        this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d, whitelist:%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit, filter.thread_name_whitelist)
     }
     return unsafe.Pointer(&filter)
 }
