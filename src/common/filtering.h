@@ -8,8 +8,9 @@
 static __always_inline u32 is_thread_blacklist(program_data_t *p){
     // 这些都是基本可以不关心的线程 主要原因还是太频繁了
     // 还有 Binder main
-    char thread_blacklist[9][15] = {
+    char thread_blacklist[10][15] = {
         "RenderThread",
+        "FinalizerDaemon",
         "RxCachedThreadS",
         "mali-cmar-backe",
         "mali-utility-wo",
@@ -20,7 +21,7 @@ static __always_inline u32 is_thread_blacklist(program_data_t *p){
         "NDK MediaCodec_",
     };
     // #pragma unroll
-    for (int i = 0; i < 9; i++) {
+    for (int i = 0; i < 10; i++) {
         bool need_skip = true;
         // #pragma unroll
         for (int j = 0; j < 15; j++) {
