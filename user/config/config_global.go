@@ -13,6 +13,7 @@ type GlobalConfig struct {
     GetPC            bool
     TidsBlacklist    string
     PidsBlacklist    string
+    TNamesBlacklist  string
     Debug            bool
     Quiet            bool
     AfterRead        bool

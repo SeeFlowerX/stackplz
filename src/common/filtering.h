@@ -5,39 +5,6 @@
 #include "maps.h"
 #include "types.h"
 
-static __always_inline u32 is_thread_blacklist(program_data_t *p){
-    // 这些都是基本可以不关心的线程 主要原因还是太频繁了
-    // 还有 Binder main
-    char thread_blacklist[10][15] = {
-        "RenderThread",
-        "FinalizerDaemon",
-        "RxCachedThreadS",
-        "mali-cmar-backe",
-        "mali-utility-wo",
-        "mali-mem-purge",
-        "mali-hist-dump",
-        "hwuiTask0",
-        "hwuiTask1",
-        "NDK MediaCodec_",
-    };
-    // #pragma unroll
-    for (int i = 0; i < 10; i++) {
-        bool need_skip = true;
-        // #pragma unroll
-        for (int j = 0; j < 15; j++) {
-            if (thread_blacklist[i][j] == 0) break;
-            if (p->event->context.comm[j] != thread_blacklist[i][j]) {
-                need_skip = false;
-                break;
-            }
-        }
-        if (need_skip) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
 static __always_inline u64 should_trace(program_data_t *p)
 {
 
@@ -108,13 +75,13 @@ static __always_inline u64 should_trace(program_data_t *p)
                     return 0;
                 };
             }
-            if (is_thread_blacklist(p) == 1) {
+            // 这样过滤很方便 思路打开 简而言之就是不要自己维护列表 直接把 map 当列表用最方便
+            // 即直接用 黑/白名单 作为key 然后 value 作为 flag 后面也可以改进 uid pid 
+            u32 *flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
+            if (flag != NULL && *flag == 1) {
                 return 0;
             }
-            // 线程名黑名单 通过命中关键词来确定 注意最多16字节
-            // if (filter->blacklist_comms == context->comm) {
-            //     return 0;
-            // }
+
             return 1;
         }
         return 0;
@@ -126,18 +93,19 @@ static __always_inline u64 should_trace(program_data_t *p)
                     return 0;
                 };
             }
-            if (is_thread_blacklist(p) == 1) {
+            u32 *flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
+            if (flag != NULL && *flag == 1) {
                 return 0;
             }
-            // 线程名黑名单 通过命中关键词来确定 注意最多16字节
-            // if (filter->blacklist_comms == context->comm) {
-            //     return 0;
-            // }
             return 1;
         }
         return 0;
     } else if (config->filter_mode == PID_TID_MODE) {
         if (filter->pid == context->pid && filter->tid == context->tid) {
+            u32 *flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
+            if (flag != NULL && *flag == 1) {
+                return 0;
+            }
             return 1;
         }
         return 0;

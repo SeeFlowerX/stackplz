@@ -262,6 +262,7 @@ type ModuleConfig struct {
     TidsBlacklist     [MAX_COUNT]uint32
     PidsBlacklistMask uint32
     PidsBlacklist     [MAX_COUNT]uint32
+    TNamesBlacklist   []string
     Name              string
     StackUprobeConf   StackUprobeConfig
     SysCallConf       SyscallConfig
@@ -329,7 +330,60 @@ func (this *ModuleConfig) SetPidsBlacklist(pids_blacklist string) error {
     }
     return nil
 }
+func (this *ModuleConfig) SetTNamesBlacklist(t_names_blacklist string) error {
+    if t_names_blacklist == "" {
+        return nil
+    }
+    items := strings.Split(t_names_blacklist, ",")
+    if len(items) > MAX_COUNT {
+        return fmt.Errorf("max thread name blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
+    }
+    for _, v := range items {
+        this.TNamesBlacklist = append(this.TNamesBlacklist, v)
+    }
+    return nil
+}
 
+func (this *ModuleConfig) UpdateThreadFilter(thread_filter *ebpf.Map) (err error) {
+    var thread_blacklist []string = []string{
+        "RenderThread",
+        "FinalizerDaemon",
+        "RxCachedThreadS",
+        "mali-cmar-backe",
+        "mali-utility-wo",
+        "mali-mem-purge",
+        "mali-hist-dump",
+        "hwuiTask0",
+        "hwuiTask1",
+        "NDK MediaCodec_",
+    }
+
+    for _, v := range thread_blacklist {
+        if len(v) > 16 {
+            panic(fmt.Sprintf("[%s] thread name max len is 16", v))
+        }
+        thread_value := 1
+        filter := ThreadFilter{}
+        copy(filter.ThreadName[:], v)
+        err = thread_filter.Update(unsafe.Pointer(&filter), unsafe.Pointer(&thread_value), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
+    }
+    for _, v := range this.TNamesBlacklist {
+        if len(v) > 16 {
+            panic(fmt.Sprintf("[%s] thread name max len is 16", v))
+        }
+        thread_value := 1
+        filter := ThreadFilter{}
+        copy(filter.ThreadName[:], v)
+        err = thread_filter.Update(unsafe.Pointer(&filter), unsafe.Pointer(&thread_value), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
+    }
+    return err
+}
 func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
     filter := CommonFilter{}
     filter.is_32bit = 0
@@ -346,7 +400,6 @@ func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
     for i := 0; i < MAX_COUNT; i++ {
         filter.blacklist_tids[i] = this.TidsBlacklist[i]
     }
-    filter.blacklist_comms = 0
     if this.Debug {
         this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit)
     }

@@ -230,6 +230,17 @@ func (this *MStack) updateFilter() (err error) {
     if this.sconf.Debug {
         this.logger.Printf("update common_filter success")
     }
+    thread_filter, err := this.FindMap("thread_filter")
+    if err != nil {
+        return err
+    }
+    err = this.mconf.UpdateThreadFilter(thread_filter)
+    if err != nil {
+        return err
+    }
+    if this.sconf.Debug {
+        this.logger.Printf("update thread_filter success")
+    }
 
     // uprobe hook stack 的过滤配置更新
     if this.mconf.StackUprobeConf.IsEnable() {

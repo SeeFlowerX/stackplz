@@ -119,12 +119,45 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         if (addr == 0) {
             return next_arg_index;
         }
+        u32 read_struct = 0;
         if (point_arg->alias_type == TYPE_PTHREAD_ATTR) {
+            read_struct = 1;
+        } else if (point_arg->alias_type == TYPE_IOVEC && read_count != 0) {
+            // if (read_count > 6) {
+            //     read_count = 6;
+            // }
+            // save_to_submit_buf(p.event, (void *)&read_count, sizeof(read_count), next_arg_index);
+            // next_arg_index += 1;
+            // for (int iov_index = 0; iov_index < read_count; iov_index++) {
+            //     u64 iov_addr = addr + iov_index * 8 * 2;
+            //     u64 iov_len = 0;
+            //     u64 iov_base = 0;
+            //     int errno = bpf_probe_read_user(&iov_len, sizeof(iov_len), (void*) iov_addr);
+            //     errno = bpf_probe_read_user(&iov_base, sizeof(iov_base), (void*) (iov_addr + 8));
+            //     if (errno == 0) {
+            //         save_to_submit_buf(p.event, (void *)&iov_len, sizeof(iov_len), next_arg_index);
+            //         next_arg_index += 1;
+            //         save_to_submit_buf(p.event, (void *)&iov_base, sizeof(iov_base), next_arg_index);
+            //         next_arg_index += 1;
+            //         // 目前这样只是读取了第一个 iov 实际上要多次读取 数量是 iovcnt
+            //         // 但是注意多个缓冲区并不是连续的
+            //         // u32 read_len = read_count * iov_len;
+            //         u32 read_len = iov_len;
+            //         if (read_len > MAX_BUF_READ_SIZE) {
+            //             read_len = MAX_BUF_READ_SIZE;
+            //         }
+            //         next_arg_index = save_bytes_with_len(p, iov_base, read_len, next_arg_index);
+            //         return next_arg_index;
+            //     }
+            // }
+            read_struct = 0;
+        }
+        if (read_struct == 1) {
             u32 struct_size = MAX_BYTES_ARR_SIZE;
             if (point_arg->size <= struct_size) {
                 struct_size = point_arg->size;
             }
-            bpf_printk("[uprobe] struct_size:%d addr:0x%x\n", struct_size, addr);
+            // bpf_printk("[uprobe] struct_size:%d addr:0x%x\n", struct_size, addr);
             int status = save_bytes_to_buf(p.event, (void *)(addr & 0xffffffffff), struct_size, next_arg_index);
             if (status == 0) {
                 buf_t *zero_p = get_buf(ZERO_BUF_IDX);
@@ -140,32 +173,6 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         return next_arg_index;
     }
     if (point_arg->type == TYPE_STRUCT && ptr != 0) {
-
-        // if (point_arg->alias_type == TYPE_IOVEC) {
-        //     struct iovec iovec_ptr;
-        //     int errno = bpf_probe_read_user(&iovec_ptr, sizeof(iovec_ptr), (void*) ptr);
-        //     if (errno == 0) {
-        //         save_to_submit_buf(p.event, (void *)&iovec_ptr, sizeof(iovec_ptr), next_arg_index);
-        //         next_arg_index += 1;
-        //         // 目前这样只是读取了第一个 iov 实际上要多次读取 数量是 iovcnt
-        //         // 但是注意多个缓冲区并不是连续的
-        //         u64 iov_base = (u64)iovec_ptr.iov_base;
-        //         u32 iov_len = (u64)iovec_ptr.iov_len;
-        //         // u32 read_len = read_count * iov_len;
-        //         u32 read_len = iov_len;
-        //         if (read_len > MAX_BUF_READ_SIZE) {
-        //             read_len = MAX_BUF_READ_SIZE;
-        //         }
-        //         // save_to_submit_buf(p.event, (void *)&iov_base, sizeof(iov_base), next_arg_index);
-        //         // next_arg_index += 1;
-        //         // // 注意 这里存放的大小是 u64 与结构体大小保持一致
-        //         // save_to_submit_buf(p.event, (void *)&read_len, sizeof(read_len), next_arg_index);
-        //         // next_arg_index += 1;
-        //         next_arg_index = save_bytes_with_len(p, iov_base, read_len, next_arg_index);
-        //         return next_arg_index;
-        //     }
-        // }
-
         // 结构体类型 直接读取对应大小的数据 具体转换交给前端
         u32 struct_size = MAX_BYTES_ARR_SIZE;
         if (point_arg->size <= struct_size) {
@@ -300,13 +307,13 @@ PROBE_STACK(6);
 PROBE_STACK(7);
 PROBE_STACK(8);
 PROBE_STACK(9);
-PROBE_STACK(10);
-PROBE_STACK(11);
-PROBE_STACK(12);
-PROBE_STACK(13);
-PROBE_STACK(14);
-PROBE_STACK(15);
-PROBE_STACK(16);
-PROBE_STACK(17);
-PROBE_STACK(18);
-PROBE_STACK(19);
+// PROBE_STACK(10);
+// PROBE_STACK(11);
+// PROBE_STACK(12);
+// PROBE_STACK(13);
+// PROBE_STACK(14);
+// PROBE_STACK(15);
+// PROBE_STACK(16);
+// PROBE_STACK(17);
+// PROBE_STACK(18);
+// PROBE_STACK(19);

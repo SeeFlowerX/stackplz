@@ -224,6 +224,10 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     if err != nil {
         return err
     }
+    err = mconfig.SetTNamesBlacklist(gconfig.TNamesBlacklist)
+    if err != nil {
+        return err
+    }
     // 这里暂时是针对 stack 命令 后续整合 syscall 要进行区分
     mconfig.StackUprobeConf.LibPath, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
     if err != nil {
@@ -251,8 +255,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             }
         }
     } else if len(gconfig.HookPoint) != 0 {
-        if len(gconfig.HookPoint) > 20 {
-            logger.Fatal("max uprobe hook point count is 20")
+        if len(gconfig.HookPoint) > 10 {
+            logger.Fatal("max uprobe hook point count is 10")
         }
         err = mconfig.StackUprobeConf.ParseConfig(gconfig.HookPoint)
         if err != nil {
@@ -560,6 +564,7 @@ func init() {
     // 黑白名单设定
     rootCmd.PersistentFlags().StringVar(&gconfig.TidsBlacklist, "no-tids", "", "tid black list, max 20")
     rootCmd.PersistentFlags().StringVar(&gconfig.PidsBlacklist, "no-pids", "", "pid black list, max 20")
+    rootCmd.PersistentFlags().StringVar(&gconfig.TNamesBlacklist, "no-tnames", "", "thread name black list, max 20")
     // 日志设定
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Debug, "debug", "d", false, "enable debug logging")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Quiet, "quiet", "q", false, "wont logging to terminal when used")
