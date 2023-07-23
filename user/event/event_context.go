@@ -12,16 +12,17 @@ import (
 
 type ContextEvent struct {
     CommonEvent
-    ts       uint64
-    eventid  uint32
-    host_tid uint32
-    host_pid uint32
-    tid      uint32
-    pid      uint32
-    uid      uint32
-    comm     [16]byte
-    argnum   uint8
-    padding  [7]byte
+    ts            uint64
+    eventid       uint32
+    host_tid      uint32
+    host_pid      uint32
+    tid           uint32
+    pid           uint32
+    uid           uint32
+    comm          [16]byte
+    argnum        uint8
+    padding       [7]byte
+    part_raw_size uint32
 }
 
 func (this *ContextEvent) NewSyscallEvent() IEventStruct {
@@ -58,6 +59,33 @@ func (this *ContextEvent) GetUUID() string {
 
 func (this *ContextEvent) GetEventId() uint32 {
     return this.eventid
+}
+
+type Arg_raw_size struct {
+    Index       uint8
+    PartRawSize uint32
+}
+
+func (this *ContextEvent) ParsePadding() (err error) {
+    // PERF_SAMPLE_RAW 末尾可能包含 padding 这里先把
+    // ... nr/probe_index|lr|pc|sp|args...|size_before|padding
+    var arg Arg_raw_size
+    if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+        panic(fmt.Sprintf("binary.Read err:%v", err))
+    }
+    // 处理掉 padding
+    this.part_raw_size = arg.PartRawSize
+    padding_size := 4 - (arg.PartRawSize+uint32(binary.Size(arg)))%4
+    if padding_size != 4 {
+        payload := make([]byte, padding_size)
+        if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+    }
+    // if this.mconf.Debug {
+    //     this.logger.Printf("PartRawSize:%d padding_size:%d", arg.PartRawSize, padding_size)
+    // }
+    return nil
 }
 
 func (this *ContextEvent) ParseContext() (err error) {

@@ -242,7 +242,12 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
         }
         next_arg_index = read_arg(p, point_arg, args.args[i], read_count, next_arg_index);
     }
-
+    // stackplz 的一个重要动作就是要取寄存器信息之类的
+    // 所以除了 PERF_SAMPLE_RAW 还可能会有 PERF_SAMPLE_REGS_USER PERF_SAMPLE_STACK_USER
+    // 经过实际测试 接收到的数据是结构体对齐的 但是最终对齐补了几位是无法预测的
+    // 所以最后再保存一下这部分数据的大小
+    u32 out_size = sizeof(event_context_t) + p.event->buf_off;
+    save_to_submit_buf(p.event, (void *) &out_size, sizeof(u32), next_arg_index);
     events_perf_submit(&p, UPROBE_ENTER);
     return 0;
 }

@@ -43,7 +43,6 @@ func (this *UprobeEvent) ParseContext() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-
     // 根据预设索引解析参数
     if (this.probe_index.Value + 1) > uint32(len(this.mconf.StackUprobeConf.Points)) {
         panic(fmt.Sprintf("probe_index %d bigger than points", this.probe_index.Value))
@@ -69,33 +68,41 @@ func (this *UprobeEvent) ParseContext() (err error) {
         results = append(results, point_arg.ArgValue)
     }
     this.arg_str = "(" + strings.Join(results, ", ") + ")"
+    this.ParsePadding()
+    err = this.ParseContextStack()
+    if err != nil {
+        panic(fmt.Sprintf("ParseContextStack err:%v", err))
+        // return err
+    }
     return nil
 }
 
 func (this *UprobeEvent) Decode() (err error) {
-    buf := this.buf
+    return nil
+}
 
+func (this *UprobeEvent) ParseContextStack() (err error) {
     if this.rec.UnwindStack {
         // 理论上应该是不需要读取这4字节 但是实测需要 原因未知
-        var pad uint32
-        if err = binary.Read(buf, binary.LittleEndian, &pad); err != nil {
-            return
-        }
+        // var pad uint32
+        // if err = binary.Read(this.buf, binary.LittleEndian, &pad); err != nil {
+        //     panic(fmt.Sprintf("binary.Read err:%v", err))
+        // }
         // 读取完整的栈数据和寄存器数据 并解析为 UnwindBuf 结构体
-        if err = binary.Read(buf, binary.LittleEndian, &this.UnwindBuffer); err != nil {
-            return
+        if err = binary.Read(this.buf, binary.LittleEndian, &this.UnwindBuffer); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
         // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
         this.Stackinfo = ParseStack(this.pid, this.UnwindBuffer)
     } else if this.rec.Regs {
         var pad uint32
-        if err = binary.Read(buf, binary.LittleEndian, &pad); err != nil {
-            return
+        if err = binary.Read(this.buf, binary.LittleEndian, &pad); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
         // 读取寄存器数据 并解析为 RegsBuffer 结构体
-        if err = binary.Read(buf, binary.LittleEndian, &this.RegsBuffer); err != nil {
-            return
+        if err = binary.Read(this.buf, binary.LittleEndian, &this.RegsBuffer); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
         }
         this.Stackinfo = ""
     } else {

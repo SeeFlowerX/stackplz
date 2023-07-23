@@ -100,7 +100,7 @@ func (this *CommonEvent) NewCommEvent() IEventStruct {
     event := &CommEvent{CommonEvent: *this}
     err := event.ParseContext()
     if err != nil {
-        panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+        panic(fmt.Sprintf("NewCommEvent.ParseContext() err:%v", err))
     }
     return event
 }
@@ -109,7 +109,7 @@ func (this *CommonEvent) NewForkEvent() IEventStruct {
     event := &ForkEvent{CommonEvent: *this}
     err := event.ParseContext()
     if err != nil {
-        panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+        panic(fmt.Sprintf("NewForkEvent.ParseContext() err:%v", err))
     }
     return event
 }
@@ -118,7 +118,7 @@ func (this *CommonEvent) NewExitEvent() IEventStruct {
     event := &ExitEvent{CommonEvent: *this}
     err := event.ParseContext()
     if err != nil {
-        panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+        panic(fmt.Sprintf("NewExitEvent.ParseContext() err:%v", err))
     }
     return event
 }
@@ -127,7 +127,7 @@ func (this *CommonEvent) NewContextEvent() IEventStruct {
     event := &ContextEvent{CommonEvent: *this}
     err := event.ParseContext()
     if err != nil {
-        panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+        panic(fmt.Sprintf("NewContextEvent.ParseContext() err:%v", err))
     }
     return event
 }
