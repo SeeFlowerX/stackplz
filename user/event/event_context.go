@@ -150,7 +150,12 @@ func (this *ContextEvent) ParseArgByType(point_arg *config.PointArg, ptr Arg_reg
             point_arg.AppendValue("(0x0)")
             return
         }
-        point_arg.AppendValue(fmt.Sprintf("(*0x%x)%s", next_ptr.Address, this.ParseArg(point_arg, next_ptr)))
+        if point_arg.AliasType == config.TYPE_POINTER {
+            // 这种不再需要进一步解析了
+            point_arg.AppendValue(fmt.Sprintf("(0x%x)", next_ptr.Address))
+        } else {
+            point_arg.AppendValue(fmt.Sprintf("(*0x%x)%s", next_ptr.Address, this.ParseArg(point_arg, next_ptr)))
+        }
         return
     } else {
         // 这种一般就是特殊类型 获取结构体了
