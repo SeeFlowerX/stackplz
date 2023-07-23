@@ -256,6 +256,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 - uprobe现在可以同时获取参数和堆栈了（2023/07/23）
 - 线程名黑名单过滤支持，与上一步搭配非常方便（2023/07/23）
 - 线程名白名单过滤支持（2023/07/23）
+- 支持追踪fork产生的进程（2023/07/24）
 
 性价比真机推荐Redmi Note 11T Pro（理由：价格亲民、内核开源、内核版本5.10.66、可解锁
 
