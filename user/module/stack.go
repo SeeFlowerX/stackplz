@@ -61,6 +61,12 @@ func (this *MStack) setupManager() error {
     }
     maps = append(maps, events_map)
 
+    fork_probe := &manager.Probe{
+        Section:      "raw_tracepoint/sched_process_fork",
+        EbpfFuncName: "tracepoint__sched__sched_process_fork",
+    }
+    probes = append(probes, fork_probe)
+
     for i, uprobe_point := range this.mconf.StackUprobeConf.Points {
         // stack hook 配置
         sym := uprobe_point.Symbol
@@ -229,6 +235,20 @@ func (this *MStack) updateFilter() (err error) {
     }
     if this.sconf.Debug {
         this.logger.Printf("update common_filter success")
+    }
+    if this.mconf.Pid != config.MAGIC_PID {
+        // 更新 child_parent_map
+        child_parent_map, err := this.FindMap("child_parent_map")
+        if err != nil {
+            return err
+        }
+        err = child_parent_map.Update(unsafe.Pointer(&this.mconf.Pid), unsafe.Pointer(&this.mconf.Pid), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
+        if this.sconf.Debug {
+            this.logger.Printf("update child_parent_map success")
+        }
     }
     thread_filter, err := this.FindMap("thread_filter")
     if err != nil {

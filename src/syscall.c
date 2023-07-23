@@ -205,11 +205,34 @@ int tracepoint__sched__sched_process_fork(struct bpf_raw_tracepoint_args *ctx)
     // 如果没有取到则说明这个进程不是要追踪的进程
     // 取到了，则说明这个是之前产生的进程，然后向map存入进程信息 key 就是进程本身 pid 而 value则是父进程pid
     // 那么最开始的 pid 从哪里来呢 答案是从首次通过 sys_enter 的过滤之后 向该map存放第一个key value
-    // 1. parent_child_map => {}
-    // 2. 出现第一个通过 sys_enter 处的过滤的进程，则更新map -> parent_child_map => {12345: 12345}
-    // 3. sched_process_fork 获取进程的父进程信息，检查map，发现父进程存在其中，则更新map -> parent_child_map => {12345: 12345, 22222: 12345}
-    // 4. sys_enter/sys_exit 有限次遍历 parent_child_map 取出key逐个比较当前进程的pid
+    // 1. child_parent_map => {}
+    // 2. 出现第一个通过 sys_enter 处的过滤的进程，则更新map -> child_parent_map => {12345: 12345}
+    // 3. sched_process_fork 获取进程的父进程信息，检查map，发现父进程存在其中，则更新map -> child_parent_map => {12345: 12345, 22222: 12345}
+    // 4. sys_enter/sys_exit 有限次遍历 child_parent_map 取出key逐个比较当前进程的pid
     // 待实现...
+
+    u32 parent_ns_pid = get_task_ns_pid(parent);
+    u32 parent_ns_tgid = get_task_ns_tgid(parent);
+    u32 child_ns_pid = get_task_ns_pid(child);
+    u32 child_ns_tgid = get_task_ns_tgid(child);
+
+    // bpf_printk("[syscall] parent_ns_pid:%d child_ns_pid:%d\n", parent_ns_pid, child_ns_pid);
+    u32* pid = bpf_map_lookup_elem(&child_parent_map, &parent_ns_pid);
+    if (pid == NULL) {
+        return 0;
+    }
+    if (*pid == parent_ns_pid){
+        // map中取出的父进程pid 这里fork产生子进程的pid相同
+        // 说明这个进程是我们自己添加的
+        // 那么现在把新产生的这个子进程 pid 放入 map
+        ret = bpf_map_update_elem(&child_parent_map, &child_ns_pid, &parent_ns_pid, BPF_ANY);
+        // bpf_printk("[syscall] parent_ns_pid:%d child_ns_pid:%d ret:%ld\n", parent_ns_pid, child_ns_pid, ret);
+    } else {
+        // 理论上不应该走到这个分支
+        // 因为我们用当前函数这里的 parent 期望的就是其之前map中的
+        bpf_printk("[syscall] parent pid from map:%d\n", *pid);
+    }
+
     return 0;
 }
 

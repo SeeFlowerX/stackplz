@@ -111,6 +111,11 @@ static __always_inline u64 should_trace(program_data_t *p)
             }
             return 1;
         }
+        // fork 产生的情况
+        u32* pid = bpf_map_lookup_elem(&child_parent_map, &context->pid);
+        if (pid != NULL) {
+            return 1;
+        }
         return 0;
     } else if (config->filter_mode == PID_TID_MODE) {
         if (filter->pid == context->pid && filter->tid == context->tid) {
