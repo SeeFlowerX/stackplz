@@ -5,6 +5,38 @@
 #include "maps.h"
 #include "types.h"
 
+static __always_inline u32 is_thread_blacklist(program_data_t *p){
+    // 这些都是基本可以不关心的线程 主要原因还是太频繁了
+    // 还有 Binder main
+    char thread_blacklist[9][15] = {
+        "RenderThread",
+        "RxCachedThreadS",
+        "mali-cmar-backe",
+        "mali-utility-wo",
+        "mali-mem-purge",
+        "mali-hist-dump",
+        "hwuiTask0",
+        "hwuiTask1",
+        "NDK MediaCodec_",
+    };
+    // #pragma unroll
+    for (int i = 0; i < 9; i++) {
+        bool need_skip = true;
+        // #pragma unroll
+        for (int j = 0; j < 15; j++) {
+            if (thread_blacklist[i][j] == 0) break;
+            if (p->event->context.comm[j] != thread_blacklist[i][j]) {
+                need_skip = false;
+                break;
+            }
+        }
+        if (need_skip) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static __always_inline u64 should_trace(program_data_t *p)
 {
 
@@ -59,6 +91,7 @@ static __always_inline u64 should_trace(program_data_t *p)
     if (filter == NULL) {
         return 0;
     }
+
     if (config->filter_mode == UID_MODE) {
         if (filter->uid == context->uid) {
             for (int i = 0; i < MAX_COUNT; i++) {
@@ -74,6 +107,9 @@ static __always_inline u64 should_trace(program_data_t *p)
                     return 0;
                 };
             }
+            if (is_thread_blacklist(p) == 1) {
+                return 0;
+            }
             // 线程名黑名单 通过命中关键词来确定 注意最多16字节
             // if (filter->blacklist_comms == context->comm) {
             //     return 0;
@@ -88,6 +124,9 @@ static __always_inline u64 should_trace(program_data_t *p)
                 if (filter->blacklist_tids[i] == context->tid) {
                     return 0;
                 };
+            }
+            if (is_thread_blacklist(p) == 1) {
+                return 0;
             }
             // 线程名黑名单 通过命中关键词来确定 注意最多16字节
             // if (filter->blacklist_comms == context->comm) {

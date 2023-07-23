@@ -54,9 +54,9 @@ func (this *UprobeEvent) ParseContext() (err error) {
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
-        if this.mconf.Debug {
-            this.logger.Printf("[buf] len:%d cap:%d off:%d", this.buf.Len(), this.buf.Cap(), this.buf.Cap()-this.buf.Len())
-        }
+        // if this.mconf.Debug {
+        //     this.logger.Printf("[buf] len:%d cap:%d off:%d", this.buf.Len(), this.buf.Cap(), this.buf.Cap()-this.buf.Len())
+        // }
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
         point_arg.SetValue(base_arg_str)
         // if this.mconf.Debug {

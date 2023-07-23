@@ -291,35 +291,6 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         }
     }
 
-    // 线程名过滤？后面考虑有没有必要
-    // 渲染相关的线程 属实没必要 太多调用了
-    char thread_blacklist[9][15] = {
-        "RenderThread",
-        "RxCachedThreadS",
-        "mali-cmar-backe",
-        "mali-utility-wo",
-        "mali-mem-purge",
-        "mali-hist-dump",
-        "hwuiTask0",
-        "hwuiTask1",
-        "NDK MediaCodec_",
-    };
-    #pragma unroll
-    for (int i = 0; i < 9; i++) {
-        bool need_skip = true;
-        #pragma unroll
-        for (int j = 0; j < 15; j++) {
-            if (thread_blacklist[i][j] == 0) break;
-            if (p.event->context.comm[j] != thread_blacklist[i][j]) {
-                need_skip = false;
-                break;
-            }
-        }
-        if (need_skip) {
-            return 0;
-        }
-    }
-
     // event->context 已经有进程的信息了
     save_to_submit_buf(p.event, (void *) &syscallno, sizeof(u32), 0);
 
@@ -445,33 +416,6 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
                 // 减少不必要的循环
                 break;
             }
-        }
-    }
-
-    char thread_blacklist[9][15] = {
-        "RenderThread",
-        "RxCachedThreadS",
-        "mali-cmar-backe",
-        "mali-utility-wo",
-        "mali-mem-purge",
-        "mali-hist-dump",
-        "hwuiTask0",
-        "hwuiTask1",
-        "NDK MediaCodec_",
-    };
-    #pragma unroll
-    for (int i = 0; i < 9; i++) {
-        bool need_skip = true;
-        #pragma unroll
-        for (int j = 0; j < 15; j++) {
-            if (thread_blacklist[i][j] == 0) break;
-            if (p.event->context.comm[j] != thread_blacklist[i][j]) {
-                need_skip = false;
-                break;
-            }
-        }
-        if (need_skip) {
-            return 0;
         }
     }
 
