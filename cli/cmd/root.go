@@ -228,6 +228,10 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     if err != nil {
         return err
     }
+    err = mconfig.SetTNamesWhitelist(gconfig.TNamesWhitelist)
+    if err != nil {
+        return err
+    }
     // 这里暂时是针对 stack 命令 后续整合 syscall 要进行区分
     mconfig.StackUprobeConf.LibPath, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
     if err != nil {
@@ -554,6 +558,7 @@ func init() {
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Uid, "uid", "u", config.MAGIC_UID, "must set uid or package name")
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Pid, "pid", "p", config.MAGIC_PID, "add pid to filter")
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Tid, "tid", "t", config.MAGIC_TID, "add tid to filter")
+    rootCmd.PersistentFlags().StringVar(&gconfig.TNamesWhitelist, "tnames", "", "thread name white list, max 20")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定

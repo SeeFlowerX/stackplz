@@ -262,6 +262,7 @@ type ModuleConfig struct {
     TidsBlacklist     [MAX_COUNT]uint32
     PidsBlacklistMask uint32
     PidsBlacklist     [MAX_COUNT]uint32
+    TNamesWhitelist   []string
     TNamesBlacklist   []string
     Name              string
     StackUprobeConf   StackUprobeConfig
@@ -343,6 +344,19 @@ func (this *ModuleConfig) SetTNamesBlacklist(t_names_blacklist string) error {
     }
     return nil
 }
+func (this *ModuleConfig) SetTNamesWhitelist(t_names_blacklist string) error {
+    if t_names_blacklist == "" {
+        return nil
+    }
+    items := strings.Split(t_names_blacklist, ",")
+    if len(items) > MAX_COUNT {
+        return fmt.Errorf("max thread name whitelist count is %d, provided count:%d", MAX_COUNT, len(items))
+    }
+    for _, v := range items {
+        this.TNamesWhitelist = append(this.TNamesWhitelist, v)
+    }
+    return nil
+}
 
 func (this *ModuleConfig) UpdateThreadFilter(thread_filter *ebpf.Map) (err error) {
     var thread_blacklist []string = []string{
@@ -382,6 +396,18 @@ func (this *ModuleConfig) UpdateThreadFilter(thread_filter *ebpf.Map) (err error
             return err
         }
     }
+    // for _, v := range this.TNamesWhitelist {
+    //     if len(v) > 16 {
+    //         panic(fmt.Sprintf("[%s] thread name max len is 16", v))
+    //     }
+    //     thread_value := 2
+    //     filter := ThreadFilter{}
+    //     copy(filter.ThreadName[:], v)
+    //     err = thread_filter.Update(unsafe.Pointer(&filter), unsafe.Pointer(&thread_value), ebpf.UpdateAny)
+    //     if err != nil {
+    //         return err
+    //     }
+    // }
     return err
 }
 func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
