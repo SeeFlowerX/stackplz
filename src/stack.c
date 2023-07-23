@@ -92,6 +92,8 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         // 某些成员是指针 有可能有必要再深入读取
         // 这个时候可以根据 alias_type 取出对应的参数配置 然后解析保存
         // 这个后面增补
+
+        // 这是像 write 这样的函数中的 buf 参数 直接读取对应长度的数据即可
         if (point_arg->alias_type == TYPE_BUFFER_T) {
             // buffer 的单个元素长度就是 1 所以这里就是 read_count
             u32 read_len = read_count * 1;
@@ -108,39 +110,61 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
             }
             return next_arg_index;
         }
-
+        // 读取指针所指向位置的值 并且保存
         u64 addr = 0;
         bpf_probe_read_user(&addr, sizeof(addr), (void*) ptr);
         save_to_submit_buf(p.event, (void *) &addr, sizeof(u64), next_arg_index);
         next_arg_index += 1;
+        // 如果指向的是一个结构体 那么我们就再进一步把结构体数据读取出来
+        if (addr == 0) {
+            return next_arg_index;
+        }
+        if (point_arg->alias_type == TYPE_PTHREAD_ATTR) {
+            u32 struct_size = MAX_BYTES_ARR_SIZE;
+            if (point_arg->size <= struct_size) {
+                struct_size = point_arg->size;
+            }
+            bpf_printk("[uprobe] struct_size:%d addr:0x%x\n", struct_size, addr);
+            int status = save_bytes_to_buf(p.event, (void *)(addr & 0xffffffffff), struct_size, next_arg_index);
+            if (status == 0) {
+                buf_t *zero_p = get_buf(ZERO_BUF_IDX);
+                if (zero_p == NULL) {
+                    return next_arg_index;
+                }
+                save_bytes_to_buf(p.event, &zero_p->buf[0], struct_size, next_arg_index);
+                next_arg_index += 1;
+            } else {
+                next_arg_index += 1;
+            }
+        }
         return next_arg_index;
     }
     if (point_arg->type == TYPE_STRUCT && ptr != 0) {
 
-        if (point_arg->alias_type == TYPE_IOVEC) {
-            struct iovec iovec_ptr;
-            int errno = bpf_probe_read_user(&iovec_ptr, sizeof(iovec_ptr), (void*) ptr);
-            if (errno == 0) {
-                save_to_submit_buf(p.event, (void *)&iovec_ptr, sizeof(iovec_ptr), next_arg_index);
-                next_arg_index += 1;
-                // 目前这样只是读取了第一个 iov 实际上要多次读取 数量是 iovcnt
-                // 但是注意多个缓冲区并不是连续的
-                u64 iov_base = (u64)iovec_ptr.iov_base;
-                u32 iov_len = (u64)iovec_ptr.iov_len;
-                // u32 read_len = read_count * iov_len;
-                u32 read_len = iov_len;
-                if (read_len > MAX_BUF_READ_SIZE) {
-                    read_len = MAX_BUF_READ_SIZE;
-                }
-                // save_to_submit_buf(p.event, (void *)&iov_base, sizeof(iov_base), next_arg_index);
-                // next_arg_index += 1;
-                // // 注意 这里存放的大小是 u64 与结构体大小保持一致
-                // save_to_submit_buf(p.event, (void *)&read_len, sizeof(read_len), next_arg_index);
-                // next_arg_index += 1;
-                next_arg_index = save_bytes_with_len(p, iov_base, read_len, next_arg_index);
-                return next_arg_index;
-            }
-        }
+        // if (point_arg->alias_type == TYPE_IOVEC) {
+        //     struct iovec iovec_ptr;
+        //     int errno = bpf_probe_read_user(&iovec_ptr, sizeof(iovec_ptr), (void*) ptr);
+        //     if (errno == 0) {
+        //         save_to_submit_buf(p.event, (void *)&iovec_ptr, sizeof(iovec_ptr), next_arg_index);
+        //         next_arg_index += 1;
+        //         // 目前这样只是读取了第一个 iov 实际上要多次读取 数量是 iovcnt
+        //         // 但是注意多个缓冲区并不是连续的
+        //         u64 iov_base = (u64)iovec_ptr.iov_base;
+        //         u32 iov_len = (u64)iovec_ptr.iov_len;
+        //         // u32 read_len = read_count * iov_len;
+        //         u32 read_len = iov_len;
+        //         if (read_len > MAX_BUF_READ_SIZE) {
+        //             read_len = MAX_BUF_READ_SIZE;
+        //         }
+        //         // save_to_submit_buf(p.event, (void *)&iov_base, sizeof(iov_base), next_arg_index);
+        //         // next_arg_index += 1;
+        //         // // 注意 这里存放的大小是 u64 与结构体大小保持一致
+        //         // save_to_submit_buf(p.event, (void *)&read_len, sizeof(read_len), next_arg_index);
+        //         // next_arg_index += 1;
+        //         next_arg_index = save_bytes_with_len(p, iov_base, read_len, next_arg_index);
+        //         return next_arg_index;
+        //     }
+        // }
 
         // 结构体类型 直接读取对应大小的数据 具体转换交给前端
         u32 struct_size = MAX_BYTES_ARR_SIZE;

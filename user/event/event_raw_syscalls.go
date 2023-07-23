@@ -66,6 +66,13 @@ type Arg_reg struct {
     Index   uint8
     Address uint64
 }
+
+func (this *Arg_reg) Format() string {
+    var fields []string
+    fields = append(fields, fmt.Sprintf("[debug index:%d address:0x%x]", this.Index, this.Address))
+    return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
 type Arg_str struct {
     Index uint8
     Len   uint32
@@ -98,6 +105,12 @@ func (this *Arg_TimeZone_t) Format() string {
     fields = append(fields, fmt.Sprintf("tz_minuteswest=%d", this.Tz_minuteswest))
     fields = append(fields, fmt.Sprintf("tz_dsttime=%d", this.Tz_dsttime))
     return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
+type Arg_Pthread_attr_t struct {
+    Index uint8
+    Len   uint32
+    config.Pthread_attr_t
 }
 
 type Arg_Buffer_t struct {
@@ -460,7 +473,7 @@ func (this *SyscallEvent) ParseContextSysEnter() (err error) {
             results = append(results, point_arg.ArgValue)
             continue
         }
-        this.ParseArg(&point_arg, ptr)
+        this.ParseArgByType(&point_arg, ptr)
         results = append(results, point_arg.ArgValue)
     }
     // if !this.WaitExit {
@@ -498,7 +511,7 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
             results = append(results, point_arg.ArgValue)
             continue
         }
-        this.ParseArg(&point_arg, ptr)
+        this.ParseArgByType(&point_arg, ptr)
         results = append(results, point_arg.ArgValue)
     }
     // 处理返回参数
@@ -510,7 +523,7 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     base_arg_str := fmt.Sprintf("0x%x", ptr.Address)
     point_arg.SetValue(base_arg_str)
     if point_arg.Type != config.TYPE_NUM {
-        this.ParseArg(&point_arg, ptr)
+        this.ParseArgByType(&point_arg, ptr)
     }
     if len(results) == 0 {
         results = append(results, "(void)")

@@ -1,6 +1,8 @@
 package config
 
 import (
+	"fmt"
+	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -83,6 +85,37 @@ type TimeZone_t struct {
 	Tz_dsttime     int32
 }
 
+// GO 中结构体这个 padding 用 unsafe.Sizeof 会直接给你算上
+// 用 binary.Size 则直接就是对应的大小
+// 如果用 unsafe.Sizeof 这个大小去解析对应的二进制
+// 那么如果原本结构体里面没有设置好 padding 那么解析就有问题
+// 稳妥做法就是自己 补全存在 padding 的位置 注意位置不一定是结尾
+// 选 binary.Size 可以省事儿一点 潜在的问题暂时不清楚
+
+type Pthread_attr_t struct {
+	Flags          uint32
+	_              uint32
+	Stack_base     uint64
+	Stack_size     int64
+	Guard_size     int64
+	Sched_policy   int32
+	Sched_priority int32
+	// // 这个字段是 64 位才有的 暂时忽略吧...
+	// Reserved       [16]byte
+}
+
+func (this *Pthread_attr_t) Format() string {
+	var fields []string
+	// fields = append(fields, fmt.Sprintf("[debug index:%d len:%d]", this.Index, this.Len))
+	fields = append(fields, fmt.Sprintf("flags=0x%x", this.Flags))
+	fields = append(fields, fmt.Sprintf("stack_base=0x%x", this.Stack_base))
+	fields = append(fields, fmt.Sprintf("stack_size=0x%x", this.Stack_size))
+	fields = append(fields, fmt.Sprintf("guard_size=0x%x", this.Guard_size))
+	fields = append(fields, fmt.Sprintf("sched_policy=0x%x", this.Sched_policy))
+	fields = append(fields, fmt.Sprintf("sched_priority=0x%x", this.Sched_priority))
+	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
 const (
 	TYPE_NONE uint32 = iota
 	TYPE_NUM
@@ -113,6 +146,7 @@ const (
 	TYPE_STACK_T
 	TYPE_TIMEVAL
 	TYPE_TIMEZONE
+	TYPE_PTHREAD_ATTR
 	TYPE_BUFFER_T
 )
 
@@ -148,6 +182,7 @@ var ITIMERSPEC = AT(TYPE_ITIMERSPEC, TYPE_STRUCT, uint32(unsafe.Sizeof(ItTmerspe
 var STACK_T = AT(TYPE_STACK_T, TYPE_STRUCT, uint32(unsafe.Sizeof(Stack_t{})))
 var TIMEVAL = AT(TYPE_TIMEVAL, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timeval{})))
 var TIMEZONE = AT(TYPE_TIMEZONE, TYPE_STRUCT, uint32(unsafe.Sizeof(TimeZone_t{})))
+var PTHREAD_ATTR = AT(TYPE_PTHREAD_ATTR, TYPE_STRUCT, uint32(unsafe.Sizeof(Pthread_attr_t{})))
 var BUFFER_T = AT(TYPE_BUFFER_T, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
 var READ_BUFFER_T = BUFFER_T.SetIndex(2)
 var WRITE_BUFFER_T = BUFFER_T.SetIndex(2)

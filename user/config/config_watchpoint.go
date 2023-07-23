@@ -54,6 +54,14 @@ type PointArg struct {
 
 type PArg = PointArg
 
+func (this *ArgType) ToPointer() ArgType {
+	// 通常定义的都是结构体 但是某些参数实际上传递的是这个结构体的指针
+	// 那么这个时候把它转换为指针类型 在ebpf中再根据 AliasType 获取对应结构体大小的数据
+	// 最终在用户态拿到数据具体再解析
+	this.Type = TYPE_POINTER
+	return *this
+}
+
 func (this *ArgType) SetIndex(index int32) ArgType {
 	this.ItemCountIndex = index
 	return *this

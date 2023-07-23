@@ -66,6 +66,10 @@ func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
                         arg.ArgType = STRING
                     } else if arg_str == "int" {
                         arg.ArgType = INT
+                    } else if arg_str == "pattr" {
+                        arg.ArgType = PTHREAD_ATTR
+                    } else if arg_str == "pattr*" {
+                        arg.ArgType = PTHREAD_ATTR.ToPointer()
                     } else if strings.HasPrefix(arg_str, "hex") {
                         var read_len uint32
                         items := strings.Split(arg_str, ":")
