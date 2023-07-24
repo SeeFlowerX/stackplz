@@ -27,8 +27,7 @@ type SConfig struct {
 	Tid         uint32
 	UnwindStack bool
 	ShowRegs    bool
-	GetLR       bool
-	GetPC       bool
+	GetOff      bool
 	RegName     string
 	ExternalBTF string
 	Debug       bool

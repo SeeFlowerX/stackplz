@@ -54,6 +54,10 @@ func (this *EventProcessor) dispatch(e event.IEventStruct) {
 		this.logger.Printf("ParseEvent faild, err:%v", err)
 		return
 	}
+	if e == nil {
+		// 比如是自己的 mmap2 事件 直接忽略调
+		return
+	}
 	// 单就输出日志来说 下面这样做反而给人一种输出有延迟的感觉 如果没有必要就去掉这部分吧
 	var uuid string = e.GetUUID()
 	found, eWorker := this.getWorkerByUUID(uuid)
@@ -112,12 +116,12 @@ func (this *EventProcessor) Close() error {
 	for _, worker := range this.workerQueue {
 		worker.(*eventWorker).tickerCount = MAX_TICKER_COUNT + 1
 	}
-	// 等待 0.3s 因为输出可能没有那么快结束
+	// 等待 1s 因为输出可能没有那么快结束
 	// 或者考虑在接收到结束信号后 把日志改成只输出到文件
-	time.Sleep(3 * 100 * time.Millisecond)
+	time.Sleep(1 * 1000 * time.Millisecond)
 	if len(this.workerQueue) > 0 {
-		this.logger.Printf("EventProcessor.Close(): workerQueue is not empty:%d, wait 1s", len(this.workerQueue))
-		time.Sleep(1 * 1000 * time.Millisecond)
+		this.logger.Printf("EventProcessor.Close(): workerQueue is not empty:%d, wait 3s", len(this.workerQueue))
+		time.Sleep(3 * 1000 * time.Millisecond)
 	}
 	if len(this.workerQueue) > 0 {
 		return fmt.Errorf("EventProcessor.Close(): workerQueue is not empty:%d", len(this.workerQueue))

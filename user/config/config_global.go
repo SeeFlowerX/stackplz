@@ -9,8 +9,7 @@ type GlobalConfig struct {
     Color            bool
     UnwindStack      bool
     ShowRegs         bool
-    GetLR            bool
-    GetPC            bool
+    GetOff           bool
     TidsBlacklist    string
     PidsBlacklist    string
     TNamesWhitelist  string

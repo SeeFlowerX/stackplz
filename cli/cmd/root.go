@@ -207,8 +207,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Buffer = gconfig.Buffer
     mconfig.UnwindStack = gconfig.UnwindStack
     mconfig.ShowRegs = gconfig.ShowRegs
-    mconfig.GetLR = gconfig.GetLR
-    mconfig.GetPC = gconfig.GetPC
+    mconfig.GetOff = gconfig.GetOff
     mconfig.Debug = gconfig.Debug
     mconfig.Quiet = gconfig.Quiet
     mconfig.Is32Bit = gconfig.Is32Bit
@@ -562,8 +561,7 @@ func init() {
     // 堆栈输出设定
     rootCmd.PersistentFlags().BoolVar(&gconfig.UnwindStack, "stack", false, "enable unwindstack")
     rootCmd.PersistentFlags().BoolVar(&gconfig.ShowRegs, "regs", false, "show regs")
-    rootCmd.PersistentFlags().BoolVar(&gconfig.GetLR, "getlr", false, "try get lr info")
-    rootCmd.PersistentFlags().BoolVar(&gconfig.GetPC, "getpc", false, "try get pc info")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.GetOff, "getoff", false, "try get pc and lr offset")
     // 黑白名单设定
     rootCmd.PersistentFlags().StringVar(&gconfig.TidsBlacklist, "no-tids", "", "tid black list, max 20")
     rootCmd.PersistentFlags().StringVar(&gconfig.PidsBlacklist, "no-pids", "", "pid black list, max 20")

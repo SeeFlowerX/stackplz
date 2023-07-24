@@ -2,7 +2,6 @@ package event
 
 import (
     "encoding/binary"
-    "errors"
     "fmt"
     "io/ioutil"
     "net"
@@ -429,14 +428,6 @@ func (this *SyscallEvent) Decode() (err error) {
     return nil
 }
 
-func (this *SyscallEvent) ReadIndex() (error, uint32) {
-    var index uint8 = 0
-    if err := binary.Read(this.buf, binary.LittleEndian, &index); err != nil {
-        return errors.New(fmt.Sprintf("SyscallEvent.ReadIndex() failed, err:%v", err)), uint32(index)
-    }
-    return nil, uint32(index)
-}
-
 func (this *SyscallEvent) ParseContextSysEnter() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
@@ -456,7 +447,7 @@ func (this *SyscallEvent) ParseContextSysEnter() (err error) {
     this.nr_point = nr_point
     var results []string
     for _, point_arg := range this.nr_point.Args {
-        // this.logger.Printf(".... AliasType:%d %d %d", point_arg.AliasType, this.eventid, point_arg.ReadFlag)
+        // this.logger.Printf(".... AliasType:%d %d %d", point_arg.AliasType, this.EventId, point_arg.ReadFlag)
         var ptr Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))
@@ -498,8 +489,8 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     for _, point_arg := range this.nr_point.Args {
         var ptr Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-            this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
-            panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.comm[:]), err))
+            this.logger.Printf("SyscallEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
+            panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.Comm[:]), err))
         }
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
         point_arg.SetValue(base_arg_str)
@@ -555,91 +546,55 @@ func (this *SyscallEvent) WaitNextEvent() bool {
 
 func (this *SyscallEvent) ParseContext() (err error) {
     this.WaitExit = false
-    // this.logger.Printf("SyscallEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
+    // this.logger.Printf("SyscallEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
     // 处理参数 常规参数的构成 是 索引 + 值
     if err = binary.Read(this.buf, binary.LittleEndian, &this.nr); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if this.eventid == SYSCALL_ENTER {
+    if this.EventId == SYSCALL_ENTER {
         // 是否有不执行 sys_exit 的情况 ?
         // 有的调用耗时 也有可能 要不还是把执行结果分开输出吧
         // this.WaitExit = true
         this.ParseContextSysEnter()
-    } else if this.eventid == SYSCALL_EXIT {
+    } else if this.EventId == SYSCALL_EXIT {
         this.ParseContextSysExit()
     } else {
-        panic(fmt.Sprintf("SyscallEvent.ParseContext() failed, eventid:%d", this.eventid))
+        panic(fmt.Sprintf("SyscallEvent.ParseContext() failed, EventId:%d", this.EventId))
     }
 
     return nil
 }
 
 func (this *SyscallEvent) GetUUID() string {
-    return fmt.Sprintf("%d|%d|%s", this.pid, this.tid, util.B2STrim(this.comm[:]))
+    return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
 }
 
 func (this *SyscallEvent) String() string {
     var base_str string
     base_str = fmt.Sprintf("[%s] nr:%s%s", this.GetUUID(), this.nr_point.PointName, this.arg_str)
-    if this.eventid == SYSCALL_ENTER {
-        base_str = fmt.Sprintf("%s LR:0x%x PC:0x%x SP:0x%x", base_str, this.lr.Address, this.pc.Address, this.sp.Address)
+    if this.EventId == SYSCALL_ENTER {
+        var lr_str string
+        var pc_str string
+        if this.mconf.GetOff {
+            lr_str = fmt.Sprintf("LR:0x%x(%s)", this.lr.Address, this.GetOffset(this.lr.Address))
+            pc_str = fmt.Sprintf("PC:0x%x(%s)", this.pc.Address, this.GetOffset(this.pc.Address))
+        } else {
+            lr_str = fmt.Sprintf("LR:0x%x", this.lr.Address)
+            pc_str = fmt.Sprintf("PC:0x%x", this.pc.Address)
+        }
+        base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.sp.Address)
     }
-    // type 和数据发送的顺序相关
-    // switch this.mtype {
-    // case EventTypeSysEnter:
-    //     // --getlr 和 --getpc 建议只使用其中一个
-    //     if conf.GetLR {
-    //         // info, err := this.ParseLR()
-    //         info, err := this.ParseLRV1()
-    //         if err != nil {
-    //             return fmt.Sprintf("ParseLR err:%v\n", err)
-    //         }
-    //         return fmt.Sprintf("%s LR:0x%x Info:\n%s\n", base_str, this.lr, info)
-    //     }
-    //     if conf.GetPC {
-    //         // info, err := this.ParsePC()
-    //         info, err := this.ParsePCV1()
-    //         if err != nil {
-    //             return fmt.Sprintf("ParsePC err:%v\n", err)
-    //         }
-    //         return fmt.Sprintf("%s PC:0x%x Info:\n%s\n", base_str, this.pc, info)
-    //     }
-    // case EventTypeSysEnterArgs:
-    //     var arg_str string
-    //     if nr == "nanosleep" {
-    //         var spec Timespec
-    //         t_buf := bytes.NewBuffer(this.arg_str[:])
-    //         if err := binary.Read(t_buf, binary.LittleEndian, &spec); err != nil {
-    //             return fmt.Sprintf("%s", err)
-    //         }
-    //         arg_str = spec.String()
-    //     } else {
-    //         arg_str = strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
-    //     }
-    //     return fmt.Sprintf("%s arg_%d arg_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
-    // case EventTypeSysEnterRegs:
-    //     return fmt.Sprintf("%s %s", base_str, this.ReadArgs())
-    // case EventTypeSysExitReadAfterArgs:
-    //     arg_str := strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
-    //     return fmt.Sprintf("%s arg_%d arg_after_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
-    // case EventTypeSysExitArgs:
-    //     arg_str := strings.SplitN(string(bytes.Trim(this.arg_str[:], "\x00")), "\x00", 2)[0]
-    //     return fmt.Sprintf("%s arg_%d arg_ret_str:%s", base_str, this.arg_index, strings.TrimSpace(arg_str))
-    // case EventTypeSysExitRet:
-    //     return fmt.Sprintf("%s ret:0x%x", base_str, this.ret)
-    // }
-    // this.logger.Printf("SyscallEvent.String() base_str:" + base_str)
     return base_str
 }
 
 func (this *SyscallEvent) ParseLRV1() (string, error) {
-    return maps_helper.GetOffset(this.pid, this.lr.Address), nil
+    return maps_helper.GetOffset(this.Pid, this.lr.Address), nil
 }
 
 func (this *SyscallEvent) ParseLR() (string, error) {
     info := "UNKNOWN"
     // 直接读取maps信息 计算lr在什么地方 定位syscall调用也就一目了然了
-    filename := fmt.Sprintf("/proc/%d/maps", this.pid)
+    filename := fmt.Sprintf("/proc/%d/maps", this.Pid)
     content, err := ioutil.ReadFile(filename)
     if err != nil {
         return info, fmt.Errorf("Error when opening file:%v", err)
@@ -667,16 +622,10 @@ func (this *SyscallEvent) ParseLR() (string, error) {
     return info, err
 }
 
-func (this *SyscallEvent) ParsePCV1() (string, error) {
-    // 通过在启动阶段收集到的库基址信息来计算偏移
-    // 由于每个进程的加载情况不一样 这里要传递 pid
-    return maps_helper.GetOffset(this.pid, this.pc.Address), nil
-}
-
 func (this *SyscallEvent) ParsePC() (string, error) {
     info := "UNKNOWN"
     // 直接读取maps信息 计算pc在什么地方 定位syscall调用也就一目了然了
-    filename := fmt.Sprintf("/proc/%d/maps", this.pid)
+    filename := fmt.Sprintf("/proc/%d/maps", this.Pid)
     content, err := ioutil.ReadFile(filename)
     if err != nil {
         return info, fmt.Errorf("Error when opening file:%v", err)

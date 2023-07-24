@@ -42,6 +42,35 @@ struct {
 } uprobe_point_args_map SEC(".maps");
 
 
+SEC("raw_tracepoint/sched_process_fork")
+int tracepoint__sched__sched_process_fork(struct bpf_raw_tracepoint_args *ctx)
+{
+    long ret = 0;
+    program_data_t p = {};
+    if (!init_program_data(&p, ctx))
+        return 0;
+
+    struct task_struct *parent = (struct task_struct *) ctx->args[0];
+    struct task_struct *child = (struct task_struct *) ctx->args[1];
+
+    u32 parent_ns_pid = get_task_ns_pid(parent);
+    u32 parent_ns_tgid = get_task_ns_tgid(parent);
+    u32 child_ns_pid = get_task_ns_pid(child);
+    u32 child_ns_tgid = get_task_ns_tgid(child);
+
+    u32* pid = bpf_map_lookup_elem(&child_parent_map, &parent_ns_pid);
+    if (pid == NULL) {
+        return 0;
+    }
+    if (*pid == parent_ns_pid){
+        ret = bpf_map_update_elem(&child_parent_map, &child_ns_pid, &parent_ns_pid, BPF_ANY);
+    } else {
+        bpf_printk("[stack] parent pid from map:%d\n", *pid);
+    }
+
+    return 0;
+}
+
 static __always_inline u32 save_bytes_with_len(program_data_t p, u64 ptr, u32 read_len, u32 next_arg_index) {
     if (read_len > MAX_BUF_READ_SIZE) {
         read_len = MAX_BUF_READ_SIZE;

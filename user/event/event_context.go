@@ -12,17 +12,21 @@ import (
 
 type ContextEvent struct {
     CommonEvent
-    ts            uint64
-    eventid       uint32
-    host_tid      uint32
-    host_pid      uint32
-    tid           uint32
-    pid           uint32
-    uid           uint32
-    comm          [16]byte
-    argnum        uint8
-    padding       [7]byte
-    part_raw_size uint32
+    Ts            uint64
+    EventId       uint32
+    HostTid       uint32
+    HostPid       uint32
+    Tid           uint32
+    Pid           uint32
+    Uid           uint32
+    Comm          [16]byte
+    Argnum        uint8
+    Padding       [7]byte
+    Part_raw_size uint32
+}
+
+func (this *ContextEvent) GetOffset(addr uint64) string {
+    return maps_helper.GetOffset(this.Pid, addr)
 }
 
 func (this *ContextEvent) NewSyscallEvent() IEventStruct {
@@ -47,18 +51,20 @@ func (this *ContextEvent) Decode() (err error) {
     return nil
 }
 
-func (this *ContextEvent) String() string {
-    var s string
-    s = fmt.Sprintf("[ContextEvent] %s eventid:%d argnum:%d time:%d", this.GetUUID(), this.eventid, this.argnum, this.ts)
+func (this *ContextEvent) String() (s string) {
+    s += fmt.Sprintf("event_id:%d ts:%d", this.EventId, this.Ts)
+    s += fmt.Sprintf(", host_pid:%d, host_tid:%d", this.HostPid, this.HostTid)
+    s += fmt.Sprintf(", Uid:%d, pid:%d, tid:%d", this.Uid, this.Pid, this.Tid)
+    s += fmt.Sprintf(", Comm:%s, argnum:%d", util.B2STrim(this.Comm[:]), this.Argnum)
     return s
 }
 
 func (this *ContextEvent) GetUUID() string {
-    return fmt.Sprintf("%d_%d", this.pid, this.tid)
+    return fmt.Sprintf("%d_%d", this.Pid, this.Tid)
 }
 
 func (this *ContextEvent) GetEventId() uint32 {
-    return this.eventid
+    return this.EventId
 }
 
 type Arg_raw_size struct {
@@ -74,7 +80,7 @@ func (this *ContextEvent) ParsePadding() (err error) {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
     // 处理掉 padding
-    this.part_raw_size = arg.PartRawSize
+    this.Part_raw_size = arg.PartRawSize
     padding_size := 4 - (arg.PartRawSize+uint32(binary.Size(arg)))%4
     if padding_size != 4 {
         payload := make([]byte, padding_size)
@@ -90,36 +96,38 @@ func (this *ContextEvent) ParsePadding() (err error) {
 
 func (this *ContextEvent) ParseContext() (err error) {
     this.buf = bytes.NewBuffer(this.rec.RawSample)
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.ts); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Ts); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.eventid); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.EventId); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.host_tid); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.HostTid); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.host_pid); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.HostPid); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.tid); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.pid); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.uid); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Uid); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.comm); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Comm); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.argnum); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Argnum); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.padding); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Padding); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
+    // 这一类的说明都是要关注的
+    maps_helper.UpdatePidList(this.Pid)
     return nil
 }
 
@@ -269,9 +277,9 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) stri
     case config.TYPE_STAT:
         var arg_stat_t Arg_Stat_t
         if err = binary.Read(this.buf, binary.LittleEndian, &arg_stat_t); err != nil {
-            this.logger.Printf("ContextEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
+            this.logger.Printf("ContextEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
             time.Sleep(3 * 1000 * time.Millisecond)
-            panic(fmt.Sprintf("binary.Read %s err:%v", util.B2STrim(this.comm[:]), err))
+            panic(fmt.Sprintf("binary.Read %s err:%v", util.B2STrim(this.Comm[:]), err))
         }
         return arg_stat_t.Format()
     case config.TYPE_STATFS:

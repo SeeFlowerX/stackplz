@@ -101,7 +101,7 @@ func (this *UprobeEvent) ParseContextStack() (err error) {
         }
         // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
-        this.Stackinfo = ParseStack(this.pid, this.UnwindBuffer)
+        this.Stackinfo = ParseStack(this.Pid, this.UnwindBuffer)
     } else if this.rec.Regs {
         var pad uint32
         if err = binary.Read(this.buf, binary.LittleEndian, &pad); err != nil {
@@ -124,12 +124,23 @@ func (this *UprobeEvent) Clone() IEventStruct {
 }
 
 func (this *UprobeEvent) GetUUID() string {
-    return fmt.Sprintf("%d|%d|%s", this.pid, this.tid, util.B2STrim(this.comm[:]))
+    return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
 }
 
 func (this *UprobeEvent) String() string {
+
+    var lr_str string
+    var pc_str string
+    if this.mconf.GetOff {
+        lr_str = fmt.Sprintf("LR:0x%x(%s)", this.lr.Address, this.GetOffset(this.lr.Address))
+        pc_str = fmt.Sprintf("PC:0x%x(%s)", this.pc.Address, this.GetOffset(this.pc.Address))
+    } else {
+        lr_str = fmt.Sprintf("LR:0x%x", this.lr.Address)
+        pc_str = fmt.Sprintf("PC:0x%x", this.pc.Address)
+    }
+
     var s string
-    s = fmt.Sprintf("[%s] %s%s LR:0x%x PC:0x%x SP:0x%x", this.GetUUID(), this.uprobe_point.PointName, this.arg_str, this.lr.Address, this.pc.Address, this.sp.Address)
+    s = fmt.Sprintf("[%s] %s%s %s %s SP:0x%x", this.GetUUID(), this.uprobe_point.PointName, this.arg_str, lr_str, pc_str, this.sp.Address)
 
     if this.RegName != "" {
         // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
@@ -156,7 +167,7 @@ func (this *UprobeEvent) String() string {
         }
         if has_reg_value {
             // 读取maps 获取偏移信息
-            info, err := util.ParseReg(this.pid, regvalue)
+            info, err := util.ParseReg(this.Pid, regvalue)
             if err != nil {
                 fmt.Printf("ParseReg for %s=0x%x failed", this.RegName, regvalue)
             } else {

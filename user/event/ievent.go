@@ -4,6 +4,7 @@ import (
     "bytes"
     "errors"
     "fmt"
+    "os"
     "stackplz/pkg/util"
     "stackplz/user/config"
 
@@ -92,6 +93,9 @@ func (this *CommonEvent) NewMmap2Event() IEventStruct {
     err := event.ParseContext()
     if err != nil {
         panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+    }
+    if event.Pid == uint32(os.Getpid()) {
+        return nil
     }
     return event
 }
