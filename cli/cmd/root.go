@@ -9,7 +9,9 @@ import (
     "context"
     "errors"
     "fmt"
+    "io"
     "io/ioutil"
+    "log"
     "os"
     "os/exec"
     "os/signal"
@@ -24,38 +26,39 @@ import (
     "sync"
     "syscall"
 
-    "github.com/rifflock/lfshook"
-    "github.com/sirupsen/logrus"
     "github.com/spf13/cobra"
 )
 
-var Logger *logrus.Logger
+var Logger *log.Logger
 
-func NewLogger(log_path string) *logrus.Logger {
+func NewLogger(log_path string) *log.Logger {
     if Logger != nil {
         return Logger
     }
-    Logger = logrus.New()
-    Logger.AddHook(lfshook.NewHook(
-        lfshook.PathMap{
-            logrus.TraceLevel: log_path,
-            logrus.PanicLevel: log_path,
-            logrus.FatalLevel: log_path,
-            logrus.WarnLevel:  log_path,
-            logrus.InfoLevel:  log_path,
-            logrus.ErrorLevel: log_path,
-        },
-        &util.TextFormatter{
-            FullTimestamp:    true,
-            DisableTimestamp: true,
-            ForceFormatting:  true,
-            ForceColors:      gconfig.Color,
-            DisableColors:    !gconfig.Color,
-        },
-    ))
-    // 终端输出会有 INFO[0000] 正常情况 DisableTimestamp 为 true 即可
-    // 但是 logrus-prefixed-formatter 这个只对输出到文件有效果
-    // 不过好在输出到文件不会有
+    // 首先根据全局设定设置日志输出
+    Logger = log.New(os.Stdout, "", 0)
+    if gconfig.LogFile != "" {
+        _, err := os.Stat(log_path)
+        if err != nil {
+            if os.IsNotExist(err) {
+                os.Remove(log_path)
+            }
+        }
+        f, err := os.Create(log_path)
+        if err != nil {
+            Logger.Fatal(err)
+            os.Exit(1)
+        }
+        if gconfig.Quiet {
+            // 直接设置 则不会输出到终端
+            Logger.SetOutput(f)
+        } else {
+            // 这样可以同时输出到终端
+            mw := io.MultiWriter(os.Stdout, f)
+            Logger.SetOutput(mw)
+        }
+    }
+
     return Logger
 }
 

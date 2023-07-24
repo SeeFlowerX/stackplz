@@ -1,23 +1,23 @@
 package module
 
 import (
-    "context"
-    "errors"
-    "fmt"
-    "os"
-    "reflect"
-    "stackplz/pkg/event_processor"
-    "stackplz/user/config"
-    "stackplz/user/event"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"reflect"
+	"stackplz/pkg/event_processor"
+	"stackplz/user/config"
+	"stackplz/user/event"
 
-    "github.com/cilium/ebpf"
-    "github.com/cilium/ebpf/perf"
-    "github.com/sirupsen/logrus"
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/perf"
 )
 
 type IModule interface {
     // Init 初始化
-    Init(context.Context, *logrus.Logger, config.IConfig) error
+    Init(context.Context, *log.Logger, config.IConfig) error
 
     // Name 获取当前module的名字
     Name() string
@@ -53,7 +53,7 @@ type Module struct {
     opts   *ebpf.CollectionOptions
     reader []IClose
     ctx    context.Context
-    logger *logrus.Logger
+    logger *log.Logger
     child  IModule
     // probe的名字
     name         string
@@ -70,7 +70,7 @@ type Module struct {
 }
 
 // Init 对象初始化
-func (this *Module) Init(ctx context.Context, logger *logrus.Logger, conf config.IConfig) {
+func (this *Module) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) {
     this.ctx = ctx
     this.logger = logger
     this.sconf = conf.GetSConfig()

@@ -2,11 +2,10 @@ package event_processor
 
 import (
 	"fmt"
+	"log"
 	"stackplz/user/event"
 	"sync"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -22,10 +21,10 @@ type EventProcessor struct {
 	// key为 PID+UID+COMMON等确定唯一的信息
 	workerQueue map[string]IWorker
 
-	logger *logrus.Logger
+	logger *log.Logger
 }
 
-func (this *EventProcessor) GetLogger() *logrus.Logger {
+func (this *EventProcessor) GetLogger() *log.Logger {
 	return this.logger
 }
 
@@ -129,7 +128,7 @@ func (this *EventProcessor) Close() error {
 	return nil
 }
 
-func NewEventProcessor(logger *logrus.Logger) *EventProcessor {
+func NewEventProcessor(logger *log.Logger) *EventProcessor {
 	var ep *EventProcessor
 	ep = &EventProcessor{}
 	ep.logger = logger

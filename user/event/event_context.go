@@ -146,6 +146,11 @@ func (this *ContextEvent) ParseArgByType(point_arg *config.PointArg, ptr Arg_reg
     // 这个函数先处理基础类型
 
     if point_arg.Type == config.TYPE_POINTER {
+        // BUFFER 比较特殊 单独处理
+        if point_arg.AliasType == config.TYPE_BUFFER_T {
+            point_arg.AppendValue(fmt.Sprintf("(*0x%x)%s", ptr.Address, this.ParseArg(point_arg, ptr)))
+            return
+        }
         // 对于指针类型 需要先处理
         var next_ptr Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &next_ptr); err != nil {
@@ -162,9 +167,9 @@ func (this *ContextEvent) ParseArgByType(point_arg *config.PointArg, ptr Arg_reg
             // 这种不再需要进一步解析了
             point_arg.AppendValue(fmt.Sprintf("(0x%x)", next_ptr.Address))
         } else {
+            // pointer + struct
             point_arg.AppendValue(fmt.Sprintf("(*0x%x)%s", next_ptr.Address, this.ParseArg(point_arg, next_ptr)))
         }
-        return
     } else {
         // 这种一般就是特殊类型 获取结构体了
         point_arg.AppendValue(this.ParseArg(point_arg, ptr))

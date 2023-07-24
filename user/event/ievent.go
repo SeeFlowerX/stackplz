@@ -1,16 +1,16 @@
 package event
 
 import (
-    "bytes"
-    "errors"
-    "fmt"
-    "os"
-    "stackplz/pkg/util"
-    "stackplz/user/config"
+	"bytes"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"stackplz/pkg/util"
+	"stackplz/user/config"
 
-    "github.com/cilium/ebpf/perf"
-    "github.com/sirupsen/logrus"
-    "golang.org/x/sys/unix"
+	"github.com/cilium/ebpf/perf"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -28,7 +28,7 @@ type IEventStruct interface {
     GetEventId() uint32
     ParseEvent() (IEventStruct, error)
     ParseContext() error
-    SetLogger(logger *logrus.Logger)
+    SetLogger(logger *log.Logger)
     SetConf(conf config.IConfig)
     SetRecord(rec perf.Record)
     SetUnwindStack(unwind_stack bool)
@@ -50,7 +50,7 @@ type RegsBuf struct {
 
 type CommonEvent struct {
     mconf        *config.ModuleConfig
-    logger       *logrus.Logger
+    logger       *log.Logger
     rec          perf.Record
     unwind_stack bool
     show_regs    bool
@@ -230,7 +230,7 @@ func (this *CommonEvent) SetShowRegs(show_regs bool) {
     this.show_regs = show_regs
 }
 
-func (this *CommonEvent) SetLogger(logger *logrus.Logger) {
+func (this *CommonEvent) SetLogger(logger *log.Logger) {
     this.logger = logger
 }
 

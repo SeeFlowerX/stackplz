@@ -263,17 +263,6 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     if (filter == NULL) {
         return 0;
     }
-    // 到这里的说明是命中了 追踪范围
-    // 先收集下寄存器
-    args_t args = {};
-    args.args[0] = READ_KERN(regs->regs[0]);
-    args.args[1] = READ_KERN(regs->regs[1]);
-    args.args[2] = READ_KERN(regs->regs[2]);
-    args.args[3] = READ_KERN(regs->regs[3]);
-    args.args[4] = READ_KERN(regs->regs[4]);
-    if (save_args(&args, SYSCALL_ENTER) != 0) {
-        return 0;
-    };
 
     if (filter->syscall_all == 0) {
         // syscall 白名单过滤
@@ -313,6 +302,14 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
             }
         }
     }
+    // 保存寄存器应该放到所有过滤完成之后
+    args_t args = {};
+    args.args[0] = READ_KERN(regs->regs[0]);
+    args.args[1] = READ_KERN(regs->regs[1]);
+    args.args[2] = READ_KERN(regs->regs[2]);
+    args.args[3] = READ_KERN(regs->regs[3]);
+    args.args[4] = READ_KERN(regs->regs[4]);
+    save_args(&args, SYSCALL_ENTER);
 
     // event->context 已经有进程的信息了
     save_to_submit_buf(p.event, (void *) &syscallno, sizeof(u32), 0);
@@ -402,6 +399,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     if (load_args(&saved_args, SYSCALL_ENTER) != 0) {
         return 0;
     }
+    // 之前出现异常地址的原因找到了
 
     if (filter->syscall_all == 0) {
         // syscall 白名单过滤

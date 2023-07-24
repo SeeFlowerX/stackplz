@@ -1,23 +1,23 @@
 package module
 
 import (
-    "bytes"
-    "context"
-    "errors"
-    "fmt"
-    "math"
-    "path/filepath"
-    "stackplz/assets"
-    "stackplz/pkg/util"
-    "stackplz/user/config"
-    "stackplz/user/event"
-    "unsafe"
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"math"
+	"path/filepath"
+	"stackplz/assets"
+	"stackplz/pkg/util"
+	"stackplz/user/config"
+	"stackplz/user/event"
+	"unsafe"
 
-    "github.com/cilium/ebpf"
-    "github.com/cilium/ebpf/btf"
-    manager "github.com/ehids/ebpfmanager"
-    "github.com/sirupsen/logrus"
-    "golang.org/x/sys/unix"
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
+	manager "github.com/ehids/ebpfmanager"
+	"golang.org/x/sys/unix"
 )
 
 type MStack struct {
@@ -31,7 +31,7 @@ type MStack struct {
     hookBpfFile string
 }
 
-func (this *MStack) Init(ctx context.Context, logger *logrus.Logger, conf config.IConfig) error {
+func (this *MStack) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
     this.Module.Init(ctx, logger, conf)
     p, ok := (conf).(*config.ModuleConfig)
     if ok {
