@@ -4,7 +4,7 @@ struct UnwindBuf {
     uint64_t abi;
     uint64_t regs[33];
     uint64_t size;
-    char data[4096];
+    char data[8192];
     uint64_t dyn_size;
 };
 

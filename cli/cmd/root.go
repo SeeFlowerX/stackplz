@@ -166,6 +166,9 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         if err != nil {
             return err
         }
+        if gconfig.Uid == config.MAGIC_UID {
+            logger.Fatalf("get uid by package name:%s failed", gconfig.Name)
+        }
         // 如果说是系统APP 那么这里解析出来的uid是2000 应该用 PID_MODE
         if gconfig.Uid == 2000 {
             // 这里现在还有一种情况没有继续适配
@@ -573,10 +576,10 @@ func init() {
     rootCmd.PersistentFlags().StringVarP(&gconfig.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
     // 常规ELF库hook设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.Library, "library", "l", "/apex/com.android.runtime/lib64/bionic/libc.so", "full lib path")
-    rootCmd.PersistentFlags().StringArrayVar(&gconfig.HookPoint, "point", []string{}, "hook point config, e.g. strstr+0x0[str,str] write[int,hex:128,int]")
+    rootCmd.PersistentFlags().StringArrayVarP(&gconfig.HookPoint, "point", "w", []string{}, "hook point config, e.g. strstr+0x0[str,str] write[int,hex:128,int]")
     rootCmd.PersistentFlags().StringVar(&gconfig.RegName, "reg", "", "get the offset of reg")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.DumpHex, "dumphex", "", false, "dump buffer as hex")
     // syscall hook
-    rootCmd.PersistentFlags().StringVar(&gconfig.SysCall, "syscall", "", "filter syscalls")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.SysCall, "syscall", "s", "", "filter syscalls")
     rootCmd.PersistentFlags().StringVar(&gconfig.SysCallBlacklist, "no-syscall", "", "syscall black list, max 20")
 }

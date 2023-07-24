@@ -39,7 +39,7 @@ type UnwindBuf struct {
     Abi       uint64
     Regs      [33]uint64
     StackSize uint64
-    Data      [4096]byte
+    Data      [8192]byte
     DynSize   uint64
 }
 

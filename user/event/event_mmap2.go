@@ -264,7 +264,10 @@ func (this *Mmap2Event) Decode() (err error) {
         return err
     }
     this.Filename = util.B2STrim(tmp)
-    maps_helper.UpdateMaps(this)
+    // 只关心来自这个路径相关的
+    if strings.HasPrefix(this.Filename, "/data/app") {
+        maps_helper.UpdateMaps(this)
+    }
     return nil
 }
 
