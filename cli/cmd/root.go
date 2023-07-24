@@ -102,12 +102,24 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 在 init 之后各个选项的 flag 还没有初始化 到这里才初始化 所以在这里最先设置好 logger
     logger := NewLogger(log_path)
     mconfig.SetLogger(logger)
-    enable, e := ebpf.IsEnableBPF()
-    if e != nil {
-        logger.Fatalf("Kernel config read failed, error:%v", e)
+
+    // 先检查必要的配置
+    err = ebpf.CheckKernelConfig()
+    if err != nil {
+        logger.Fatalf("CheckKernelConfig failed, error:%v", err)
     }
-    if !enable {
-        logger.Fatalf("Kernel not support, error:%v", e)
+    if !ebpf.HasEnableBTF {
+        // 检查平台 判断是不是开发板
+        mconfig.ExternalBTF = findBTFAssets()
+    }
+    // 检查符号情况 用于判断部分选项是否能启用
+    gconfig.CanReadUser, err = findKallsymsSymbol("bpf_probe_read_user")
+    if err != nil {
+        logger.Printf("bpf_probe_read_user err:%v", err)
+        return err
+    }
+    if !gconfig.CanReadUser {
+        logger.Fatalf("not support for this machine, bpf_probe_read_user:%t", gconfig.CanReadUser)
     }
 
     // 第一步先释放用于获取堆栈信息的外部库
@@ -186,20 +198,6 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         }
     } else {
         return errors.New("please set --uid/--name/--pid/--pid + --tid")
-    }
-
-    // 检查平台 判断是不是开发板
-    mconfig.ExternalBTF = findBTFAssets()
-
-    // 检查符号情况 用于判断部分选项是否能启用
-    gconfig.CanReadUser, err = findKallsymsSymbol("bpf_probe_read_user")
-    if err != nil {
-        logger.Printf("bpf_probe_read_user err:%v", err)
-        return err
-    }
-
-    if gconfig.Debug {
-        logger.Printf("has bpf_probe_read_user:%t", gconfig.CanReadUser)
     }
 
     // 转换命令行的选项 并且进行检查
