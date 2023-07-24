@@ -78,7 +78,7 @@ func CheckKernelConfig() error {
 
     bc, found := KernelConfig[CONFIG_DEBUG_INFO_BTF]
     if found && bc == "y" {
-        HasEnableBPF = true
+        HasEnableBTF = true
     }
     return nil
 }
