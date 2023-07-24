@@ -78,16 +78,18 @@ chmod +x /data/local/tmp/stackplz
     - 例如 `/data/app/~~t-iSPdaqQLZBOa9bm4keLA==/com.sfx.ebpf-C_ceI-EXetM4Ma7GVPORow==/lib/arm64`
 - 如果要hook的库无法被自动检索到，请提供在内存中加载的完整路径
     - 最准确的做法是当程序运行时，查看程序的`/proc/{pid}/maps`内容，这里的路径是啥就是啥
-- hook动态库请使用`--point`，可设置多个，语法是{符号/基址偏移}{+符号偏移}{[参数类型,参数类型...]}
+- hook动态库请使用`--point/-w`，可设置多个，语法是{符号/基址偏移}{+符号偏移}{[参数类型,参数类型...]}
     - --point _Z5func1v
     - --point strstr[str,str] --point open[str,int]
     - --point write[int,hex:64]
     - --point 0x9542c[str,str]
     - --point strstr+0x4[str,str]
-- hook syscall需要指定`--syscall`选项，多个syscall请使用`,`隔开
+- hook syscall需要指定`--syscall/-s`选项，多个syscall请使用`,`隔开
     - --syscall openat
 - 特别的，指定为`all`表示追踪全部syscall
     - --syscall all
+- **特别说明**，很多结果是`0xffffff9c`这样的结果，其实是`int`，但是目前没有专门转换
+- 注意，本项目中syscall的返回值通常是errno，并不一定是调用结果
 - `--dumphex`表示将数据打印为hexdump，否则将记录为ascii+hex的形式
 - 输出到日志文件添加`-o/--out tmp.log`，只输出到日志，不输出到终端再加一个`--quiet`即可
 
