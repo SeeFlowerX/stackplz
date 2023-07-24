@@ -79,10 +79,12 @@ func (this *ContextEvent) ParsePadding() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
+    // RawSample 这部分读取逻辑后面必须转到这边来处理
     // 处理掉 padding
     this.Part_raw_size = arg.PartRawSize
-    padding_size := 4 - (arg.PartRawSize+uint32(binary.Size(arg)))%4
-    if padding_size != 4 {
+    // padding_size := 4 - (arg.PartRawSize+uint32(binary.Size(arg)))%4
+    padding_size := this.rec.SampleSize - (arg.PartRawSize + uint32(binary.Size(arg)))
+    if padding_size > 0 {
         payload := make([]byte, padding_size)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))

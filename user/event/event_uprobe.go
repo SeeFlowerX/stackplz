@@ -30,7 +30,7 @@ type UprobeEvent struct {
 }
 
 func (this *UprobeEvent) ParseContext() (err error) {
-    // this.logger.Printf("UprobeEvent eventid:%d RawSample:\n%s", this.eventid, util.HexDump(this.rec.RawSample, util.COLORRED))
+    // this.logger.Printf("UprobeEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
     if err = binary.Read(this.buf, binary.LittleEndian, &this.probe_index); err != nil {
         panic(fmt.Sprintf("binary.Read err:%v", err))
     }
@@ -101,7 +101,13 @@ func (this *UprobeEvent) ParseContextStack() (err error) {
         }
         // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
-        this.Stackinfo = ParseStack(this.Pid, this.UnwindBuffer)
+        content, err := util.ReadMapsByPid(this.Pid)
+        if err != nil {
+            this.logger.Printf("Error when opening file:%v", err)
+            this.Stackinfo = ""
+            return nil
+        }
+        this.Stackinfo = ParseStack(content, this.UnwindBuffer)
     } else if this.rec.Regs {
         var pad uint32
         if err = binary.Read(this.buf, binary.LittleEndian, &pad); err != nil {

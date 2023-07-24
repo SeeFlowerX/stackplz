@@ -90,11 +90,19 @@ func FindLib(library string, search_paths []string) (string, error) {
 	return library, nil
 }
 
+func ReadMapsByPid(pid uint32) (string, error) {
+	filename := fmt.Sprintf("/proc/%d/maps", pid)
+	content, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return "", fmt.Errorf("Error when opening file:%v", err)
+	}
+	return string(content), nil
+}
+
 func ParseReg(pid uint32, value uint64) (string, error) {
 	info := "UNKNOWN"
 	// 直接读取maps信息 计算value在什么地方 用于定位跳转目的地
-	filename := fmt.Sprintf("/proc/%d/maps", pid)
-	content, err := ioutil.ReadFile(filename)
+	content, err := ReadMapsByPid(pid)
 	if err != nil {
 		return info, fmt.Errorf("Error when opening file:%v", err)
 	}
@@ -107,7 +115,7 @@ func ParseReg(pid uint32, value uint64) (string, error) {
 		inode      uint64
 		seg_path   string
 	)
-	for _, line := range strings.Split(string(content), "\n") {
+	for _, line := range strings.Split(content, "\n") {
 		reader := strings.NewReader(line)
 		n, err := fmt.Fscanf(reader, "%x-%x %s %x %s %d %s", &seg_start, &seg_end, &permission, &seg_offset, &device, &inode, &seg_path)
 		if err == nil && n == 7 {
