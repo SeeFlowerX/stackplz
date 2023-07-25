@@ -87,6 +87,7 @@ func (this *ContextEvent) ParsePadding() (err error) {
     if padding_size > 0 {
         payload := make([]byte, padding_size)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+            this.logger.Printf("UprobeEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
     }
