@@ -235,7 +235,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 有关eBPF on Android系列可以加群交流
 
-![](./images/Snipaste_2023-07-17_15-47-45.png)
+![](./images/Snipaste_2023-07-25_09-55-14.png)
 
 个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 
