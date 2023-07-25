@@ -114,7 +114,7 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         next_arg_index += 1;
         return next_arg_index;
     }
-    if (point_arg->type == TYPE_POINTER) {
+    if (point_arg->type == TYPE_POINTER && ptr != 0) {
         // 指针类型 通常读一下对应指针的数据即可 后续记得考虑兼容下32位
         
         // point_arg->alias_type
