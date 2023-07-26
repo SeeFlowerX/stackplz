@@ -462,6 +462,7 @@ func (this *ContextEvent) ParseContextStack() (err error) {
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
         content, err := util.ReadMapsByPid(this.Pid)
         if err != nil {
+            // 直接读取 maps 失败 那么从 mmap2 事件中获取
             this.logger.Printf("Error when opening file:%v", err)
             this.Stackinfo = ""
             return nil

@@ -25,8 +25,15 @@ func (this *LibInfo) ParseLib() {
 
 var pid_list []uint32
 
-type MapsHelper map[uint32]PidMaps
 type PidMaps map[string][]LibInfo
+
+func (this *PidMaps) ToMapBuffer(pid uint32, del_old bool) string {
+    // 把自身转换成 /proc/{pid}/maps 这样的内容
+
+    return ""
+}
+
+type MapsHelper map[uint32]PidMaps
 
 func NewMapsHelper() MapsHelper {
     helper := make(MapsHelper)
