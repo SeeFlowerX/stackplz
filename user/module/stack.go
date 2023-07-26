@@ -1,23 +1,23 @@
 package module
 
 import (
-	"bytes"
-	"context"
-	"errors"
-	"fmt"
-	"log"
-	"math"
-	"path/filepath"
-	"stackplz/assets"
-	"stackplz/pkg/util"
-	"stackplz/user/config"
-	"stackplz/user/event"
-	"unsafe"
+    "bytes"
+    "context"
+    "errors"
+    "fmt"
+    "log"
+    "math"
+    "path/filepath"
+    "stackplz/assets"
+    "stackplz/pkg/util"
+    "stackplz/user/config"
+    "stackplz/user/event"
+    "unsafe"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/btf"
-	manager "github.com/ehids/ebpfmanager"
-	"golang.org/x/sys/unix"
+    "github.com/cilium/ebpf"
+    "github.com/cilium/ebpf/btf"
+    manager "github.com/ehids/ebpfmanager"
+    "golang.org/x/sys/unix"
 )
 
 type MStack struct {
@@ -123,25 +123,40 @@ func (this *MStack) setupManager() error {
 
 func (this *MStack) setupManagerOptions() {
     // 对于没有开启 CONFIG_DEBUG_INFO_BTF 的加载额外的 btf.Spec
-    byteBuf, err := assets.Asset("user/assets/" + this.mconf.ExternalBTF)
-    if err != nil {
-        this.logger.Fatalf("[setupManagerOptions] failed, err:%v", err)
-        return
-    }
-    spec, err := btf.LoadSpecFromReader((bytes.NewReader(byteBuf)))
+    if this.mconf.ExternalBTF != "" {
+        byteBuf, err := assets.Asset("user/assets/" + this.mconf.ExternalBTF)
+        if err != nil {
+            this.logger.Fatalf("[setupManagerOptions] failed, err:%v", err)
+            return
+        }
+        spec, err := btf.LoadSpecFromReader((bytes.NewReader(byteBuf)))
 
-    this.bpfManagerOptions = manager.Options{
-        DefaultKProbeMaxActive: 512,
-        VerifierOptions: ebpf.CollectionOptions{
-            Programs: ebpf.ProgramOptions{
-                LogSize:     2097152,
-                KernelTypes: spec,
+        this.bpfManagerOptions = manager.Options{
+            DefaultKProbeMaxActive: 512,
+            VerifierOptions: ebpf.CollectionOptions{
+                Programs: ebpf.ProgramOptions{
+                    LogSize:     2097152,
+                    KernelTypes: spec,
+                },
             },
-        },
-        RLimit: &unix.Rlimit{
-            Cur: math.MaxUint64,
-            Max: math.MaxUint64,
-        },
+            RLimit: &unix.Rlimit{
+                Cur: math.MaxUint64,
+                Max: math.MaxUint64,
+            },
+        }
+    } else {
+        this.bpfManagerOptions = manager.Options{
+            DefaultKProbeMaxActive: 512,
+            VerifierOptions: ebpf.CollectionOptions{
+                Programs: ebpf.ProgramOptions{
+                    LogSize: 2097152,
+                },
+            },
+            RLimit: &unix.Rlimit{
+                Cur: math.MaxUint64,
+                Max: math.MaxUint64,
+            },
+        }
     }
 }
 

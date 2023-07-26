@@ -114,6 +114,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     if !ebpf.HasEnableBTF {
         // 检查平台 判断是不是开发板
         mconfig.ExternalBTF = findBTFAssets()
+    } else {
+        mconfig.ExternalBTF = ""
     }
     // 检查符号情况 用于判断部分选项是否能启用
     gconfig.CanReadUser, err = findKallsymsSymbol("bpf_probe_read_user")
