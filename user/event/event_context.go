@@ -3,9 +3,11 @@ package event
 import (
     "bytes"
     "encoding/binary"
+    "encoding/json"
     "fmt"
     "stackplz/pkg/util"
     "stackplz/user/config"
+    "strconv"
     "strings"
     "time"
 )
@@ -23,6 +25,11 @@ type ContextEvent struct {
     Argnum        uint8
     Padding       [7]byte
     Part_raw_size uint32
+
+    Stackinfo    string
+    RegsBuffer   RegsBuf
+    UnwindBuffer UnwindBuf
+    RegName      string
 }
 
 func (this *ContextEvent) GetOffset(addr uint64) string {
@@ -73,17 +80,20 @@ type Arg_raw_size struct {
 }
 
 func (this *ContextEvent) ParsePadding() (err error) {
+    // this.logger.Printf("[buf] len:%d cap:%d off:%d", this.buf.Len(), this.buf.Cap(), this.buf.Cap()-this.buf.Len())
+    // this.logger.Printf("[buf] this.rec.SampleSize:%d", this.rec.SampleSize)
     // PERF_SAMPLE_RAW 末尾可能包含 padding 这里先把
     // ... nr/probe_index|lr|pc|sp|args...|size_before|padding
-    var arg Arg_raw_size
-    if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
-    }
-    // RawSample 这部分读取逻辑后面必须转到这边来处理
-    // 处理掉 padding
-    this.Part_raw_size = arg.PartRawSize
+    // var arg Arg_raw_size
+    // if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+    //     panic(fmt.Sprintf("binary.Read err:%v", err))
+    // }
+    // // RawSample 这部分读取逻辑后面必须转到这边来处理
+    // // 处理掉 padding
+    // this.Part_raw_size = arg.PartRawSize
     // padding_size := 4 - (arg.PartRawSize+uint32(binary.Size(arg)))%4
-    padding_size := this.rec.SampleSize - (arg.PartRawSize + uint32(binary.Size(arg)))
+    // padding_size := this.rec.SampleSize - (arg.PartRawSize + uint32(binary.Size(arg)))
+    padding_size := this.rec.SampleSize - uint32(this.buf.Cap()-this.buf.Len())
     if padding_size > 0 {
         payload := make([]byte, padding_size)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
@@ -377,4 +387,98 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) stri
     default:
         panic(fmt.Sprintf("unknown point_arg.AliasType %d", point_arg.AliasType))
     }
+}
+
+func (this *ContextEvent) GetStackTrace(s string) string {
+    if this.RegName != "" {
+        // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
+        // 当然前提是取了寄存器数据
+        var tmp_regs [33]uint64
+        if this.rec.UnwindStack {
+            tmp_regs = this.UnwindBuffer.Regs
+        } else {
+            tmp_regs = this.RegsBuffer.Regs
+        }
+        has_reg_value := false
+        var regvalue uint64
+        if strings.HasPrefix(this.RegName, "x") {
+            parts := strings.SplitN(this.RegName, "x", 2)
+            regno, _ := strconv.ParseUint(parts[1], 10, 32)
+            if regno >= 0 && regno <= 29 {
+                // 取到对应的寄存器值
+                regvalue = tmp_regs[regno]
+                has_reg_value = true
+            }
+        } else if this.RegName == "lr" {
+            regvalue = tmp_regs[30]
+            has_reg_value = true
+        }
+        if has_reg_value {
+            // 读取maps 获取偏移信息
+            info, err := util.ParseReg(this.Pid, regvalue)
+            if err != nil {
+                fmt.Printf("ParseReg for %s=0x%x failed", this.RegName, regvalue)
+            } else {
+                s += fmt.Sprintf(", Reg %s Info:\n%s", this.RegName, info)
+            }
+        }
+    }
+    if this.rec.Regs {
+        var tmp_regs [33]uint64
+        if this.rec.UnwindStack {
+            tmp_regs = this.UnwindBuffer.Regs
+        } else {
+            tmp_regs = this.RegsBuffer.Regs
+        }
+        regs := make(map[string]string)
+        for regno := 0; regno <= 29; regno++ {
+            regs[fmt.Sprintf("x%d", regno)] = fmt.Sprintf("0x%x", tmp_regs[regno])
+        }
+        regs["lr"] = fmt.Sprintf("0x%x", tmp_regs[30])
+        regs["sp"] = fmt.Sprintf("0x%x", tmp_regs[31])
+        regs["pc"] = fmt.Sprintf("0x%x", tmp_regs[32])
+        regs_info, err := json.Marshal(regs)
+        if err != nil {
+            regs_info = make([]byte, 0)
+        }
+        s += ", Regs:\n" + string(regs_info)
+    }
+    if this.Stackinfo != "" {
+        if this.rec.Regs {
+            s += fmt.Sprintf("\nStackinfo:\n%s", this.Stackinfo)
+        } else {
+            s += fmt.Sprintf(", Stackinfo:\n%s", this.Stackinfo)
+        }
+    }
+    return s
+}
+func (this *ContextEvent) ParseContextStack() (err error) {
+    if this.rec.UnwindStack {
+        // 读取完整的栈数据和寄存器数据 并解析为 UnwindBuf 结构体
+        if err = binary.Read(this.buf, binary.LittleEndian, &this.UnwindBuffer); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
+        // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
+        content, err := util.ReadMapsByPid(this.Pid)
+        if err != nil {
+            this.logger.Printf("Error when opening file:%v", err)
+            this.Stackinfo = ""
+            return nil
+        }
+        this.Stackinfo = ParseStack(content, this.UnwindBuffer)
+    } else if this.rec.Regs {
+        var pad uint32
+        if err = binary.Read(this.buf, binary.LittleEndian, &pad); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        // 读取寄存器数据 并解析为 RegsBuffer 结构体
+        if err = binary.Read(this.buf, binary.LittleEndian, &this.RegsBuffer); err != nil {
+            panic(fmt.Sprintf("binary.Read err:%v", err))
+        }
+        this.Stackinfo = ""
+    } else {
+        this.Stackinfo = ""
+    }
+    return nil
 }

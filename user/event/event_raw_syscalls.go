@@ -561,7 +561,11 @@ func (this *SyscallEvent) ParseContext() (err error) {
     } else {
         panic(fmt.Sprintf("SyscallEvent.ParseContext() failed, EventId:%d", this.EventId))
     }
-
+    this.ParsePadding()
+    err = this.ParseContextStack()
+    if err != nil {
+        panic(fmt.Sprintf("ParseContextStack err:%v", err))
+    }
     return nil
 }
 
@@ -584,6 +588,7 @@ func (this *SyscallEvent) String() string {
         }
         base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.sp.Address)
     }
+    base_str = this.GetStackTrace(base_str)
     return base_str
 }
 
