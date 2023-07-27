@@ -1,13 +1,13 @@
 package event
 
 import (
-	"bytes"
-	"encoding/binary"
-	"fmt"
-	"io/ioutil"
-	"stackplz/user/util"
-	"strings"
-	"sync"
+    "bytes"
+    "encoding/binary"
+    "fmt"
+    "io/ioutil"
+    "stackplz/user/util"
+    "strings"
+    "sync"
 )
 
 type LibInfo struct {
@@ -56,7 +56,6 @@ func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
         seg_path   string
     )
 
-    // maps_lock.Lock()
     var pid_maps PidMaps
     if del_old {
         pid_maps = make(PidMaps)
@@ -70,7 +69,6 @@ func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
             pid_maps = pid_maps_x
         }
     }
-    // maps_lock.Unlock()
     for _, line := range strings.Split(string(content), "\n") {
         reader := strings.NewReader(line)
         n, err := fmt.Fscanf(reader, "%x-%x %s %x %s %d %s", &seg_start, &seg_end, &permission, &seg_offset, &device, &inode, &seg_path)
@@ -105,9 +103,7 @@ func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
             }
         }
     }
-    // maps_lock.Lock()
     (*this)[pid] = pid_maps
-    // maps_lock.Unlock()
     return nil
 }
 
@@ -142,7 +138,7 @@ func (this *MapsHelper) UpdateMaps(event *Mmap2Event) {
         (*this)[event.Pid] = pid_maps
     }
     pid_maps = (*this)[event.Pid]
-    // maps_lock.Unlock()
+
     if event.Filename == "" {
         event.Filename = fmt.Sprintf("UNNAMED_0x%x", event.Addr)
     }
@@ -170,9 +166,7 @@ func (this *MapsHelper) UpdateMaps(event *Mmap2Event) {
     } else {
         pid_maps[event.Filename] = []LibInfo{info}
     }
-    // maps_lock.Lock()
     (*this)[event.Pid] = pid_maps
-    // maps_lock.Unlock()
 }
 
 func (this *MapsHelper) GetOffset(pid uint32, addr uint64) (info string) {
