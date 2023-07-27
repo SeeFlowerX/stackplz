@@ -5,11 +5,11 @@ package event
 // import "C"
 
 import (
-    "encoding/binary"
-    "fmt"
-    "stackplz/pkg/util"
-    "stackplz/user/config"
-    "strings"
+	"encoding/binary"
+	"fmt"
+	"stackplz/user/config"
+	"stackplz/user/util"
+	"strings"
 )
 
 type UprobeEvent struct {

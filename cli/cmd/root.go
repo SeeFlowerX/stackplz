@@ -17,10 +17,9 @@ import (
     "os/signal"
     "path"
     "stackplz/assets"
-    "stackplz/pkg/ebpf"
-    "stackplz/pkg/util"
     "stackplz/user/config"
     "stackplz/user/module"
+    "stackplz/user/util"
     "strconv"
     "strings"
     "sync"
@@ -107,11 +106,11 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.SetLogger(logger)
 
     // 先检查必要的配置
-    err = ebpf.CheckKernelConfig()
+    err = util.CheckKernelConfig()
     if err != nil {
         logger.Fatalf("CheckKernelConfig failed, error:%v", err)
     }
-    if !ebpf.HasEnableBTF {
+    if !util.HasEnableBTF {
         // 检查平台 判断是不是开发板
         mconfig.ExternalBTF = findBTFAssets()
     } else {

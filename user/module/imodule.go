@@ -1,18 +1,18 @@
 package module
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"log"
-	"os"
-	"reflect"
-	"stackplz/pkg/event_processor"
-	"stackplz/user/config"
-	"stackplz/user/event"
+    "context"
+    "errors"
+    "fmt"
+    "log"
+    "os"
+    "reflect"
+    "stackplz/user/config"
+    "stackplz/user/event"
+    "stackplz/user/event_processor"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/perf"
+    "github.com/cilium/ebpf"
+    "github.com/cilium/ebpf/perf"
 )
 
 type IModule interface {

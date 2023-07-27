@@ -1,23 +1,23 @@
 package module
 
 import (
-    "bytes"
-    "context"
-    "errors"
-    "fmt"
-    "log"
-    "math"
-    "path/filepath"
-    "stackplz/assets"
-    "stackplz/pkg/util"
-    "stackplz/user/config"
-    "stackplz/user/event"
-    "unsafe"
+	"bytes"
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"math"
+	"path/filepath"
+	"stackplz/assets"
+	"stackplz/user/config"
+	"stackplz/user/event"
+	"stackplz/user/util"
+	"unsafe"
 
-    "github.com/cilium/ebpf"
-    "github.com/cilium/ebpf/btf"
-    manager "github.com/ehids/ebpfmanager"
-    "golang.org/x/sys/unix"
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
+	manager "github.com/ehids/ebpfmanager"
+	"golang.org/x/sys/unix"
 )
 
 type MStack struct {

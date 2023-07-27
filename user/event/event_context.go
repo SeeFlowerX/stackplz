@@ -1,15 +1,15 @@
 package event
 
 import (
-    "bytes"
-    "encoding/binary"
-    "encoding/json"
-    "fmt"
-    "stackplz/pkg/util"
-    "stackplz/user/config"
-    "strconv"
-    "strings"
-    "time"
+	"bytes"
+	"encoding/binary"
+	"encoding/json"
+	"fmt"
+	"stackplz/user/config"
+	"stackplz/user/util"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type ContextEvent struct {

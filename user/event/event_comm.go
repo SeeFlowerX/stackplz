@@ -1,10 +1,10 @@
 package event
 
 import (
-    "bytes"
-    "encoding/binary"
-    "fmt"
-    "stackplz/pkg/util"
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"stackplz/user/util"
 )
 
 type CommEvent struct {

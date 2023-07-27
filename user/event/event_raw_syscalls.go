@@ -1,15 +1,15 @@
 package event
 
 import (
-    "encoding/binary"
-    "fmt"
-    "io/ioutil"
-    "net"
-    "stackplz/pkg/util"
-    "stackplz/user/config"
-    "strings"
-    "syscall"
-    "unsafe"
+	"encoding/binary"
+	"fmt"
+	"io/ioutil"
+	"net"
+	"stackplz/user/config"
+	"stackplz/user/util"
+	"strings"
+	"syscall"
+	"unsafe"
 )
 
 // type EventTypeSys uint32

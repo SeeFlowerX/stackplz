@@ -1,13 +1,13 @@
 package event
 
 import (
-    "bytes"
-    "encoding/binary"
-    "fmt"
-    "io/ioutil"
-    "stackplz/pkg/util"
-    "strings"
-    "sync"
+	"bytes"
+	"encoding/binary"
+	"fmt"
+	"io/ioutil"
+	"stackplz/user/util"
+	"strings"
+	"sync"
 )
 
 type LibInfo struct {

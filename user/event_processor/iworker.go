@@ -46,7 +46,6 @@ type eventWorker struct {
 	tickerCount uint8
 	UUID        string
 	processor   *EventProcessor
-	parser      IParser
 }
 
 func NewEventWorker(uuid string, processor *EventProcessor) IWorker {
@@ -98,50 +97,9 @@ func (this *eventWorker) parserEvent(e event.IEventStruct) {
 	default:
 		{
 			logger.Printf(e.String())
-			// switch e.GetEventId() {
-			// case event.SYSCALL_ENTER:
-			// 	p, ok := (e).(*event.SyscallEvent)
-			// 	if !ok {
-			// 		panic("cast event.SYSCALL_ENTER to event.SyscallEvent failed")
-			// 	}
-			// 	if p.WaitNextEvent() {
-			// 		this.last_event = p
-			// 	} else {
-			// 		logger.Printf(p.String())
-			// 	}
-			// case event.SYSCALL_EXIT:
-			// 	if this.last_event == nil {
-			// 		logger.Printf(e.String())
-			// 	}
-			// 	p, ok := (this.last_event).(*event.SyscallEvent)
-			// 	if !ok {
-			// 		panic("cast event.SYSCALL_ENTER to event.SyscallEvent failed")
-			// 	}
-			// 	this.last_event = nil
-			// 	p.MergeEvent(e)
-			// 	logger.Printf(p.String())
-			// default:
-			// 	logger.Printf(e.String())
-			// }
 		}
 	}
-	// 打印输出
 
-	// this.processor.GetLogger().Printf("%d %s", this.tickerCount, e.String())
-	// 根据 event 选取对应的 解析器
-	// parser := NewParser(e)
-	// this.parser = parser
-
-	// 写入payload到parser
-	// _, err := this.parser.Write(e.Payload()[:e.PayloadLen()])
-	// if err != nil {
-	// 	this.processor.GetLogger().Fatalf("eventWorker: detect packet type error, UUID:%s, error:%v", this.UUID, err)
-	// }
-
-	// 是否接收完成，能否输出
-	// if this.parser.IsDone() {
-	// 	this.Display()
-	// }
 }
 
 func (this *eventWorker) Run() {

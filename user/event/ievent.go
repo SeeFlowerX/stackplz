@@ -1,16 +1,16 @@
 package event
 
 import (
-    "bytes"
-    "errors"
-    "fmt"
-    "log"
-    "os"
-    "stackplz/pkg/util"
-    "stackplz/user/config"
+	"bytes"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"stackplz/user/config"
+	"stackplz/user/util"
 
-    "github.com/cilium/ebpf/perf"
-    "golang.org/x/sys/unix"
+	"github.com/cilium/ebpf/perf"
+	"golang.org/x/sys/unix"
 )
 
 const (
