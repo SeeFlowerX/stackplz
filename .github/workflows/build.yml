@@ -40,11 +40,8 @@ jobs:
         local-cache: true
 
     - name: Build
-      env:
-        NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
       run: |
-        env
-        export PATH=$NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+        export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
         make clean && make
 
     - name: Upload a Build Artifact
