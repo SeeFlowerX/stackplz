@@ -40,7 +40,6 @@ jobs:
 
     - name: Build
       run: |
-        cd stackplz
         make clean && make
 
     - name: Upload a Build Artifact
