@@ -21,9 +21,11 @@ jobs:
 
     - name: Clone dependencies
       run: |
+        cd ..
         git clone https://github.com/SeeFlowerX/ebpf
         git clone https://github.com/SeeFlowerX/ebpfmanager
-        ./stackplz/build_env.sh
+        cd -
+        bash ./build_env.sh
 
     - name: Set up Go
       uses: actions/setup-go@v4
