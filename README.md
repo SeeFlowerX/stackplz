@@ -235,7 +235,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 有关eBPF on Android系列可以加群交流
 
-![](./images/Snipaste_2023-07-25_09-55-14.png)
+![](./images/Snipaste_2023-08-04_20-48-49.png)
 
 个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 
@@ -251,7 +251,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 后续功能开发：
 
 - 更合理的获取maps的方案，缓存机制，有变化时再获取（2023/07/24 部分实现）
-- 为syscall增加调用栈信息（2023/07/24 实现LR PC偏移获取）
+- 为syscall增加调用栈信息（2023/07/24）
 - 提供选项区分hook类型，而不是拆成两个子命令，简化代码（2023/07/22）
 - 为高版本内核提供读取数据内存并输出hex、字符串参数等功能（2023/07/22）
 - pid、tid等选项的黑名单+白名单过滤支持（2023/07/22）
