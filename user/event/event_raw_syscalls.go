@@ -3,7 +3,6 @@ package event
 import (
     "encoding/binary"
     "fmt"
-    "io/ioutil"
     "net"
     "stackplz/user/config"
     "stackplz/user/util"
@@ -590,68 +589,6 @@ func (this *SyscallEvent) String() string {
 
 func (this *SyscallEvent) ParseLRV1() (string, error) {
     return maps_helper.GetOffset(this.Pid, this.lr.Address), nil
-}
-
-func (this *SyscallEvent) ParseLR() (string, error) {
-    info := "UNKNOWN"
-    // 直接读取maps信息 计算lr在什么地方 定位syscall调用也就一目了然了
-    filename := fmt.Sprintf("/proc/%d/maps", this.Pid)
-    content, err := ioutil.ReadFile(filename)
-    if err != nil {
-        return info, fmt.Errorf("Error when opening file:%v", err)
-    }
-    var (
-        seg_start  uint64
-        seg_end    uint64
-        permission string
-        seg_offset uint64
-        device     string
-        inode      uint64
-        seg_path   string
-    )
-    for _, line := range strings.Split(string(content), "\n") {
-        reader := strings.NewReader(line)
-        n, err := fmt.Fscanf(reader, "%x-%x %s %x %s %d %s", &seg_start, &seg_end, &permission, &seg_offset, &device, &inode, &seg_path)
-        if err == nil && n == 7 {
-            if this.lr.Address >= seg_start && this.lr.Address < seg_end {
-                offset := seg_offset + (this.lr.Address - seg_start)
-                info = fmt.Sprintf("%s + 0x%x", seg_path, offset)
-                break
-            }
-        }
-    }
-    return info, err
-}
-
-func (this *SyscallEvent) ParsePC() (string, error) {
-    info := "UNKNOWN"
-    // 直接读取maps信息 计算pc在什么地方 定位syscall调用也就一目了然了
-    filename := fmt.Sprintf("/proc/%d/maps", this.Pid)
-    content, err := ioutil.ReadFile(filename)
-    if err != nil {
-        return info, fmt.Errorf("Error when opening file:%v", err)
-    }
-    var (
-        seg_start  uint64
-        seg_end    uint64
-        permission string
-        seg_offset uint64
-        device     string
-        inode      uint64
-        seg_path   string
-    )
-    for _, line := range strings.Split(string(content), "\n") {
-        reader := strings.NewReader(line)
-        n, err := fmt.Fscanf(reader, "%x-%x %s %x %s %d %s", &seg_start, &seg_end, &permission, &seg_offset, &device, &inode, &seg_path)
-        if err == nil && n == 7 {
-            if this.pc.Address >= seg_start && this.pc.Address < seg_end {
-                offset := seg_offset + (this.pc.Address - seg_start)
-                info = fmt.Sprintf("%s + 0x%x", seg_path, offset)
-                break
-            }
-        }
-    }
-    return info, err
 }
 
 // func (this *SyscallEvent) ReadArgs() string {
