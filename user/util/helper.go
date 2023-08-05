@@ -94,7 +94,7 @@ func ReadMapsByPid(pid uint32) (string, error) {
 	filename := fmt.Sprintf("/proc/%d/maps", pid)
 	content, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return "", fmt.Errorf("Error when opening file:%v", err)
+		return "", err
 	}
 	return string(content), nil
 }
