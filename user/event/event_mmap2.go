@@ -25,19 +25,44 @@ func (this *LibInfo) ParseLib() {
 
 var pid_list []uint32
 
-type PidMaps map[string][]LibInfo
+type ProcMaps map[string][]LibInfo
 
-func (this *PidMaps) ToMapBuffer(pid uint32, del_old bool) string {
+func (this *ProcMaps) ToMapBuffer(pid uint32, del_old bool) string {
     // 把自身转换成 /proc/{pid}/maps 这样的内容
 
     return ""
 }
 
-type MapsHelper map[uint32]PidMaps
+// type MapsHelper map[uint32]ProcMaps
+type MapsHelper struct {
+    pid_maps         map[uint32]ProcMaps
+    child_parent_map map[uint32]uint32
+}
 
-func NewMapsHelper() MapsHelper {
-    helper := make(MapsHelper)
+func NewMapsHelper() *MapsHelper {
+    helper := &MapsHelper{}
+    helper.InitMap()
     return helper
+}
+
+func (this *MapsHelper) InitMap() {
+    this.pid_maps = make(map[uint32]ProcMaps)
+    this.child_parent_map = make(map[uint32]uint32)
+}
+
+func (this *MapsHelper) UpdateForkEvent(event *ForkEvent) {
+    parent_pid, ok := this.child_parent_map[event.Pid]
+    if !ok {
+        this.child_parent_map[event.Pid] = event.Ppid
+    } else {
+        // 大多数情况下应该是不会到这个分支的 除非是进程id不够用了
+        // 例如 A 产生 B B 产生 C A结束 C 产生 D 那么这个时候 D 被分配的pid可能是之前A的pid（应该是有这个概率的
+        if parent_pid != event.Ppid {
+            // 本次所产生的子进程的父进程 与原本记录的父进程不一致
+            // 那么更新此次的子进程的父进程
+            this.child_parent_map[event.Pid] = event.Ppid
+        }
+    }
 }
 
 func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
@@ -56,15 +81,15 @@ func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
         seg_path   string
     )
 
-    var pid_maps PidMaps
+    var pid_maps ProcMaps
     if del_old {
-        pid_maps = make(PidMaps)
-        (*this)[pid] = pid_maps
+        pid_maps = make(ProcMaps)
+        this.pid_maps[pid] = pid_maps
     } else {
-        pid_maps_x, ok := (*this)[pid]
+        pid_maps_x, ok := this.pid_maps[pid]
         if !ok {
-            pid_maps = make(PidMaps)
-            (*this)[pid] = pid_maps
+            pid_maps = make(ProcMaps)
+            this.pid_maps[pid] = pid_maps
         } else {
             pid_maps = pid_maps_x
         }
@@ -103,7 +128,7 @@ func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
             }
         }
     }
-    (*this)[pid] = pid_maps
+    this.pid_maps[pid] = pid_maps
     return nil
 }
 
@@ -132,12 +157,12 @@ func (this *MapsHelper) UpdateMaps(event *Mmap2Event) {
     }
     // 遇到 mmap2 事件的时候都去尝试读取maps信息
     this.ParseMaps(event.Pid, true)
-    pid_maps, ok := (*this)[event.Pid]
+    pid_maps, ok := this.pid_maps[event.Pid]
     if !ok {
-        pid_maps = make(PidMaps)
-        (*this)[event.Pid] = pid_maps
+        pid_maps = make(ProcMaps)
+        this.pid_maps[event.Pid] = pid_maps
     }
-    pid_maps = (*this)[event.Pid]
+    pid_maps = this.pid_maps[event.Pid]
 
     if event.Filename == "" {
         event.Filename = fmt.Sprintf("UNNAMED_0x%x", event.Addr)
@@ -166,20 +191,20 @@ func (this *MapsHelper) UpdateMaps(event *Mmap2Event) {
     } else {
         pid_maps[event.Filename] = []LibInfo{info}
     }
-    (*this)[event.Pid] = pid_maps
+    this.pid_maps[event.Pid] = pid_maps
 }
 
 func (this *MapsHelper) GetOffset(pid uint32, addr uint64) (info string) {
     maps_lock.Lock()
     defer maps_lock.Unlock()
-    pid_maps, ok := (*this)[pid]
+    pid_maps, ok := this.pid_maps[pid]
     if !ok {
         // 一般不会进入这个分支
         err := this.ParseMaps(pid, false)
         if err != nil {
             return fmt.Sprintf("UNNKOWN + 0x%x", addr)
         }
-        pid_maps, ok = (*this)[pid]
+        pid_maps, ok = this.pid_maps[pid]
         if !ok {
             return fmt.Sprintf("UNNKOWN + 0x%x", addr)
         }
@@ -205,12 +230,6 @@ func (this *MapsHelper) GetOffset(pid uint32, addr uint64) (info string) {
     }
     return strings.Join(off_list[:], ",")
 }
-
-// func (this *MapsHelper) toString() (s string) {
-//     s = ""
-//     s += fmt.Sprintln(*this)
-//     return s
-// }
 
 var maps_helper = NewMapsHelper()
 var maps_lock sync.Mutex

@@ -51,5 +51,6 @@ func (this *ForkEvent) ParseContext() (err error) {
         s := fmt.Sprintf("[ForkEvent] pid=%d ppid=%d tid=%d ptid=%d time=%d", this.Pid, this.Ppid, this.Tid, this.Ptid, this.Time)
         this.logger.Printf(s)
     }
+    maps_helper.UpdateForkEvent(this)
     return nil
 }

@@ -459,6 +459,7 @@ func (this *ContextEvent) ParseContextStack() (err error) {
         content, err := util.ReadMapsByPid(this.Pid)
         if err != nil {
             // 直接读取 maps 失败 那么从 mmap2 事件中获取
+            // 根据测试结果 有这样的情况 -> 即 fork 产生的子进程 那么应该查找其父进程 mmap2 事件
             this.logger.Printf("Error when opening file:%v", err)
             this.Stackinfo = ""
             return nil
