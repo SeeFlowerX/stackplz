@@ -232,7 +232,29 @@ type Mmap2Event struct {
     Sample_id      []byte
 }
 
-func (this *Mmap2Event) Decode() (err error) {
+func (this *Mmap2Event) String() string {
+    var s string
+    s += fmt.Sprintf("[PERF_RECORD_MMAP2] %s Base:0x%x Size:0x%x Perm:0x%x Prot:0x%x <%s>", this.GetUUID(), this.Addr, this.Len, this.Flags, this.Prot, this.Filename)
+    return s
+}
+
+func (this *Mmap2Event) GetUUID() string {
+    return fmt.Sprintf("%d_%d", this.Pid, this.Tid)
+}
+
+func (this *Mmap2Event) ParseContext() (err error) {
+    this.buf = bytes.NewBuffer(this.rec.RawSample)
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
+        return err
+    }
+    // 来源于自己的通通不管
+    if this.mconf.SelfPid == this.Pid {
+        return nil
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
+        return err
+    }
+
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Addr); err != nil {
         return err
     }
@@ -265,30 +287,9 @@ func (this *Mmap2Event) Decode() (err error) {
         return err
     }
     this.Filename = util.B2STrim(tmp)
-    // 只关心来自这个路径相关的
-    if strings.HasPrefix(this.Filename, "/data/app") {
-        maps_helper.UpdateMaps(this)
-    }
-    return nil
-}
-
-func (this *Mmap2Event) String() string {
-    var s string
-    s += fmt.Sprintf("[PERF_RECORD_MMAP2] %s Base:0x%x Size:0x%x Perm:0x%x Prot:0x%x <%s>", this.GetUUID(), this.Addr, this.Len, this.Flags, this.Prot, this.Filename)
-    return s
-}
-
-func (this *Mmap2Event) GetUUID() string {
-    return fmt.Sprintf("%d_%d", this.Pid, this.Tid)
-}
-
-func (this *Mmap2Event) ParseContext() (err error) {
-    this.buf = bytes.NewBuffer(this.rec.RawSample)
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
-        return err
+    if this.mconf.Debug {
+        s := fmt.Sprintf("[Mmap2Event] pid=%d tid=%d addr=0x%x len=0x%x pgoff=0x%x mag=%d min=%d ino=%d ino_generation=%d prot=0x%x flags=0x%x <%s>", this.Pid, this.Tid, this.Addr, this.Len, this.Pgoff, this.Maj, this.Min, this.Ino, this.Ino_generation, this.Prot, this.Flags, this.Filename)
+        this.logger.Printf(s)
     }
     return nil
 }

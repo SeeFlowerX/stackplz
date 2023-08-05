@@ -1,16 +1,16 @@
 package event
 
 import (
-	"bytes"
-	"errors"
-	"fmt"
-	"log"
-	"os"
-	"stackplz/user/config"
-	"stackplz/user/util"
+    "bytes"
+    "errors"
+    "fmt"
+    "log"
+    "os"
+    "stackplz/user/config"
+    "stackplz/user/util"
 
-	"github.com/cilium/ebpf/perf"
-	"golang.org/x/sys/unix"
+    "github.com/cilium/ebpf/perf"
+    "golang.org/x/sys/unix"
 )
 
 const (
@@ -20,7 +20,6 @@ const (
 )
 
 type IEventStruct interface {
-    Decode() (err error)
     String() string
     Clone() IEventStruct
     GetUUID() string
@@ -89,10 +88,6 @@ func (this *CommonEvent) Clone() IEventStruct {
     event := new(CommonEvent)
     // event.event_type = EventTypeSoInfoData
     return event
-}
-
-func (this *CommonEvent) Decode() (err error) {
-    panic("CommonEvent.Decode() not implemented yet")
 }
 
 func (this *CommonEvent) ParseContext() (err error) {

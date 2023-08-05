@@ -1,15 +1,15 @@
 package event
 
 import (
-	"encoding/binary"
-	"fmt"
-	"io/ioutil"
-	"net"
-	"stackplz/user/config"
-	"stackplz/user/util"
-	"strings"
-	"syscall"
-	"unsafe"
+    "encoding/binary"
+    "fmt"
+    "io/ioutil"
+    "net"
+    "stackplz/user/config"
+    "stackplz/user/util"
+    "strings"
+    "syscall"
+    "unsafe"
 )
 
 // type EventTypeSys uint32
@@ -423,10 +423,6 @@ func I2B(bs []int8) []byte {
 }
 
 type Arg_bytes = Arg_str
-
-func (this *SyscallEvent) Decode() (err error) {
-    return nil
-}
 
 func (this *SyscallEvent) ParseContextSysEnter() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {

@@ -67,10 +67,6 @@ func (this *eventWorker) Display() {
 // 解析类型，输出
 func (this *eventWorker) parserEvent(e event.IEventStruct) {
 	logger := this.processor.GetLogger()
-	err := e.Decode()
-	if err != nil {
-		logger.Printf("Decode failed UUID:%s, err:%v", this.UUID, err)
-	}
 	switch e.RecordType() {
 	case unix.PERF_RECORD_COMM:
 	case unix.PERF_RECORD_MMAP2:

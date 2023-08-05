@@ -1,10 +1,10 @@
 package event
 
 import (
-	"bytes"
-	"encoding/binary"
-	"fmt"
-	"stackplz/user/util"
+    "bytes"
+    "encoding/binary"
+    "fmt"
+    "stackplz/user/util"
 )
 
 type CommEvent struct {
@@ -13,15 +13,6 @@ type CommEvent struct {
     Tid       uint32
     Comm      string
     Sample_id []byte
-}
-
-func (this *CommEvent) Decode() (err error) {
-    var tmp = make([]byte, this.buf.Len())
-    if err = binary.Read(this.buf, binary.LittleEndian, &tmp); err != nil {
-        return err
-    }
-    this.Comm = util.B2STrim(tmp)
-    return nil
 }
 
 func (this *CommEvent) String() string {
@@ -37,10 +28,23 @@ func (this *CommEvent) GetUUID() string {
 func (this *CommEvent) ParseContext() (err error) {
     this.buf = bytes.NewBuffer(this.rec.RawSample)
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
-        return err
+        panic(fmt.Sprintf("binary.Read err:%v", err))
+    }
+    // 来源于自己的通通不管
+    if this.mconf.SelfPid == this.Pid {
+        return nil
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
-        return err
+        panic(fmt.Sprintf("binary.Read err:%v", err))
+    }
+    var tmp = make([]byte, this.buf.Len())
+    if err = binary.Read(this.buf, binary.LittleEndian, &tmp); err != nil {
+        panic(fmt.Sprintf("binary.Read err:%v", err))
+    }
+    this.Comm = util.B2STrim(tmp)
+    if this.mconf.Debug {
+        s := fmt.Sprintf("[CommEvent] pid=%d tid=%d comm=<%s>", this.Pid, this.Tid, this.Comm)
+        this.logger.Printf(s)
     }
     return nil
 }

@@ -5,11 +5,11 @@ package event
 // import "C"
 
 import (
-	"encoding/binary"
-	"fmt"
-	"stackplz/user/config"
-	"stackplz/user/util"
-	"strings"
+    "encoding/binary"
+    "fmt"
+    "stackplz/user/config"
+    "stackplz/user/util"
+    "strings"
 )
 
 type UprobeEvent struct {
@@ -75,10 +75,6 @@ func (this *UprobeEvent) ParseContext() (err error) {
         panic(fmt.Sprintf("ParseContextStack err:%v", err))
         // return err
     }
-    return nil
-}
-
-func (this *UprobeEvent) Decode() (err error) {
     return nil
 }
 

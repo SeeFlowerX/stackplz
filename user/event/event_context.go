@@ -1,15 +1,15 @@
 package event
 
 import (
-	"bytes"
-	"encoding/binary"
-	"encoding/json"
-	"fmt"
-	"stackplz/user/config"
-	"stackplz/user/util"
-	"strconv"
-	"strings"
-	"time"
+    "bytes"
+    "encoding/binary"
+    "encoding/json"
+    "fmt"
+    "stackplz/user/config"
+    "stackplz/user/util"
+    "strconv"
+    "strings"
+    "time"
 )
 
 type ContextEvent struct {
@@ -52,10 +52,6 @@ func (this *ContextEvent) NewUprobeEvent() IEventStruct {
         panic(fmt.Sprintf("NewUprobeEvent.ParseContext() err:%v", err))
     }
     return event
-}
-
-func (this *ContextEvent) Decode() (err error) {
-    return nil
 }
 
 func (this *ContextEvent) String() (s string) {
