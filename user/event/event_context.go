@@ -40,7 +40,7 @@ func (this *ContextEvent) NewSyscallEvent() IEventStruct {
     event := &SyscallEvent{ContextEvent: *this}
     err := event.ParseContext()
     if err != nil {
-        panic(fmt.Sprintf("NewMmap2Event.ParseContext() err:%v", err))
+        panic(fmt.Sprintf("NewSyscallEvent.ParseContext() err:%v", err))
     }
     return event
 }
@@ -106,34 +106,34 @@ func (this *ContextEvent) ParsePadding() (err error) {
 func (this *ContextEvent) ParseContext() (err error) {
     this.buf = bytes.NewBuffer(this.rec.RawSample)
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Ts); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.EventId); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.HostTid); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.HostPid); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Uid); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Comm); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Argnum); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Padding); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     // 这一类的说明都是要关注的
     maps_helper.UpdatePidList(this.Pid)

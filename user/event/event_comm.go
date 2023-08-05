@@ -28,18 +28,18 @@ func (this *CommEvent) GetUUID() string {
 func (this *CommEvent) ParseContext() (err error) {
     this.buf = bytes.NewBuffer(this.rec.RawSample)
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     // 来源于自己的通通不管
     if this.mconf.SelfPid == this.Pid {
         return nil
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     var tmp = make([]byte, this.buf.Len())
     if err = binary.Read(this.buf, binary.LittleEndian, &tmp); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        return err
     }
     this.Comm = util.B2STrim(tmp)
     if this.mconf.Debug {
