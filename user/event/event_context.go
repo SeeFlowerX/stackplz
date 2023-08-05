@@ -460,8 +460,17 @@ func (this *ContextEvent) ParseContextStack() (err error) {
         if err != nil {
             // 直接读取 maps 失败 那么从 mmap2 事件中获取
             // 根据测试结果 有这样的情况 -> 即 fork 产生的子进程 那么应该查找其父进程 mmap2 事件
-            this.logger.Printf("Error when opening file:%v", err)
-            this.Stackinfo = ""
+            // lr_addr := this.UnwindBuffer.Regs[30]
+            // sp_addr := this.UnwindBuffer.Regs[31]
+            pc_addr := this.UnwindBuffer.Regs[32]
+            info, err := maps_helper.GetStack(this.Pid, pc_addr)
+            if err != nil {
+                // this.logger.Printf("Error when opening file:%v", err)
+                this.logger.Printf("Error when GetStack:%v", err)
+                this.Stackinfo = ""
+            } else {
+                this.Stackinfo = info
+            }
             return nil
         }
         this.Stackinfo = ParseStack(content, this.UnwindBuffer)

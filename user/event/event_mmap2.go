@@ -3,6 +3,7 @@ package event
 import (
     "bytes"
     "encoding/binary"
+    "errors"
     "fmt"
     "io/ioutil"
     "stackplz/user/util"
@@ -18,6 +19,16 @@ type LibInfo struct {
     LibName  string
 }
 
+func (this *LibInfo) Clone() LibInfo {
+    info := LibInfo{}
+    info.BaseAddr = this.BaseAddr
+    info.Off = this.Off
+    info.EndAddr = this.EndAddr
+    info.LibPath = this.LibPath
+    info.LibName = this.LibName
+    return info
+}
+
 func (this *LibInfo) ParseLib() {
     parts := strings.Split(this.LibPath, "/")
     this.LibName = parts[len(parts)-1]
@@ -27,6 +38,20 @@ var pid_list []uint32
 
 type ProcMaps map[string][]LibInfo
 
+func (this *ProcMaps) Clone() ProcMaps {
+    // maps_lock.Lock()
+    // defer maps_lock.Unlock()
+    maps := ProcMaps{}
+    for key, value := range *this {
+        var infos []LibInfo
+        for _, ori_info := range value {
+            infos = append(infos, ori_info)
+        }
+        maps[key] = infos
+    }
+    return maps
+}
+
 func (this *ProcMaps) ToMapBuffer(pid uint32, del_old bool) string {
     // 把自身转换成 /proc/{pid}/maps 这样的内容
 
@@ -35,7 +60,7 @@ func (this *ProcMaps) ToMapBuffer(pid uint32, del_old bool) string {
 
 // type MapsHelper map[uint32]ProcMaps
 type MapsHelper struct {
-    pid_maps         map[uint32]ProcMaps
+    pid_maps         map[uint32]*ProcMaps
     child_parent_map map[uint32]uint32
 }
 
@@ -46,14 +71,21 @@ func NewMapsHelper() *MapsHelper {
 }
 
 func (this *MapsHelper) InitMap() {
-    this.pid_maps = make(map[uint32]ProcMaps)
+    this.pid_maps = make(map[uint32]*ProcMaps)
     this.child_parent_map = make(map[uint32]uint32)
 }
 
 func (this *MapsHelper) UpdateForkEvent(event *ForkEvent) {
+    // 根据日志实际的记录结果 fork 的 pid ppid 存在相同的情况 why
     parent_pid, ok := this.child_parent_map[event.Pid]
     if !ok {
         this.child_parent_map[event.Pid] = event.Ppid
+        // 为了便于后续能够快速查找进程的maps
+        // 出现fork事件的时候 把父进程已经收集到的 maps 信息也复制一份
+        // 最开始想设计为需要计算的时候 查找父进程 再去解析偏移 但是考虑到fork产生的子进程可能会产生新的操作 这样不合理
+        if event.Pid != event.Ppid {
+            this.CloneMaps(event.Pid, event.Ppid)
+        }
     } else {
         // 大多数情况下应该是不会到这个分支的 除非是进程id不够用了
         // 例如 A 产生 B B 产生 C A结束 C 产生 D 那么这个时候 D 被分配的pid可能是之前A的pid（应该是有这个概率的
@@ -63,6 +95,44 @@ func (this *MapsHelper) UpdateForkEvent(event *ForkEvent) {
             this.child_parent_map[event.Pid] = event.Ppid
         }
     }
+}
+
+func (this *MapsHelper) CloneMaps(pid, parent_pid uint32) (err error) {
+    // 为子进程复制一份maps信息
+    maps_lock.Lock()
+    defer maps_lock.Unlock()
+    pid_maps, ok := this.pid_maps[parent_pid]
+    if !ok {
+        // 在当前维护的maps中不存在父进程的 比如是在进程运行过程中hook的
+        // 那么尝试去读取父进程的maps
+        err = this.ParseMaps(parent_pid, false)
+        if err != nil {
+            // 应该不会走到这个分支
+            return err
+        }
+        pid_maps, ok = this.pid_maps[parent_pid]
+        if !ok {
+            // ParseMaps 成功的情况下应该不会到这个分支
+            return errors.New(fmt.Sprintf("ParseMaps success, but get pid_maps failed by child:%d parent:%d", pid, parent_pid))
+        }
+    }
+    copied_maps := pid_maps.Clone()
+    this.pid_maps[pid] = &copied_maps
+    return nil
+}
+
+func (this *MapsHelper) GetStack(pid uint32, addr uint64) (info string, err error) {
+    // 当直接读取 maps 文件失败的时候 就采用这个方案获取堆栈
+
+    // 1. 首先尝试获取 pid 对应的 maps 信息
+    // pid_maps, ok := this.pid_maps[pid]
+    // if !ok {
+    //     return "", errors.New(fmt.Sprintf("[GetStack] get pid_maps failed by pid:%d", pid))
+    // }
+
+    // pid_maps
+    fmt.Printf("GetStack %d 0x%x\n", pid, addr)
+    return this.GetOffset(pid, addr), nil
 }
 
 func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
@@ -81,19 +151,15 @@ func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
         seg_path   string
     )
 
-    var pid_maps ProcMaps
     if del_old {
-        pid_maps = make(ProcMaps)
-        this.pid_maps[pid] = pid_maps
+        this.pid_maps[pid] = &ProcMaps{}
     } else {
-        pid_maps_x, ok := this.pid_maps[pid]
+        _, ok := this.pid_maps[pid]
         if !ok {
-            pid_maps = make(ProcMaps)
-            this.pid_maps[pid] = pid_maps
-        } else {
-            pid_maps = pid_maps_x
+            this.pid_maps[pid] = &ProcMaps{}
         }
     }
+    pid_maps := this.pid_maps[pid]
     for _, line := range strings.Split(string(content), "\n") {
         reader := strings.NewReader(line)
         n, err := fmt.Fscanf(reader, "%x-%x %s %x %s %d %s", &seg_start, &seg_end, &permission, &seg_offset, &device, &inode, &seg_path)
@@ -109,7 +175,7 @@ func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
             }
             new_info.ParseLib()
 
-            base_list, ok := pid_maps[seg_path]
+            base_list, ok := (*pid_maps)[seg_path]
             if ok {
                 // 注意基址列表去重 做成列表的原因是...
                 has_find := false
@@ -121,10 +187,10 @@ func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
                 }
                 if !has_find {
                     base_list = append(base_list, new_info)
-                    pid_maps[seg_path] = base_list
+                    (*pid_maps)[seg_path] = base_list
                 }
             } else {
-                pid_maps[seg_path] = []LibInfo{new_info}
+                (*pid_maps)[seg_path] = []LibInfo{new_info}
             }
         }
     }
@@ -159,8 +225,7 @@ func (this *MapsHelper) UpdateMaps(event *Mmap2Event) {
     this.ParseMaps(event.Pid, true)
     pid_maps, ok := this.pid_maps[event.Pid]
     if !ok {
-        pid_maps = make(ProcMaps)
-        this.pid_maps[event.Pid] = pid_maps
+        this.pid_maps[event.Pid] = &ProcMaps{}
     }
     pid_maps = this.pid_maps[event.Pid]
 
@@ -174,7 +239,7 @@ func (this *MapsHelper) UpdateMaps(event *Mmap2Event) {
         LibPath:  event.Filename,
     }
     info.ParseLib()
-    base_list, ok := pid_maps[event.Filename]
+    base_list, ok := (*pid_maps)[event.Filename]
     if ok {
         // 注意基址列表去重 做成列表的原因是...
         has_find := false
@@ -186,11 +251,12 @@ func (this *MapsHelper) UpdateMaps(event *Mmap2Event) {
         }
         if !has_find {
             base_list = append(base_list, info)
-            pid_maps[event.Filename] = base_list
+            (*pid_maps)[event.Filename] = base_list
         }
     } else {
-        pid_maps[event.Filename] = []LibInfo{info}
+        (*pid_maps)[event.Filename] = []LibInfo{info}
     }
+    // 这一句应该不用了？
     this.pid_maps[event.Pid] = pid_maps
 }
 
@@ -217,7 +283,7 @@ func (this *MapsHelper) GetOffset(pid uint32, addr uint64) (info string) {
     // 全部遍历是一种低效的写法，但是暂时没有更好的想法，就这样
     // 一定要优化那么应该在每次 pid_maps 变更的时候就进行排序 并按照基址大小插入
     var off_list []string = []string{}
-    for _, lib_infos := range pid_maps {
+    for _, lib_infos := range *pid_maps {
         for _, lib_info := range lib_infos {
             if addr >= lib_info.BaseAddr && addr < lib_info.EndAddr {
                 offset := lib_info.Off + (addr - lib_info.BaseAddr)
