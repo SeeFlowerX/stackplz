@@ -26,6 +26,8 @@ type GlobalConfig struct {
     Library          string
     RegName          string
     DumpHex          bool
+    NoCheck          bool
+    Btf              bool
     SysCall          string
     SysCallBlacklist string
     CanReadUser      bool

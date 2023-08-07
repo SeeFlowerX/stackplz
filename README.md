@@ -37,7 +37,7 @@ chmod +x /data/local/tmp/stackplz
 2. 第一次使用时需要释放库文件，请使用下面的命令
 
 ```bash
-/data/local/tmp/stackplz stack --prepare
+cd /data/local/tmp && ./stackplz --prepare
 ```
 
 ![](./images/Snipaste_2022-11-09_14-25-46.png)

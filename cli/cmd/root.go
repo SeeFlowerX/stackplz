@@ -104,17 +104,22 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 在 init 之后各个选项的 flag 还没有初始化 到这里才初始化 所以在这里最先设置好 logger
     logger := NewLogger(log_path)
     mconfig.SetLogger(logger)
-
-    // 先检查必要的配置
-    err = util.CheckKernelConfig()
-    if err != nil {
-        logger.Fatalf("CheckKernelConfig failed, error:%v", err)
+    if !gconfig.NoCheck {
+        // 先检查必要的配置
+        err = util.CheckKernelConfig()
+        if err != nil {
+            logger.Fatalf("CheckKernelConfig failed, error:%v", err)
+        }
     }
-    if !util.HasEnableBTF {
-        // 检查平台 判断是不是开发板
-        mconfig.ExternalBTF = findBTFAssets()
-    } else {
+    if gconfig.Btf {
         mconfig.ExternalBTF = ""
+    } else {
+        if !util.HasEnableBTF {
+            // 检查平台 判断是不是开发板
+            mconfig.ExternalBTF = findBTFAssets()
+        } else {
+            mconfig.ExternalBTF = ""
+        }
     }
     // 检查符号情况 用于判断部分选项是否能启用
     gconfig.CanReadUser, err = findKallsymsSymbol("bpf_probe_read_user")
@@ -583,6 +588,8 @@ func init() {
     rootCmd.PersistentFlags().StringArrayVarP(&gconfig.HookPoint, "point", "w", []string{}, "hook point config, e.g. strstr+0x0[str,str] write[int,hex:128,int]")
     rootCmd.PersistentFlags().StringVar(&gconfig.RegName, "reg", "", "get the offset of reg")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.DumpHex, "dumphex", "", false, "dump buffer as hex")
+    rootCmd.PersistentFlags().BoolVarP(&gconfig.NoCheck, "nocheck", "", false, "disable check for bpf")
+    rootCmd.PersistentFlags().BoolVarP(&gconfig.Btf, "btf", "", false, "declare BTF enabled")
     // syscall hook
     rootCmd.PersistentFlags().StringVarP(&gconfig.SysCall, "syscall", "s", "", "filter syscalls")
     rootCmd.PersistentFlags().StringVar(&gconfig.SysCallBlacklist, "no-syscall", "", "syscall black list, max 20")
