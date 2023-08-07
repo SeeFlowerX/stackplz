@@ -5,7 +5,9 @@ import (
     "encoding/binary"
     "errors"
     "fmt"
+    "io"
     "io/ioutil"
+    "log"
     "stackplz/user/util"
     "strings"
     "sync"
@@ -38,6 +40,32 @@ var pid_list []uint32
 
 type ProcMaps map[string][]LibInfo
 
+func (this *MapsHelper) GetRegion(pid_maps *ProcMaps, addr uint64) *LibInfo {
+    var region LibInfo
+    for _, lib_infos := range *pid_maps {
+        for _, lib_info := range lib_infos {
+            // this.logger.Printf("[lib_info] start:0x%x end:0x%x name:%s\n", lib_info.BaseAddr, lib_info.EndAddr, lib_info.LibName)
+            if addr >= lib_info.BaseAddr && addr < lib_info.EndAddr {
+                region = lib_info
+            }
+        }
+    }
+    return &region
+}
+
+func (this *MapsHelper) GetRegionInfo(pid_maps *ProcMaps, addr uint64) string {
+    var info string = fmt.Sprintf("0x%x <unknown>", addr)
+    for _, lib_infos := range *pid_maps {
+        for _, lib_info := range lib_infos {
+            if addr >= lib_info.BaseAddr && addr < lib_info.EndAddr {
+                offset := lib_info.Off + (addr - lib_info.BaseAddr)
+                info = fmt.Sprintf("0x%x <%s + 0x%x>", addr, lib_info.LibName, offset)
+            }
+        }
+    }
+    return info
+}
+
 func (this *ProcMaps) Clone() ProcMaps {
     // maps_lock.Lock()
     // defer maps_lock.Unlock()
@@ -60,6 +88,7 @@ func (this *ProcMaps) ToMapBuffer(pid uint32, del_old bool) string {
 
 // type MapsHelper map[uint32]ProcMaps
 type MapsHelper struct {
+    logger           *log.Logger
     pid_maps         map[uint32]*ProcMaps
     child_parent_map map[uint32]uint32
 }
@@ -68,6 +97,10 @@ func NewMapsHelper() *MapsHelper {
     helper := &MapsHelper{}
     helper.InitMap()
     return helper
+}
+
+func (this *MapsHelper) SetLogger(logger *log.Logger) {
+    this.logger = logger
 }
 
 func (this *MapsHelper) InitMap() {
@@ -121,18 +154,61 @@ func (this *MapsHelper) CloneMaps(pid, parent_pid uint32) (err error) {
     return nil
 }
 
-func (this *MapsHelper) GetStack(pid uint32, addr uint64) (info string, err error) {
+func (this *MapsHelper) GetStack(pid uint32, ubuf *UnwindBuf) (info string, err error) {
     // 当直接读取 maps 文件失败的时候 就采用这个方案获取堆栈
 
-    // 1. 首先尝试获取 pid 对应的 maps 信息
-    // pid_maps, ok := this.pid_maps[pid]
-    // if !ok {
-    //     return "", errors.New(fmt.Sprintf("[GetStack] get pid_maps failed by pid:%d", pid))
-    // }
+    // 首先尝试获取 pid 对应的 maps 信息
+    pid_maps, ok := this.pid_maps[pid]
+    if !ok {
+        return "", errors.New(fmt.Sprintf("[GetStack] get pid_maps failed by pid:%d", pid))
+    }
 
-    // pid_maps
-    fmt.Printf("GetStack %d 0x%x\n", pid, addr)
-    return this.GetOffset(pid, addr), nil
+    // perf_output_sample_ustack dump获取到的栈空间数据 起始地址就是 sp
+    stack_buf := bytes.NewReader(ubuf.Data[:])
+    fp := ubuf.Regs[29]
+    // lr := ubuf.Regs[30]
+    sp := ubuf.Regs[31]
+    pc := ubuf.Regs[32]
+    // 栈解析结果
+    // var stack_arr []uint64
+    var stack_infos []string
+    // stack_arr = append(stack_arr, pc)
+    stack_infos = append(stack_infos, this.GetRegionInfo(pid_maps, pc))
+    // 奇怪 这里竟然没有 sp 所在的map信息
+    // sp_region := this.GetRegion(pid_maps, sp)
+    // this.logger.Printf("start:0x%x end:0x%x name:%s\n", sp_region.BaseAddr, sp_region.EndAddr, sp_region.LibName)
+    // this.logger.Printf("pc:0x%x fp:0x%x sp:0x%x\n", pc, fp, sp)
+    for i := 0; i < 20; i++ {
+        // if fp < sp || fp < sp_region.BaseAddr || fp > sp_region.EndAddr {
+        //     break
+        // }
+        if fp < sp {
+            break
+        }
+        fp_offset := fp - sp
+        stack_buf.Seek(int64(fp_offset), io.SeekStart)
+        var next_fp uint64
+        err = binary.Read(stack_buf, binary.LittleEndian, &next_fp)
+        if err != nil {
+            this.logger.Printf("read next_fp at offset:0x%x failed\n", fp_offset)
+            break
+        }
+        var next_lr uint64
+        err = binary.Read(stack_buf, binary.LittleEndian, &next_lr)
+        if err != nil {
+            this.logger.Printf("read next_lr at offset:0x%x failed\n", fp_offset+uint64(binary.Size(next_fp)))
+            break
+        }
+        fp = next_fp
+        // stack_arr = append(stack_arr, next_lr)
+        if next_lr != 0 {
+            stack_infos = append(stack_infos, this.GetRegionInfo(pid_maps, next_lr))
+        }
+    }
+    // backtrace := fmt.Sprintf("Backtrace:\n\t%s", strings.Join(stack_infos, "\n\t"))
+    backtrace := fmt.Sprintf("\t%s", strings.Join(stack_infos, "\n\t"))
+    return backtrace, nil
+    // return this.GetOffset(pid, addr), nil
 }
 
 func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
