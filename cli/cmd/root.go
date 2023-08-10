@@ -122,13 +122,13 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         }
     }
     // 检查符号情况 用于判断部分选项是否能启用
-    gconfig.CanReadUser, err = findKallsymsSymbol("bpf_probe_read_user")
+    has_bpf_probe_read_user, err := findKallsymsSymbol("bpf_probe_read_user")
     if err != nil {
         logger.Printf("bpf_probe_read_user err:%v", err)
         return err
     }
-    if !gconfig.CanReadUser {
-        logger.Fatalf("not support for this machine, bpf_probe_read_user:%t", gconfig.CanReadUser)
+    if !has_bpf_probe_read_user {
+        logger.Fatalf("not support for this machine, has no bpf_probe_read_user")
     }
 
     // 第一步先释放用于获取堆栈信息的外部库
@@ -218,10 +218,13 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Tid = gconfig.Tid
     mconfig.Buffer = gconfig.Buffer
     mconfig.UnwindStack = gconfig.UnwindStack
+    if gconfig.StackSize&7 != 0 {
+        return errors.New(fmt.Sprintf("dump stack size %d is not 8-byte aligned.", gconfig.StackSize))
+    }
+    mconfig.StackSize = gconfig.StackSize
     mconfig.ShowRegs = gconfig.ShowRegs
     mconfig.GetOff = gconfig.GetOff
     mconfig.Debug = gconfig.Debug
-    mconfig.Quiet = gconfig.Quiet
     mconfig.Is32Bit = gconfig.Is32Bit
     mconfig.Color = gconfig.Color
     mconfig.DumpHex = gconfig.DumpHex
@@ -572,6 +575,7 @@ func init() {
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定
     rootCmd.PersistentFlags().BoolVar(&gconfig.UnwindStack, "stack", false, "enable unwindstack")
+    rootCmd.PersistentFlags().Uint32VarP(&gconfig.StackSize, "stack-size", "", 8192, "stack dump size, default 8192 bytes, max 65528 bytes")
     rootCmd.PersistentFlags().BoolVar(&gconfig.ShowRegs, "regs", false, "show regs")
     rootCmd.PersistentFlags().BoolVar(&gconfig.GetOff, "getoff", false, "try get pc and lr offset")
     // 黑白名单设定

@@ -129,8 +129,6 @@ func (this *StackUprobeConfig) Check() error {
 
 type SyscallConfig struct {
     SConfig
-    UnwindStack            bool
-    ShowRegs               bool
     HookALL                bool
     Enable                 bool
     syscall_mask           uint32

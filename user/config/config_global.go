@@ -8,6 +8,7 @@ type GlobalConfig struct {
     Tid              uint32
     Color            bool
     UnwindStack      bool
+    StackSize        uint32
     ShowRegs         bool
     GetOff           bool
     TidsBlacklist    string
@@ -16,7 +17,6 @@ type GlobalConfig struct {
     TNamesBlacklist  string
     Debug            bool
     Quiet            bool
-    AfterRead        bool
     Is32Bit          bool
     Buffer           uint32
     LogFile          string
@@ -30,7 +30,6 @@ type GlobalConfig struct {
     Btf              bool
     SysCall          string
     SysCallBlacklist string
-    CanReadUser      bool
 }
 
 func NewGlobalConfig() *GlobalConfig {

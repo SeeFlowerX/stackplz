@@ -26,12 +26,12 @@ type SConfig struct {
 	Pid         uint32
 	Tid         uint32
 	UnwindStack bool
+	StackSize   uint32
 	ShowRegs    bool
 	GetOff      bool
 	RegName     string
 	ExternalBTF string
 	Debug       bool
-	Quiet       bool
 	Is32Bit     bool
 	Buffer      uint32
 	Color       bool
