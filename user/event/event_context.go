@@ -12,6 +12,58 @@ import (
     "time"
 )
 
+type LibArg struct {
+    Abi       uint64
+    Regs      [33]uint64
+    StackSize uint64
+    DynSize   uint64
+}
+
+type UnwindBuf struct {
+    Abi       uint64
+    Regs      [33]uint64
+    StackSize uint64
+    Data      []byte
+    DynSize   uint64
+}
+
+func (this *UnwindBuf) GetLibArg() *LibArg {
+    arg := &LibArg{}
+    arg.Abi = this.Abi
+    arg.Regs = this.Regs
+    arg.StackSize = this.StackSize
+    arg.DynSize = this.DynSize
+    return arg
+}
+
+func (this *UnwindBuf) ParseContext(buf *bytes.Buffer) (err error) {
+    if err = binary.Read(buf, binary.LittleEndian, &this.Abi); err != nil {
+        return err
+    }
+    if err = binary.Read(buf, binary.LittleEndian, &this.Regs); err != nil {
+        return err
+    }
+    if err = binary.Read(buf, binary.LittleEndian, &this.StackSize); err != nil {
+        return err
+    }
+
+    stack_data := make([]byte, this.StackSize)
+    if err = binary.Read(buf, binary.LittleEndian, &stack_data); err != nil {
+        return err
+    }
+    this.Data = stack_data
+
+    if err = binary.Read(buf, binary.LittleEndian, &this.DynSize); err != nil {
+        return err
+    }
+    return nil
+}
+
+type RegsBuf struct {
+    Abi  uint64
+    Regs [33]uint64
+}
+
 type ContextEvent struct {
     CommonEvent
     Ts            uint64
@@ -28,7 +80,7 @@ type ContextEvent struct {
 
     Stackinfo    string
     RegsBuffer   RegsBuf
-    UnwindBuffer UnwindBuf
+    UnwindBuffer *UnwindBuf
     RegName      string
 }
 
@@ -390,7 +442,7 @@ func (this *ContextEvent) GetStackTrace(s string) string {
         // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
         // 当然前提是取了寄存器数据
         var tmp_regs [33]uint64
-        if this.rec.UnwindStack {
+        if this.rec.ExtraOptions.UnwindStack {
             tmp_regs = this.UnwindBuffer.Regs
         } else {
             tmp_regs = this.RegsBuffer.Regs
@@ -419,9 +471,9 @@ func (this *ContextEvent) GetStackTrace(s string) string {
             }
         }
     }
-    if this.rec.Regs {
+    if this.rec.ExtraOptions.ShowRegs {
         var tmp_regs [33]uint64
-        if this.rec.UnwindStack {
+        if this.rec.ExtraOptions.UnwindStack {
             tmp_regs = this.UnwindBuffer.Regs
         } else {
             tmp_regs = this.RegsBuffer.Regs
@@ -440,7 +492,7 @@ func (this *ContextEvent) GetStackTrace(s string) string {
         s += ", Regs:\n" + string(regs_info)
     }
     if this.Stackinfo != "" {
-        if this.rec.Regs {
+        if this.rec.ExtraOptions.ShowRegs {
             s += fmt.Sprintf("\nStackinfo:\n%s", this.Stackinfo)
         } else {
             s += fmt.Sprintf(", Stackinfo:\n%s", this.Stackinfo)
@@ -449,10 +501,12 @@ func (this *ContextEvent) GetStackTrace(s string) string {
     return s
 }
 func (this *ContextEvent) ParseContextStack() (err error) {
-    if this.rec.UnwindStack {
+    if this.rec.ExtraOptions.UnwindStack {
         // 读取完整的栈数据和寄存器数据 并解析为 UnwindBuf 结构体
-        if err = binary.Read(this.buf, binary.LittleEndian, &this.UnwindBuffer); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+        this.UnwindBuffer = &UnwindBuf{}
+        err = this.UnwindBuffer.ParseContext(this.buf)
+        if err != nil {
+            panic(fmt.Sprintf("UnwindStack ParseContext failed, err:%v", err))
         }
         // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
@@ -464,7 +518,7 @@ func (this *ContextEvent) ParseContextStack() (err error) {
             // sp_addr := this.UnwindBuffer.Regs[31]
             // pc_addr := this.UnwindBuffer.Regs[32]
             maps_helper.SetLogger(this.logger)
-            info, err := maps_helper.GetStack(this.Pid, &this.UnwindBuffer)
+            info, err := maps_helper.GetStack(this.Pid, this.UnwindBuffer)
             if err != nil {
                 // this.logger.Printf("Error when opening file:%v", err)
                 this.logger.Printf("Error when GetStack:%v", err)
@@ -475,7 +529,7 @@ func (this *ContextEvent) ParseContextStack() (err error) {
             return nil
         }
         this.Stackinfo = ParseStack(content, this.UnwindBuffer)
-    } else if this.rec.Regs {
+    } else if this.rec.ExtraOptions.ShowRegs {
         var pad uint32
         if err = binary.Read(this.buf, binary.LittleEndian, &pad); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))

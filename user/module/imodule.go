@@ -182,6 +182,35 @@ func (this *Module) readEvents() error {
     return nil
 }
 
+func (this *Module) getExtraOptions(em *ebpf.Map) perf.ExtraPerfOptions {
+    // 这里可以考虑在一开始的时候就完成初始化
+    map_value := reflect.ValueOf(em)
+    map_name := map_value.Elem().FieldByName("name")
+    IsMmapEvent := map_name.String() == "fake_events"
+
+    // http://aospxref.com/android-11.0.0_r21/xref/system/extras/simpleperf/perf_regs.cpp#82
+    var RegMask uint64
+    if this.sconf.Is32Bit {
+        RegMask = (1 << PERF_REG_ARM_MAX) - 1
+    } else {
+        RegMask = (1 << PERF_REG_ARM64_MAX) - 1
+    }
+    var ShowRegs bool
+    if this.sconf.RegName != "" {
+        ShowRegs = true
+    } else {
+        ShowRegs = this.sconf.ShowRegs
+    }
+
+    return perf.ExtraPerfOptions{
+        UnwindStack:       this.sconf.UnwindStack,
+        ShowRegs:          ShowRegs,
+        PerfMmap:          IsMmapEvent,
+        Sample_regs_user:  RegMask,
+        Sample_stack_user: this.sconf.StackSize,
+    }
+}
+
 func (this *Module) getPerCPUBuffer() int {
     return os.Getpagesize() * (int(this.sconf.Buffer) * 1024 / 4)
 }
@@ -191,21 +220,12 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     // 用于进行堆栈回溯 以后可以细分栈数据与寄存器数据
     // 每个 模块都是 Clone 得到的 map 虽然名字相同 但是 fd不同 所以可以正常区分
 
-    map_value := reflect.ValueOf(em)
-    map_name := map_value.Elem().FieldByName("name")
-    IsMmapEvent := map_name.String() == "fake_events"
+    eopt := this.getExtraOptions(em)
 
     var rd *perf.Reader
     var err error
-    if IsMmapEvent {
-        rd, err = perf.NewReaderWithOptions(em, this.getPerCPUBuffer(), perf.ReaderOptions{}, false, false, true)
-    } else {
-        if this.sconf.RegName != "" {
-            rd, err = perf.NewReaderWithOptions(em, this.getPerCPUBuffer(), perf.ReaderOptions{}, this.sconf.UnwindStack, true, false)
-        } else {
-            rd, err = perf.NewReaderWithOptions(em, this.getPerCPUBuffer(), perf.ReaderOptions{}, this.sconf.UnwindStack, this.sconf.ShowRegs, false)
-        }
-    }
+
+    rd, err = perf.NewReaderWithOptions(em, this.getPerCPUBuffer(), perf.ReaderOptions{}, eopt)
     if err != nil {
         errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)
         return
@@ -222,19 +242,7 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
             default:
             }
 
-            var record perf.Record
-            // 根据预设的flag决定以何种方式读取事件数据
-            if IsMmapEvent {
-                record, err = rd.Read()
-            } else if this.sconf.UnwindStack {
-                record, err = rd.ReadWithUnwindStack(this.sconf.ShowRegs)
-            } else if this.sconf.ShowRegs {
-                record, err = rd.ReadWithRegs()
-            } else if this.sconf.RegName != "" {
-                record, err = rd.ReadWithRegs()
-            } else {
-                record, err = rd.Read()
-            }
+            record, err := rd.ReadWithExtraOptions(&eopt)
 
             if err != nil {
                 if errors.Is(err, perf.ErrClosed) {
@@ -246,7 +254,7 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 
             if record.LostSamples != 0 {
                 this.TotalLost += record.LostSamples
-                this.logger.Printf("%s\tperf event ring buffer full, dropped %d samples, %s", this.child.Name(), record.LostSamples, map_name)
+                this.logger.Printf("%s\tperf event ring buffer full, dropped %d samples, record_type:%d", this.child.Name(), record.LostSamples, record.RecordType)
                 continue
             }
 

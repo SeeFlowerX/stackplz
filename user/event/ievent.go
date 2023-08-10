@@ -34,35 +34,6 @@ type IEventStruct interface {
     SetShowRegs(show_regs bool)
 }
 
-type UnwindBuf struct {
-    Abi       uint64
-    Regs      [33]uint64
-    StackSize uint64
-    Data      [8192]byte
-    DynSize   uint64
-}
-
-type LibArg struct {
-    Abi       uint64
-    Regs      [33]uint64
-    StackSize uint64
-    DynSize   uint64
-}
-
-func (this *UnwindBuf) GetLibArg() LibArg {
-    arg := &LibArg{}
-    arg.Abi = this.Abi
-    arg.Regs = this.Regs
-    arg.StackSize = this.StackSize
-    arg.DynSize = this.DynSize
-    return *arg
-}
-
-type RegsBuf struct {
-    Abi  uint64
-    Regs [33]uint64
-}
-
 type CommonEvent struct {
     mconf        *config.ModuleConfig
     logger       *log.Logger
