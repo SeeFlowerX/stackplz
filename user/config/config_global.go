@@ -15,6 +15,7 @@ type GlobalConfig struct {
     PidsBlacklist    string
     TNamesWhitelist  string
     TNamesBlacklist  string
+    TraceIsolated    bool
     Debug            bool
     Quiet            bool
     Is32Bit          bool

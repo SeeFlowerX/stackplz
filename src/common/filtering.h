@@ -59,6 +59,9 @@ static __always_inline u64 should_trace(program_data_t *p)
     if (filter == NULL) {
         return 0;
     }
+    if ((filter->trace_isolated == 1) && (context->uid >= 99000) && (context->uid <= 99999)) {
+        return 1;
+    }
 
     if (config->filter_mode == UID_MODE) {
         if (filter->uid == context->uid) {

@@ -216,6 +216,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Uid = gconfig.Uid
     mconfig.Pid = gconfig.Pid
     mconfig.Tid = gconfig.Tid
+    mconfig.TraceIsolated = gconfig.TraceIsolated
     mconfig.Buffer = gconfig.Buffer
     mconfig.UnwindStack = gconfig.UnwindStack
     if gconfig.StackSize&7 != 0 {
@@ -279,7 +280,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             return err
         }
     } else {
-        logger.Fatal("hook nothing, plz set --symbol/--library + --offset")
+        logger.Fatal("hook nothing, plz set -w/--point or -s/--syscall")
     }
 
     return nil
@@ -574,6 +575,7 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.PidsBlacklist, "no-pids", "", "pid black list, max 20")
     rootCmd.PersistentFlags().StringVar(&gconfig.TNamesWhitelist, "tnames", "", "thread name white list, max 20")
     rootCmd.PersistentFlags().StringVar(&gconfig.TNamesBlacklist, "no-tnames", "", "thread name black list, max 20")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.TraceIsolated, "iso", false, "watch isolated process")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定

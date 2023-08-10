@@ -20,23 +20,24 @@ type IConfig interface {
 }
 
 type SConfig struct {
-	SelfPid     uint32
-	FilterMode  uint32
-	Uid         uint32
-	Pid         uint32
-	Tid         uint32
-	UnwindStack bool
-	StackSize   uint32
-	ShowRegs    bool
-	GetOff      bool
-	RegName     string
-	ExternalBTF string
-	Debug       bool
-	Is32Bit     bool
-	Buffer      uint32
-	Color       bool
-	DumpHex     bool
-	logger      *log.Logger
+	SelfPid       uint32
+	FilterMode    uint32
+	Uid           uint32
+	Pid           uint32
+	Tid           uint32
+	TraceIsolated bool
+	UnwindStack   bool
+	StackSize     uint32
+	ShowRegs      bool
+	GetOff        bool
+	RegName       string
+	ExternalBTF   string
+	Debug         bool
+	Is32Bit       bool
+	Buffer        uint32
+	Color         bool
+	DumpHex       bool
+	logger        *log.Logger
 }
 
 func (this *SConfig) SetLogger(logger *log.Logger) {

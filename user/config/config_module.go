@@ -428,6 +428,10 @@ func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
     if len(this.TNamesWhitelist) > 0 {
         filter.thread_name_whitelist = 1
     }
+    filter.trace_isolated = 0
+    if this.TraceIsolated {
+        filter.trace_isolated = 1
+    }
     if this.Debug {
         this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d, whitelist:%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit, filter.thread_name_whitelist)
     }
