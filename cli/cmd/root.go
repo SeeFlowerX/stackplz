@@ -217,6 +217,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Pid = gconfig.Pid
     mconfig.Tid = gconfig.Tid
     mconfig.TraceIsolated = gconfig.TraceIsolated
+    mconfig.HideRoot = gconfig.HideRoot
     mconfig.Buffer = gconfig.Buffer
     mconfig.UnwindStack = gconfig.UnwindStack
     if gconfig.StackSize&7 != 0 {
@@ -576,6 +577,7 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.TNamesWhitelist, "tnames", "", "thread name white list, max 20")
     rootCmd.PersistentFlags().StringVar(&gconfig.TNamesBlacklist, "no-tnames", "", "thread name black list, max 20")
     rootCmd.PersistentFlags().BoolVar(&gconfig.TraceIsolated, "iso", false, "watch isolated process")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.HideRoot, "hide-root", false, "hide some root feature")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定

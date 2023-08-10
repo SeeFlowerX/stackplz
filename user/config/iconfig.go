@@ -26,6 +26,7 @@ type SConfig struct {
 	Pid           uint32
 	Tid           uint32
 	TraceIsolated bool
+	HideRoot      bool
 	UnwindStack   bool
 	StackSize     uint32
 	ShowRegs      bool

@@ -95,6 +95,16 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
             // MTE 其实也正常读取到了
             bpf_probe_read_user_str(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
         }
+
+        // rev_string_t rev_arg = {};
+        // int sz = bpf_probe_read_str(&rev_arg, sizeof(rev_arg), &string_p->buf[buf_off]);
+        // u32 *flag = bpf_map_lookup_elem(&rev_filter, rev_arg.name);
+        // if (flag != NULL && *flag == 1) {
+        //     bpf_printk("[syscall] match:%s\n", rev_arg.name);
+        //     char placeholder[] = "/estrace/is/watching/you";
+        //     bpf_probe_write_user((void*)ptr, placeholder, sizeof(placeholder));
+        // }
+
         save_str_to_buf(p.event, &string_p->buf[buf_off], next_arg_index);
         next_arg_index += 1;
         return next_arg_index;

@@ -356,6 +356,36 @@ func (this *ModuleConfig) SetTNamesWhitelist(t_names_blacklist string) error {
     return nil
 }
 
+func (this *ModuleConfig) UpdateRevFilter(rev_filter *ebpf.Map) (err error) {
+    // ./stackplz -n com.starbucks.cn --iso -s newfstatat,openat,faccessat --hide-root -o tmp.log -q
+    var rev_list []string = []string{
+        "/sbin/su",
+        "/sbin/.magisk/",
+        "/dev/.magisk",
+        "/system/bin/magisk",
+        "/system/bin/su",
+        "/system/xbin/su",
+        // "ro.debuggable",
+        "/proc/mounts",
+        "which su",
+        "mount",
+    }
+
+    for _, v := range rev_list {
+        if len(v) > 32 {
+            panic(fmt.Sprintf("[%s] rev string max len is 32", v))
+        }
+        key_value := 1
+        filter := RevFilter{}
+        copy(filter.RevString[:], v)
+        err = rev_filter.Update(unsafe.Pointer(&filter), unsafe.Pointer(&key_value), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
+    }
+    return err
+}
+
 func (this *ModuleConfig) UpdateThreadFilter(thread_filter *ebpf.Map) (err error) {
     var thread_blacklist []string = []string{
         "RenderThread",

@@ -21,6 +21,10 @@ type ThreadFilter struct {
 	ThreadName [16]byte
 }
 
+type RevFilter struct {
+	RevString [32]byte
+}
+
 type SyscallFilter struct {
 	is_32bit               uint32
 	syscall_all            uint32

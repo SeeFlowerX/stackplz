@@ -23,6 +23,10 @@ typedef struct thread_name {
     char name[16];
 } thread_name_t;
 
+typedef struct rev_string {
+    char name[32];
+} rev_string_t;
+
 
 typedef struct config_entry {
     u32 filter_mode;

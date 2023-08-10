@@ -1,23 +1,23 @@
 package module
 
 import (
-	"bytes"
-	"context"
-	"errors"
-	"fmt"
-	"log"
-	"math"
-	"path/filepath"
-	"stackplz/assets"
-	"stackplz/user/config"
-	"stackplz/user/event"
-	"stackplz/user/util"
-	"unsafe"
+    "bytes"
+    "context"
+    "errors"
+    "fmt"
+    "log"
+    "math"
+    "path/filepath"
+    "stackplz/assets"
+    "stackplz/user/config"
+    "stackplz/user/event"
+    "stackplz/user/util"
+    "unsafe"
 
-	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/btf"
-	manager "github.com/ehids/ebpfmanager"
-	"golang.org/x/sys/unix"
+    "github.com/cilium/ebpf"
+    "github.com/cilium/ebpf/btf"
+    manager "github.com/ehids/ebpfmanager"
+    "golang.org/x/sys/unix"
 )
 
 type MStack struct {
@@ -275,6 +275,17 @@ func (this *MStack) updateFilter() (err error) {
     }
     if this.sconf.Debug {
         this.logger.Printf("update thread_filter success")
+    }
+    rev_filter, err := this.FindMap("rev_filter")
+    if err != nil {
+        return err
+    }
+    err = this.mconf.UpdateRevFilter(rev_filter)
+    if err != nil {
+        return err
+    }
+    if this.sconf.Debug {
+        this.logger.Printf("update rev_filter success")
     }
 
     // uprobe hook stack 的过滤配置更新

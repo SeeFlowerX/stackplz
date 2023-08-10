@@ -34,6 +34,7 @@ BPF_HASH(args_map, u64, args_t, 1024);                             // persist ar
 BPF_HASH(child_parent_map, u32, u32, 512);
 BPF_HASH(common_filter, u32, common_filter_t, 1);
 BPF_HASH(thread_filter, thread_name_t, u32, MAX_COUNT+MAX_COUNT);
+BPF_HASH(rev_filter, rev_string_t, u32, MAX_COUNT+MAX_COUNT);
 BPF_PERCPU_ARRAY(event_data_map, event_data_t, 1);
 BPF_ARRAY(config_map, config_entry_t, 1);
 
