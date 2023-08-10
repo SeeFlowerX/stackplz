@@ -64,6 +64,16 @@ type RegsBuf struct {
     Regs [33]uint64
 }
 
+func (this *RegsBuf) ParseContext(buf *bytes.Buffer) (err error) {
+    if err = binary.Read(buf, binary.LittleEndian, &this.Abi); err != nil {
+        return err
+    }
+    if err = binary.Read(buf, binary.LittleEndian, &this.Regs); err != nil {
+        return err
+    }
+    return nil
+}
+
 type ContextEvent struct {
     CommonEvent
     Ts            uint64
@@ -128,24 +138,22 @@ type Arg_raw_size struct {
 }
 
 func (this *ContextEvent) ParsePadding() (err error) {
+    var arg Arg_raw_size
+    if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+        panic(fmt.Sprintf("binary.Read err:%v", err))
+    }
     // this.logger.Printf("[buf] len:%d cap:%d off:%d", this.buf.Len(), this.buf.Cap(), this.buf.Cap()-this.buf.Len())
     // this.logger.Printf("[buf] this.rec.SampleSize:%d", this.rec.SampleSize)
     // PERF_SAMPLE_RAW 末尾可能包含 padding 这里先把
     // ... nr/probe_index|lr|pc|sp|args...|size_before|padding
-    // var arg Arg_raw_size
-    // if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
-    //     panic(fmt.Sprintf("binary.Read err:%v", err))
-    // }
     // // RawSample 这部分读取逻辑后面必须转到这边来处理
     // // 处理掉 padding
-    // this.Part_raw_size = arg.PartRawSize
-    // padding_size := 4 - (arg.PartRawSize+uint32(binary.Size(arg)))%4
-    // padding_size := this.rec.SampleSize - (arg.PartRawSize + uint32(binary.Size(arg)))
-    padding_size := this.rec.SampleSize - uint32(this.buf.Cap()-this.buf.Len())
+    // ebpf库改为全部读取之后 这里的 4 是 PERF_SAMPLE_RAW 的 size
+    padding_size := this.rec.SampleSize + 4 - uint32(this.buf.Cap()-this.buf.Len())
     if padding_size > 0 {
         payload := make([]byte, padding_size)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-            this.logger.Printf("UprobeEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
+            this.logger.Printf("ContextEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
     }
@@ -157,6 +165,9 @@ func (this *ContextEvent) ParsePadding() (err error) {
 
 func (this *ContextEvent) ParseContext() (err error) {
     this.buf = bytes.NewBuffer(this.rec.RawSample)
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.rec.SampleSize); err != nil {
+        return err
+    }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Ts); err != nil {
         return err
     }
@@ -500,7 +511,9 @@ func (this *ContextEvent) GetStackTrace(s string) string {
     }
     return s
 }
+
 func (this *ContextEvent) ParseContextStack() (err error) {
+    this.Stackinfo = ""
     if this.rec.ExtraOptions.UnwindStack {
         // 读取完整的栈数据和寄存器数据 并解析为 UnwindBuf 结构体
         this.UnwindBuffer = &UnwindBuf{}
@@ -522,7 +535,6 @@ func (this *ContextEvent) ParseContextStack() (err error) {
             if err != nil {
                 // this.logger.Printf("Error when opening file:%v", err)
                 this.logger.Printf("Error when GetStack:%v", err)
-                this.Stackinfo = ""
             } else {
                 this.Stackinfo = info
             }
@@ -530,17 +542,10 @@ func (this *ContextEvent) ParseContextStack() (err error) {
         }
         this.Stackinfo = ParseStack(content, this.UnwindBuffer)
     } else if this.rec.ExtraOptions.ShowRegs {
-        var pad uint32
-        if err = binary.Read(this.buf, binary.LittleEndian, &pad); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+        err = this.RegsBuffer.ParseContext(this.buf)
+        if err != nil {
+            panic(fmt.Sprintf("UnwindStack ParseContext failed, err:%v", err))
         }
-        // 读取寄存器数据 并解析为 RegsBuffer 结构体
-        if err = binary.Read(this.buf, binary.LittleEndian, &this.RegsBuffer); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
-        }
-        this.Stackinfo = ""
-    } else {
-        this.Stackinfo = ""
     }
     return nil
 }
