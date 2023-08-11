@@ -259,7 +259,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     if (!should_trace(&p))
         return 0;
 
-    struct pt_regs *regs = (struct pt_regs*)(ctx->args[0]);
+    struct pt_regs *regs = (struct pt_regs *)(ctx->args[0]);
     u64 syscallno = READ_KERN(regs->syscallno);
     // 先根据调用号确定有没有对应的参数获取方案 没有直接结束
     struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &syscallno);
@@ -391,7 +391,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     if (!should_trace(&p))
         return 0;
 
-    struct pt_regs *regs = (struct pt_regs*)(ctx->args[0]);
+    struct pt_regs *regs = (struct pt_regs *)(ctx->args[0]);
     u64 syscallno = READ_KERN(regs->syscallno);
 
     struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &syscallno);
