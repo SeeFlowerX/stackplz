@@ -70,6 +70,12 @@ cd /data/local/tmp && ./stackplz --prepare
 
 ![](./images/Snipaste_2022-11-13_14-11-03.png)
 
+**硬件断点**访问监控
+
+```bash
+./stackplz -p 9613 --brk 0x70ddfd63f0:rwx --stack
+```
+
 使用提示：
 
 - 可以用`--name`指定包名，用`--uid`指定进程所属uid，用`--pid`指定进程
