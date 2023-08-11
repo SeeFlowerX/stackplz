@@ -49,11 +49,11 @@ func (this *PerfBRK) setupManager() error {
 	}
 	maps = append(maps, events_map)
 
-	perf_probe := &manager.Probe{
-		Section:      "perf_event",
-		EbpfFuncName: "perf_event_handler",
-	}
-	probes = append(probes, perf_probe)
+	// perf_probe := &manager.Probe{
+	// 	Section:      "perf_event",
+	// 	EbpfFuncName: "perf_event_handler",
+	// }
+	// probes = append(probes, perf_probe)
 
 	this.bpfManager = &manager.Manager{
 		Probes: probes,

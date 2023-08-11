@@ -116,6 +116,15 @@ func (this *ContextEvent) NewUprobeEvent() IEventStruct {
     return event
 }
 
+func (this *ContextEvent) NewBrkEvent() IEventStruct {
+    event := &BrkEvent{ContextEvent: *this}
+    err := event.ParseContext()
+    if err != nil {
+        panic(fmt.Sprintf("NewUprobeEvent.ParseContext() err:%v", err))
+    }
+    return event
+}
+
 func (this *ContextEvent) String() (s string) {
     s += fmt.Sprintf("event_id:%d ts:%d", this.EventId, this.Ts)
     s += fmt.Sprintf(", host_pid:%d, host_tid:%d", this.HostPid, this.HostTid)

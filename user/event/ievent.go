@@ -30,17 +30,13 @@ type IEventStruct interface {
     SetLogger(logger *log.Logger)
     SetConf(conf config.IConfig)
     SetRecord(rec perf.Record)
-    SetUnwindStack(unwind_stack bool)
-    SetShowRegs(show_regs bool)
 }
 
 type CommonEvent struct {
-    mconf        *config.ModuleConfig
-    logger       *log.Logger
-    rec          perf.Record
-    unwind_stack bool
-    show_regs    bool
-    buf          *bytes.Buffer
+    mconf  *config.ModuleConfig
+    logger *log.Logger
+    rec    perf.Record
+    buf    *bytes.Buffer
 }
 
 func (this *CommonEvent) String() string {
@@ -133,6 +129,14 @@ func (this *CommonEvent) NewUprobeEvent(event IEventStruct) IEventStruct {
     return p.NewUprobeEvent()
 }
 
+func (this *CommonEvent) NewBrkEvent(event IEventStruct) IEventStruct {
+    p, ok := (event).(*ContextEvent)
+    if !ok {
+        panic("CommonEvent.NewBrkEvent() cast to ContextEvent failed")
+    }
+    return p.NewBrkEvent()
+}
+
 func (this *CommonEvent) RecordType() uint32 {
     return this.rec.RecordType
 }
@@ -185,10 +189,15 @@ func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
                 }
             default:
                 {
-                    event = this
-                    this.logger.Printf("CommonEvent.ParseEvent() unsupported EventId:%d\n", EventId)
-                    this.logger.Printf("CommonEvent.ParseEvent() PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
-                    return nil, errors.New(fmt.Sprintf("PERF_RECORD_SAMPLE EventId is %d", EventId))
+                    if this.mconf.BrkAddr != 0 {
+                        event = this.NewBrkEvent(event)
+                    } else {
+
+                        event = this
+                        this.logger.Printf("CommonEvent.ParseEvent() unsupported EventId:%d\n", EventId)
+                        this.logger.Printf("CommonEvent.ParseEvent() PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
+                        return nil, errors.New(fmt.Sprintf("PERF_RECORD_SAMPLE EventId is %d", EventId))
+                    }
                 }
             }
         }
@@ -202,14 +211,6 @@ func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
 
 func (this *CommonEvent) SetRecord(rec perf.Record) {
     this.rec = rec
-}
-
-func (this *CommonEvent) SetUnwindStack(unwind_stack bool) {
-    this.unwind_stack = unwind_stack
-}
-
-func (this *CommonEvent) SetShowRegs(show_regs bool) {
-    this.show_regs = show_regs
 }
 
 func (this *CommonEvent) SetLogger(logger *log.Logger) {
