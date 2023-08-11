@@ -219,7 +219,17 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.TraceIsolated = gconfig.TraceIsolated
     mconfig.HideRoot = gconfig.HideRoot
     mconfig.Buffer = gconfig.Buffer
-    mconfig.BrkAddr = gconfig.BrkAddr
+
+    if strings.HasPrefix(gconfig.BrkAddr, "0x") {
+        addr, err := strconv.ParseUint(strings.TrimPrefix(gconfig.BrkAddr, "0x"), 16, 64)
+        if err != nil {
+            return errors.New(fmt.Sprintf("parse for %s failed, err:%v", gconfig.BrkAddr, err))
+        }
+        mconfig.BrkAddr = addr
+    } else {
+        return errors.New(fmt.Sprintf("breakpoint addr should be hex format, input:%s", gconfig.BrkAddr))
+    }
+
     mconfig.UnwindStack = gconfig.UnwindStack
     if gconfig.StackSize&7 != 0 {
         return errors.New(fmt.Sprintf("dump stack size %d is not 8-byte aligned.", gconfig.StackSize))
@@ -281,8 +291,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         if err != nil {
             return err
         }
-    } else if gconfig.BrkAddr != 0 {
-        logger.Printf("set breakpoint addr:0x%x", gconfig.BrkAddr)
+    } else if mconfig.BrkAddr != 0 {
+        logger.Printf("set breakpoint addr:0x%x", mconfig.BrkAddr)
     } else {
         logger.Fatal("hook nothing, plz set -w/--point or -s/--syscall")
     }
@@ -587,7 +597,7 @@ func init() {
     rootCmd.PersistentFlags().BoolVar(&gconfig.TraceIsolated, "iso", false, "watch isolated process")
     rootCmd.PersistentFlags().BoolVar(&gconfig.HideRoot, "hide-root", false, "hide some root feature")
     // 硬件断点设定
-    rootCmd.PersistentFlags().Uint64VarP(&gconfig.BrkAddr, "brk", "", 0, "set hardware breakpoint address")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.BrkAddr, "brk", "", "0", "set hardware breakpoint address")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定
