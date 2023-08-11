@@ -235,7 +235,7 @@ func (this *MStack) updateFilter() (err error) {
     if err != nil {
         return err
     }
-    if this.sconf.Debug {
+    if this.mconf.Debug {
         this.logger.Printf("update config_map success")
     }
 

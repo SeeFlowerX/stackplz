@@ -219,6 +219,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.TraceIsolated = gconfig.TraceIsolated
     mconfig.HideRoot = gconfig.HideRoot
     mconfig.Buffer = gconfig.Buffer
+    mconfig.BrkAddr = gconfig.BrkAddr
     mconfig.UnwindStack = gconfig.UnwindStack
     if gconfig.StackSize&7 != 0 {
         return errors.New(fmt.Sprintf("dump stack size %d is not 8-byte aligned.", gconfig.StackSize))
@@ -280,6 +281,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         if err != nil {
             return err
         }
+    } else if gconfig.BrkAddr != 0 {
+        logger.Printf("set breakpoint addr:0x%x", gconfig.BrkAddr)
     } else {
         logger.Fatal("hook nothing, plz set -w/--point or -s/--syscall")
     }
@@ -296,7 +299,12 @@ func runFunc(command *cobra.Command, args []string) {
     var runModules = make(map[string]module.IModule)
     var wg sync.WaitGroup
 
-    modNames := []string{module.MODULE_NAME_PERF, module.MODULE_NAME_STACK}
+    var modNames []string
+    if mconfig.BrkAddr != 0 {
+        modNames = []string{module.MODULE_NAME_BRK}
+    } else {
+        modNames = []string{module.MODULE_NAME_PERF, module.MODULE_NAME_STACK}
+    }
     for _, modName := range modNames {
         // 现在合并成只有一个模块了 所以直接通过名字获取
         mod := module.GetModuleByName(modName)
@@ -578,6 +586,8 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.TNamesBlacklist, "no-tnames", "", "thread name black list, max 20")
     rootCmd.PersistentFlags().BoolVar(&gconfig.TraceIsolated, "iso", false, "watch isolated process")
     rootCmd.PersistentFlags().BoolVar(&gconfig.HideRoot, "hide-root", false, "hide some root feature")
+    // 硬件断点设定
+    rootCmd.PersistentFlags().Uint64VarP(&gconfig.BrkAddr, "brk", "", 0, "set hardware breakpoint address")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定

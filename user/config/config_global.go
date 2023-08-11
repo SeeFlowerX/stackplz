@@ -21,6 +21,7 @@ type GlobalConfig struct {
     Quiet            bool
     Is32Bit          bool
     Buffer           uint32
+    BrkAddr          uint64
     LogFile          string
     DataDir          string
     LibraryDirs      []string

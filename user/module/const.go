@@ -5,10 +5,12 @@ const (
     PROBE_TYPE_KPROBE     = "kprobe"
     PROBE_TYPE_TRACEPOINT = "tracepoint"
     PROBE_TYPE_PERF       = "perf"
+    PROBE_TYPE_BREAKPOINT = "breakpoint"
 )
 
 const (
     MODULE_NAME_PERF    = "PerfMod"
+    MODULE_NAME_BRK     = "BrkMod"
     MODULE_NAME_STACK   = "StackMod"
     MODULE_NAME_SYSCALL = "SyscallMod"
 )

@@ -36,6 +36,7 @@ type SConfig struct {
 	Debug         bool
 	Is32Bit       bool
 	Buffer        uint32
+	BrkAddr       uint64
 	Color         bool
 	DumpHex       bool
 	logger        *log.Logger
