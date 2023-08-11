@@ -227,3 +227,12 @@ func HexDumpGreen(buffer []byte) string {
 	b.WriteString(COLORRESET)
 	return b.String()
 }
+
+const (
+	HW_BREAKPOINT_EMPTY   uint32 = 0
+	HW_BREAKPOINT_R       uint32 = 1
+	HW_BREAKPOINT_W       uint32 = 2
+	HW_BREAKPOINT_RW      uint32 = HW_BREAKPOINT_R | HW_BREAKPOINT_W
+	HW_BREAKPOINT_X       uint32 = 4
+	HW_BREAKPOINT_INVALID uint32 = HW_BREAKPOINT_RW | HW_BREAKPOINT_X
+)

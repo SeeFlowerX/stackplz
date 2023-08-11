@@ -221,7 +221,28 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Buffer = gconfig.Buffer
 
     if strings.HasPrefix(gconfig.BrkAddr, "0x") {
-        addr, err := strconv.ParseUint(strings.TrimPrefix(gconfig.BrkAddr, "0x"), 16, 64)
+        infos := strings.Split(gconfig.BrkAddr, ":")
+        if len(infos) > 2 {
+            return errors.New(fmt.Sprintf("parse for %s failed, format invaild", gconfig.BrkAddr))
+        }
+        if len(infos) == 2 {
+            if infos[1] == "r" {
+                mconfig.BrkType = util.HW_BREAKPOINT_R
+            } else if infos[1] == "w" {
+                mconfig.BrkType = util.HW_BREAKPOINT_W
+            } else if infos[1] == "x" {
+                mconfig.BrkType = util.HW_BREAKPOINT_X
+            } else if infos[1] == "rw" {
+                mconfig.BrkType = util.HW_BREAKPOINT_RW
+            } else if infos[1] == "rwx" {
+                mconfig.BrkType = util.HW_BREAKPOINT_X
+            } else {
+                return errors.New(fmt.Sprintf("parse BrkType for %s failed", infos[1]))
+            }
+        } else {
+            mconfig.BrkType = util.HW_BREAKPOINT_X
+        }
+        addr, err := strconv.ParseUint(strings.TrimPrefix(infos[0], "0x"), 16, 64)
         if err != nil {
             return errors.New(fmt.Sprintf("parse for %s failed, err:%v", gconfig.BrkAddr, err))
         }
