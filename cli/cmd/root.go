@@ -239,7 +239,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         brk_base = lib_info.BaseAddr
     }
 
-    if strings.HasPrefix(gconfig.BrkAddr, "0x") {
+    if gconfig.BrkAddr != "" && strings.HasPrefix(gconfig.BrkAddr, "0x") {
         infos := strings.Split(gconfig.BrkAddr, ":")
         if len(infos) > 2 {
             return errors.New(fmt.Sprintf("parse for %s failed, format invaild", gconfig.BrkAddr))
@@ -264,8 +264,6 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             return errors.New(fmt.Sprintf("parse for %s failed, err:%v", gconfig.BrkAddr, err))
         }
         mconfig.BrkAddr = brk_base + addr
-    } else {
-        return errors.New(fmt.Sprintf("breakpoint addr should be hex format, input:%s", gconfig.BrkAddr))
     }
 
     mconfig.UnwindStack = gconfig.UnwindStack
@@ -636,7 +634,7 @@ func init() {
     rootCmd.PersistentFlags().BoolVar(&gconfig.HideRoot, "hide-root", false, "hide some root feature")
     rootCmd.PersistentFlags().StringVar(&gconfig.UprobeSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
     // 硬件断点设定
-    rootCmd.PersistentFlags().StringVarP(&gconfig.BrkAddr, "brk", "", "0", "set hardware breakpoint address")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.BrkAddr, "brk", "", "", "set hardware breakpoint address")
     rootCmd.PersistentFlags().StringVarP(&gconfig.BrkLib, "brk-lib", "", "", "as library base address")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
