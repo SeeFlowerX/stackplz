@@ -3,24 +3,11 @@
 
 #include "types.h"
 #include "common/arguments.h"
-#include "common/buffer.h"
 #include "common/common.h"
 #include "common/consts.h"
 #include "common/context.h"
 #include "common/filesystem.h"
 #include "common/filtering.h"
-#include "common/probes.h"
-
-#define MAX_POINT_ARG_COUNT 6
-
-typedef struct point_arg_t {
-    u32 read_flag;
-    u32 alias_type;
-    u32 type;
-    u32 size;
-	u32 item_persize;
-	s32 item_countindex;
-} point_arg;
 
 // syscall过滤配置
 struct syscall_filter_t {
@@ -60,140 +47,6 @@ struct {
     __type(value, struct syscall_filter_t);
     __uint(max_entries, 1);
 } syscall_filter SEC(".maps");
-
-static __always_inline u32 save_bytes_with_len(program_data_t p, u64 ptr, u32 read_len, u32 next_arg_index) {
-    if (read_len > MAX_BUF_READ_SIZE) {
-        read_len = MAX_BUF_READ_SIZE;
-    }
-    int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), read_len, next_arg_index);
-    if (status == 0) {
-        buf_t *zero_p = get_buf(ZERO_BUF_IDX);
-        if (zero_p == NULL) {
-            return next_arg_index;
-        }
-        save_bytes_to_buf(p.event, &zero_p->buf[0], read_len, next_arg_index);
-    }
-    next_arg_index += 1;
-    return next_arg_index;
-}
-static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_arg, u64 ptr, u32 read_count, u32 next_arg_index) {
-    if (point_arg->type == TYPE_NONE) {
-        return next_arg_index;
-    }
-    if (point_arg->type == TYPE_NUM) {
-        // 这种具体类型转换交给前端做
-        return next_arg_index;
-    }
-    if (point_arg->type == TYPE_STRING) {
-        u32 buf_off = 0;
-        buf_t *string_p = get_buf(STRING_BUF_IDX);
-        if (string_p == NULL) {
-            return next_arg_index;
-        }
-        int status = bpf_probe_read_user(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
-        if (status < 0) {
-            // MTE 其实也正常读取到了
-            bpf_probe_read_user_str(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
-        }
-
-        // rev_string_t rev_arg = {};
-        // int sz = bpf_probe_read_str(&rev_arg, sizeof(rev_arg), &string_p->buf[buf_off]);
-        // u32 *flag = bpf_map_lookup_elem(&rev_filter, rev_arg.name);
-        // if (flag != NULL && *flag == 1) {
-        //     bpf_printk("[syscall] match:%s\n", rev_arg.name);
-        //     char placeholder[] = "/estrace/is/watching/you";
-        //     bpf_probe_write_user((void*)ptr, placeholder, sizeof(placeholder));
-        // }
-
-        save_str_to_buf(p.event, &string_p->buf[buf_off], next_arg_index);
-        next_arg_index += 1;
-        return next_arg_index;
-    }
-    if (point_arg->type == TYPE_STRING_ARR && ptr != 0) {
-        save_str_arr_to_buf(p.event, (const char *const *) ptr /*ptr*/, next_arg_index);
-        next_arg_index += 1;
-        return next_arg_index;
-    }
-    if (point_arg->type == TYPE_POINTER) {
-        // 指针类型 通常读一下对应指针的数据即可 后续记得考虑兼容下32位
-        
-        // point_arg->alias_type
-        // 某些成员是指针 有可能有必要再深入读取
-        // 这个时候可以根据 alias_type 取出对应的参数配置 然后解析保存
-        // 这个后面增补
-        if (point_arg->alias_type == TYPE_BUFFER_T) {
-            // buffer 的单个元素长度就是 1 所以这里就是 read_count
-            u32 read_len = read_count * 1;
-            int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), read_len, next_arg_index);
-            if (status == 0) {
-                buf_t *zero_p = get_buf(ZERO_BUF_IDX);
-                if (zero_p == NULL) {
-                    return next_arg_index;
-                }
-                save_bytes_to_buf(p.event, &zero_p->buf[0], read_len, next_arg_index);
-                next_arg_index += 1;
-            } else {
-                next_arg_index += 1;
-            }
-            return next_arg_index;
-        }
-
-        u64 addr = 0;
-        bpf_probe_read_user(&addr, sizeof(addr), (void*) ptr);
-        save_to_submit_buf(p.event, (void *) &addr, sizeof(u64), next_arg_index);
-        next_arg_index += 1;
-        return next_arg_index;
-    }
-    if (point_arg->type == TYPE_STRUCT && ptr != 0) {
-
-        if (point_arg->alias_type == TYPE_IOVEC) {
-            struct iovec iovec_ptr;
-            int errno = bpf_probe_read_user(&iovec_ptr, sizeof(iovec_ptr), (void*) ptr);
-            if (errno == 0) {
-                save_to_submit_buf(p.event, (void *)&iovec_ptr, sizeof(iovec_ptr), next_arg_index);
-                next_arg_index += 1;
-                // 目前这样只是读取了第一个 iov 实际上要多次读取 数量是 iovcnt
-                // 但是注意多个缓冲区并不是连续的
-                u64 iov_base = (u64)iovec_ptr.iov_base;
-                u32 iov_len = (u64)iovec_ptr.iov_len;
-                // u32 read_len = read_count * iov_len;
-                u32 read_len = iov_len;
-                if (read_len > MAX_BUF_READ_SIZE) {
-                    read_len = MAX_BUF_READ_SIZE;
-                }
-                // save_to_submit_buf(p.event, (void *)&iov_base, sizeof(iov_base), next_arg_index);
-                // next_arg_index += 1;
-                // // 注意 这里存放的大小是 u64 与结构体大小保持一致
-                // save_to_submit_buf(p.event, (void *)&read_len, sizeof(read_len), next_arg_index);
-                // next_arg_index += 1;
-                next_arg_index = save_bytes_with_len(p, iov_base, read_len, next_arg_index);
-                return next_arg_index;
-            }
-        }
-
-        // 结构体类型 直接读取对应大小的数据 具体转换交给前端
-        u32 struct_size = MAX_BYTES_ARR_SIZE;
-        if (point_arg->size <= struct_size) {
-            struct_size = point_arg->size;
-        }
-        // 修复 MTE 读取可能不正常的情况
-        int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), struct_size, next_arg_index);
-        if (status == 0) {
-            // 保存失败的情况 比如 ptr 是一个非法的地址 ...
-            buf_t *zero_p = get_buf(ZERO_BUF_IDX);
-            if (zero_p == NULL) {
-                return next_arg_index;
-            }
-            // 这个时候填充一个全0的内容进去 不然前端不好解析
-            save_bytes_to_buf(p.event, &zero_p->buf[0], struct_size, next_arg_index);
-            next_arg_index += 1;
-        } else {
-            next_arg_index += 1;
-        }
-        return next_arg_index;
-    }
-    return next_arg_index;
-}
 
 SEC("raw_tracepoint/sched_process_fork")
 int tracepoint__sched__sched_process_fork(struct bpf_raw_tracepoint_args *ctx)

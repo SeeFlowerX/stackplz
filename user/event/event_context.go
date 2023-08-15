@@ -405,6 +405,7 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr Arg_reg) stri
         }
         return arg_rusage.Format()
     case config.TYPE_IOVEC:
+        // IOVEC 这里本质上是一个数组 还不太一样...
         var arg Arg_Iovec_t
         if err = binary.Read(this.buf, binary.LittleEndian, &arg.Arg_Iovec); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))

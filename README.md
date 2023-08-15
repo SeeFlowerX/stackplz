@@ -50,7 +50,7 @@ cd /data/local/tmp && ./stackplz --prepare
 注：默认设定的库是`/apex/com.android.runtime/lib64/bionic/libc.so`，要自定义请使用`--lib`指定
 
 ```bash
-./stackplz -n com.starbucks.cn --point strstr[str,str] --point open[str,int] -o tmp.log         
+./stackplz -n com.starbucks.cn --point strstr[str,str] --point open[str,int] -o tmp.log
 ```
 
 ![](./images/Snipaste_2023-07-22_21-21-33.png)
