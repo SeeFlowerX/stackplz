@@ -13,6 +13,7 @@ typedef struct common_filter {
     u32 blacklist_tids[MAX_COUNT];
     u32 thread_name_whitelist;
     u32 trace_isolated;
+    u32 signal;
 } common_filter_t;
 
 typedef struct args {

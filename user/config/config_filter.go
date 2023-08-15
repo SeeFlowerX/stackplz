@@ -15,6 +15,7 @@ type CommonFilter struct {
 	blacklist_tids        [MAX_COUNT]uint32
 	thread_name_whitelist uint32
 	trace_isolated        uint32
+	signal                uint32
 }
 
 type ThreadFilter struct {

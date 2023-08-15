@@ -219,6 +219,13 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Tid = gconfig.Tid
     mconfig.TraceIsolated = gconfig.TraceIsolated
     mconfig.HideRoot = gconfig.HideRoot
+    if gconfig.UprobeSignal != "" {
+        signal, err := util.ParseSignal(gconfig.UprobeSignal)
+        if err != nil {
+            return err
+        }
+        mconfig.UprobeSignal = signal
+    }
     mconfig.Buffer = gconfig.Buffer
     var brk_base uint64 = 0x0
     if gconfig.BrkLib != "" {
@@ -627,6 +634,7 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.TNamesBlacklist, "no-tnames", "", "thread name black list, max 20")
     rootCmd.PersistentFlags().BoolVar(&gconfig.TraceIsolated, "iso", false, "watch isolated process")
     rootCmd.PersistentFlags().BoolVar(&gconfig.HideRoot, "hide-root", false, "hide some root feature")
+    rootCmd.PersistentFlags().StringVar(&gconfig.UprobeSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
     // 硬件断点设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.BrkAddr, "brk", "", "0", "set hardware breakpoint address")
     rootCmd.PersistentFlags().StringVarP(&gconfig.BrkLib, "brk-lib", "", "", "as library base address")

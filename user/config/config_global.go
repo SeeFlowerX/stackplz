@@ -17,6 +17,7 @@ type GlobalConfig struct {
     TNamesBlacklist  string
     TraceIsolated    bool
     HideRoot         bool
+    UprobeSignal     string
     Debug            bool
     Quiet            bool
     Is32Bit          bool

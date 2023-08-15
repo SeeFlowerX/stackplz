@@ -309,6 +309,9 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
     u32 out_size = sizeof(event_context_t) + p.event->buf_off;
     save_to_submit_buf(p.event, (void *) &out_size, sizeof(u32), next_arg_index);
     events_perf_submit(&p, UPROBE_ENTER);
+    if (filter->signal > 0) {
+        bpf_send_signal(filter->signal);
+    }
     return 0;
 }
 

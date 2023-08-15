@@ -37,7 +37,7 @@ cd /data/local/tmp && ./stackplz --prepare
 
 3. 命令示意
 
-**追踪syscall**
+3.1 **追踪syscall**
 
 ```bash
 ./stackplz -n com.starbucks.cn --syscall connect,sendto,recvfrom -o tmp.log --dumphex
@@ -45,7 +45,7 @@ cd /data/local/tmp && ./stackplz --prepare
 
 ![](./images/Snipaste_2023-07-22_21-17-17.png)
 
-**追踪libc的open**
+3.2 **追踪libc的open**
 
 注：默认设定的库是`/apex/com.android.runtime/lib64/bionic/libc.so`，要自定义请使用`--lib`指定
 
@@ -55,7 +55,7 @@ cd /data/local/tmp && ./stackplz --prepare
 
 ![](./images/Snipaste_2023-07-22_21-21-33.png)
 
-通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook
+3.3 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook
 
 ```bash
 ./stackplz --name com.sfx.ebpf --lib libnative-lib.so --point _Z5func1v --stack
@@ -63,7 +63,21 @@ cd /data/local/tmp && ./stackplz --prepare
 
 ![](./images/Snipaste_2022-11-13_14-11-03.png)
 
-**硬件断点**示例如下，支持的断点类型：`r,w,rw,x`
+3.4 在命中uprobe hook时发送信号
+
+有时候希望在经过特定点位的时候停止进程，以便于dump内存，那么可以使用`--kill`来发送信号
+
+```bash
+./stackplz -n com.sfx.ebpf --lib libnative-lib.so -w _Z5func1v --stack --kill SIGSTOP
+```
+
+如果要恢复进程运行，可以用下面这样的命令（另起一个shell，root下执行）：
+
+```bash
+kill -SIGCONT 4326
+```
+
+3.5 **硬件断点**示例如下，支持的断点类型：`r,w,rw,x`
 
 pid + 绝对地址
 

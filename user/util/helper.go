@@ -3,11 +3,13 @@ package util
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -97,6 +99,51 @@ func ReadMapsByPid(pid uint32) (string, error) {
 		return "", err
 	}
 	return string(content), nil
+}
+
+func ParseSignal(signal string) (uint32, error) {
+	sigs := map[string]uint32{
+		"SIGABRT":   uint32(syscall.SIGABRT),
+		"SIGALRM":   uint32(syscall.SIGALRM),
+		"SIGBUS":    uint32(syscall.SIGBUS),
+		"SIGCHLD":   uint32(syscall.SIGCHLD),
+		"SIGCLD":    uint32(syscall.SIGCLD),
+		"SIGCONT":   uint32(syscall.SIGCONT),
+		"SIGFPE":    uint32(syscall.SIGFPE),
+		"SIGHUP":    uint32(syscall.SIGHUP),
+		"SIGILL":    uint32(syscall.SIGILL),
+		"SIGINT":    uint32(syscall.SIGINT),
+		"SIGIO":     uint32(syscall.SIGIO),
+		"SIGIOT":    uint32(syscall.SIGIOT),
+		"SIGKILL":   uint32(syscall.SIGKILL),
+		"SIGPIPE":   uint32(syscall.SIGPIPE),
+		"SIGPOLL":   uint32(syscall.SIGPOLL),
+		"SIGPROF":   uint32(syscall.SIGPROF),
+		"SIGPWR":    uint32(syscall.SIGPWR),
+		"SIGQUIT":   uint32(syscall.SIGQUIT),
+		"SIGSEGV":   uint32(syscall.SIGSEGV),
+		"SIGSTKFLT": uint32(syscall.SIGSTKFLT),
+		"SIGSTOP":   uint32(syscall.SIGSTOP),
+		"SIGSYS":    uint32(syscall.SIGSYS),
+		"SIGTERM":   uint32(syscall.SIGTERM),
+		"SIGTRAP":   uint32(syscall.SIGTRAP),
+		"SIGTSTP":   uint32(syscall.SIGTSTP),
+		"SIGTTIN":   uint32(syscall.SIGTTIN),
+		"SIGTTOU":   uint32(syscall.SIGTTOU),
+		"SIGUNUSED": uint32(syscall.SIGUNUSED),
+		"SIGURG":    uint32(syscall.SIGURG),
+		"SIGUSR1":   uint32(syscall.SIGUSR1),
+		"SIGUSR2":   uint32(syscall.SIGUSR2),
+		"SIGVTALRM": uint32(syscall.SIGVTALRM),
+		"SIGWINCH":  uint32(syscall.SIGWINCH),
+		"SIGXCPU":   uint32(syscall.SIGXCPU),
+		"SIGXFSZ":   uint32(syscall.SIGXFSZ),
+	}
+	num, ok := sigs[signal]
+	if ok {
+		return num, nil
+	}
+	return 0, errors.New(fmt.Sprintf("signal %s not support", signal))
 }
 
 func ParseReg(pid uint32, value uint64) (string, error) {
