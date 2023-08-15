@@ -107,6 +107,22 @@ func (this *MapsHelper) InitMap() {
     this.pid_maps = make(map[uint32]*ProcMaps)
     this.child_parent_map = make(map[uint32]uint32)
 }
+func (this *MapsHelper) FindLib(pid uint32) (ProcMaps, error) {
+    maps_lock.Lock()
+    defer maps_lock.Unlock()
+    pid_maps, ok := this.pid_maps[pid]
+    if !ok {
+        err := this.ParseMaps(pid, false)
+        if err != nil {
+            return nil, err
+        }
+        pid_maps, ok = this.pid_maps[pid]
+        if !ok {
+            return nil, errors.New("get ProcMaps by pid failed")
+        }
+    }
+    return pid_maps.Clone(), nil
+}
 
 func (this *MapsHelper) UpdateForkEvent(event *ForkEvent) {
     // 根据日志实际的记录结果 fork 的 pid ppid 存在相同的情况 why
@@ -453,6 +469,27 @@ func (this *Mmap2Event) ParseContext() (err error) {
         this.logger.Printf(s)
     }
     return nil
+}
+
+func FindLibInMaps(pid uint32, brk_lib string) (LibInfo, error) {
+    var info LibInfo
+    pid_maps, err := maps_helper.FindLib(pid)
+    if err != nil {
+        return info, err
+    }
+    for _, lib_infos := range pid_maps {
+        for _, lib_info := range lib_infos {
+            if brk_lib == lib_info.LibPath {
+                info = lib_info
+                break
+            }
+            if brk_lib == lib_info.LibName {
+                info = lib_info
+                break
+            }
+        }
+    }
+    return info, err
 }
 
 // func init() {

@@ -18,6 +18,7 @@ import (
     "path"
     "stackplz/assets"
     "stackplz/user/config"
+    "stackplz/user/event"
     "stackplz/user/module"
     "stackplz/user/util"
     "strconv"
@@ -219,6 +220,17 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.TraceIsolated = gconfig.TraceIsolated
     mconfig.HideRoot = gconfig.HideRoot
     mconfig.Buffer = gconfig.Buffer
+    var brk_base uint64 = 0x0
+    if gconfig.BrkLib != "" {
+        if gconfig.Pid == config.MAGIC_PID {
+            return errors.New("plz set pid when use breakpoint")
+        }
+        lib_info, err := event.FindLibInMaps(gconfig.Pid, gconfig.BrkLib)
+        if err != nil {
+            return err
+        }
+        brk_base = lib_info.BaseAddr
+    }
 
     if strings.HasPrefix(gconfig.BrkAddr, "0x") {
         infos := strings.Split(gconfig.BrkAddr, ":")
@@ -244,7 +256,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         if err != nil {
             return errors.New(fmt.Sprintf("parse for %s failed, err:%v", gconfig.BrkAddr, err))
         }
-        mconfig.BrkAddr = addr
+        mconfig.BrkAddr = brk_base + addr
     } else {
         return errors.New(fmt.Sprintf("breakpoint addr should be hex format, input:%s", gconfig.BrkAddr))
     }
@@ -617,6 +629,7 @@ func init() {
     rootCmd.PersistentFlags().BoolVar(&gconfig.HideRoot, "hide-root", false, "hide some root feature")
     // 硬件断点设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.BrkAddr, "brk", "", "0", "set hardware breakpoint address")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.BrkLib, "brk-lib", "", "", "as library base address")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定
