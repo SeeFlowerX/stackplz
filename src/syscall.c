@@ -378,6 +378,9 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     u32 out_size = sizeof(event_context_t) + p.event->buf_off;
     save_to_submit_buf(p.event, (void *) &out_size, sizeof(u32), next_arg_index);
     events_perf_submit(&p, SYSCALL_ENTER);
+    if (filter->signal > 0) {
+        bpf_send_signal(filter->signal);
+    }
     return 0;
 }
 
