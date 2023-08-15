@@ -499,3 +499,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     events_perf_submit(&p, SYSCALL_EXIT);
     return 0;
 }
+
+// bpf_printk debug use
+// echo 1 > /sys/kernel/tracing/tracing_on
+// cat /sys/kernel/tracing/trace_pipe

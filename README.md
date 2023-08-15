@@ -1,29 +1,24 @@
 # stackplz
 
-stackplz是一款基于eBPF的堆栈追踪工具，本项目主要参考以下项目和文章，致谢
-
-- [eCapture(旁观者)](https://github.com/ehids/ecapture)
-- [定制bcc/ebpf在android平台上实现基于dwarf的用户态栈回溯](https://bbs.pediy.com/thread-274546.htm)
-- [Tracee](https://github.com/aquasecurity/tracee)
+stackplz是一款基于eBPF的堆栈追踪工具，仅适用于Android平台（开发板+Docker也支持）
 
 特性：
 
-- 对原进程影响极小
-- 详细的参数和堆栈信息
-- 支持所有arm64 syscall追踪和参数打印，包括详细的结构体信息
+- 支持arm64 syscall trace，可以打印参数、调用栈、寄存器
+    - 参数结果包括详细的结构体信息，类似于strace
+- 支持对64位用户态动态库进行uprobe hook，可以打印参数、调用栈、寄存器
+- 支持硬件断点功能，可以打印调用栈、寄存器
+- 支持按线程名黑名单、白名单过滤
+- 支持pid和tid的黑名单、白名单过滤
+- 支持追踪fork产生的进程
 
-# 要求
+要求：
 
-- 手机有root权限
-- 内核大于等于5.10，可使用`uname -r`查看自己手机的内核信息
-- Android 12以及之后的系统版本
-- 仅支持对64位进制进行hook
-
-![](./images/Snipaste_2022-11-09_14-26-47.png)
+- root权限，系统内核版本5.10+（可在设置中查看或执行`uname -r`查看）
 
 # 使用
 
-从release下载预编译好的二进制文件即可，或者自行编译，产物在`bin`目录下
+从Releases或者Github Action下载最新预编译好的二进制文件即可
 
 1. 推送到手机的`/data/local/tmp`目录下，添加可执行权限即可
 
@@ -34,13 +29,11 @@ su
 chmod +x /data/local/tmp/stackplz
 ```
 
-2. 第一次使用时需要释放库文件，请使用下面的命令
+2. 每次使用新版本时需要释放库文件，请使用下面的命令
 
 ```bash
 cd /data/local/tmp && ./stackplz --prepare
 ```
-
-![](./images/Snipaste_2022-11-09_14-25-46.png)
 
 3. 命令示意
 
@@ -54,7 +47,7 @@ cd /data/local/tmp && ./stackplz --prepare
 
 **追踪libc的open**
 
-注：默认设定的库是`/apex/com.android.runtime/lib64/bionic/libc.so`，要自定义请使用`--library`指定
+注：默认设定的库是`/apex/com.android.runtime/lib64/bionic/libc.so`，要自定义请使用`--lib`指定
 
 ```bash
 ./stackplz -n com.starbucks.cn --point strstr[str,str] --point open[str,int] -o tmp.log         
@@ -65,16 +58,20 @@ cd /data/local/tmp && ./stackplz --prepare
 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook
 
 ```bash
-./stackplz --name com.sfx.ebpf --library libnative-lib.so --point _Z5func1v --stack
+./stackplz --name com.sfx.ebpf --lib libnative-lib.so --point _Z5func1v --stack
 ```
 
 ![](./images/Snipaste_2022-11-13_14-11-03.png)
 
-**硬件断点**访问监控
+**硬件断点**示例如下，支持的断点类型：`r,w,rw,x`
+
+pid + 绝对地址
 
 ```bash
 ./stackplz -p 9613 --brk 0x70ddfd63f0:x --stack
 ```
+
+pid + 偏移 + 库文件
 
 ```bash
 ./stackplz -p 3102 --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
@@ -99,28 +96,25 @@ cd /data/local/tmp && ./stackplz --prepare
 - 特别的，指定为`all`表示追踪全部syscall
     - --syscall all
 - **特别说明**，很多结果是`0xffffff9c`这样的结果，其实是`int`，但是目前没有专门转换
-- 注意，本项目中syscall的返回值通常是errno，并不一定是调用结果
-- `--dumphex`表示将数据打印为hexdump，否则将记录为ascii+hex的形式
+- 注意，本项目中syscall的返回值通常是**errno**，与libc的函数返回结果不一定一致
+- `--dumphex`表示将数据打印为hexdump，否则将记录为`ascii + hex`的形式
 - 输出到日志文件添加`-o/--out tmp.log`，只输出到日志，不输出到终端再加一个`--quiet`即可
 
-进程/线程黑白名单等更多功能，请查看帮助功能：
+更多用法，请通过`-h/--help`查看：
 
 - `/data/local/tmp/stackplz -h`
 
 # 编译
 
+可参考[workflow](.github/workflows/build.yml)或下面的步骤：
+
 本项目依赖于[ehids/ebpfmanager](https://github.com/ehids/ebpfmanager)和[cilium/ebpf](https://github.com/cilium/ebpf)，但是做出了一些修改
 
-所以目前编译需要使用我修改过的版本，三个项目需要放在同一目录下
+所以目前编译需要使用修改过的版本，三个项目需要放在同一目录下
 
 ```bash
 git clone https://github.com/SeeFlowerX/ebpf
 git clone https://github.com/SeeFlowerX/ebpfmanager
-```
-
-然后是本项目的代码
-
-```bash
 git clone https://github.com/SeeFlowerX/stackplz
 ```
 
@@ -132,7 +126,7 @@ git clone https://github.com/SeeFlowerX/stackplz
 ./build_env.sh
 ```
 
-然后下载ndk并解压，我这里选的是`android-ndk-r25b`，解压后修改`build.sh`中的`NDK_ROOT`路径
+然后下载ndk并解压，这里选的是`android-ndk-r25b`，解压后修改`build.sh`中的`NDK_ROOT`路径
 
 本项目还需要使用golang，版本要求为`1.18`，建议通过snap安装，**或者**使用如下方法安装
 
@@ -179,43 +173,25 @@ adb push bin/stackplz /data/local/tmp
 
 # Q & A
 
-1. 使用时手机卡住并重启怎么办？（5.10+内核的手机一般不会）
-
-经过分析，出现这种情况是因为`bpf_perf_event_output`参数三使用的是`BPF_F_CURRENT_CPU`导致
-
-借助[vmlinux-to-elf](https://github.com/marin-m/vmlinux-to-elf)把boot.img转换成ELF文件，通过对比分析
-
-发现出现崩溃的内核走到了`brk 1`指令，但是这个分支本不该存在，详细分析过程后续会单独出一篇文章
-
-![](./images/FkCOXtSfHjSxSxOu25dkx5rqPp9B.png)
-
-对于此种情况，建议升级系统到Android 12版本一般可以避免
-
-~~(或者尝试自己编译下内核？)~~
-
-2. `preload_libs`里面的库怎么编译的？
+1. `preload_libs`里面的库怎么编译的？
 
 参见：[unwinddaemon](https://github.com/SeeFlowerX/unwinddaemon)
 
-3. perf event ring buffer full, dropped 9 samples
+2. perf event ring buffer full, dropped 9 samples
 
-使用`-b/-buffer`设置环形缓冲区大小，默认为`32M`，如果出现数据丢失的情况，请适当增加这个值，直到不再出现数据丢失的情况
-
-经过测试，使用`Pixel 6`，完全停止`starbucks`后，对其全部syscall调用进行追踪，大概需要设置为`120M`
-
-当然每个手机体质不一样，这个数不一定准确，需要自行测试调整，目前2.0.0已经做了优化，默认一般是够了的
+使用`-b/-buffer`设置每个CPU的缓冲区大小，默认为`8M`，如果出现数据丢失的情况，请适当增加这个值，直到不再出现数据丢失的情况
 
 命令示意如下：
 
 ```bash
-./stackplz -n com.starbucks.cn -b 120 --syscall all -o tmp.log
+./stackplz -n com.starbucks.cn -b 32 --syscall all -o tmp.log
 ```
 
 一味增大缓冲区大小也可能带来新的问题，比如分配失败，这个时候建议尽可能清理正在运行的进程
 
 > failed to create perf ring for CPU 0: can't mmap: cannot allocate memory
 
-4. 通过符号hook确定调用了但是不输出信息？
+3. 通过符号hook确定调用了但是不输出信息？
 
 某些符号存在多种实现（或者重定位？），这个时候需要指定具体使用的符号或者偏移
 
@@ -237,7 +213,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
   6853: 00000000000b9f00    32 GNU_IFUNC GLOBAL DEFAULT   14 strchrnul
 ```
 
-如图，我们可以看到直接调用了`__strchr_aarch64`而不是经过`strchr`再去调用`__strchr_aarch64`
+如图，可以看到直接调用了`__strchr_aarch64`而不是经过`strchr`再去调用`__strchr_aarch64`
 
 ![](./images/Snipaste_2022-11-13_14-19-38.png)
 
@@ -252,42 +228,16 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 - [eBPF on Android之stackplz从0到1](https://blog.seeflower.dev/archives/176/)
 - [eBPF on Android之stackplz从0到1（补充）手机为何重启](https://blog.seeflower.dev/archives/177/)
 
-针对syscall追踪并获取参数单独开了一个项目，整体结构更简单，没有interface，有兴趣请移步[estrace](https://github.com/SeeFlowerX/estrace)
+之前针对syscall追踪并获取参数单独开了一个项目，整体结构更简单，没有interface，有兴趣请移步[estrace](https://github.com/SeeFlowerX/estrace)
 
-`estrace`的全部功能已经在stackplz中实现，不日将存档
+不过目前`estrace`的全部功能已经在stackplz中实现，不日将存档
 
-# NEXT
+# Ref
 
-后续功能开发：
+本项目参考了以下项目和文章：
 
-- 更合理的获取maps的方案，缓存机制，有变化时再获取（2023/07/24 部分实现）
-- 为syscall增加调用栈信息（2023/07/24）
-- 提供选项区分hook类型，而不是拆成两个子命令，简化代码（2023/07/22）
-- 为高版本内核提供读取数据内存并输出hex、字符串参数等功能（2023/07/22）
-- pid、tid等选项的黑名单+白名单过滤支持（2023/07/22）
-- uprobe现在可以同时获取参数和堆栈了（2023/07/23）
-- 线程名黑名单过滤支持，与上一步搭配非常方便（2023/07/23）
-- 线程名白名单过滤支持（2023/07/23）
-- 支持追踪fork产生的进程（2023/07/24）
-
-性价比真机推荐Redmi Note 11T Pro（理由：价格亲民、内核开源、内核版本5.10.66、可解锁
-
----
-
-不用管这些
-
-```bash
-tar -xvf user/assets/a12-5.10-arm64.btf.tar.xz -C user/assets/
-rm user/assets/a12-5.10-arm64.btf.tar.xz
-```
-
-```bash
-cd user/assets
-../../bpftool gen min_core_btf a12-5.10-arm64.btf a12-5.10-arm64_min.btf stack.o
-cd ../../
-```
-
-```bash
-echo 1 > /sys/kernel/tracing/tracing_on
-cat /sys/kernel/tracing/trace_pipe
-```
+- [eCapture(旁观者)](https://github.com/ehids/ecapture)
+- [定制bcc/ebpf在android平台上实现基于dwarf的用户态栈回溯](https://bbs.pediy.com/thread-274546.htm)
+- [Simpleperf](https://android.googlesource.com/platform/system/extras/+/master/simpleperf/doc/README.md)
+- [Tracee](https://github.com/aquasecurity/tracee)
+- [bpftrace](https://github.com/iovisor/bpftrace)
