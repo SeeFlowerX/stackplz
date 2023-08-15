@@ -76,6 +76,10 @@ cd /data/local/tmp && ./stackplz --prepare
 ./stackplz -p 9613 --brk 0x70ddfd63f0:x --stack
 ```
 
+```bash
+./stackplz -p 3102 --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
+```
+
 使用提示：
 
 - 可以用`--name`指定包名，用`--uid`指定进程所属uid，用`--pid`指定进程
