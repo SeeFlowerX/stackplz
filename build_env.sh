@@ -1,8 +1,4 @@
-mkdir -p external && cd external
-
 git clone https://android.googlesource.com/platform/external/libbpf --depth=1
-
-cd ..
 
 mkdir -p user/assets && cd user/assets
 

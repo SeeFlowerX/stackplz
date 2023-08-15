@@ -2,7 +2,7 @@
 .vscode/
 
 bin/
-external/
+libbpf/
 user/assets/
 
 *.log

@@ -33,7 +33,7 @@ ebpf_stack:
 	-no-canonical-prefixes \
 	-O2 \
 	$(DEBUG_PRINT)	\
-	-I       external/libbpf/src \
+	-I       libbpf/src \
 	-I       src \
 	-g \
 	-o user/assets/stack.o \
@@ -49,7 +49,7 @@ ebpf_syscall:
 	-no-canonical-prefixes \
 	-O2 \
 	$(DEBUG_PRINT)	\
-	-I       external/libbpf/src \
+	-I       libbpf/src \
 	-I       src \
 	-g \
 	-o user/assets/syscall.o \
@@ -65,7 +65,7 @@ ebpf_perf_mmap:
 	-no-canonical-prefixes \
 	-O2 \
 	$(DEBUG_PRINT)	\
-	-I       external/libbpf/src \
+	-I       libbpf/src \
 	-I       src \
 	-g \
 	-o user/assets/perf_mmap.o \
