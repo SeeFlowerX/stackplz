@@ -65,10 +65,11 @@ cd /data/local/tmp && ./stackplz --prepare
 
 3.4 在命中uprobe hook时发送信号
 
-有时候希望在经过特定点位的时候停止进程，以便于dump内存，那么可以使用`--kill`来发送信号
+有时候希望在经过特定点位的时候停止进程，以便于dump内存，那么可以使用`--kill`来发送信号，示例：
 
 ```bash
 ./stackplz -n com.sfx.ebpf --lib libnative-lib.so -w _Z5func1v --stack --kill SIGSTOP
+./stackplz -n com.starbucks.cn --syscall exit --kill SIGSTOP --stack
 ```
 
 如果要恢复进程运行，可以用下面这样的命令（另起一个shell，root下执行）：
