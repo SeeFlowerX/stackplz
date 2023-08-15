@@ -73,7 +73,7 @@ cd /data/local/tmp && ./stackplz --prepare
 **硬件断点**访问监控
 
 ```bash
-./stackplz -p 9613 --brk 0x70ddfd63f0:rwx --stack
+./stackplz -p 9613 --brk 0x70ddfd63f0:x --stack
 ```
 
 使用提示：
