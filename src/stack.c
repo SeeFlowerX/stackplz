@@ -130,6 +130,8 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
             if (item_count <= read_count) {
                 read_count = item_count;
             }
+        } else if (point_arg->size <= read_count) {
+            read_count = point_arg->size;
         }
         next_arg_index = read_arg(p, point_arg, args.args[i], read_count, next_arg_index);
     }

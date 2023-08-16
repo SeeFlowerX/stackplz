@@ -92,6 +92,14 @@ pid + 偏移 + 库文件
 ./stackplz -p 3102 --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
 ```
 
+3.6 以寄存器的值作为大小读取数据、或者指定大小
+
+```bash
+./stackplz --name com.sfx.ebpf -w write[int,buf:x2,int]
+./stackplz --name com.sfx.ebpf -w write[int,buf:32,int]
+./stackplz --name com.sfx.ebpf -w write[int,buf:0x10,int]
+```
+
 使用提示：
 
 - 可以用`--name`指定包名，用`--uid`指定进程所属uid，用`--pid`指定进程
@@ -103,7 +111,7 @@ pid + 偏移 + 库文件
 - hook动态库请使用`--point/-w`，可设置多个，语法是{符号/基址偏移}{+符号偏移}{[参数类型,参数类型...]}
     - --point _Z5func1v
     - --point strstr[str,str] --point open[str,int]
-    - --point write[int,hex:64]
+    - --point write[int,buf:64]
     - --point 0x9542c[str,str]
     - --point strstr+0x4[str,str]
 - hook syscall需要指定`--syscall/-s`选项，多个syscall请使用`,`隔开

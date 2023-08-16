@@ -80,8 +80,8 @@ func (this *PointArg) AppendValue(value string) {
 	this.ArgValue += value
 }
 
-func AT(arg_alias_type, arg_type, size uint32) ArgType {
-	return ArgType{arg_alias_type, arg_type, size, 1, -1}
+func AT(arg_alias_type, arg_type, read_count uint32) ArgType {
+	return ArgType{arg_alias_type, arg_type, read_count, 1, -1}
 }
 
 func PA(nr string, args []PArg) PArgs {

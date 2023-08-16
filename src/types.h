@@ -49,6 +49,44 @@ enum event_id_e
     UPROBE_ENTER
 };
 
+enum arm64_reg_e
+{
+    REG_ARM64_X0 = MAX_BUF_READ_SIZE + 666,
+    REG_ARM64_X1,
+    REG_ARM64_X2,
+    REG_ARM64_X3,
+    REG_ARM64_X4,
+    REG_ARM64_X5,
+    REG_ARM64_X6,
+    REG_ARM64_X7,
+    REG_ARM64_X8,
+    REG_ARM64_X9,
+    REG_ARM64_X10,
+    REG_ARM64_X11,
+    REG_ARM64_X12,
+    REG_ARM64_X13,
+    REG_ARM64_X14,
+    REG_ARM64_X15,
+    REG_ARM64_X16,
+    REG_ARM64_X17,
+    REG_ARM64_X18,
+    REG_ARM64_X19,
+    REG_ARM64_X20,
+    REG_ARM64_X21,
+    REG_ARM64_X22,
+    REG_ARM64_X23,
+    REG_ARM64_X24,
+    REG_ARM64_X25,
+    REG_ARM64_X26,
+    REG_ARM64_X27,
+    REG_ARM64_X28,
+    REG_ARM64_X29,
+    REG_ARM64_LR,
+    REG_ARM64_SP,
+    REG_ARM64_PC,
+    REG_ARM64_MAX
+};
+
 enum arg_type_e
 {
 	TYPE_NONE = 0,

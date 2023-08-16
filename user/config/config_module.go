@@ -24,7 +24,11 @@ func (this *StackUprobeConfig) IsEnable() bool {
 }
 
 func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
-    // strstr+0x0[str,str] write[int,hex:128,int]
+    // strstr+0x0[str,str] 命中 strstr + 0x0 时将x0和x1读取为字符串
+    // write[int,buf:128,int] 命中 write 时将x0读取为int、x1读取为字节数组、x2读取为int
+    // 0x89ab[buf:64,int] 命中hook点时读取 x0 处64字节数据 读取 x1 值
+    // 0x89ab[buf:64(sp+0x20-0x8)] 命中hook点时读取 sp+0x20-0x8 处64字节数据
+    // 0x89ab[buf:x1(sp+0x20-0x8)] 命中hook点时读取 sp+0x20-0x8 处x1寄存器大小字节数据
     for point_index, config_str := range configs {
         reg := regexp.MustCompile(`(\w+)(\+0x[[:xdigit:]]+)?(\[.+?\])?`)
         match := reg.FindStringSubmatch(config_str)
@@ -70,28 +74,42 @@ func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
                         arg.ArgType = PTHREAD_ATTR
                     } else if arg_str == "pattr*" {
                         arg.ArgType = PTHREAD_ATTR.ToPointer()
-                    } else if strings.HasPrefix(arg_str, "hex") {
-                        var read_len uint32
+                    } else if strings.HasPrefix(arg_str, "buf") {
+                        var read_index int32 = -1
+                        var read_count uint32 = 256
                         items := strings.Split(arg_str, ":")
                         if len(items) == 1 {
-                            read_len = 256
+                            // read_count = 256
                         } else if len(items) == 2 {
                             var size uint64
                             if strings.HasPrefix(items[1], "0x") {
                                 size, err = strconv.ParseUint(strings.TrimPrefix(items[1], "0x"), 16, 32)
+                                if err != nil {
+                                    return errors.New(fmt.Sprintf("parse for %s failed, arg_str:%s, err:%v", config_str, arg_str, err))
+                                }
+                                read_count = uint32(size)
                             } else {
+                                // 尝试当作纯数字字符串转换
                                 size, err = strconv.ParseUint(items[1], 10, 32)
+                                if err != nil {
+                                    // 尝试视为寄存器字符串转换
+                                    read_index, err = ParseAsReg(items[1])
+                                    if err != nil {
+                                        return err
+                                    }
+                                } else {
+                                    read_count = uint32(size)
+                                }
                             }
-                            if err != nil {
-                                return errors.New(fmt.Sprintf("parse for %s failed, arg_str:%s", config_str, arg_str))
-                            }
-                            read_len = uint32(size)
                         } else {
-                            return errors.New(fmt.Sprintf("parse for %s failed, arg_str:%s", config_str, arg_str))
+                            return errors.New(fmt.Sprintf("parse for %s failed, unexpected config, arg_str:%s", config_str, arg_str))
                         }
-                        arg.ArgType = AT(TYPE_BUFFER_T, TYPE_STRUCT, read_len)
+                        arg.ArgType = AT(TYPE_BUFFER_T, TYPE_POINTER, read_count)
+                        if read_index != -1 {
+                            arg.ArgType.SetIndex(read_index)
+                        }
                     } else {
-                        return errors.New(fmt.Sprintf("parse for %s failed, arg_str:%s", config_str, arg_str))
+                        return errors.New(fmt.Sprintf("parse for %s failed, unknown type, arg_str:%s", config_str, arg_str))
                     }
                     hook_point.Args = append(hook_point.Args, arg)
                 }

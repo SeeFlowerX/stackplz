@@ -342,6 +342,8 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
             if (item_count <= read_count) {
                 read_count = item_count;
             }
+        } else if (point_arg->size <= read_count) {
+            read_count = point_arg->size;
         }
         next_arg_index = read_arg(p, point_arg, saved_args.args[i], read_count, next_arg_index);
     }
