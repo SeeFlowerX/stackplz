@@ -1,4 +1,13 @@
+# Ignore
+.vscode/
+
 bin/
-external
-user/bytecode/*.o
-user/bytecode/*.d
+libbpf/
+user/assets/
+
+*.log
+*.apk
+assets/ebpf_probe.go
+
+# Allow
+!user/assets/placeholder
