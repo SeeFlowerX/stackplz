@@ -4,10 +4,8 @@ import "fmt"
 
 type SyscallConfig struct {
     SConfig
-    UnwindStack bool
-    ShowRegs    bool
-    Config      string
-    NR          int64
+    Config string
+    NR     int64
 }
 
 func NewSyscallConfig() *SyscallConfig {

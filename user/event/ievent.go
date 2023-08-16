@@ -5,41 +5,89 @@ import (
     "encoding/binary"
     "fmt"
     "io/ioutil"
+    "log"
+    "stackplz/pkg/util"
+    "stackplz/user/config"
 
     "github.com/cilium/ebpf/perf"
-)
-
-type EventType uint8
-
-const (
-    // EventTypeModuleData set as module cache data
-    EventTypeModuleData = 0
 )
 
 type IEventStruct interface {
     Decode() (err error)
     String() string
     Clone() IEventStruct
-    EventType() EventType
     GetUUID() string
-    // SetLogger(logger *log.Logger)
-    // SetConf(conf config.IConfig)
+    SetLogger(logger *log.Logger)
+    SetConf(conf config.IConfig)
     SetRecord(rec perf.Record)
 }
 
 type CommonEvent struct {
-    // mconf *config.IConfig
-    rec perf.Record
-    buf *bytes.Buffer
+    conf   config.IConfig
+    logger *log.Logger
+    rec    perf.Record
+    buf    *bytes.Buffer
 }
 
 func (this *CommonEvent) SetRecord(rec perf.Record) {
     this.rec = rec
+    this.buf = bytes.NewBuffer(this.rec.RawSample)
 }
 
-// func (this *CommonEvent) SetConf(conf config.IConfig) {
-//     panic("CommonEvent.SetConf() can not cast")
-// }
+func (this *CommonEvent) SetLogger(logger *log.Logger) {
+    this.logger = logger
+}
+
+func (this *CommonEvent) Clone() IEventStruct {
+    event := new(CommonEvent)
+    return event
+}
+
+func (this *CommonEvent) NewContextEvent() IEventStruct {
+    event := &ContextEvent{CommonEvent: *this}
+    err := event.Decode()
+    if err != nil {
+        panic(fmt.Sprintf("NewContextEvent.Decode() err:%v", err))
+    }
+    return event
+}
+
+func (this *CommonEvent) NewSyscallDataEvent(event IEventStruct) IEventStruct {
+    p, ok := (event).(*ContextEvent)
+    if !ok {
+        panic("CommonEvent.NewSyscallDataEvent() cast to ContextEvent failed")
+    }
+    return p.NewSyscallDataEvent()
+}
+
+func (this *CommonEvent) NewHookDataEvent(event IEventStruct) IEventStruct {
+    p, ok := (event).(*ContextEvent)
+    if !ok {
+        panic("CommonEvent.NewHookDataEvent() cast to ContextEvent failed")
+    }
+    return p.NewHookDataEvent()
+}
+
+func (this *CommonEvent) GetUUID() string {
+    panic("CommonEvent.GetUUID() not implemented yet")
+}
+
+func (this *CommonEvent) String() string {
+    panic("CommonEvent.String() not implemented yet")
+}
+
+func (this *CommonEvent) SetConf(conf config.IConfig) {
+    this.conf = conf
+}
+
+func (this *CommonEvent) Decode() (err error) {
+    if len(this.rec.RawSample) == 0 {
+        this.logger.Printf("[CommonEvent] RawSample len:%d\n", len(this.rec.RawSample))
+        return
+    }
+    this.logger.Printf("[CommonEvent] RawSample:%s\n", util.HexDump(this.rec.RawSample, util.COLORRED))
+    return nil
+}
 
 func (this *CommonEvent) ParsePadding() (err error) {
     padding_size := this.rec.SampleSize + 4 - uint32(this.buf.Cap()-this.buf.Len())

@@ -121,21 +121,6 @@ func (this *MRawSyscallsTracepoint) start() error {
     // this.logger.Printf("%s\tBPF bytecode filename:%s\n", this.Name(), bpfFileName)
     byteBuf, err := assets.Asset(bpfFileName)
 
-    // // 通过直接替换二进制数据实现uid过滤
-    // target_uid_buf := []byte{0xAA, 0xCC, 0xBB, 0xAA}
-    // uid_buf := util.IntToBytes(int(this.sconf.Uid))
-    // byteBuf = bytes.Replace(byteBuf, target_uid_buf, uid_buf, 3)
-    // // 替换 pid
-    // if this.sconf.Pid > 0 {
-    //     pid_buf := util.UIntToBytes(uint32(this.sconf.Pid))
-    //     byteBuf = bytes.Replace(byteBuf, []byte{0x99, 0xCC, 0xBB, 0xAA}, pid_buf, 3)
-    //     byteBuf = bytes.Replace(byteBuf, []byte{0x11, 0xCC, 0xBB, 0xAA}, []byte{0x00, 0x00, 0x00, 0x00}, 3)
-    // }
-    // // 替换 NR
-    // target_nr_buf := []byte{0x77, 0xCC, 0xBB, 0xAA}
-    // nr_buf := util.IntToBytes(int(this.sysConf.NR))
-    // byteBuf = bytes.Replace(byteBuf, target_nr_buf, nr_buf, 3)
-
     if err != nil {
         return fmt.Errorf("%s\tcouldn't find asset %v .", this.Name(), err)
     }
@@ -177,7 +162,7 @@ func (this *MRawSyscallsTracepoint) initDecodeFun() error {
         return errors.New("cant found map:syscall_events")
     }
     this.eventMaps = append(this.eventMaps, SyscallEventsMap)
-    hookEvent := &event.SyscallDataEvent{}
+    hookEvent := &event.CommonEvent{}
     this.eventFuncMaps[SyscallEventsMap] = hookEvent
 
     return nil
@@ -193,12 +178,13 @@ func (this *MRawSyscallsTracepoint) DecodeFun(em *ebpf.Map) (event.IEventStruct,
 }
 
 func (this *MRawSyscallsTracepoint) Dispatcher(e event.IEventStruct) {
-    // 事件类型指定为 EventTypeModuleData 直接使用当前方法处理
-    // 如果需要多处联动收集信息 比如做统计之类的 那么使用 EventTypeEventProcessor 类型 并设计处理模式更合理
-
-    e.(*event.SyscallDataEvent).ShowRegs = this.sconf.ShowRegs
-    e.(*event.SyscallDataEvent).UnwindStack = this.sconf.UnwindStack
-    this.logger.Println(e.(*event.SyscallDataEvent).String())
+    p, ok := e.(*event.CommonEvent)
+    if !ok {
+        panic("cast to ContextEvent failed")
+    }
+    ctx_e := p.NewContextEvent()
+    sys_e := p.NewSyscallDataEvent(ctx_e)
+    this.logger.Println(sys_e.String())
 }
 
 func init() {

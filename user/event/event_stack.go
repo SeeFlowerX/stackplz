@@ -1,84 +1,35 @@
 package event
 
 import (
-    "bytes"
-    "encoding/binary"
     "encoding/json"
     "fmt"
     "stackplz/pkg/util"
+    "stackplz/user/config"
     "strconv"
     "strings"
 )
 
 type HookDataEvent struct {
-    event_type EventType
-    CommonEvent
-    Pid          uint32
-    Tid          uint32
-    Timestamp    uint64
-    Comm         [16]byte
-    Stackinfo    string
-    RegsBuffer   RegsBuf
-    UnwindBuffer *UnwindBuf
-    UnwindStack  bool
-    ShowRegs     bool
-    RegName      string
+    mconf *config.ProbeConfig
+    ContextEvent
+}
+
+func (this *HookDataEvent) CastConf() {
+    p, ok := (this.conf).(*config.ProbeConfig)
+    if ok {
+        this.mconf = p
+    } else {
+        panic("SyscallDataEvent.SetConf() cast to ProbeConfig failed")
+    }
 }
 
 func (this *HookDataEvent) Decode() (err error) {
-    this.buf = bytes.NewBuffer(this.rec.RawSample)
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.rec.SampleSize); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
-        return
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
-        return
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Timestamp); err != nil {
-        return
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Comm); err != nil {
-        return
-    }
-    return nil
-}
-
-func (this *HookDataEvent) ParseContextStack() (err error) {
-    this.Stackinfo = ""
-    if this.rec.ExtraOptions.UnwindStack {
-        // 读取完整的栈数据和寄存器数据 并解析为 UnwindBuf 结构体
-        this.UnwindBuffer = &UnwindBuf{}
-        err = this.UnwindBuffer.ParseContext(this.buf)
-        if err != nil {
-            panic(fmt.Sprintf("UnwindStack ParseContext failed, err:%v", err))
-        }
-        // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
-        // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
-        content, err := ReadMapsByPid(this.Pid)
-        fmt.Println(content)
-        if err != nil {
-            return nil
-        }
-        this.Stackinfo = ParseStack(content, this.UnwindBuffer)
-    } else if this.rec.ExtraOptions.ShowRegs {
-        err = this.RegsBuffer.ParseContext(this.buf)
-        if err != nil {
-            panic(fmt.Sprintf("UnwindStack ParseContext failed, err:%v", err))
-        }
-    }
     return nil
 }
 
 func (this *HookDataEvent) Clone() IEventStruct {
     event := new(HookDataEvent)
-    event.event_type = EventTypeModuleData
     return event
-}
-
-func (this *HookDataEvent) EventType() EventType {
-    return this.event_type
 }
 
 func (this *HookDataEvent) GetUUID() string {

@@ -167,7 +167,7 @@ func (this *MStackProbe) initDecodeFun() error {
         return errors.New("cant found map:stack_events")
     }
     this.eventMaps = append(this.eventMaps, StackEventsMap)
-    hookEvent := &event.HookDataEvent{}
+    hookEvent := &event.CommonEvent{}
     this.eventFuncMaps[StackEventsMap] = hookEvent
 
     return nil
@@ -183,13 +183,13 @@ func (this *MStackProbe) DecodeFun(em *ebpf.Map) (event.IEventStruct, bool) {
 }
 
 func (this *MStackProbe) Dispatcher(e event.IEventStruct) {
-    // 事件类型指定为 EventTypeModuleData 直接使用当前方法处理
-    // 如果需要多处联动收集信息 比如做统计之类的 那么使用 EventTypeEventProcessor 类型 并设计处理模式更合理
-
-    e.(*event.HookDataEvent).RegName = this.sconf.RegName
-    e.(*event.HookDataEvent).ShowRegs = this.sconf.ShowRegs
-    e.(*event.HookDataEvent).UnwindStack = this.sconf.UnwindStack
-    this.logger.Println(e.(*event.HookDataEvent).String())
+    p, ok := e.(*event.CommonEvent)
+    if !ok {
+        panic("cast to ContextEvent failed")
+    }
+    ctx_e := p.NewContextEvent()
+    stack_e := p.NewHookDataEvent(ctx_e)
+    this.logger.Println(stack_e.String())
 }
 
 func init() {

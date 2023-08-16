@@ -12,10 +12,7 @@ type ProbeConfig struct {
     LibName string
     Library string
     Symbol  string
-    // Uid     uint64
-    Offset uint64
-    // UnwindStack bool
-    // ShowRegs    bool
+    Offset  uint64
 }
 
 func NewProbeConfig() *ProbeConfig {

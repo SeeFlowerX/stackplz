@@ -6,7 +6,6 @@ import (
     "fmt"
     "log"
     "os"
-    "reflect"
     "stackplz/user/config"
     "stackplz/user/event"
 
@@ -15,26 +14,20 @@ import (
 )
 
 type IModule interface {
-    // Init 初始化
     Init(context.Context, *log.Logger, config.IConfig) error
 
-    // Name 获取当前module的名字
     Name() string
 
     Clone() IModule
 
     GetConf() config.IConfig
 
-    // Run 事件监听感知
     Run() error
 
-    // Start 启动模块
     Start() error
 
-    // Stop 停止模块
     Stop() error
 
-    // Close 关闭退出
     Close() error
 
     SetChild(module IModule)
@@ -55,28 +48,16 @@ type Module struct {
     logger *log.Logger
     child  IModule
     // probe的名字
-    name         string
-    unwind_stack bool
-
+    name string
     // module的类型，uprobe,kprobe等
     mType string
-
     sconf *config.SConfig
-
-    // processor *event_processor.EventProcessor
 }
 
-// Init 对象初始化
 func (this *Module) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) {
     this.ctx = ctx
     this.logger = logger
     this.sconf = conf.GetSConfig()
-    // if ok {
-    //     this.sconf = sconf
-    // } else {
-    //     panic("cannot convert conf to SConfig")
-    // }
-    // this.processor = event_processor.NewEventProcessor(logger)
 
 }
 
@@ -120,11 +101,6 @@ func (this *Module) Run() error {
     go func() {
         this.run()
     }()
-
-    // 在一端不断接收readEvents所传递的数据 或许这样可以避免阻塞
-    // go func() {
-    //     this.processor.Serve()
-    // }()
 
     // 不断读取内核传递过来的事件
     err = this.readEvents()
@@ -180,11 +156,6 @@ func (this *Module) readEvents() error {
 
 func (this *Module) getExtraOptions(em *ebpf.Map) perf.ExtraPerfOptions {
     // 这里可以考虑在一开始的时候就完成初始化
-    map_value := reflect.ValueOf(em)
-    map_name := map_value.Elem().FieldByName("name")
-    IsMmapEvent := map_name.String() == "fake_events"
-
-    // http://aospxref.com/android-11.0.0_r21/xref/system/extras/simpleperf/perf_regs.cpp#82
     var RegMask uint64
     // if this.sconf.Is32Bit {
     //     RegMask = (1 << PERF_REG_ARM_MAX) - 1
@@ -202,7 +173,7 @@ func (this *Module) getExtraOptions(em *ebpf.Map) perf.ExtraPerfOptions {
     return perf.ExtraPerfOptions{
         UnwindStack:       this.sconf.UnwindStack,
         ShowRegs:          ShowRegs,
-        PerfMmap:          IsMmapEvent,
+        PerfMmap:          false,
         BrkAddr:           0,
         BrkType:           0,
         Sample_regs_user:  RegMask,
@@ -220,16 +191,8 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     // 每个 模块都是 Clone 得到的 map 虽然名字相同 但是 fd不同 所以可以正常区分
     var rd *perf.Reader
     var err error
-    // if this.sconf.RegName != "" {
-    //     rd, err = perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, true)
-    // } else {
-    //     rd, err = perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, this.sconf.ShowRegs)
-    // }
 
     eopt := this.getExtraOptions(em)
-
-    // var rd *perf.Reader
-    // var err error
 
     rd, err = perf.NewReaderWithOptions(em, this.getPerCPUBuffer(), perf.ReaderOptions{}, eopt)
 
@@ -248,18 +211,6 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
                 return
             default:
             }
-
-            var record perf.Record
-            // 根据预设的flag决定以何种方式读取事件数据
-            // if this.sconf.UnwindStack {
-            //     record, err = rd.ReadWithUnwindStack()
-            // } else if this.sconf.ShowRegs {
-            //     record, err = rd.ReadWithRegs()
-            // } else if this.sconf.RegName != "" {
-            //     record, err = rd.ReadWithRegs()
-            // } else {
-            //     record, err = rd.Read()
-            // }
 
             record, err := rd.ReadWithExtraOptions(&eopt)
             if err != nil {
@@ -282,7 +233,6 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
                 this.logger.Printf("%s\tthis.child.decode error:%v", this.child.Name(), err)
                 continue
             }
-
             // 事件数据解析完成之后上报数据，比如写入日志获取输出到特定格式文件中
             this.Dispatcher(e)
         }
@@ -296,35 +246,16 @@ func (this *Module) PrePare(em *ebpf.Map, rec perf.Record) (event event.IEventSt
         err = fmt.Errorf("%s\tcan't found decode function :%s, address:%p", this.child.Name(), em.String(), em)
         return nil, err
     }
-    // 通过结构体引用生成一个真正用于解析事件数据的实例
-    // 注意这里会设置好 event_type 后续上报数据需要根据这个类型判断使用何种上报方式
     te := es.Clone()
-    // te.SetLogger(this.logger)
-    // te.SetConf(this.child.GetConf())
+    te.SetLogger(this.logger)
+    te.SetConf(this.child.GetConf())
     te.SetRecord(rec)
-
-    // 在读取的时候 Record 就包含了 UnwindStack ShowRegs 这些信息
-    // 这里改成直接记录 Record 那么就不必再去设置一遍
-    // 另外一个好处是 对于 PERF_RECORD_MMAP2 这样的数据
-    // 通过修改 ebpf 库 记录了对应的类型
-
-    // te.SetUnwindStack(this.sconf.UnwindStack)
-    // // 正式解析，传入是否进行堆栈回溯的标志
-    // if this.sconf.RegName != "" {
-    //     te.SetShowRegs(true)
-    // } else {
-    //     te.SetShowRegs(this.sconf.ShowRegs)
-    // }
     return te, nil
 }
 
 // 写入数据，或者上传到远程数据库，写入到其他chan 等。
 func (this *Module) Dispatcher(e event.IEventStruct) {
-    switch e.EventType() {
-    case event.EventTypeModuleData:
-        // Save to cache
-        this.child.Dispatcher(e)
-    }
+    this.child.Dispatcher(e)
 }
 
 func (this *Module) Close() error {
@@ -336,7 +267,5 @@ func (this *Module) Close() error {
             return err
         }
     }
-    // err := this.processor.Close()
-    // return err
     return nil
 }
