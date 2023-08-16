@@ -6,12 +6,12 @@ import (
     "fmt"
     "log"
     "os"
+    "reflect"
     "stackplz/user/config"
     "stackplz/user/event"
 
     "github.com/cilium/ebpf"
     "github.com/cilium/ebpf/perf"
-    "github.com/cilium/ebpf/ringbuf"
 )
 
 type IModule interface {
@@ -23,7 +23,7 @@ type IModule interface {
 
     Clone() IModule
 
-    GetConf() string
+    GetConf() config.IConfig
 
     // Run 事件监听感知
     Run() error
@@ -39,7 +39,7 @@ type IModule interface {
 
     SetChild(module IModule)
 
-    Decode(*ebpf.Map, []byte) (event.IEventStruct, error)
+    PrePare(*ebpf.Map, perf.Record) (event.IEventStruct, error)
 
     Events() []*ebpf.Map
 
@@ -84,7 +84,7 @@ func (this *Module) Clone() IModule {
     panic("Module.Clone() not implemented yet")
 }
 
-func (this *Module) GetConf() string {
+func (this *Module) GetConf() config.IConfig {
     panic("Module.GetConf() not implemented yet")
 }
 
@@ -167,8 +167,7 @@ func (this *Module) readEvents() error {
     for _, ebpfMap := range this.child.Events() {
         switch {
         case ebpfMap.Type() == ebpf.RingBuf:
-            // 暂时没有用上这个类型的 暂时保留
-            this.ringbufEventReader(errChan, ebpfMap)
+            panic("not support RingBuf")
         case ebpfMap.Type() == ebpf.PerfEventArray:
             this.perfEventReader(errChan, ebpfMap)
         default:
@@ -179,17 +178,61 @@ func (this *Module) readEvents() error {
     return nil
 }
 
+func (this *Module) getExtraOptions(em *ebpf.Map) perf.ExtraPerfOptions {
+    // 这里可以考虑在一开始的时候就完成初始化
+    map_value := reflect.ValueOf(em)
+    map_name := map_value.Elem().FieldByName("name")
+    IsMmapEvent := map_name.String() == "fake_events"
+
+    // http://aospxref.com/android-11.0.0_r21/xref/system/extras/simpleperf/perf_regs.cpp#82
+    var RegMask uint64
+    // if this.sconf.Is32Bit {
+    //     RegMask = (1 << PERF_REG_ARM_MAX) - 1
+    // } else {
+    // RegMask = (1 << PERF_REG_ARM64_MAX) - 1
+    RegMask = (1 << 33) - 1
+    // }
+    var ShowRegs bool
+    if this.sconf.RegName != "" {
+        ShowRegs = true
+    } else {
+        ShowRegs = this.sconf.ShowRegs
+    }
+
+    return perf.ExtraPerfOptions{
+        UnwindStack:       this.sconf.UnwindStack,
+        ShowRegs:          ShowRegs,
+        PerfMmap:          IsMmapEvent,
+        BrkAddr:           0,
+        BrkType:           0,
+        Sample_regs_user:  RegMask,
+        Sample_stack_user: 8192,
+    }
+}
+
+func (this *Module) getPerCPUBuffer() int {
+    return os.Getpagesize() * (int(8) * 1024 / 4)
+}
+
 func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     // 这里对原ebpf包代码做了修改 以此控制是否让内核发生栈空间数据和寄存器数据
     // 用于进行堆栈回溯 以后可以细分栈数据与寄存器数据
     // 每个 模块都是 Clone 得到的 map 虽然名字相同 但是 fd不同 所以可以正常区分
     var rd *perf.Reader
     var err error
-    if this.sconf.RegName != "" {
-        rd, err = perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, true)
-    } else {
-        rd, err = perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, this.sconf.ShowRegs)
-    }
+    // if this.sconf.RegName != "" {
+    //     rd, err = perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, true)
+    // } else {
+    //     rd, err = perf.NewReader(em, os.Getpagesize()*64, this.sconf.UnwindStack, this.sconf.ShowRegs)
+    // }
+
+    eopt := this.getExtraOptions(em)
+
+    // var rd *perf.Reader
+    // var err error
+
+    rd, err = perf.NewReaderWithOptions(em, this.getPerCPUBuffer(), perf.ReaderOptions{}, eopt)
+
     if err != nil {
         errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)
         return
@@ -208,16 +251,17 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 
             var record perf.Record
             // 根据预设的flag决定以何种方式读取事件数据
-            if this.sconf.UnwindStack {
-                record, err = rd.ReadWithUnwindStack()
-            } else if this.sconf.ShowRegs {
-                record, err = rd.ReadWithRegs()
-            } else if this.sconf.RegName != "" {
-                record, err = rd.ReadWithRegs()
-            } else {
-                record, err = rd.Read()
-            }
+            // if this.sconf.UnwindStack {
+            //     record, err = rd.ReadWithUnwindStack()
+            // } else if this.sconf.ShowRegs {
+            //     record, err = rd.ReadWithRegs()
+            // } else if this.sconf.RegName != "" {
+            //     record, err = rd.ReadWithRegs()
+            // } else {
+            //     record, err = rd.Read()
+            // }
 
+            record, err := rd.ReadWithExtraOptions(&eopt)
             if err != nil {
                 if errors.Is(err, perf.ErrClosed) {
                     return
@@ -231,9 +275,9 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
                 continue
             }
 
-            var e event.IEventStruct
             // 读取到事件数据之后 立刻开始解析获取结果
-            e, err = this.child.Decode(em, record.RawSample)
+            var e event.IEventStruct
+            e, err = this.child.PrePare(em, record)
             if err != nil {
                 this.logger.Printf("%s\tthis.child.decode error:%v", this.child.Name(), err)
                 continue
@@ -245,67 +289,32 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
     }()
 }
 
-func (this *Module) ringbufEventReader(errChan chan error, em *ebpf.Map) {
-    rd, err := ringbuf.NewReader(em)
-    if err != nil {
-        errChan <- fmt.Errorf("%s\tcreating %s reader dns: %s", this.child.Name(), em.String(), err)
-        return
-    }
-    this.reader = append(this.reader, rd)
-    go func() {
-        for {
-            //判断ctx是不是结束
-            select {
-            case _ = <-this.ctx.Done():
-                this.logger.Printf("%s\tringbufEventReader received close signal from context.Done().", this.child.Name())
-                return
-            default:
-            }
-
-            record, err := rd.Read()
-            if err != nil {
-                if errors.Is(err, ringbuf.ErrClosed) {
-                    this.logger.Printf("%s\tReceived signal, exiting..", this.child.Name())
-                    return
-                }
-                errChan <- fmt.Errorf("%s\treading from ringbuf reader: %s", this.child.Name(), err)
-                return
-            }
-
-            var e event.IEventStruct
-            e, err = this.child.Decode(em, record.RawSample)
-            if err != nil {
-                this.logger.Printf("%s\tthis.child.decode error:%v", this.child.Name(), err)
-                continue
-            }
-
-            // 上报数据
-            this.Dispatcher(e)
-        }
-    }()
-}
-
-func (this *Module) Decode(em *ebpf.Map, b []byte) (event event.IEventStruct, err error) {
+func (this *Module) PrePare(em *ebpf.Map, rec perf.Record) (event event.IEventStruct, err error) {
     // 首先根据map得到最开始设置好的用于解析的结构体引用（这样描述可能不对）
     es, found := this.child.DecodeFun(em)
     if !found {
         err = fmt.Errorf("%s\tcan't found decode function :%s, address:%p", this.child.Name(), em.String(), em)
-        return
+        return nil, err
     }
     // 通过结构体引用生成一个真正用于解析事件数据的实例
     // 注意这里会设置好 event_type 后续上报数据需要根据这个类型判断使用何种上报方式
     te := es.Clone()
-    te.SetUUID(this.child.GetConf())
-    // 正式解析，传入是否进行堆栈回溯的标志
-    if this.sconf.RegName != "" {
-        err = te.Decode(b, this.sconf.UnwindStack, true)
-    } else {
-        err = te.Decode(b, this.sconf.UnwindStack, this.sconf.ShowRegs)
-    }
-    if err != nil {
-        return nil, err
-    }
-    // 解析完成 可以用于事件上报处理
+    // te.SetLogger(this.logger)
+    // te.SetConf(this.child.GetConf())
+    te.SetRecord(rec)
+
+    // 在读取的时候 Record 就包含了 UnwindStack ShowRegs 这些信息
+    // 这里改成直接记录 Record 那么就不必再去设置一遍
+    // 另外一个好处是 对于 PERF_RECORD_MMAP2 这样的数据
+    // 通过修改 ebpf 库 记录了对应的类型
+
+    // te.SetUnwindStack(this.sconf.UnwindStack)
+    // // 正式解析，传入是否进行堆栈回溯的标志
+    // if this.sconf.RegName != "" {
+    //     te.SetShowRegs(true)
+    // } else {
+    //     te.SetShowRegs(this.sconf.ShowRegs)
+    // }
     return te, nil
 }
 

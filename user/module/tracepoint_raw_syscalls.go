@@ -101,8 +101,8 @@ func (this *MRawSyscallsTracepoint) Clone() IModule {
     return mod
 }
 
-func (this *MRawSyscallsTracepoint) GetConf() string {
-    return this.sysConf.Info()
+func (this *MRawSyscallsTracepoint) GetConf() config.IConfig {
+    return this.sysConf
 }
 
 func (this *MRawSyscallsTracepoint) start() error {

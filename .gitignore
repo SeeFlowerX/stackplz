@@ -2,8 +2,10 @@
 .vscode/
 
 bin/
-libbpf/
+external/
 user/assets/
+
+user/bytecode/
 
 *.log
 *.apk

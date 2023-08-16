@@ -90,6 +90,10 @@ func FindLib(library string, search_paths []string) (string, error) {
 	return library, nil
 }
 
+func B2STrim(src []byte) string {
+	return string(bytes.TrimSpace(bytes.Trim(src, "\x00")))
+}
+
 func ParseReg(pid uint32, value uint64) (string, error) {
 	info := "UNKNOWN"
 	// 直接读取maps信息 计算value在什么地方 用于定位跳转目的地

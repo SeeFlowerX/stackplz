@@ -1,19 +1,18 @@
 package event
 
-// #include <load_so.h>
-// #cgo LDFLAGS: -ldl
-import "C"
-
 import (
     "bytes"
     "encoding/binary"
     "encoding/json"
     "fmt"
-    "unsafe"
+    "stackplz/pkg/util"
+    "strconv"
+    "strings"
 )
 
 type SyscallDataEvent struct {
-    event_type   EventType
+    event_type EventType
+    CommonEvent
     Pid          uint32
     Tid          uint32
     Timestamp    uint64
@@ -21,57 +20,66 @@ type SyscallDataEvent struct {
     NR           uint64
     Stackinfo    string
     RegsBuffer   RegsBuf
-    UnwindBuffer UnwindBuf
+    UnwindBuffer *UnwindBuf
     UnwindStack  bool
     ShowRegs     bool
-    UUID         string
+    RegName      string
 }
 
-func (this *SyscallDataEvent) Decode(payload []byte, unwind_stack, regs bool) (err error) {
-    buf := bytes.NewBuffer(payload)
-    if err = binary.Read(buf, binary.LittleEndian, &this.Pid); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.Tid); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.Timestamp); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.Comm); err != nil {
-        return
-    }
-    if err = binary.Read(buf, binary.LittleEndian, &this.NR); err != nil {
-        return
-    }
+// func (this *SyscallDataEvent) SetConf(conf config.IConfig) {
+//     // 原生指针转换 conf 是指针的时候 但不能是 interface
+//     p, ok := (conf).(*config.SyscallConfig)
+//     if ok {
+//         this.mconf = p
+//     } else {
+//         panic("CommonEvent.SetConf() cast to ModuleConfig failed")
+//     }
+// }
 
-    if unwind_stack {
-        // 理论上应该是不需要读取这4字节 但是实测需要 原因未知
-        var pad uint32
-        if err = binary.Read(buf, binary.LittleEndian, &pad); err != nil {
-            return
-        }
+func (this *SyscallDataEvent) Decode() (err error) {
+    this.buf = bytes.NewBuffer(this.rec.RawSample)
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.rec.SampleSize); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
+        return
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
+        return
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Timestamp); err != nil {
+        return
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Comm); err != nil {
+        return
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.NR); err != nil {
+        return
+    }
+    return nil
+}
+
+func (this *SyscallDataEvent) ParseContextStack() (err error) {
+    this.Stackinfo = ""
+    if this.rec.ExtraOptions.UnwindStack {
         // 读取完整的栈数据和寄存器数据 并解析为 UnwindBuf 结构体
-        if err = binary.Read(buf, binary.LittleEndian, &this.UnwindBuffer); err != nil {
-            return
+        this.UnwindBuffer = &UnwindBuf{}
+        err = this.UnwindBuffer.ParseContext(this.buf)
+        if err != nil {
+            panic(fmt.Sprintf("UnwindStack ParseContext failed, err:%v", err))
         }
         // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
-        stack_str := C.get_stack(C.int(this.Pid), C.ulong(((1 << 33) - 1)), unsafe.Pointer(&this.UnwindBuffer))
-        // char* 转到 go 的 string
-        this.Stackinfo = C.GoString(stack_str)
-    } else if regs {
-        var pad uint32
-        if err = binary.Read(buf, binary.LittleEndian, &pad); err != nil {
-            return
+        content, err := ReadMapsByPid(this.Pid)
+        if err != nil {
+            return nil
         }
-        // 读取寄存器数据 并解析为 RegsBuffer 结构体
-        if err = binary.Read(buf, binary.LittleEndian, &this.RegsBuffer); err != nil {
-            return
+        this.Stackinfo = ParseStack(content, this.UnwindBuffer)
+    } else if this.rec.ExtraOptions.ShowRegs {
+        err = this.RegsBuffer.ParseContext(this.buf)
+        if err != nil {
+            panic(fmt.Sprintf("UnwindStack ParseContext failed, err:%v", err))
         }
-        this.Stackinfo = ""
-    } else {
-        this.Stackinfo = ""
     }
     return nil
 }
@@ -86,16 +94,47 @@ func (this *SyscallDataEvent) EventType() EventType {
     return this.event_type
 }
 
-func (this *SyscallDataEvent) SetUUID(uuid string) {
-    this.UUID = uuid
+func (this *SyscallDataEvent) GetUUID() string {
+    return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
 }
 
-func (this *SyscallDataEvent) String() string {
-    var s string
-    s = fmt.Sprintf("[%s] PID:%d, Comm:%s, TID:%d NR:%d", this.UUID, this.Pid, bytes.TrimSpace(bytes.Trim(this.Comm[:], "\x00")), this.Tid, this.NR)
-    if this.ShowRegs {
+func (this *SyscallDataEvent) GetStackTrace(s string) string {
+    if this.RegName != "" {
+        // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
+        // 当然前提是取了寄存器数据
         var tmp_regs [33]uint64
-        if this.UnwindStack {
+        if this.rec.ExtraOptions.UnwindStack {
+            tmp_regs = this.UnwindBuffer.Regs
+        } else {
+            tmp_regs = this.RegsBuffer.Regs
+        }
+        has_reg_value := false
+        var regvalue uint64
+        if strings.HasPrefix(this.RegName, "x") {
+            parts := strings.SplitN(this.RegName, "x", 2)
+            regno, _ := strconv.ParseUint(parts[1], 10, 32)
+            if regno >= 0 && regno <= 29 {
+                // 取到对应的寄存器值
+                regvalue = tmp_regs[regno]
+                has_reg_value = true
+            }
+        } else if this.RegName == "lr" {
+            regvalue = tmp_regs[30]
+            has_reg_value = true
+        }
+        if has_reg_value {
+            // 读取maps 获取偏移信息
+            info, err := util.ParseReg(this.Pid, regvalue)
+            if err != nil {
+                fmt.Printf("ParseReg for %s=0x%x failed", this.RegName, regvalue)
+            } else {
+                s += fmt.Sprintf(", Reg %s Info:\n%s", this.RegName, info)
+            }
+        }
+    }
+    if this.rec.ExtraOptions.ShowRegs {
+        var tmp_regs [33]uint64
+        if this.rec.ExtraOptions.UnwindStack {
             tmp_regs = this.UnwindBuffer.Regs
         } else {
             tmp_regs = this.RegsBuffer.Regs
@@ -114,11 +153,25 @@ func (this *SyscallDataEvent) String() string {
         s += ", Regs:\n" + string(regs_info)
     }
     if this.Stackinfo != "" {
-        if this.ShowRegs {
+        if this.rec.ExtraOptions.ShowRegs {
             s += fmt.Sprintf("\nStackinfo:\n%s", this.Stackinfo)
         } else {
             s += fmt.Sprintf(", Stackinfo:\n%s", this.Stackinfo)
         }
     }
+    return s
+}
+func (this *SyscallDataEvent) String() string {
+    err := this.ParsePadding()
+    if err != nil {
+        panic(fmt.Sprintf("ParsePadding failed, err:%v", err))
+    }
+    err = this.ParseContextStack()
+    if err != nil {
+        panic(fmt.Sprintf("ParseContextStack failed, err:%v", err))
+    }
+    var s string
+    s = fmt.Sprintf("[%s] NR:%d", this.GetUUID(), this.NR)
+    s = this.GetStackTrace(s)
     return s
 }

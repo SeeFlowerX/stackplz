@@ -42,8 +42,8 @@ func (this *MStackProbe) Init(ctx context.Context, logger *log.Logger, conf conf
     return nil
 }
 
-func (this *MStackProbe) GetConf() string {
-    return this.probeConf.Info()
+func (this *MStackProbe) GetConf() config.IConfig {
+    return this.probeConf
 }
 
 func (this *MStackProbe) setupManager() error {

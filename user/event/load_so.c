@@ -3,11 +3,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-const char* get_stack(int pid, uint64_t reg_mask, void* unwind_buf)
+typedef const char* (*FPTR)(char*, uint64_t, void*, void*);
+FPTR fptr = NULL;
+int has_dlopen = 0;
+
+const char* get_stack(char* dl_path, char* map_buffer, uint64_t reg_mask, void* unwind_buf, void* stack_buf)
 {
+    // printf("[get_stack], has_dlopen:%d\n", has_dlopen);
+    // fflush(stdout);
+    if (has_dlopen == 1) {
+        return (*fptr)(map_buffer, reg_mask, unwind_buf, stack_buf);
+    }
+    
     void* handle;
-    char dl_path[] = "/data/local/tmp/preload_libs";
-    typedef const char* (*FPTR)(int, uint64_t, void*);
+    // char dl_path[] = "/data/local/tmp/preload_libs";
 
     char full_path[256];
     sprintf(full_path, "%s/%s", dl_path, "libbase.so");
@@ -30,9 +39,13 @@ const char* get_stack(int pid, uint64_t reg_mask, void* unwind_buf)
     // printf("enter, step:%d %s handle:%d\n", 2, full_path, handle==NULL);
     // fflush(stdout);
 
-    FPTR fptr = (FPTR)dlsym(handle, "StackPlz");
+    fptr = (FPTR)dlsym(handle, "StackPlz");
     // printf("enter, step:%d StackPlz fptr:%p\n", 2, &fptr);
     // fflush(stdout);
 
-    return (*fptr)(pid, reg_mask, unwind_buf);
+    if (has_dlopen == 0) {
+        has_dlopen = 1;
+    }
+
+    return (*fptr)(map_buffer, reg_mask, unwind_buf, stack_buf);
 }
