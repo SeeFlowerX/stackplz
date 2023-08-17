@@ -19,6 +19,166 @@ type StackUprobeConfig struct {
     Points  []UprobeArgs
 }
 
+func ParseStrAsNum(v string) (uint64, error) {
+    if strings.HasPrefix(v, "0x") {
+        op_value, err := strconv.ParseUint(strings.TrimPrefix(v, "0x"), 16, 32)
+        if err != nil {
+            err = errors.New(fmt.Sprintf("parse op_value:%s as hex failed, err:%v", v, err))
+            return 0, err
+        }
+        return op_value, nil
+    } else {
+        op_value, err := strconv.ParseUint(v, 10, 32)
+        if err != nil {
+            err = errors.New(fmt.Sprintf("parse op_value:%s failed, err:%v", v, err))
+            return 0, err
+        }
+        return op_value, nil
+    }
+}
+
+func ParseArgType(arg_str string) (ArgType, error) {
+    // str
+    // int:x10
+    // buf:64:sp+0x20-0x8
+    // 解析为单个参数的读取配置 -> 在何处读、读取类型
+    var err error = nil
+    var arg_type ArgType
+    var to_ptr bool = false
+    var arg_desc string = ""
+    var arg_index string = ""
+    var size_str string = ""
+    items := strings.Split(arg_str, ":")
+    if len(items) == 1 {
+        arg_desc = items[0]
+    } else if len(items) == 2 {
+        arg_desc = items[0]
+        arg_index = items[1]
+    } else if len(items) == 3 {
+        arg_desc = items[0]
+        size_str = items[1]
+        arg_index = items[2]
+    } else {
+        return arg_type, errors.New(fmt.Sprintf("parse arg_str:%s failed, err:%v", arg_str, err))
+    }
+    if strings.HasPrefix(arg_desc, "*") {
+        to_ptr = true
+        arg_desc = arg_desc[1:]
+    }
+    switch arg_desc {
+    case "int":
+        arg_type = INT
+    case "str":
+        arg_type = STRING
+    case "ptr":
+        arg_type = POINTER
+    case "buf":
+        arg_type = BUFFER_T
+        arg_type.SetSize(256)
+        // 特别处理
+        if len(items) == 2 {
+            size_str = arg_index
+            arg_index = ""
+        }
+        if size_str != "" {
+            if strings.HasPrefix(size_str, "0x") {
+                size, err := strconv.ParseUint(strings.TrimPrefix(size_str, "0x"), 16, 32)
+                if err != nil {
+                    err = errors.New(fmt.Sprintf("parse size_str:%s as hex failed, arg_str:%s, err:%v", size_str, arg_str, err))
+                    break
+                }
+                arg_type.SetSize(uint32(size))
+            } else {
+                size, err := strconv.ParseUint(items[1], 10, 32)
+                if err != nil {
+                    err = errors.New(fmt.Sprintf("parse size_str:%s as number failed, arg_str:%s, err:%v", size_str, arg_str, err))
+                    break
+                } else {
+                    arg_type.SetSize(uint32(size))
+                }
+            }
+        }
+    case "pattr":
+        arg_type = PTHREAD_ATTR
+    default:
+        err = errors.New(fmt.Sprintf("unsupported arg_type:%s", items[0]))
+    }
+    if err != nil {
+        return arg_type, err
+    }
+    if to_ptr {
+        arg_type.ToPointer()
+    }
+    if arg_index != "" {
+        read_offset := ""
+        if len(arg_index) > 2 {
+            read_offset = arg_index[2:]
+            arg_index = arg_index[:2]
+        }
+        read_index, err := ParseAsReg(arg_index)
+        if err != nil {
+            return arg_type, err
+        }
+        arg_type.SetIndex(read_index)
+        if read_offset != "" {
+            var offset uint64 = 0
+            if strings.HasPrefix(read_offset, "+") {
+                op_add_items := strings.Split(read_offset, "+")
+                for _, v := range op_add_items {
+                    v = strings.TrimSpace(v)
+                    if v == "" {
+                        continue
+                    }
+                    op_sub_items := strings.Split(v, "-")
+                    op_value, err := ParseStrAsNum(op_sub_items[0])
+                    if err != nil {
+                        return arg_type, err
+                    }
+                    offset += op_value
+                    if len(op_sub_items) > 1 {
+                        for _, v2 := range op_sub_items[1:] {
+                            v2 = strings.TrimSpace(v2)
+                            op_value, err := ParseStrAsNum(v2)
+                            if err != nil {
+                                return arg_type, err
+                            }
+                            offset -= op_value
+                        }
+                    }
+                }
+            } else if strings.HasPrefix(read_offset, "-") {
+                op_sub_items := strings.Split(read_offset, "-")
+                for _, v := range op_sub_items {
+                    v = strings.TrimSpace(v)
+                    if v == "" {
+                        continue
+                    }
+                    op_add_items := strings.Split(v, "+")
+                    op_value, err := ParseStrAsNum(op_add_items[0])
+                    if err != nil {
+                        return arg_type, err
+                    }
+                    offset -= op_value
+                    if len(op_add_items) > 1 {
+                        for _, v2 := range op_add_items[1:] {
+                            v2 = strings.TrimSpace(v2)
+                            op_value, err := ParseStrAsNum(v2)
+                            if err != nil {
+                                return arg_type, err
+                            }
+                            offset += op_value
+                        }
+                    }
+                }
+            } else {
+                return arg_type, errors.New(fmt.Sprintf("parse read_offset:%s failed", read_offset))
+            }
+            arg_type.SetReadOffset(uint32(offset))
+        }
+    }
+    return arg_type, err
+}
+
 func (this *StackUprobeConfig) IsEnable() bool {
     return len(this.Points) > 0
 }
@@ -66,51 +226,11 @@ func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
                 for arg_index, arg_str := range args {
                     arg_name := fmt.Sprintf("arg_%d", arg_index)
                     arg := PointArg{arg_name, UPROBE_ENTER_READ, INT, "???"}
-                    if arg_str == "str" {
-                        arg.ArgType = STRING
-                    } else if arg_str == "int" {
-                        arg.ArgType = INT
-                    } else if arg_str == "pattr" {
-                        arg.ArgType = PTHREAD_ATTR
-                    } else if arg_str == "pattr*" {
-                        arg.ArgType = PTHREAD_ATTR.ToPointer()
-                    } else if strings.HasPrefix(arg_str, "buf") {
-                        var read_index uint32 = READ_INDEX_SKIP
-                        var read_count uint32 = 256
-                        items := strings.Split(arg_str, ":")
-                        if len(items) == 1 {
-                            // read_count = 256
-                        } else if len(items) == 2 {
-                            var size uint64
-                            if strings.HasPrefix(items[1], "0x") {
-                                size, err = strconv.ParseUint(strings.TrimPrefix(items[1], "0x"), 16, 32)
-                                if err != nil {
-                                    return errors.New(fmt.Sprintf("parse for %s failed, arg_str:%s, err:%v", config_str, arg_str, err))
-                                }
-                                read_count = uint32(size)
-                            } else {
-                                // 尝试当作纯数字字符串转换
-                                size, err = strconv.ParseUint(items[1], 10, 32)
-                                if err != nil {
-                                    // 尝试视为寄存器字符串转换
-                                    read_index, err = ParseAsReg(items[1])
-                                    if err != nil {
-                                        return err
-                                    }
-                                } else {
-                                    read_count = uint32(size)
-                                }
-                            }
-                        } else {
-                            return errors.New(fmt.Sprintf("parse for %s failed, unexpected config, arg_str:%s", config_str, arg_str))
-                        }
-                        arg.ArgType = AT(TYPE_BUFFER_T, TYPE_POINTER, read_count)
-                        if read_index != READ_INDEX_SKIP {
-                            arg.ArgType.SetIndex(read_index)
-                        }
-                    } else {
-                        return errors.New(fmt.Sprintf("parse for %s failed, unknown type, arg_str:%s", config_str, arg_str))
+                    arg_type, err := ParseArgType(arg_str)
+                    if err != nil {
+                        return err
                     }
+                    arg.ArgType = arg_type
                     hook_point.Args = append(hook_point.Args, arg)
                 }
             }

@@ -66,6 +66,11 @@ func (this *ArgType) ToPointer() ArgType {
 	return *this
 }
 
+func (this *ArgType) SetSize(size uint32) ArgType {
+	this.Size = size
+	return *this
+}
+
 func (this *ArgType) SetIndex(index uint32) ArgType {
 	this.ItemCountIndex = index
 	return *this

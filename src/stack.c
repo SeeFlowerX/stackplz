@@ -77,16 +77,6 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
         return 0;
     }
 
-    // args_t args = {};
-    // args.args[0] = READ_KERN(ctx->regs[0]);
-    // args.args[1] = READ_KERN(ctx->regs[1]);
-    // args.args[2] = READ_KERN(ctx->regs[2]);
-    // args.args[3] = READ_KERN(ctx->regs[3]);
-    // args.args[4] = READ_KERN(ctx->regs[4]);
-    // if (save_args(&args, UPROBE_ENTER) != 0) {
-    //     return 0;
-    // };
-
     save_to_submit_buf(p.event, (void *) &args_key, sizeof(u32), 0);
     u64 lr = 0;
     if(filter->is_32bit) {
