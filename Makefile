@@ -18,8 +18,8 @@ all: ebpf_stack ebpf_syscall ebpf_perf_mmap genbtf assets build
 
 .PHONY: clean
 clean:
-	$(CMD_RM) -f user/bytecode/*.d
-	$(CMD_RM) -f user/bytecode/*.o
+	$(CMD_RM) -f user/assets/*.d
+	$(CMD_RM) -f user/assets/*.o
 	# $(CMD_RM) -f assets/ebpf_probe.go
 	$(CMD_RM) -f bin/stackplz
 

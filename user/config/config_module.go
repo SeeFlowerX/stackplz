@@ -27,8 +27,8 @@ func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
     // strstr+0x0[str,str] 命中 strstr + 0x0 时将x0和x1读取为字符串
     // write[int,buf:128,int] 命中 write 时将x0读取为int、x1读取为字节数组、x2读取为int
     // 0x89ab[buf:64,int] 命中hook点时读取 x0 处64字节数据 读取 x1 值
-    // 0x89ab[buf:64(sp+0x20-0x8)] 命中hook点时读取 sp+0x20-0x8 处64字节数据
-    // 0x89ab[buf:x1(sp+0x20-0x8)] 命中hook点时读取 sp+0x20-0x8 处x1寄存器大小字节数据
+    // 0x89ab[buf:64:sp+0x20-0x8] 命中hook点时读取 sp+0x20-0x8 处64字节数据
+    // 0x89ab[buf:x1:sp+0x20-0x8] 命中hook点时读取 sp+0x20-0x8 处x1寄存器大小字节数据
     for point_index, config_str := range configs {
         reg := regexp.MustCompile(`(\w+)(\+0x[[:xdigit:]]+)?(\[.+?\])?`)
         match := reg.FindStringSubmatch(config_str)
