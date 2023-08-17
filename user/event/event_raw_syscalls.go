@@ -11,17 +11,6 @@ import (
     "unsafe"
 )
 
-// type EventTypeSys uint32
-
-const (
-    EventTypeSysEnter             uint32 = 1
-    EventTypeSysEnterArgs         uint32 = 2
-    EventTypeSysEnterRegs         uint32 = 3
-    EventTypeSysExitReadAfterArgs uint32 = 4
-    EventTypeSysExitArgs          uint32 = 5
-    EventTypeSysExitRet           uint32 = 6
-)
-
 type Timespec struct {
     TvSec  uint64 /* seconds */
     TvNsec uint64 /* nanoseconds */

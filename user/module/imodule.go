@@ -273,8 +273,6 @@ func (this *Module) PrePare(em *ebpf.Map, rec perf.Record) (event event.IEventSt
         err = fmt.Errorf("%s\tcan't found decode function :%s, address:%p", this.child.Name(), em.String(), em)
         return nil, err
     }
-    // 通过结构体引用生成一个真正用于解析事件数据的实例
-    // 注意这里会设置好 event_type 后续上报数据需要根据这个类型判断使用何种上报方式
     te := es.Clone()
     te.SetLogger(this.logger)
     te.SetConf(this.child.GetConf())

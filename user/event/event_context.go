@@ -214,7 +214,6 @@ func (this *ContextEvent) ParseContext() (err error) {
 
 func (this *ContextEvent) Clone() IEventStruct {
     event := new(ContextEvent)
-    // event.event_type = EventTypeSysCallData
     return event
 }
 

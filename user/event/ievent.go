@@ -53,7 +53,6 @@ func (this *CommonEvent) GetEventId() uint32 {
 
 func (this *CommonEvent) Clone() IEventStruct {
     event := new(CommonEvent)
-    // event.event_type = EventTypeSoInfoData
     return event
 }
 

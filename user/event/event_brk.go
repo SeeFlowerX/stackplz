@@ -32,7 +32,6 @@ func (this *BrkEvent) ParseContext() (err error) {
 
 func (this *BrkEvent) Clone() IEventStruct {
     event := new(BrkEvent)
-    // event.event_type = EventTypeSysCallData
     return event
 }
 
