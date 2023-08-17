@@ -179,7 +179,7 @@ func ParseArgType(arg_str string) (ArgType, error) {
             arg_type.SetReadOffset(uint32(offset))
         }
     }
-    fmt.Println("arg_type", arg_type.String())
+    // fmt.Println("arg_type", arg_type.String())
     return arg_type, err
 }
 

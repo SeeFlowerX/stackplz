@@ -51,9 +51,6 @@ func (this *BrkEvent) ParseContextStack() (err error) {
         if err != nil {
             // 直接读取 maps 失败 那么从 mmap2 事件中获取
             // 根据测试结果 有这样的情况 -> 即 fork 产生的子进程 那么应该查找其父进程 mmap2 事件
-            // lr_addr := this.UnwindBuffer.Regs[30]
-            // sp_addr := this.UnwindBuffer.Regs[31]
-            // pc_addr := this.UnwindBuffer.Regs[32]
             maps_helper.SetLogger(this.logger)
             info, err := maps_helper.GetStack(this.mconf.Pid, this.UnwindBuffer)
             if err != nil {

@@ -473,13 +473,13 @@ func (this *ContextEvent) GetStackTrace(s string) string {
         if strings.HasPrefix(this.RegName, "x") {
             parts := strings.SplitN(this.RegName, "x", 2)
             regno, _ := strconv.ParseUint(parts[1], 10, 32)
-            if regno >= 0 && regno <= 29 {
+            if regno >= 0 && regno <= uint64(config.REG_ARM64_X29) {
                 // 取到对应的寄存器值
                 regvalue = tmp_regs[regno]
                 has_reg_value = true
             }
         } else if this.RegName == "lr" {
-            regvalue = tmp_regs[30]
+            regvalue = tmp_regs[config.REG_ARM64_LR]
             has_reg_value = true
         }
         if has_reg_value {
@@ -500,12 +500,12 @@ func (this *ContextEvent) GetStackTrace(s string) string {
             tmp_regs = this.RegsBuffer.Regs
         }
         regs := make(map[string]string)
-        for regno := 0; regno <= 29; regno++ {
+        for regno := 0; regno <= int(config.REG_ARM64_X29); regno++ {
             regs[fmt.Sprintf("x%d", regno)] = fmt.Sprintf("0x%x", tmp_regs[regno])
         }
-        regs["lr"] = fmt.Sprintf("0x%x", tmp_regs[30])
-        regs["sp"] = fmt.Sprintf("0x%x", tmp_regs[31])
-        regs["pc"] = fmt.Sprintf("0x%x", tmp_regs[32])
+        regs["lr"] = fmt.Sprintf("0x%x", tmp_regs[config.REG_ARM64_LR])
+        regs["sp"] = fmt.Sprintf("0x%x", tmp_regs[config.REG_ARM64_SP])
+        regs["pc"] = fmt.Sprintf("0x%x", tmp_regs[config.REG_ARM64_PC])
         regs_info, err := json.Marshal(regs)
         if err != nil {
             regs_info = make([]byte, 0)
@@ -537,9 +537,6 @@ func (this *ContextEvent) ParseContextStack() (err error) {
         if err != nil {
             // 直接读取 maps 失败 那么从 mmap2 事件中获取
             // 根据测试结果 有这样的情况 -> 即 fork 产生的子进程 那么应该查找其父进程 mmap2 事件
-            // lr_addr := this.UnwindBuffer.Regs[30]
-            // sp_addr := this.UnwindBuffer.Regs[31]
-            // pc_addr := this.UnwindBuffer.Regs[32]
             maps_helper.SetLogger(this.logger)
             info, err := maps_helper.GetStack(this.Pid, this.UnwindBuffer)
             if err != nil {

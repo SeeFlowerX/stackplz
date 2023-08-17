@@ -8,6 +8,7 @@ import (
     "io"
     "io/ioutil"
     "log"
+    "stackplz/user/config"
     "stackplz/user/util"
     "strings"
     "sync"
@@ -181,10 +182,10 @@ func (this *MapsHelper) GetStack(pid uint32, ubuf *UnwindBuf) (info string, err 
 
     // perf_output_sample_ustack dump获取到的栈空间数据 起始地址就是 sp
     stack_buf := bytes.NewReader(ubuf.Data[:])
-    fp := ubuf.Regs[29]
-    // lr := ubuf.Regs[30]
-    sp := ubuf.Regs[31]
-    pc := ubuf.Regs[32]
+    fp := ubuf.Regs[config.REG_ARM64_X29]
+    // lr := ubuf.Regs[config.REG_ARM64_LR]
+    sp := ubuf.Regs[config.REG_ARM64_SP]
+    pc := ubuf.Regs[config.REG_ARM64_PC]
     // 栈解析结果
     // var stack_arr []uint64
     var stack_infos []string
