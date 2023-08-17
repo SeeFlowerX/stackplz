@@ -320,8 +320,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             }
         }
     } else if len(gconfig.HookPoint) != 0 {
-        if len(gconfig.HookPoint) > 10 {
-            logger.Fatal("max uprobe hook point count is 10")
+        if len(gconfig.HookPoint) > 8 {
+            logger.Fatal("max uprobe hook point count is 8")
         }
         err = mconfig.StackUprobeConf.ParseConfig(gconfig.HookPoint)
         if err != nil {

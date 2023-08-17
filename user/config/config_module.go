@@ -75,7 +75,7 @@ func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
                     } else if arg_str == "pattr*" {
                         arg.ArgType = PTHREAD_ATTR.ToPointer()
                     } else if strings.HasPrefix(arg_str, "buf") {
-                        var read_index int32 = -1
+                        var read_index uint32 = READ_INDEX_SKIP
                         var read_count uint32 = 256
                         items := strings.Split(arg_str, ":")
                         if len(items) == 1 {
@@ -105,7 +105,7 @@ func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
                             return errors.New(fmt.Sprintf("parse for %s failed, unexpected config, arg_str:%s", config_str, arg_str))
                         }
                         arg.ArgType = AT(TYPE_BUFFER_T, TYPE_POINTER, read_count)
-                        if read_index != -1 {
+                        if read_index != READ_INDEX_SKIP {
                             arg.ArgType.SetIndex(read_index)
                         }
                     } else {
@@ -184,6 +184,7 @@ func (this *SyscallConfig) UpdatePointArgsMap(SyscallPointArgsMap *ebpf.Map) err
         if !ok {
             panic(fmt.Sprintf("cast [%s] point to SysCallArgs failed", nr_name))
         }
+        // 这里可以改成只更新追踪的syscall以加快速度
         err := SyscallPointArgsMap.Update(unsafe.Pointer(&nr_point.NR), unsafe.Pointer(nr_point.GetConfig()), ebpf.UpdateAny)
         if err != nil {
             return err

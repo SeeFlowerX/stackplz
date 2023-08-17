@@ -18,6 +18,7 @@ type UPointTypes struct {
 }
 
 func (this *UprobeArgs) GetConfig() *UPointTypes {
+	// 当前这样传递配置的方式比较耗时
 	var point_arg_types [MAX_POINT_ARG_COUNT]FilterArgType
 	for i := 0; i < MAX_POINT_ARG_COUNT; i++ {
 		if i+1 > len(this.Args) {

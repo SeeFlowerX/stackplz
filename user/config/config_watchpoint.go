@@ -8,7 +8,9 @@ import (
 // 结合其他项目构想一种新的方案 便于后续增补各类结构体的数据解析
 // 而不是依赖配置文件去转换 某种程度上来说 硬编码反而是更好的选择
 
-const MAX_POINT_ARG_COUNT = 6
+const MAX_POINT_ARG_COUNT = 10
+const READ_INDEX_SKIP uint32 = 100
+const READ_INDEX_REG uint32 = 101
 
 const (
 	FORBIDDEN uint32 = iota
@@ -19,11 +21,12 @@ const (
 )
 
 type ArgType struct {
+	ReadIndex      uint32
 	AliasType      uint32
 	Type           uint32
 	Size           uint32
 	ItemPerSize    uint32
-	ItemCountIndex int32
+	ItemCountIndex uint32
 }
 
 type IWatchPoint interface {
@@ -62,7 +65,7 @@ func (this *ArgType) ToPointer() ArgType {
 	return *this
 }
 
-func (this *ArgType) SetIndex(index int32) ArgType {
+func (this *ArgType) SetIndex(index uint32) ArgType {
 	this.ItemCountIndex = index
 	return *this
 }
@@ -81,7 +84,7 @@ func (this *PointArg) AppendValue(value string) {
 }
 
 func AT(arg_alias_type, arg_type, read_count uint32) ArgType {
-	return ArgType{arg_alias_type, arg_type, read_count, 1, -1}
+	return ArgType{READ_INDEX_REG, arg_alias_type, arg_type, read_count, 1, READ_INDEX_SKIP}
 }
 
 func PA(nr string, args []PArg) PArgs {

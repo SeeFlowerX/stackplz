@@ -51,7 +51,7 @@ enum event_id_e
 
 enum arm64_reg_e
 {
-    REG_ARM64_X0 = MAX_BUF_READ_SIZE + 666,
+    REG_ARM64_X0 = 0,
     REG_ARM64_X1,
     REG_ARM64_X2,
     REG_ARM64_X3,

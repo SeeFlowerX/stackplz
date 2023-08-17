@@ -10,15 +10,18 @@
 #include "common/consts.h"
 #include "common/buffer.h"
 
-#define MAX_POINT_ARG_COUNT 6
+#define MAX_POINT_ARG_COUNT 10
+#define READ_INDEX_SKIP 100
+#define READ_INDEX_REG 101
 
 typedef struct point_arg_t {
     u32 read_flag;
+    u32 read_index;
     u32 alias_type;
     u32 type;
     u32 size;
 	u32 item_persize;
-	s32 item_countindex;
+	u32 item_countindex;
 } point_arg;
 
 static __always_inline u32 save_bytes_with_len(program_data_t p, u64 ptr, u32 read_len, u32 next_arg_index) {

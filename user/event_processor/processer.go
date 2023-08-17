@@ -117,10 +117,10 @@ func (this *EventProcessor) Close() error {
 	}
 	// 等待 1s 因为输出可能没有那么快结束
 	// 或者考虑在接收到结束信号后 把日志改成只输出到文件
-	time.Sleep(1 * 1000 * time.Millisecond)
+	time.Sleep(1 * 500 * time.Millisecond)
 	if len(this.workerQueue) > 0 {
 		this.logger.Printf("EventProcessor.Close(): workerQueue is not empty:%d, wait 3s", len(this.workerQueue))
-		time.Sleep(3 * 1000 * time.Millisecond)
+		time.Sleep(3 * 500 * time.Millisecond)
 	}
 	if len(this.workerQueue) > 0 {
 		return fmt.Errorf("EventProcessor.Close(): workerQueue is not empty:%d", len(this.workerQueue))

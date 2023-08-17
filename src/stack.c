@@ -77,15 +77,15 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
         return 0;
     }
 
-    args_t args = {};
-    args.args[0] = READ_KERN(ctx->regs[0]);
-    args.args[1] = READ_KERN(ctx->regs[1]);
-    args.args[2] = READ_KERN(ctx->regs[2]);
-    args.args[3] = READ_KERN(ctx->regs[3]);
-    args.args[4] = READ_KERN(ctx->regs[4]);
-    if (save_args(&args, UPROBE_ENTER) != 0) {
-        return 0;
-    };
+    // args_t args = {};
+    // args.args[0] = READ_KERN(ctx->regs[0]);
+    // args.args[1] = READ_KERN(ctx->regs[1]);
+    // args.args[2] = READ_KERN(ctx->regs[2]);
+    // args.args[3] = READ_KERN(ctx->regs[3]);
+    // args.args[4] = READ_KERN(ctx->regs[4]);
+    // if (save_args(&args, UPROBE_ENTER) != 0) {
+    //     return 0;
+    // };
 
     save_to_submit_buf(p.event, (void *) &args_key, sizeof(u32), 0);
     u64 lr = 0;
@@ -110,29 +110,54 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
     }
 
     int next_arg_index = 4;
-    // #pragma unroll
     for (int i = 0; i < point_arg_count; i++) {
-        // 先保存寄存器
-        save_to_submit_buf(p.event, (void *)&args.args[i], sizeof(u64), next_arg_index);
-        next_arg_index += 1;
         struct point_arg_t* point_arg = (struct point_arg_t*) &uprobe_point_args->point_args[i];
+
+        u64 arg_ptr = 0;
+        if (point_arg->read_index == READ_INDEX_SKIP) {
+            continue;
+        }
+        if (point_arg->read_index == READ_INDEX_REG) {
+            // 未来可能允许读取很多个参数...
+            if (i > REG_ARM64_LR) {
+                continue;
+            }
+            arg_ptr = READ_KERN(ctx->regs[i]);
+        } else if (point_arg->read_index == REG_ARM64_SP) {
+            arg_ptr = READ_KERN(ctx->sp);
+        } else if (point_arg->read_index == REG_ARM64_PC) {
+            arg_ptr = READ_KERN(ctx->pc);
+        } else if (point_arg->read_index <= REG_ARM64_LR) {
+            arg_ptr = READ_KERN(ctx->regs[point_arg->read_index]);
+        } else {
+            continue;
+        }
+
+        // 先保存参数值本身
+        save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), next_arg_index);
+        next_arg_index += 1;
+
         if (point_arg->read_flag != UPROBE_ENTER_READ) {
             continue;
         }
+        if (arg_ptr == 0) {
+            continue;
+        }
         u32 read_count = MAX_BUF_READ_SIZE;
-        if (point_arg->item_countindex >= 0) {
-            u32 item_index = (u32) point_arg->item_countindex;
-            if (item_index >= 6) {
-                return 0;
+        if (point_arg->item_countindex != READ_INDEX_SKIP) {
+            u32 item_count = 0;
+            // 以寄存器值作为索引 只包含 x0-x28
+            // x29 是fp寄存器 所以不包含在内
+            if (point_arg->item_countindex < REG_ARM64_X29) {
+                item_count = READ_KERN(ctx->regs[point_arg->item_countindex]);
             }
-            u32 item_count = (u32) args.args[item_index];
-            if (item_count <= read_count) {
+            if (item_count != 0 && item_count <= read_count) {
                 read_count = item_count;
             }
         } else if (point_arg->size <= read_count) {
             read_count = point_arg->size;
         }
-        next_arg_index = read_arg(p, point_arg, args.args[i], read_count, next_arg_index);
+        next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
     }
     // stackplz 的一个重要动作就是要取寄存器信息之类的
     // 所以除了 PERF_SAMPLE_RAW 还可能会有 PERF_SAMPLE_REGS_USER PERF_SAMPLE_STACK_USER
@@ -169,8 +194,8 @@ PROBE_STACK(4);
 PROBE_STACK(5);
 PROBE_STACK(6);
 PROBE_STACK(7);
-PROBE_STACK(8);
-PROBE_STACK(9);
+// PROBE_STACK(8);
+// PROBE_STACK(9);
 // PROBE_STACK(10);
 // PROBE_STACK(11);
 // PROBE_STACK(12);

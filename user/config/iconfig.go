@@ -67,7 +67,7 @@ func (this *SConfig) GetSConfig() *SConfig {
 const MAX_BUF_READ_SIZE uint32 = 4096
 
 const (
-	REG_ARM64_X0 int32 = iota
+	REG_ARM64_X0 uint32 = iota
 	REG_ARM64_X1
 	REG_ARM64_X2
 	REG_ARM64_X3
@@ -103,7 +103,7 @@ const (
 	REG_ARM64_MAX
 )
 
-var RegsMagicMap map[string]int32 = map[string]int32{
+var RegsMagicMap map[string]uint32 = map[string]uint32{
 	"x0":  REG_ARM64_X0,
 	"x1":  REG_ARM64_X1,
 	"x2":  REG_ARM64_X2,
@@ -139,7 +139,7 @@ var RegsMagicMap map[string]int32 = map[string]int32{
 	"pc":  REG_ARM64_PC,
 }
 
-func ParseAsReg(reg string) (int32, error) {
+func ParseAsReg(reg string) (uint32, error) {
 	value, ok := RegsMagicMap[reg]
 	if ok {
 		return value, nil

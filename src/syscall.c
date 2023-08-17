@@ -200,33 +200,58 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     }
 
     int next_arg_index = 4;
-    // #pragma unroll
+
     for (int i = 0; i < point_arg_count; i++) {
-        // 先保存寄存器
-        save_to_submit_buf(p.event, (void *)&args.args[i], sizeof(u64), next_arg_index);
-        next_arg_index += 1;
         struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_args[i];
+
+        u64 arg_ptr = 0;
+        if (point_arg->read_index == READ_INDEX_SKIP) {
+            continue;
+        }
+        if (point_arg->read_index == READ_INDEX_REG) {
+            // 未来可能允许读取很多个参数...
+            if (i > REG_ARM64_PC) {
+                continue;
+            }
+            arg_ptr = READ_KERN(regs->regs[i]);
+        } else if (point_arg->read_index > READ_INDEX_SKIP) {
+            if (point_arg->read_index <= REG_ARM64_LR) {
+                arg_ptr = READ_KERN(regs->regs[point_arg->read_index]);
+            } else if (point_arg->read_index == REG_ARM64_SP) {
+                arg_ptr = READ_KERN(regs->sp);
+            } else if (point_arg->read_index == REG_ARM64_PC) {
+                arg_ptr = READ_KERN(regs->pc);
+            } else {
+                continue;
+            }
+        } else {
+            continue;
+        }
+
+        // 先保存参数值本身
+        save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), next_arg_index);
+        next_arg_index += 1;
+
         if (point_arg->read_flag != SYS_ENTER) {
             continue;
         }
         u32 read_count = MAX_BUF_READ_SIZE;
-        if (point_arg->item_countindex >= 0) {
-            // math between fp pointer and register with unbounded min value is not allowed
-            // 后面取寄存器可能存在越界 所以必须保证索引必须是在正确的范围内
-            // 这里必须把 item_countindex 赋值给临时变量 并且必须转换类型
-            // 然后通过 if 比较来明确它不会越界 然后后面再用它作为取寄存器的索引
-            // 最后计算要读取数据的最终大小 当然这里也必须有一个上限大小
-            u32 item_index = (u32) point_arg->item_countindex;
-            if (item_index >= 6) {
-                return 0;
+        if (point_arg->item_countindex != READ_INDEX_SKIP) {
+            u32 item_count = 0;
+            // 以寄存器值作为索引 只包含 x0-x28
+            // x29 是fp寄存器 所以不包含在内
+            if (point_arg->item_countindex < REG_ARM64_X29) {
+                item_count = READ_KERN(regs->regs[point_arg->item_countindex]);
             }
-            u32 item_count = (u32) args.args[item_index];
-            if (item_count <= read_count) {
+            if (item_count != 0 && item_count <= read_count) {
                 read_count = item_count;
             }
+        } else if (point_arg->size <= read_count) {
+            read_count = point_arg->size;
         }
-        next_arg_index = read_arg(p, point_arg, args.args[i], read_count, next_arg_index);
+        next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
     }
+
     u32 out_size = sizeof(event_context_t) + p.event->buf_off;
     save_to_submit_buf(p.event, (void *) &out_size, sizeof(u32), next_arg_index);
     events_perf_submit(&p, SYSCALL_ENTER);
@@ -268,6 +293,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     if (load_args(&saved_args, SYSCALL_ENTER) != 0) {
         return 0;
     }
+    del_args(SYSCALL_ENTER);
     // 之前出现异常地址的原因找到了
 
     if (filter->syscall_all == 0) {
@@ -317,35 +343,59 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     if (syscall_point_args->count <= point_arg_count) {
         point_arg_count = syscall_point_args->count;
     }
-    // #pragma unroll
+
     for (int i = 0; i < point_arg_count; i++) {
-        // 保存参数的寄存器
-        save_to_submit_buf(p.event, (void *)&saved_args.args[i], sizeof(u64), next_arg_index);
-        next_arg_index += 1;
         struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_args[i];
+
+        u64 arg_ptr = 0;
+        if (point_arg->read_index == READ_INDEX_SKIP) {
+            continue;
+        }
+        if (point_arg->read_index == READ_INDEX_REG) {
+            // 未来可能允许读取很多个参数...
+            if (i > REG_ARM64_LR) {
+                continue;
+            }
+            // 考虑到这里是syscall执行结束 尽可能优先采用之前保存的寄存器的值
+            if (i < REG_ARM64_X6) {
+                arg_ptr = saved_args.args[i];
+            } else {
+                arg_ptr = READ_KERN(regs->regs[i]);
+            }
+        } else if (point_arg->read_index == REG_ARM64_SP) {
+            arg_ptr = READ_KERN(regs->sp);
+        } else if (point_arg->read_index == REG_ARM64_PC) {
+            arg_ptr = READ_KERN(regs->pc);
+        } else if (point_arg->read_index <= REG_ARM64_LR) {
+            arg_ptr = READ_KERN(regs->regs[point_arg->read_index]);
+        } else {
+            continue;
+        }
+
+        // 先保存参数值本身
+        save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), next_arg_index);
+        next_arg_index += 1;
+
         if (point_arg->read_flag != SYS_EXIT) {
             continue;
         }
         u32 read_count = MAX_BUF_READ_SIZE;
-        if (point_arg->item_countindex >= 0) {
-            // math between fp pointer and register with unbounded min value is not allowed
-            // 后面取寄存器可能存在越界 所以必须保证索引必须是在正确的范围内
-            // 这里必须把 item_countindex 赋值给临时变量 并且必须转换类型
-            // 然后通过 if 比较来明确它不会越界 然后后面再用它作为取寄存器的索引
-            // 最后计算要读取数据的最终大小 当然这里也必须有一个上限大小
-            u32 item_index = (u32) point_arg->item_countindex;
-            if (item_index >= 6) {
-                return 0;
+        if (point_arg->item_countindex != READ_INDEX_SKIP) {
+            u32 item_count = 0;
+            // 以寄存器值作为索引 只包含 x0-x28
+            // x29 是fp寄存器 所以不包含在内
+            if (point_arg->item_countindex < REG_ARM64_X29) {
+                item_count = READ_KERN(regs->regs[point_arg->item_countindex]);
             }
-            u32 item_count = (u32) saved_args.args[item_index];
-            if (item_count <= read_count) {
+            if (item_count != 0 && item_count <= read_count) {
                 read_count = item_count;
             }
         } else if (point_arg->size <= read_count) {
             read_count = point_arg->size;
         }
-        next_arg_index = read_arg(p, point_arg, saved_args.args[i], read_count, next_arg_index);
+        next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
     }
+
     // 读取返回值
     u64 ret = READ_KERN(regs->regs[0]);
     // 保存之
