@@ -58,17 +58,64 @@ type PointArg struct {
 
 type PArg = PointArg
 
-func (this *ArgType) ToPointer() ArgType {
-	// 通常定义的都是结构体 但是某些参数实际上传递的是这个结构体的指针
-	// 那么这个时候把它转换为指针类型 在ebpf中再根据 AliasType 获取对应结构体大小的数据
-	// 最终在用户态拿到数据具体再解析
-	this.Type = TYPE_POINTER
-	return *this
+func (this *ArgType) SetType(item uint32) {
+	this.Type = item
 }
 
-func (this *ArgType) SetSize(size uint32) ArgType {
+func (this *ArgType) SetSize(size uint32) {
 	this.Size = size
-	return *this
+}
+
+func (this *ArgType) SetCountIndex(index uint32) {
+	this.ItemCountIndex = index
+}
+
+func (this *ArgType) SetReadIndex(index uint32) {
+	this.ReadIndex = index
+}
+
+func (this *ArgType) SetReadOffset(offset uint32) {
+	this.ReadOffset = offset
+}
+
+func (this *ArgType) SetItemPerSize(persize uint32) {
+	this.ItemPerSize = persize
+}
+
+func (this *ArgType) NewType(item uint32) ArgType {
+	at := this.Clone()
+	at.Type = item
+	return at
+}
+
+func (this *ArgType) NewSize(size uint32) ArgType {
+	at := this.Clone()
+	at.Size = size
+	return at
+}
+
+func (this *ArgType) NewCountIndex(index uint32) ArgType {
+	at := this.Clone()
+	at.ItemCountIndex = index
+	return at
+}
+
+func (this *ArgType) NewReadIndex(index uint32) ArgType {
+	at := this.Clone()
+	at.ReadIndex = index
+	return at
+}
+
+func (this *ArgType) NewReadOffset(offset uint32) ArgType {
+	at := this.Clone()
+	at.ReadOffset = offset
+	return at
+}
+
+func (this *ArgType) NewItemPerSize(persize uint32) ArgType {
+	at := this.Clone()
+	at.ItemPerSize = persize
+	return at
 }
 
 func (this *ArgType) String() string {
@@ -79,24 +126,17 @@ func (this *ArgType) String() string {
 	return s
 }
 
-func (this *ArgType) SetCountIndex(index uint32) ArgType {
-	this.ItemCountIndex = index
-	return *this
-}
-
-func (this *ArgType) SetReadIndex(index uint32) ArgType {
-	this.ReadIndex = index
-	return *this
-}
-
-func (this *ArgType) SetReadOffset(offset uint32) ArgType {
-	this.ReadOffset = offset
-	return *this
-}
-
-func (this *ArgType) SetItemPerSize(persize uint32) ArgType {
-	this.ItemPerSize = persize
-	return *this
+func (this *ArgType) Clone() ArgType {
+	// 在涉及到类型变更的时候 记得先调用这个
+	at := ArgType{}
+	at.ReadIndex = this.ReadIndex
+	at.AliasType = this.AliasType
+	at.Type = this.Type
+	at.Size = this.Size
+	at.ItemPerSize = this.ItemPerSize
+	at.ItemCountIndex = this.ItemCountIndex
+	at.ReadIndex = this.ReadIndex
+	return at
 }
 
 func (this *PointArg) SetValue(value string) {

@@ -110,7 +110,7 @@ func ParseArgType(arg_str string) (ArgType, error) {
         return arg_type, err
     }
     if to_ptr {
-        arg_type.ToPointer()
+        arg_type = arg_type.NewType(TYPE_POINTER)
     }
     if arg_index != "" {
         read_offset := ""
