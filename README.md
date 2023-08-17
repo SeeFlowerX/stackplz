@@ -100,6 +100,32 @@ pid + 偏移 + 库文件
 ./stackplz --name com.sfx.ebpf -w write[int,buf:0x10,int]
 ```
 
+进阶用法：
+
+在`libc.so+0xA94E8`处下断，读取`x1`为`int`，读取`sp+0x30-0x2c`为`ptr`
+
+```bash
+./stackplz --name com.sfx.ebpf -w 0xA94E8[int:x1,ptr:sp+0x30-0x2c]
+```
+
+在`libc.so+0xA94E8`处下断，读取`x1`为`int`，读取`sp+0x30-0x2c`为`buf`，长度为`8`
+
+```bash
+./stackplz --name com.sfx.ebpf -w 0xA94E8[int:x1,buf:8:sp+0x30-0x2c]
+```
+
+```bash
+.text:00000000000A94E4                 LDR             W1, [SP,#0x30+var_2C]
+.text:00000000000A94E8                 MOV             W20, W0
+```
+
+按默认顺序读取，以及按指定寄存器读取，下面的示例中两个方式输出结果相反：
+
+```bash
+./stackplz --name com.sfx.ebpf -w 0xA94E8[int,int]
+./stackplz --name com.sfx.ebpf -w 0xA94E8[int:x1,int:x0]
+```
+
 使用提示：
 
 - 可以用`--name`指定包名，用`--uid`指定进程所属uid，用`--pid`指定进程

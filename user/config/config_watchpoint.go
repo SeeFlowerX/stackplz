@@ -71,8 +71,21 @@ func (this *ArgType) SetSize(size uint32) ArgType {
 	return *this
 }
 
-func (this *ArgType) SetIndex(index uint32) ArgType {
+func (this *ArgType) String() string {
+	var s string = ""
+	s += fmt.Sprintf("read_index:%d, alias_type:%d type:%d ", this.ReadIndex, this.AliasType, this.Type)
+	s += fmt.Sprintf("size:%d per:%d count_index:%d ", this.Size, this.ItemPerSize, this.ItemCountIndex)
+	s += fmt.Sprintf("off:%d", this.ReadOffset)
+	return s
+}
+
+func (this *ArgType) SetCountIndex(index uint32) ArgType {
 	this.ItemCountIndex = index
+	return *this
+}
+
+func (this *ArgType) SetReadIndex(index uint32) ArgType {
+	this.ReadIndex = index
 	return *this
 }
 

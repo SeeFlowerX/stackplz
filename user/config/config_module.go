@@ -73,7 +73,7 @@ func ParseArgType(arg_str string) (ArgType, error) {
     case "ptr":
         arg_type = POINTER
     case "buf":
-        arg_type = BUFFER_T
+        arg_type = AT(TYPE_BUFFER_T, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
         arg_type.SetSize(256)
         // 特别处理
         if len(items) == 2 {
@@ -89,10 +89,13 @@ func ParseArgType(arg_str string) (ArgType, error) {
                 }
                 arg_type.SetSize(uint32(size))
             } else {
-                size, err := strconv.ParseUint(items[1], 10, 32)
+                size, err := strconv.ParseUint(size_str, 10, 32)
                 if err != nil {
-                    err = errors.New(fmt.Sprintf("parse size_str:%s as number failed, arg_str:%s, err:%v", size_str, arg_str, err))
-                    break
+                    count_index, err := ParseAsReg(size_str)
+                    if err != nil {
+                        return arg_type, err
+                    }
+                    arg_type.SetCountIndex(count_index)
                 } else {
                     arg_type.SetSize(uint32(size))
                 }
@@ -119,7 +122,7 @@ func ParseArgType(arg_str string) (ArgType, error) {
         if err != nil {
             return arg_type, err
         }
-        arg_type.SetIndex(read_index)
+        arg_type.SetReadIndex(read_index)
         if read_offset != "" {
             var offset uint64 = 0
             if strings.HasPrefix(read_offset, "+") {
@@ -176,6 +179,7 @@ func ParseArgType(arg_str string) (ArgType, error) {
             arg_type.SetReadOffset(uint32(offset))
         }
     }
+    fmt.Println("arg_type", arg_type.String())
     return arg_type, err
 }
 

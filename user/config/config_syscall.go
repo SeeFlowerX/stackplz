@@ -185,9 +185,11 @@ var TIMEVAL = AT(TYPE_TIMEVAL, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timeval
 var TIMEZONE = AT(TYPE_TIMEZONE, TYPE_STRUCT, uint32(unsafe.Sizeof(TimeZone_t{})))
 var PTHREAD_ATTR = AT(TYPE_PTHREAD_ATTR, TYPE_STRUCT, uint32(binary.Size(Pthread_attr_t{})))
 var BUFFER_T = AT(TYPE_BUFFER_T, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
-var READ_BUFFER_T = BUFFER_T.SetIndex(2)
-var WRITE_BUFFER_T = BUFFER_T.SetIndex(2)
-var IOVEC_T = IOVEC.SetIndex(2)
+
+// 注意 这里应该实现有问题 后面修复 应该Clone一份
+var READ_BUFFER_T = BUFFER_T.SetCountIndex(2)
+var WRITE_BUFFER_T = BUFFER_T.SetCountIndex(2)
+var IOVEC_T = IOVEC.SetCountIndex(2)
 var IOVEC_T_PTR = IOVEC.ToPointer()
 
 // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
