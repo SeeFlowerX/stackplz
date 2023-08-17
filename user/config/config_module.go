@@ -147,12 +147,10 @@ func (this *StackUprobeConfig) Check() error {
 
 type SyscallConfig struct {
     SConfig
-    HookALL                bool
-    Enable                 bool
-    syscall_mask           uint32
-    syscall                [MAX_COUNT]uint32
-    syscall_blacklist_mask uint32
-    syscall_blacklist      [MAX_COUNT]uint32
+    HookALL           bool
+    Enable            bool
+    syscall_whitelist []uint32
+    syscall_blacklist []uint32
 }
 
 func NewSyscallConfig() *SyscallConfig {
@@ -165,15 +163,29 @@ func (this *SyscallConfig) GetSyscallFilter() SyscallFilter {
     filter := SyscallFilter{}
     filter.SetArch(this.Is32Bit)
     filter.SetHookALL(this.HookALL)
-    this.FillFilter(&filter)
+    filter.SetWhitelistMode(len(this.syscall_whitelist) > 0)
+    filter.SetBlacklistMode(len(this.syscall_blacklist) > 0)
     return filter
 }
 
-func (this *SyscallConfig) FillFilter(filter *SyscallFilter) {
-    filter.syscall = this.syscall
-    filter.syscall_mask = this.syscall_mask
-    filter.syscall_blacklist = this.syscall_blacklist
-    filter.syscall_blacklist_mask = this.syscall_blacklist_mask
+func (this *SyscallConfig) UpdateWhiteList(whitelist *ebpf.Map) error {
+    for _, v := range this.syscall_whitelist {
+        err := whitelist.Update(unsafe.Pointer(&v), unsafe.Pointer(&v), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
+    }
+    return nil
+}
+
+func (this *SyscallConfig) UpdateBlackList(blacklist *ebpf.Map) error {
+    for _, v := range this.syscall_blacklist {
+        err := blacklist.Update(unsafe.Pointer(&v), unsafe.Pointer(&v), ebpf.UpdateAny)
+        if err != nil {
+            return err
+        }
+    }
+    return nil
 }
 
 func (this *SyscallConfig) UpdatePointArgsMap(SyscallPointArgsMap *ebpf.Map) error {
@@ -190,15 +202,8 @@ func (this *SyscallConfig) UpdatePointArgsMap(SyscallPointArgsMap *ebpf.Map) err
             return err
         }
     }
-    return nil
-}
-
-func (this *SyscallConfig) SetUp(is_32bit bool) error {
-    for i := 0; i < len(this.syscall); i++ {
-        this.syscall[i] = MAGIC_SYSCALL
-    }
-    for i := 0; i < len(this.syscall); i++ {
-        this.syscall_blacklist[i] = MAGIC_SYSCALL
+    if this.Debug {
+        this.logger.Printf("update syscall_point_args_map success")
     }
     return nil
 }
@@ -219,14 +224,13 @@ func (this *SyscallConfig) SetSysCall(syscall string) error {
     if len(items) > MAX_COUNT {
         return fmt.Errorf("max syscall whitelist count is %d, provided count:%d", MAX_COUNT, len(items))
     }
-    for i, v := range items {
+    for _, v := range items {
         point := GetWatchPointByName(v)
         nr_point, ok := (point).(*SysCallArgs)
         if !ok {
             return errors.New(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
         }
-        this.syscall[i] = uint32(nr_point.NR)
-        this.syscall_mask |= (1 << i)
+        this.syscall_whitelist = append(this.syscall_whitelist, uint32(nr_point.NR))
     }
     return nil
 }
@@ -236,14 +240,13 @@ func (this *SyscallConfig) SetSysCallBlacklist(syscall_blacklist string) error {
     if len(items) > MAX_COUNT {
         return fmt.Errorf("max syscall blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
     }
-    for i, v := range items {
+    for _, v := range items {
         point := GetWatchPointByName(v)
         nr_point, ok := (point).(*SysCallArgs)
         if !ok {
             panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
         }
-        this.syscall_blacklist[i] = uint32(nr_point.NR)
-        this.syscall_blacklist_mask |= (1 << i)
+        this.syscall_blacklist = append(this.syscall_blacklist, uint32(nr_point.NR))
     }
     return nil
 }
@@ -259,10 +262,7 @@ func (this *SyscallConfig) Check() error {
 
 func (this *SyscallConfig) Info() string {
     var watchlist []string
-    for _, v := range this.syscall {
-        if v == MAGIC_SYSCALL {
-            continue
-        }
+    for _, v := range this.syscall_whitelist {
         point := GetWatchPointByNR(v)
         nr_point, ok := (point).(*SysCallArgs)
         if !ok {

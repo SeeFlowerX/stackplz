@@ -14,9 +14,6 @@ const MAGIC_UID = 0x73746163
 const MAGIC_PID = 0x6b706c7a
 const MAGIC_TID = 0x61636b70
 
-// syscall => 73797363616c6c
-const MAGIC_SYSCALL = 0x73797363
-
 type IConfig interface {
 	GetSConfig() *SConfig
 	SetDebug(bool)

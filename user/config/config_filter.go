@@ -27,12 +27,10 @@ type RevFilter struct {
 }
 
 type SyscallFilter struct {
-	is_32bit               uint32
-	syscall_all            uint32
-	syscall_mask           uint32
-	syscall                [MAX_COUNT]uint32
-	syscall_blacklist_mask uint32
-	syscall_blacklist      [MAX_COUNT]uint32
+	is_32bit       uint32
+	syscall_all    uint32
+	whitelist_mode uint32
+	blacklist_mode uint32
 }
 
 func (this *SyscallFilter) SetArch(is_32bit bool) {
@@ -48,5 +46,21 @@ func (this *SyscallFilter) SetHookALL(all bool) {
 		this.syscall_all = 1
 	} else {
 		this.syscall_all = 0
+	}
+}
+
+func (this *SyscallFilter) SetWhitelistMode(flag bool) {
+	if flag {
+		this.whitelist_mode = 1
+	} else {
+		this.whitelist_mode = 0
+	}
+}
+
+func (this *SyscallFilter) SetBlacklistMode(flag bool) {
+	if flag {
+		this.blacklist_mode = 1
+	} else {
+		this.blacklist_mode = 0
 	}
 }

@@ -12,10 +12,8 @@
 struct syscall_filter_t {
     u32 is_32bit;
     u32 syscall_all;
-    u32 syscall_mask;
-    u32 syscall[MAX_COUNT];
-    u32 syscall_blacklist_mask;
-    u32 syscall_blacklist[MAX_COUNT];
+    u32 whitelist_mode;
+    u32 blacklist_mode;
 };
 
 typedef struct syscall_point_args_t {
@@ -113,10 +111,11 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
     struct pt_regs *regs = (struct pt_regs *)(ctx->args[0]);
     u64 syscallno = READ_KERN(regs->syscallno);
+    u32 sysno = (u32)syscallno;
     // 先根据调用号确定有没有对应的参数获取方案 没有直接结束
-    struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &syscallno);
+    struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &sysno);
     if (syscall_point_args == NULL) {
-        bpf_printk("[syscall] unsupport nr:%d\n", syscallno);
+        bpf_printk("[syscall] unsupport nr:%d\n", sysno);
         return 0;
     }
 
@@ -127,43 +126,23 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     }
 
     if (filter->syscall_all == 0) {
-        // syscall 白名单过滤
-        bool has_find = false;
-        // #pragma unroll
-        for (int i = 0; i < MAX_COUNT; i++) {
-            if ((filter->syscall_mask & (1 << i))) {
-                if (filter->syscall[i] == (u32)syscallno) {
-                    has_find = true;
-                    break;
-                }
-            } else {
-                if (i == 0) {
-                    // 如果没有设置白名单 则将 has_find 置为 true
-                    has_find = true;
-                }
-                // 减少不必要的循环
-                break;
-            }
-        }
-        // 不满足白名单规则 则跳过
-        if (!has_find) {
-            return 0;
-        }
-
-        // syscall 黑名单过滤
-        // #pragma unroll
-        for (int i = 0; i < MAX_COUNT; i++) {
-            if ((filter->syscall_blacklist_mask & (1 << i))) {
-                if (filter->syscall_blacklist[i] == (u32)syscallno) {
-                    // 在syscall黑名单直接结束跳过
-                    return 0;
-                }
-            } else {
-                // 减少不必要的循环
-                break;
+        // 非 追踪全部syscall模式
+        if (filter->whitelist_mode == 1) {
+            u32 *flag = bpf_map_lookup_elem(&sys_whitelist, &sysno);
+            if (flag == NULL) {
+                return 0;
             }
         }
     }
+
+    // 黑名单同样对 追踪全部syscall模式 有效
+    if (filter->blacklist_mode == 1) {
+        u32 *flag = bpf_map_lookup_elem(&sys_blacklist, &sysno);
+        if (flag != NULL) {
+            return 0;
+        }
+    }
+
     // 保存寄存器应该放到所有过滤完成之后
     args_t args = {};
     args.args[0] = READ_KERN(regs->regs[0]);
@@ -174,7 +153,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     save_args(&args, SYSCALL_ENTER);
 
     // event->context 已经有进程的信息了
-    save_to_submit_buf(p.event, (void *) &syscallno, sizeof(u32), 0);
+    save_to_submit_buf(p.event, (void *) &sysno, sizeof(u32), 0);
 
     // 先获取 lr sp pc 并发送 这样可以尽早计算调用来源情况
     // READ_KERN 好像有问题
@@ -235,6 +214,9 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         if (point_arg->read_flag != SYS_ENTER) {
             continue;
         }
+        if (arg_ptr == 0) {
+            continue;
+        }
         u32 read_count = MAX_BUF_READ_SIZE;
         if (point_arg->item_countindex != READ_INDEX_SKIP) {
             u32 item_count = 0;
@@ -277,8 +259,9 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
 
     struct pt_regs *regs = (struct pt_regs *)(ctx->args[0]);
     u64 syscallno = READ_KERN(regs->syscallno);
+    u32 sysno = (u32)syscallno;
 
-    struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &syscallno);
+    struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &sysno);
     if (syscall_point_args == NULL) {
         return 0;
     }
@@ -294,49 +277,27 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         return 0;
     }
     del_args(SYSCALL_ENTER);
-    // 之前出现异常地址的原因找到了
 
     if (filter->syscall_all == 0) {
-        // syscall 白名单过滤
-        bool has_find = false;
-        // #pragma unroll
-        for (int i = 0; i < MAX_COUNT; i++) {
-            if ((filter->syscall_mask & (1 << i))) {
-                if (filter->syscall[i] == (u32)syscallno) {
-                    has_find = true;
-                    break;
-                }
-            } else {
-                if (i == 0) {
-                    // 如果没有设置白名单 则将 has_find 置为 true
-                    has_find = true;
-                }
-                // 减少不必要的循环
-                break;
-            }
-        }
-        // 不满足白名单规则 则跳过
-        if (!has_find) {
-            return 0;
-        }
-
-        // syscall 黑名单过滤
-        // #pragma unroll
-        for (int i = 0; i < MAX_COUNT; i++) {
-            if ((filter->syscall_blacklist_mask & (1 << i))) {
-                if (filter->syscall_blacklist[i] == (u32)syscallno) {
-                    // 在syscall黑名单直接结束跳过
-                    return 0;
-                }
-            } else {
-                // 减少不必要的循环
-                break;
+        // 非 追踪全部syscall模式
+        if (filter->whitelist_mode == 1) {
+            u32 *flag = bpf_map_lookup_elem(&sys_whitelist, &sysno);
+            if (flag == NULL) {
+                return 0;
             }
         }
     }
 
+    // 黑名单同样对 追踪全部syscall模式 有效
+    if (filter->blacklist_mode == 1) {
+        u32 *flag = bpf_map_lookup_elem(&sys_blacklist, &sysno);
+        if (flag != NULL) {
+            return 0;
+        }
+    }
+
     int next_arg_index = 0;
-    save_to_submit_buf(p.event, (void *) &syscallno, sizeof(u32), next_arg_index);
+    save_to_submit_buf(p.event, (void *) &sysno, sizeof(u32), next_arg_index);
     next_arg_index += 1;
 
     u32 point_arg_count = MAX_POINT_ARG_COUNT;
@@ -377,6 +338,9 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         next_arg_index += 1;
 
         if (point_arg->read_flag != SYS_EXIT) {
+            continue;
+        }
+        if (arg_ptr == 0) {
             continue;
         }
         u32 read_count = MAX_BUF_READ_SIZE;

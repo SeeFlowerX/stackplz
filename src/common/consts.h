@@ -6,9 +6,6 @@
 #define MAGIC_PID 0x6b706c7a
 #define MAGIC_TID 0x61636b70
 
-// syscall => 73797363616c6c
-#define MAGIC_SYSCALL 0x73797363
-
 #define TASK_COMM_LEN 16
 #define MAX_COUNT 20
 #define MAX_WATCH_PROC_COUNT 256

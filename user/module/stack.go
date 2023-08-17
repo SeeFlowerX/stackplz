@@ -309,9 +309,6 @@ func (this *MStack) updateFilter() (err error) {
         if err != nil {
             return err
         }
-        if this.sconf.Debug {
-            this.logger.Printf("update syscall_point_args_map success")
-        }
         syscall_filter, err := this.FindMap("syscall_filter")
         if err != nil {
             return err
@@ -324,6 +321,24 @@ func (this *MStack) updateFilter() (err error) {
         if this.sconf.Debug {
             this.logger.Printf("hook for syscall, update syscall_filter success")
         }
+
+        sys_whitelist, err := this.FindMap("sys_whitelist")
+        if err != nil {
+            return err
+        }
+        err = this.mconf.SysCallConf.UpdateWhiteList(sys_whitelist)
+        if err != nil {
+            return err
+        }
+        sys_blacklist, err := this.FindMap("sys_blacklist")
+        if err != nil {
+            return err
+        }
+        err = this.mconf.SysCallConf.UpdateBlackList(sys_blacklist)
+        if err != nil {
+            return err
+        }
+
     }
     return nil
 }
