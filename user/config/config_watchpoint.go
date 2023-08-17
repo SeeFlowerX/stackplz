@@ -27,6 +27,7 @@ type ArgType struct {
 	Size           uint32
 	ItemPerSize    uint32
 	ItemCountIndex uint32
+	ReadOffset     uint32
 }
 
 type IWatchPoint interface {
@@ -70,6 +71,11 @@ func (this *ArgType) SetIndex(index uint32) ArgType {
 	return *this
 }
 
+func (this *ArgType) SetReadOffset(offset uint32) ArgType {
+	this.ReadOffset = offset
+	return *this
+}
+
 func (this *ArgType) SetItemPerSize(persize uint32) ArgType {
 	this.ItemPerSize = persize
 	return *this
@@ -84,7 +90,7 @@ func (this *PointArg) AppendValue(value string) {
 }
 
 func AT(arg_alias_type, arg_type, read_count uint32) ArgType {
-	return ArgType{READ_INDEX_REG, arg_alias_type, arg_type, read_count, 1, READ_INDEX_SKIP}
+	return ArgType{READ_INDEX_REG, arg_alias_type, arg_type, read_count, 1, READ_INDEX_SKIP, 0}
 }
 
 func PA(nr string, args []PArg) PArgs {

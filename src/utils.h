@@ -22,6 +22,7 @@ typedef struct point_arg_t {
     u32 size;
 	u32 item_persize;
 	u32 item_countindex;
+	u32 read_offset;
 } point_arg;
 
 static __always_inline u32 save_bytes_with_len(program_data_t p, u64 ptr, u32 read_len, u32 next_arg_index) {
@@ -88,6 +89,7 @@ static __always_inline u32 read_ptr_arg(program_data_t p, struct point_arg_t* po
 }
 
 static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_arg, u64 ptr, u32 read_count, u32 next_arg_index) {
+    ptr = ptr + point_arg->read_offset;
     if (point_arg->type == TYPE_NONE) {
         return next_arg_index;
     }
