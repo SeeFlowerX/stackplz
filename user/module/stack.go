@@ -393,16 +393,6 @@ func (this *MStack) DecodeFun(em *ebpf.Map) (event.IEventStruct, bool) {
     return fun, found
 }
 
-// func (this *MStack) Dispatcher(e event.IEventStruct) {
-//     // 事件类型指定为 EventTypeModuleData 直接使用当前方法处理
-//     // 如果需要多处联动收集信息 比如做统计之类的 那么使用 EventTypeEventProcessor 类型 并设计处理模式更合理
-
-//     e.(*event.UprobeEvent).RegName = this.sconf.RegName
-//     e.(*event.UprobeEvent).ShowRegs = this.sconf.ShowRegs
-//     e.(*event.UprobeEvent).UnwindStack = this.sconf.UnwindStack
-//     this.logger.Println(e.(*event.UprobeEvent).String())
-// }
-
 func init() {
     mod := &MStack{}
     mod.name = MODULE_NAME_STACK

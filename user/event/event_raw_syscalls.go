@@ -591,22 +591,6 @@ func (this *SyscallEvent) ParseLRV1() (string, error) {
     return maps_helper.GetOffset(this.Pid, this.lr.Address), nil
 }
 
-// func (this *SyscallEvent) ReadArgs() string {
-//     config := this.mconf.SysCallConf.SysTable[fmt.Sprintf("%d", this.nr.Value)]
-//     regs := make(map[string]string)
-//     for i := 0; i < int(config.Count); i++ {
-//         regs[fmt.Sprintf("x%d", i)] = fmt.Sprintf("0x%x", this.args[i])
-//     }
-//     regs["lr"] = fmt.Sprintf("0x%x", this.lr)
-//     regs["sp"] = fmt.Sprintf("0x%x", this.sp)
-//     regs["pc"] = fmt.Sprintf("0x%x", this.pc)
-//     regs_info, err := json.Marshal(regs)
-//     if err != nil {
-//         regs_info = make([]byte, 0)
-//     }
-//     return string(regs_info)
-// }
-
 func (this *SyscallEvent) Clone() IEventStruct {
     event := new(SyscallEvent)
     return event
