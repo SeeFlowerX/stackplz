@@ -22,7 +22,6 @@ import (
 
 type MStack struct {
     Module
-    mconf             *config.ModuleConfig
     bpfManager        *manager.Manager
     bpfManagerOptions manager.Options
     eventFuncMaps     map[*ebpf.Map]event.IEventStruct
