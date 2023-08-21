@@ -46,7 +46,7 @@ static __always_inline int init_program_data(program_data_t *p, void *ctx)
             return 0;
     }
 
-    p->config = bpf_map_lookup_elem(&config_map, &zero);
+    p->config = bpf_map_lookup_elem(&base_config, &zero);
     if (unlikely(p->config == NULL))
         return 0;
 

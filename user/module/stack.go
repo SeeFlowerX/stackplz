@@ -214,127 +214,246 @@ func (this *MStack) start() error {
     return nil
 }
 
+func (this *MStack) update_map(map_name string, filter_key uint32, filter_value interface{}) {
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    err = bpf_map.Update(unsafe.Pointer(&filter_key), filter_value, ebpf.UpdateAny)
+    if err != nil {
+        panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
+func (this *MStack) update_base_config() {
+    // 更新 base_config 用作基础的过滤 比如排除 stackplz 自身相关的调用
+    var filter_key uint32 = 0
+    map_name := "base_config"
+    filter_value := this.mconf.GetConfigMap()
+    this.update_map(map_name, filter_key, unsafe.Pointer(&filter_value))
+}
+
+func (this *MStack) update_common_filter() {
+    var filter_key uint32 = 0
+    map_name := "common_filter"
+    filter_value := this.mconf.GetCommonFilter()
+    this.update_map(map_name, filter_key, unsafe.Pointer(&filter_value))
+}
+
+func (this *MStack) update_child_parent() {
+    if this.mconf.Pid == config.MAGIC_PID {
+        return
+    }
+    var filter_key uint32 = this.mconf.Pid
+    map_name := "child_parent_map"
+    filter_value := this.mconf.Pid
+    this.update_map(map_name, filter_key, unsafe.Pointer(&filter_value))
+}
+
+func (this *MStack) update_thread_filter() {
+    map_name := "thread_filter"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+
+    var thread_blacklist []string = []string{
+        "RenderThread",
+        "FinalizerDaemon",
+        "RxCachedThreadS",
+        "mali-cmar-backe",
+        "mali-utility-wo",
+        "mali-mem-purge",
+        "mali-hist-dump",
+        "hwuiTask0",
+        "hwuiTask1",
+        "NDK MediaCodec_",
+    }
+
+    for _, v := range thread_blacklist {
+        if len(v) > 16 {
+            panic(fmt.Sprintf("[%s] thread name max len is 16", v))
+        }
+        filter_value := 1
+        filter_key := config.ThreadFilter{}
+        copy(filter_key.ThreadName[:], v)
+        err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+    for _, v := range this.mconf.TNamesBlacklist {
+        if len(v) > 16 {
+            panic(fmt.Sprintf("[%s] thread name max len is 16", v))
+        }
+        filter_value := 1
+        filter_key := config.ThreadFilter{}
+        copy(filter_key.ThreadName[:], v)
+        err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+    for _, v := range this.mconf.TNamesWhitelist {
+        if len(v) > 16 {
+            panic(fmt.Sprintf("[%s] thread name max len is 16", v))
+        }
+        filter_value := 2
+        filter_key := config.ThreadFilter{}
+        copy(filter_key.ThreadName[:], v)
+        err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
+func (this *MStack) update_rev_filter() {
+    map_name := "rev_filter"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    // ./stackplz -n com.starbucks.cn --iso -s newfstatat,openat,faccessat --hide-root -o tmp.log -q
+    var rev_list []string = []string{
+        "/sbin/su",
+        "/sbin/.magisk/",
+        "/dev/.magisk",
+        "/system/bin/magisk",
+        "/system/bin/su",
+        "/system/xbin/su",
+        "/proc/mounts",
+        "which su",
+        "mount",
+    }
+    for _, v := range rev_list {
+        if len(v) > 32 {
+            panic(fmt.Sprintf("[%s] rev string max len is 32", v))
+        }
+        filter_key := config.RevFilter{}
+        filter_value := 1
+        copy(filter_key.RevString[:], v)
+        err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
+func (this *MStack) update_syscall_blacklist() {
+    map_name := "sys_blacklist"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    for _, v := range this.mconf.SysCallConf.GetBlackList() {
+        err := bpf_map.Update(unsafe.Pointer(&v), unsafe.Pointer(&v), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
+func (this *MStack) update_syscall_whitelist() {
+    map_name := "sys_whitelist"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    for _, v := range this.mconf.SysCallConf.GetWhiteList() {
+        err := bpf_map.Update(unsafe.Pointer(&v), unsafe.Pointer(&v), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
+func (this *MStack) update_syscall_filter() {
+    var filter_key uint32 = 0
+    map_name := "syscall_filter"
+    filter_value := this.mconf.SysCallConf.GetSyscallFilter()
+    this.update_map(map_name, filter_key, unsafe.Pointer(&filter_value))
+}
+
+func (this *MStack) update_syscall_point_args() {
+    map_name := "syscall_point_args_map"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    points := config.GetAllWatchPoints()
+    for nr_name, point := range points {
+        nr_point, ok := (point).(*config.SysCallArgs)
+        if !ok {
+            panic(fmt.Sprintf("cast [%s] point to SysCallArgs failed", nr_name))
+        }
+        // 这里可以改成只更新追踪的syscall以加快速度
+        err := bpf_map.Update(unsafe.Pointer(&nr_point.NR), unsafe.Pointer(nr_point.GetConfig()), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+
+}
+
+func (this *MStack) update_syscall_config() {
+    if !this.mconf.SysCallConf.IsEnable() {
+        return
+    }
+    this.update_syscall_point_args()
+    this.update_syscall_filter()
+    this.update_syscall_whitelist()
+    this.update_syscall_blacklist()
+}
+func (this *MStack) update_stack_config() {
+    if !this.mconf.StackUprobeConf.IsEnable() {
+        return
+    }
+    map_name := "uprobe_point_args_map"
+    bpf_map, err := this.FindMap("uprobe_point_args_map")
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    for _, uprobe_point := range this.mconf.StackUprobeConf.Points {
+        var filter_key uint32 = uprobe_point.Index
+        filter_value := uprobe_point.GetConfig()
+        err := bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, filter_key:%d, err:%v", map_name, filter_key, err))
+        }
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
 func (this *MStack) updateFilter() (err error) {
-    filter_key := 0
-
-    // 更新 config_map 用作基础的过滤 比如排除 stackplz 自身相关的调用
-    config_map, err := this.FindMap("config_map")
-    if err != nil {
-        return err
-    }
-    filter := this.mconf.GetConfigMap()
-    err = config_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
-    if err != nil {
-        return err
-    }
-    if this.mconf.Debug {
-        this.logger.Printf("update config_map success")
-    }
-
-    // 更新 common_filter
-    common_filter, err := this.FindMap("common_filter")
-    if err != nil {
-        return err
-    }
-    err = common_filter.Update(unsafe.Pointer(&filter_key), this.mconf.GetCommonFilter(), ebpf.UpdateAny)
-    if err != nil {
-        return err
-    }
-    if this.mconf.Debug {
-        this.logger.Printf("update common_filter success")
-    }
-    if this.mconf.Pid != config.MAGIC_PID {
-        // 更新 child_parent_map
-        child_parent_map, err := this.FindMap("child_parent_map")
-        if err != nil {
-            return err
-        }
-        err = child_parent_map.Update(unsafe.Pointer(&this.mconf.Pid), unsafe.Pointer(&this.mconf.Pid), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-        if this.mconf.Debug {
-            this.logger.Printf("update child_parent_map success")
-        }
-    }
-    thread_filter, err := this.FindMap("thread_filter")
-    if err != nil {
-        return err
-    }
-    err = this.mconf.UpdateThreadFilter(thread_filter)
-    if err != nil {
-        return err
-    }
-    if this.mconf.Debug {
-        this.logger.Printf("update thread_filter success")
-    }
-    rev_filter, err := this.FindMap("rev_filter")
-    if err != nil {
-        return err
-    }
-    err = this.mconf.UpdateRevFilter(rev_filter)
-    if err != nil {
-        return err
-    }
-    if this.mconf.Debug {
-        this.logger.Printf("update rev_filter success")
-    }
-
-    // uprobe hook stack 的过滤配置更新
-    if this.mconf.StackUprobeConf.IsEnable() {
-        uprobe_point_args_map, err := this.FindMap("uprobe_point_args_map")
-        if err != nil {
-            return err
-        }
-        err = this.mconf.StackUprobeConf.UpdatePointArgsMap(uprobe_point_args_map)
-        if err != nil {
-            return err
-        }
-        if this.mconf.Debug {
-            this.logger.Printf("update uprobe_point_args_map success")
-        }
-    }
-
-    // raw syscall hook 的过滤配置更新
-    if this.mconf.SysCallConf.IsEnable() {
-        syscall_point_args_map, err := this.FindMap("syscall_point_args_map")
-        if err != nil {
-            return err
-        }
-        err = this.mconf.SysCallConf.UpdatePointArgsMap(syscall_point_args_map)
-        if err != nil {
-            return err
-        }
-        syscall_filter, err := this.FindMap("syscall_filter")
-        if err != nil {
-            return err
-        }
-        err = syscall_filter.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&this.mconf.SysCallConf.Filter), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-        if this.mconf.Debug {
-            this.logger.Printf("hook for syscall, update syscall_filter success")
-        }
-
-        sys_whitelist, err := this.FindMap("sys_whitelist")
-        if err != nil {
-            return err
-        }
-        err = this.mconf.SysCallConf.UpdateWhiteList(sys_whitelist)
-        if err != nil {
-            return err
-        }
-        sys_blacklist, err := this.FindMap("sys_blacklist")
-        if err != nil {
-            return err
-        }
-        err = this.mconf.SysCallConf.UpdateBlackList(sys_blacklist)
-        if err != nil {
-            return err
-        }
-
-    }
+    this.update_base_config()
+    this.update_common_filter()
+    this.update_child_parent()
+    this.update_thread_filter()
+    this.update_rev_filter()
+    this.update_stack_config()
+    this.update_syscall_config()
     return nil
 }
 

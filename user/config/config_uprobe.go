@@ -19,7 +19,7 @@ type UPointTypes struct {
 	ArgTypes [MAX_POINT_ARG_COUNT]FilterArgType
 }
 
-func (this *UprobeArgs) GetConfig() *UPointTypes {
+func (this *UprobeArgs) GetConfig() UPointTypes {
 	// 当前这样传递配置的方式比较耗时
 	var point_arg_types [MAX_POINT_ARG_COUNT]FilterArgType
 	for i := 0; i < MAX_POINT_ARG_COUNT; i++ {
@@ -29,7 +29,7 @@ func (this *UprobeArgs) GetConfig() *UPointTypes {
 		point_arg_types[i].ReadFlag = this.Args[i].ReadFlag
 		point_arg_types[i].ArgType = this.Args[i].ArgType
 	}
-	config := &UPointTypes{
+	config := UPointTypes{
 		Count:    uint32(len(this.Args)),
 		ArgTypes: point_arg_types,
 	}

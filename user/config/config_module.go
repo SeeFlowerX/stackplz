@@ -10,8 +10,6 @@ import (
     "strconv"
     "strings"
     "unsafe"
-
-    "github.com/cilium/ebpf"
 )
 
 type StackUprobeConfig struct {
@@ -247,21 +245,11 @@ func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
     return nil
 }
 
-func (this *StackUprobeConfig) UpdatePointArgsMap(UprobePointArgsMap *ebpf.Map) error {
-    for _, uprobe_point := range this.Points {
-        err := UprobePointArgsMap.Update(unsafe.Pointer(&uprobe_point.Index), unsafe.Pointer(uprobe_point.GetConfig()), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-    }
-    return nil
-}
-
 type SyscallConfig struct {
     logger            *log.Logger
     debug             bool
     Enable            bool
-    Filter            SyscallFilter
+    syscall_ilter     SyscallFilter
     syscall_whitelist []uint32
     syscall_blacklist []uint32
 }
@@ -274,64 +262,32 @@ func (this *SyscallConfig) SetLogger(logger *log.Logger) {
 }
 
 func (this *SyscallConfig) GetSyscallFilter() SyscallFilter {
-    return this.Filter
+    return this.syscall_ilter
 }
 
-func (this *SyscallConfig) UpdateWhiteList(whitelist *ebpf.Map) error {
-    for _, v := range this.syscall_whitelist {
-        err := whitelist.Update(unsafe.Pointer(&v), unsafe.Pointer(&v), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-    }
-    return nil
+func (this *SyscallConfig) GetWhiteList() []uint32 {
+    return this.syscall_whitelist
 }
 
-func (this *SyscallConfig) UpdateBlackList(blacklist *ebpf.Map) error {
-    for _, v := range this.syscall_blacklist {
-        err := blacklist.Update(unsafe.Pointer(&v), unsafe.Pointer(&v), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-    }
-    return nil
-}
-
-func (this *SyscallConfig) UpdatePointArgsMap(SyscallPointArgsMap *ebpf.Map) error {
-    // 取 syscall 参数配置 syscall_point_args_map
-    points := GetAllWatchPoints()
-    for nr_name, point := range points {
-        nr_point, ok := (point).(*SysCallArgs)
-        if !ok {
-            panic(fmt.Sprintf("cast [%s] point to SysCallArgs failed", nr_name))
-        }
-        // 这里可以改成只更新追踪的syscall以加快速度
-        err := SyscallPointArgsMap.Update(unsafe.Pointer(&nr_point.NR), unsafe.Pointer(nr_point.GetConfig()), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-    }
-    if this.debug {
-        this.logger.Printf("update syscall_point_args_map success")
-    }
-    return nil
+func (this *SyscallConfig) GetBlackList() []uint32 {
+    return this.syscall_blacklist
 }
 
 func (this *SyscallConfig) SetSysCallWhiteList(syscall string) error {
     this.Enable = true
-    this.Filter.SetTraceMode(TRACE_COMMON)
+    this.syscall_ilter.SetTraceMode(TRACE_COMMON)
     if syscall == "all" {
-        this.Filter.SetTraceMode(TRACE_ALL)
+        this.syscall_ilter.SetTraceMode(TRACE_ALL)
     } else if syscall == "%file" {
-        this.Filter.SetTraceMode(TRACE_FILE)
+        this.syscall_ilter.SetTraceMode(TRACE_FILE)
     } else if syscall == "%process" {
-        this.Filter.SetTraceMode(TRACE_PROCESS)
+        this.syscall_ilter.SetTraceMode(TRACE_PROCESS)
     } else if syscall == "%net" {
-        this.Filter.SetTraceMode(TRACE_NET)
+        this.syscall_ilter.SetTraceMode(TRACE_NET)
     } else if syscall == "%signal" {
-        this.Filter.SetTraceMode(TRACE_SIGNAL)
+        this.syscall_ilter.SetTraceMode(TRACE_SIGNAL)
     } else if syscall == "%stat" {
-        this.Filter.SetTraceMode(TRACE_STAT)
+        this.syscall_ilter.SetTraceMode(TRACE_STAT)
     } else {
         items := strings.Split(syscall, ",")
         if len(items) > MAX_COUNT {
@@ -345,7 +301,7 @@ func (this *SyscallConfig) SetSysCallWhiteList(syscall string) error {
             }
             this.syscall_whitelist = append(this.syscall_whitelist, uint32(nr_point.NR))
         }
-        this.Filter.SetWhitelistMode(len(this.syscall_whitelist) > 0)
+        this.syscall_ilter.SetWhitelistMode(len(this.syscall_whitelist) > 0)
     }
     return nil
 }
@@ -363,7 +319,7 @@ func (this *SyscallConfig) SetSysCallBlacklist(syscall_blacklist string) error {
         }
         this.syscall_blacklist = append(this.syscall_blacklist, uint32(nr_point.NR))
     }
-    this.Filter.SetWhitelistMode(len(this.syscall_blacklist) > 0)
+    this.syscall_ilter.SetWhitelistMode(len(this.syscall_blacklist) > 0)
     return nil
 }
 
@@ -514,89 +470,7 @@ func (this *ModuleConfig) SetTNamesWhitelist(t_names_blacklist string) error {
     return nil
 }
 
-func (this *ModuleConfig) UpdateRevFilter(rev_filter *ebpf.Map) (err error) {
-    // ./stackplz -n com.starbucks.cn --iso -s newfstatat,openat,faccessat --hide-root -o tmp.log -q
-    var rev_list []string = []string{
-        "/sbin/su",
-        "/sbin/.magisk/",
-        "/dev/.magisk",
-        "/system/bin/magisk",
-        "/system/bin/su",
-        "/system/xbin/su",
-        // "ro.debuggable",
-        "/proc/mounts",
-        "which su",
-        "mount",
-    }
-
-    for _, v := range rev_list {
-        if len(v) > 32 {
-            panic(fmt.Sprintf("[%s] rev string max len is 32", v))
-        }
-        key_value := 1
-        filter := RevFilter{}
-        copy(filter.RevString[:], v)
-        err = rev_filter.Update(unsafe.Pointer(&filter), unsafe.Pointer(&key_value), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-    }
-    return err
-}
-
-func (this *ModuleConfig) UpdateThreadFilter(thread_filter *ebpf.Map) (err error) {
-    var thread_blacklist []string = []string{
-        "RenderThread",
-        "FinalizerDaemon",
-        "RxCachedThreadS",
-        "mali-cmar-backe",
-        "mali-utility-wo",
-        "mali-mem-purge",
-        "mali-hist-dump",
-        "hwuiTask0",
-        "hwuiTask1",
-        "NDK MediaCodec_",
-    }
-
-    for _, v := range thread_blacklist {
-        if len(v) > 16 {
-            panic(fmt.Sprintf("[%s] thread name max len is 16", v))
-        }
-        thread_value := 1
-        filter := ThreadFilter{}
-        copy(filter.ThreadName[:], v)
-        err = thread_filter.Update(unsafe.Pointer(&filter), unsafe.Pointer(&thread_value), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-    }
-    for _, v := range this.TNamesBlacklist {
-        if len(v) > 16 {
-            panic(fmt.Sprintf("[%s] thread name max len is 16", v))
-        }
-        thread_value := 1
-        filter := ThreadFilter{}
-        copy(filter.ThreadName[:], v)
-        err = thread_filter.Update(unsafe.Pointer(&filter), unsafe.Pointer(&thread_value), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-    }
-    for _, v := range this.TNamesWhitelist {
-        if len(v) > 16 {
-            panic(fmt.Sprintf("[%s] thread name max len is 16", v))
-        }
-        thread_value := 2
-        filter := ThreadFilter{}
-        copy(filter.ThreadName[:], v)
-        err = thread_filter.Update(unsafe.Pointer(&filter), unsafe.Pointer(&thread_value), ebpf.UpdateAny)
-        if err != nil {
-            return err
-        }
-    }
-    return err
-}
-func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
+func (this *ModuleConfig) GetCommonFilter() CommonFilter {
     filter := CommonFilter{}
     filter.is_32bit = 0
     filter.uid = this.Uid
@@ -624,7 +498,7 @@ func (this *ModuleConfig) GetCommonFilter() unsafe.Pointer {
     if this.Debug {
         this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d, whitelist:%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit, filter.thread_name_whitelist)
     }
-    return unsafe.Pointer(&filter)
+    return filter
 }
 
 func (this *ModuleConfig) GetConfigMap() ConfigMap {

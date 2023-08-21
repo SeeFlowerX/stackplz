@@ -38,6 +38,6 @@ BPF_HASH(sys_blacklist, u32, u32, 40);
 BPF_HASH(thread_filter, thread_name_t, u32, 40);
 BPF_HASH(rev_filter, rev_string_t, u32, 40);
 BPF_PERCPU_ARRAY(event_data_map, event_data_t, 1);
-BPF_ARRAY(config_map, config_entry_t, 1);
+BPF_ARRAY(base_config, config_entry_t, 1);
 
 #endif /* __MAPS_H__ */
