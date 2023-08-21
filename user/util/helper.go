@@ -180,6 +180,22 @@ func B2STrim(src []byte) string {
 	return string(bytes.TrimSpace(bytes.Trim(src, "\x00")))
 }
 
+func B2S(bs []int8) string {
+	ba := make([]byte, 0, len(bs))
+	for _, b := range bs {
+		ba = append(ba, byte(b))
+	}
+	return B2STrim(ba)
+}
+
+func I2B(bs []int8) []byte {
+	ba := make([]byte, 0, len(bs))
+	for _, b := range bs {
+		ba = append(ba, byte(b))
+	}
+	return ba
+}
+
 const (
 	UNKNOWN_MODE uint32 = iota
 	UID_MODE

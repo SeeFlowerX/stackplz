@@ -2,8 +2,6 @@ package config
 
 import (
 	"encoding/binary"
-	"fmt"
-	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -12,6 +10,7 @@ type SysCallArgs struct {
 	NR uint32
 	PointArgs
 }
+
 type SArgs = SysCallArgs
 
 type SPointTypes struct {
@@ -38,83 +37,6 @@ func (this *SysCallArgs) GetConfig() *SPointTypes {
 		ArgTypeRet: point_arg_type_ret,
 	}
 	return config
-}
-
-type Sigaction struct {
-	Sa_handler   uint64
-	Sa_sigaction uint64
-	Sa_mask      uint64
-	Sa_flags     uint64
-	Sa_restorer  uint64
-}
-
-type Pollfd struct {
-	Fd      int
-	Events  uint16
-	Revents uint16
-}
-
-type SigInfo struct {
-	Si_signo int
-	Si_errno int
-	Si_code  int
-	// 这是个union字段 大小好像不确定
-	// Sifields uint64
-}
-type Msghdr struct {
-	Name       uint64
-	Namelen    uint32
-	Pad_cgo_0  [4]byte
-	Iov        uint64
-	Iovlen     uint64
-	Control    uint64
-	Controllen uint64
-	Flags      int32
-	Pad_cgo_1  [4]byte
-}
-type ItTmerspec struct {
-	It_interval syscall.Timespec
-	It_value    syscall.Timespec
-}
-type Stack_t struct {
-	Ss_sp    uint64
-	Ss_flags int32
-	Ss_size  int32
-}
-type TimeZone_t struct {
-	Tz_minuteswest int32
-	Tz_dsttime     int32
-}
-
-// GO 中结构体这个 padding 用 unsafe.Sizeof 会直接给你算上
-// 用 binary.Size 则直接就是对应的大小
-// 如果用 unsafe.Sizeof 这个大小去解析对应的二进制
-// 那么如果原本结构体里面没有设置好 padding 那么解析就有问题
-// 稳妥做法就是自己 补全存在 padding 的位置 注意位置不一定是结尾
-// 选 binary.Size 可以省事儿一点 潜在的问题暂时不清楚
-
-type Pthread_attr_t struct {
-	Flags          uint32
-	_              uint32
-	Stack_base     uint64
-	Stack_size     int64
-	Guard_size     int64
-	Sched_policy   int32
-	Sched_priority int32
-	// // 这个字段是 64 位才有的 暂时忽略吧...
-	// Reserved       [16]byte
-}
-
-func (this *Pthread_attr_t) Format() string {
-	var fields []string
-	// fields = append(fields, fmt.Sprintf("[debug index:%d len:%d]", this.Index, this.Len))
-	fields = append(fields, fmt.Sprintf("flags=0x%x", this.Flags))
-	fields = append(fields, fmt.Sprintf("stack_base=0x%x", this.Stack_base))
-	fields = append(fields, fmt.Sprintf("stack_size=0x%x", this.Stack_size))
-	fields = append(fields, fmt.Sprintf("guard_size=0x%x", this.Guard_size))
-	fields = append(fields, fmt.Sprintf("sched_policy=0x%x", this.Sched_policy))
-	fields = append(fields, fmt.Sprintf("sched_priority=0x%x", this.Sched_priority))
-	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 const (

@@ -16,10 +16,10 @@ type UprobeEvent struct {
     ContextEvent
     UUID         string
     uprobe_point *config.UprobeArgs
-    probe_index  Arg_probe_index
-    lr           Arg_reg
-    sp           Arg_reg
-    pc           Arg_reg
+    probe_index  config.Arg_probe_index
+    lr           config.Arg_reg
+    sp           config.Arg_reg
+    pc           config.Arg_reg
     arg_str      string
 }
 
@@ -44,7 +44,7 @@ func (this *UprobeEvent) ParseContext() (err error) {
     this.uprobe_point = &this.mconf.StackUprobeConf.Points[this.probe_index.Value]
     var results []string
     for _, point_arg := range this.uprobe_point.Args {
-        var ptr Arg_reg
+        var ptr config.Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(fmt.Sprintf("binary.Read err:%v", err))
         }
