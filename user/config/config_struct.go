@@ -18,17 +18,18 @@ type Sigaction struct {
 }
 
 type Pollfd struct {
-	Fd      int
+	Fd      int32
 	Events  uint16
 	Revents uint16
 }
 
+// https://cs.android.com/android/kernel/superproject/+/common-android-mainline:common/include/uapi/asm-generic/siginfo.h
 type SigInfo struct {
-	Si_signo int
-	Si_errno int
-	Si_code  int
-	// 这是个union字段 大小好像不确定
-	// Sifields uint64
+	Si_signo int32
+	Si_errno int32
+	Si_code  int32
+	// 这是个union字段 类型根据具体的signal决定
+	Sifields uint64
 }
 type Msghdr struct {
 	Name       uint64
@@ -60,7 +61,7 @@ type TimeZone_t struct {
 // 如果用 unsafe.Sizeof 这个大小去解析对应的二进制
 // 那么如果原本结构体里面没有设置好 padding 那么解析就有问题
 // 稳妥做法就是自己 补全存在 padding 的位置 注意位置不一定是结尾
-// 选 binary.Size 可以省事儿一点 潜在的问题暂时不清楚
+// 选 binary.Size 可以省事儿一点 潜在的问题暂时不清楚 不同类型混搭用这个有些奇怪的问题 和对齐有关
 
 type Pthread_attr_t struct {
 	Flags          uint32
@@ -86,8 +87,12 @@ func (this *Pthread_attr_t) Format() string {
 	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
-type IArg interface {
+type ArgFormatter interface {
 	Format() string
+}
+
+type ArgHexFormatter interface {
+	HexFormat() string
 }
 
 type Arg_nr struct {
@@ -193,6 +198,11 @@ type Arg_Pollfd struct {
 	Len   uint32
 	Pollfd
 }
+
+func (this *Arg_Pollfd) Format() string {
+	return fmt.Sprintf("{fd=%d, events=%d, revents=%d}", this.Fd, this.Events, this.Revents)
+}
+
 type Arg_Stat_t struct {
 	Index uint8
 	Len   uint32
@@ -262,6 +272,18 @@ type Arg_Utsname struct {
 	Len   uint32
 	syscall.Utsname
 }
+
+func (this *Arg_Utsname) Format() string {
+	var fields []string
+	fields = append(fields, fmt.Sprintf("sysname=%s", util.B2S(this.Sysname[:])))
+	fields = append(fields, fmt.Sprintf("nodename=%s", util.B2S(this.Nodename[:])))
+	fields = append(fields, fmt.Sprintf("release=%s", util.B2S(this.Release[:])))
+	fields = append(fields, fmt.Sprintf("version=%s", util.B2S(this.Version[:])))
+	fields = append(fields, fmt.Sprintf("machine=%s", util.B2S(this.Machine[:])))
+	fields = append(fields, fmt.Sprintf("domainname=%s", util.B2S(this.Domainname[:])))
+	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
 type Arg_RawSockaddrUnix struct {
 	Index uint8
 	Len   uint32
@@ -326,9 +348,9 @@ type Arg_EpollEvent struct {
 func (this *Arg_EpollEvent) Format() string {
 	var fields []string
 	fields = append(fields, fmt.Sprintf("events=0x%x", this.Events))
-	fields = append(fields, fmt.Sprintf("_=*"))
+	// fields = append(fields, fmt.Sprintf("_=*"))
 	fields = append(fields, fmt.Sprintf("fd=%d", this.Fd))
-	fields = append(fields, fmt.Sprintf("pad=%d", this.Pad))
+	// fields = append(fields, fmt.Sprintf("pad=%d", this.Pad))
 	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
@@ -394,7 +416,7 @@ func (this *Arg_SigInfo) Format() string {
 	fields = append(fields, fmt.Sprintf("si_signo=0x%x", this.Si_signo))
 	fields = append(fields, fmt.Sprintf("si_errno=0x%x", this.Si_errno))
 	fields = append(fields, fmt.Sprintf("si_code=0x%x", this.Si_code))
-	// fields = append(fields, fmt.Sprintf("sifields=0x%x", this.Sifields))
+	fields = append(fields, fmt.Sprintf("sifields=0x%x", this.Sifields))
 	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 

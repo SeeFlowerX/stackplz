@@ -2,12 +2,14 @@ package event
 
 import (
     "bytes"
+    "encoding/binary"
     "errors"
     "fmt"
     "log"
     "os"
     "stackplz/user/config"
     "stackplz/user/util"
+    "time"
 
     "github.com/cilium/ebpf/perf"
     "golang.org/x/sys/unix"
@@ -37,6 +39,24 @@ type CommonEvent struct {
     logger *log.Logger
     rec    perf.Record
     buf    *bytes.Buffer
+}
+
+func (this *CommonEvent) ParseArgStruct(buf *bytes.Buffer, arg config.ArgFormatter) string {
+    if err := binary.Read(buf, binary.LittleEndian, arg); err != nil {
+        this.logger.Printf("CommonEvent RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
+        time.Sleep(5 * 100 * time.Millisecond)
+        panic(err)
+    }
+    return arg.Format()
+}
+
+func (this *CommonEvent) ParseArgStructHex(buf *bytes.Buffer, arg config.ArgHexFormatter) string {
+    if err := binary.Read(buf, binary.LittleEndian, arg); err != nil {
+        this.logger.Printf("CommonEvent RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
+        time.Sleep(5 * 100 * time.Millisecond)
+        panic(err)
+    }
+    return arg.HexFormat()
 }
 
 func (this *CommonEvent) String() string {

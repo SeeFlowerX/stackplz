@@ -82,6 +82,12 @@ func (this *ArgType) SetItemPerSize(persize uint32) {
 	this.ItemPerSize = persize
 }
 
+func (this *ArgType) ToPtr() ArgType {
+	at := this.Clone()
+	at.Type = TYPE_POINTER
+	return at
+}
+
 func (this *ArgType) NewType(item uint32) ArgType {
 	at := this.Clone()
 	at.Type = item
