@@ -33,10 +33,6 @@ type MStack struct {
 
 func (this *MStack) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
     this.Module.Init(ctx, logger, conf)
-    p, ok := (conf).(*config.ModuleConfig)
-    if ok {
-        this.mconf = p
-    }
     this.Module.SetChild(this)
     this.eventMaps = make([]*ebpf.Map, 0, 2)
     this.eventFuncMaps = make(map[*ebpf.Map]event.IEventStruct)
@@ -244,7 +240,7 @@ func (this *MStack) updateFilter() (err error) {
     if err != nil {
         return err
     }
-    if this.sconf.Debug {
+    if this.mconf.Debug {
         this.logger.Printf("update common_filter success")
     }
     if this.mconf.Pid != config.MAGIC_PID {
@@ -257,7 +253,7 @@ func (this *MStack) updateFilter() (err error) {
         if err != nil {
             return err
         }
-        if this.sconf.Debug {
+        if this.mconf.Debug {
             this.logger.Printf("update child_parent_map success")
         }
     }
@@ -269,7 +265,7 @@ func (this *MStack) updateFilter() (err error) {
     if err != nil {
         return err
     }
-    if this.sconf.Debug {
+    if this.mconf.Debug {
         this.logger.Printf("update thread_filter success")
     }
     rev_filter, err := this.FindMap("rev_filter")
@@ -280,7 +276,7 @@ func (this *MStack) updateFilter() (err error) {
     if err != nil {
         return err
     }
-    if this.sconf.Debug {
+    if this.mconf.Debug {
         this.logger.Printf("update rev_filter success")
     }
 
@@ -294,7 +290,7 @@ func (this *MStack) updateFilter() (err error) {
         if err != nil {
             return err
         }
-        if this.sconf.Debug {
+        if this.mconf.Debug {
             this.logger.Printf("update uprobe_point_args_map success")
         }
     }
@@ -313,12 +309,11 @@ func (this *MStack) updateFilter() (err error) {
         if err != nil {
             return err
         }
-        filter := this.mconf.SysCallConf.GetSyscallFilter()
-        err = syscall_filter.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter), ebpf.UpdateAny)
+        err = syscall_filter.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&this.mconf.SysCallConf.Filter), ebpf.UpdateAny)
         if err != nil {
             return err
         }
-        if this.sconf.Debug {
+        if this.mconf.Debug {
             this.logger.Printf("hook for syscall, update syscall_filter success")
         }
 

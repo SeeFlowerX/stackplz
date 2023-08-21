@@ -3,6 +3,7 @@ package config
 import (
     "errors"
     "fmt"
+    "log"
     "os"
     "regexp"
     "stackplz/user/util"
@@ -256,40 +257,24 @@ func (this *StackUprobeConfig) UpdatePointArgsMap(UprobePointArgsMap *ebpf.Map) 
     return nil
 }
 
-func (this *StackUprobeConfig) Check() error {
-    if len(this.Points) == 0 {
-        return fmt.Errorf("need hook point count is 0 :(")
-    }
-    _, err := os.Stat(this.LibPath)
-    if err != nil {
-        return err
-    }
-    parts := strings.Split(this.LibPath, "/")
-    this.LibName = parts[len(parts)-1]
-    return nil
-}
-
 type SyscallConfig struct {
-    SConfig
-    HookALL           bool
+    logger            *log.Logger
+    debug             bool
     Enable            bool
+    Filter            SyscallFilter
     syscall_whitelist []uint32
     syscall_blacklist []uint32
 }
 
-func NewSyscallConfig() *SyscallConfig {
-    config := &SyscallConfig{}
-    config.Enable = false
-    return config
+func (this *SyscallConfig) SetDebug(debug bool) {
+    this.debug = debug
+}
+func (this *SyscallConfig) SetLogger(logger *log.Logger) {
+    this.logger = logger
 }
 
 func (this *SyscallConfig) GetSyscallFilter() SyscallFilter {
-    filter := SyscallFilter{}
-    filter.SetArch(this.Is32Bit)
-    filter.SetHookALL(this.HookALL)
-    filter.SetWhitelistMode(len(this.syscall_whitelist) > 0)
-    filter.SetBlacklistMode(len(this.syscall_blacklist) > 0)
-    return filter
+    return this.Filter
 }
 
 func (this *SyscallConfig) UpdateWhiteList(whitelist *ebpf.Map) error {
@@ -326,35 +311,41 @@ func (this *SyscallConfig) UpdatePointArgsMap(SyscallPointArgsMap *ebpf.Map) err
             return err
         }
     }
-    if this.Debug {
+    if this.debug {
         this.logger.Printf("update syscall_point_args_map success")
     }
     return nil
 }
 
-const (
-    SYSCALL_GROUP_ALL uint32 = iota
-    SYSCALL_GROUP_KILL
-    SYSCALL_GROUP_EXIT
-)
-
-func (this *SyscallConfig) SetSysCall(syscall string) error {
+func (this *SyscallConfig) SetSysCallWhiteList(syscall string) error {
     this.Enable = true
+    this.Filter.SetTraceMode(TRACE_COMMON)
     if syscall == "all" {
-        this.HookALL = true
-        return nil
-    }
-    items := strings.Split(syscall, ",")
-    if len(items) > MAX_COUNT {
-        return fmt.Errorf("max syscall whitelist count is %d, provided count:%d", MAX_COUNT, len(items))
-    }
-    for _, v := range items {
-        point := GetWatchPointByName(v)
-        nr_point, ok := (point).(*SysCallArgs)
-        if !ok {
-            return errors.New(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
+        this.Filter.SetTraceMode(TRACE_ALL)
+    } else if syscall == "%file" {
+        this.Filter.SetTraceMode(TRACE_FILE)
+    } else if syscall == "%process" {
+        this.Filter.SetTraceMode(TRACE_PROCESS)
+    } else if syscall == "%net" {
+        this.Filter.SetTraceMode(TRACE_NET)
+    } else if syscall == "%signal" {
+        this.Filter.SetTraceMode(TRACE_SIGNAL)
+    } else if syscall == "%stat" {
+        this.Filter.SetTraceMode(TRACE_STAT)
+    } else {
+        items := strings.Split(syscall, ",")
+        if len(items) > MAX_COUNT {
+            return fmt.Errorf("max syscall whitelist count is %d, provided count:%d", MAX_COUNT, len(items))
         }
-        this.syscall_whitelist = append(this.syscall_whitelist, uint32(nr_point.NR))
+        for _, v := range items {
+            point := GetWatchPointByName(v)
+            nr_point, ok := (point).(*SysCallArgs)
+            if !ok {
+                return errors.New(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
+            }
+            this.syscall_whitelist = append(this.syscall_whitelist, uint32(nr_point.NR))
+        }
+        this.Filter.SetWhitelistMode(len(this.syscall_whitelist) > 0)
     }
     return nil
 }
@@ -372,16 +363,12 @@ func (this *SyscallConfig) SetSysCallBlacklist(syscall_blacklist string) error {
         }
         this.syscall_blacklist = append(this.syscall_blacklist, uint32(nr_point.NR))
     }
+    this.Filter.SetWhitelistMode(len(this.syscall_blacklist) > 0)
     return nil
 }
 
 func (this *SyscallConfig) IsEnable() bool {
     return this.Enable
-}
-
-func (this *SyscallConfig) Check() error {
-
-    return nil
 }
 
 func (this *SyscallConfig) Info() string {
@@ -398,7 +385,29 @@ func (this *SyscallConfig) Info() string {
 }
 
 type ModuleConfig struct {
-    SConfig
+    BaseConfig
+
+    SelfPid       uint32
+    FilterMode    uint32
+    Uid           uint32
+    Pid           uint32
+    Tid           uint32
+    TraceIsolated bool
+    HideRoot      bool
+    UprobeSignal  uint32
+    UnwindStack   bool
+    StackSize     uint32
+    ShowRegs      bool
+    GetOff        bool
+    RegName       string
+    ExternalBTF   string
+    Is32Bit       bool
+    Buffer        uint32
+    BrkAddr       uint64
+    BrkType       uint32
+    Color         bool
+    DumpHex       bool
+
     TidsBlacklistMask uint32
     TidsBlacklist     [MAX_COUNT]uint32
     PidsBlacklistMask uint32
@@ -406,16 +415,14 @@ type ModuleConfig struct {
     TNamesWhitelist   []string
     TNamesBlacklist   []string
     Name              string
-    StackUprobeConf   StackUprobeConfig
-    SysCallConf       SyscallConfig
+    StackUprobeConf   *StackUprobeConfig
+    SysCallConf       *SyscallConfig
 }
 
 func NewModuleConfig() *ModuleConfig {
     config := &ModuleConfig{}
     config.SelfPid = uint32(os.Getpid())
     config.FilterMode = util.UNKNOWN_MODE
-    // 首先把 logger 设置上
-    // config.SetLogger(logger)
     // 虽然会通过全局配置进程覆盖 但是还是做好在初始化时就进行默认赋值
     config.Uid = MAGIC_UID
     config.Pid = MAGIC_PID
@@ -429,9 +436,17 @@ func NewModuleConfig() *ModuleConfig {
     return config
 }
 
-func (this *ModuleConfig) Check() error {
+func (this *ModuleConfig) InitSyscallConfig() {
+    config := &SyscallConfig{}
+    config.Enable = false
+    config.SetDebug(this.Debug)
+    config.SetLogger(this.logger)
+    this.SysCallConf = config
+}
 
-    return nil
+func (this *ModuleConfig) InitStackUprobeConfig() {
+    config := &StackUprobeConfig{}
+    this.StackUprobeConf = config
 }
 
 func (this *ModuleConfig) Info() string {

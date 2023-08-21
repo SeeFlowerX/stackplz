@@ -6,99 +6,27 @@ import (
 	"log"
 )
 
-const MAX_COUNT = 20
-const MAX_WATCH_PROC_COUNT = 256
-
-// stackplz => 737461636b706c7a
-const MAGIC_UID = 0x73746163
-const MAGIC_PID = 0x6b706c7a
-const MAGIC_TID = 0x61636b70
-
 type IConfig interface {
-	GetSConfig() *SConfig
 	SetDebug(bool)
 	Info() string
 }
 
-type SConfig struct {
-	SelfPid       uint32
-	FilterMode    uint32
-	Uid           uint32
-	Pid           uint32
-	Tid           uint32
-	TraceIsolated bool
-	HideRoot      bool
-	UprobeSignal  uint32
-	UnwindStack   bool
-	StackSize     uint32
-	ShowRegs      bool
-	GetOff        bool
-	RegName       string
-	ExternalBTF   string
-	Debug         bool
-	Is32Bit       bool
-	Buffer        uint32
-	BrkAddr       uint64
-	BrkType       uint32
-	Color         bool
-	DumpHex       bool
-	logger        *log.Logger
+type BaseConfig struct {
+	Debug  bool
+	logger *log.Logger
 }
 
-func (this *SConfig) SetLogger(logger *log.Logger) {
+func (this *BaseConfig) SetLogger(logger *log.Logger) {
 	this.logger = logger
 }
 
-func (this *SConfig) SetDebug(debug bool) {
+func (this *BaseConfig) SetDebug(debug bool) {
 	this.Debug = debug
 }
 
-func (this *SConfig) Info() string {
-	panic("SConfig.Info() not implemented yet")
+func (this *BaseConfig) Info() string {
+	panic("BaseConfig.Info() not implemented yet")
 }
-
-func (this *SConfig) GetSConfig() *SConfig {
-	return this
-}
-
-const MAX_BUF_READ_SIZE uint32 = 4096
-
-const (
-	REG_ARM64_X0 uint32 = iota
-	REG_ARM64_X1
-	REG_ARM64_X2
-	REG_ARM64_X3
-	REG_ARM64_X4
-	REG_ARM64_X5
-	REG_ARM64_X6
-	REG_ARM64_X7
-	REG_ARM64_X8
-	REG_ARM64_X9
-	REG_ARM64_X10
-	REG_ARM64_X11
-	REG_ARM64_X12
-	REG_ARM64_X13
-	REG_ARM64_X14
-	REG_ARM64_X15
-	REG_ARM64_X16
-	REG_ARM64_X17
-	REG_ARM64_X18
-	REG_ARM64_X19
-	REG_ARM64_X20
-	REG_ARM64_X21
-	REG_ARM64_X22
-	REG_ARM64_X23
-	REG_ARM64_X24
-	REG_ARM64_X25
-	REG_ARM64_X26
-	REG_ARM64_X27
-	REG_ARM64_X28
-	REG_ARM64_X29
-	REG_ARM64_LR
-	REG_ARM64_SP
-	REG_ARM64_PC
-	REG_ARM64_MAX
-)
 
 var RegsMagicMap map[string]uint32 = map[string]uint32{
 	"x0":  REG_ARM64_X0,

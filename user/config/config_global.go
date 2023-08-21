@@ -45,8 +45,3 @@ func NewGlobalConfig() *GlobalConfig {
     config.Tid = MAGIC_TID
     return config
 }
-
-func (this *GlobalConfig) Check() error {
-
-    return nil
-}

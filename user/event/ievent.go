@@ -217,8 +217,6 @@ func (this *CommonEvent) SetLogger(logger *log.Logger) {
 }
 
 func (this *CommonEvent) SetConf(conf config.IConfig) {
-    // 原生指针转换 conf 是指针的时候 但不能是 interface
-    // this.mconf = (*config.ModuleConfig)(unsafe.Pointer(conf))
     p, ok := (conf).(*config.ModuleConfig)
     if ok {
         this.mconf = p

@@ -11,7 +11,7 @@
 // syscall过滤配置
 struct syscall_filter_t {
     u32 is_32bit;
-    u32 syscall_all;
+    u32 trace_mode;
     u32 whitelist_mode;
     u32 blacklist_mode;
 };
@@ -125,7 +125,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         return 0;
     }
 
-    if (filter->syscall_all == 0) {
+    if (filter->trace_mode == 0) {
         // 非 追踪全部syscall模式
         if (filter->whitelist_mode == 1) {
             u32 *flag = bpf_map_lookup_elem(&sys_whitelist, &sysno);
@@ -278,7 +278,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     }
     del_args(SYSCALL_ENTER);
 
-    if (filter->syscall_all == 0) {
+    if (filter->trace_mode == 0) {
         // 非 追踪全部syscall模式
         if (filter->whitelist_mode == 1) {
             u32 *flag = bpf_map_lookup_elem(&sys_whitelist, &sysno);

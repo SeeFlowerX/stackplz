@@ -56,13 +56,12 @@ type Module struct {
     logger *log.Logger
     child  IModule
     // probe的名字
-    name         string
-    unwind_stack bool
+    name string
 
     // module的类型，uprobe,kprobe等
     mType string
 
-    sconf *config.SConfig
+    mconf *config.ModuleConfig
 
     processor *event_processor.EventProcessor
 
@@ -73,7 +72,12 @@ type Module struct {
 func (this *Module) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) {
     this.ctx = ctx
     this.logger = logger
-    this.sconf = conf.GetSConfig()
+    p, ok := (conf).(*config.ModuleConfig)
+    if !ok {
+        panic("cast conf to ModuleConfig failed")
+    } else {
+        this.mconf = p
+    }
     this.processor = event_processor.NewEventProcessor(logger)
 
 }
@@ -182,31 +186,31 @@ func (this *Module) getExtraOptions(em *ebpf.Map) perf.ExtraPerfOptions {
 
     // http://aospxref.com/android-11.0.0_r21/xref/system/extras/simpleperf/perf_regs.cpp#82
     var RegMask uint64
-    if this.sconf.Is32Bit {
+    if this.mconf.Is32Bit {
         RegMask = (1 << PERF_REG_ARM_MAX) - 1
     } else {
         RegMask = (1 << PERF_REG_ARM64_MAX) - 1
     }
     var ShowRegs bool
-    if this.sconf.RegName != "" {
+    if this.mconf.RegName != "" {
         ShowRegs = true
     } else {
-        ShowRegs = this.sconf.ShowRegs
+        ShowRegs = this.mconf.ShowRegs
     }
 
     return perf.ExtraPerfOptions{
-        UnwindStack:       this.sconf.UnwindStack,
+        UnwindStack:       this.mconf.UnwindStack,
         ShowRegs:          ShowRegs,
         PerfMmap:          IsMmapEvent,
-        BrkAddr:           this.sconf.BrkAddr,
-        BrkType:           this.sconf.BrkType,
+        BrkAddr:           this.mconf.BrkAddr,
+        BrkType:           this.mconf.BrkType,
         Sample_regs_user:  RegMask,
-        Sample_stack_user: this.sconf.StackSize,
+        Sample_stack_user: this.mconf.StackSize,
     }
 }
 
 func (this *Module) getPerCPUBuffer() int {
-    return os.Getpagesize() * (int(this.sconf.Buffer) * 1024 / 4)
+    return os.Getpagesize() * (int(this.mconf.Buffer) * 1024 / 4)
 }
 
 func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
@@ -282,7 +286,7 @@ func (this *Module) PrePare(em *ebpf.Map, rec perf.Record) (event event.IEventSt
 
 func (this *Module) Close() error {
     this.logger.Printf("TotalLost => %d\n", this.TotalLost)
-    if this.sconf.Debug {
+    if this.mconf.Debug {
         this.logger.Printf("%s\tClose", this.child.Name())
     }
     for _, iClose := range this.reader {

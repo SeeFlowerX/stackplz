@@ -293,7 +293,10 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     if err != nil {
         return err
     }
-    // 这里暂时是针对 stack 命令 后续整合 syscall 要进行区分
+
+    mconfig.InitSyscallConfig()
+    mconfig.InitStackUprobeConfig()
+
     mconfig.StackUprobeConf.LibPath, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
     if err != nil {
         logger.Fatal(err)
@@ -302,9 +305,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
 
     // 处理 syscall 的命令
     if gconfig.SysCall != "" {
-        // 特别的 设置为 all 表示追踪全部的系统调用
-        // 后续引入按 syscall 分类追踪的选项
-        err = mconfig.SysCallConf.SetSysCall(gconfig.SysCall)
+        err = mconfig.SysCallConf.SetSysCallWhiteList(gconfig.SysCall)
         if err != nil {
             return err
         }
