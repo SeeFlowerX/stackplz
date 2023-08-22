@@ -58,6 +58,32 @@ type PointArg struct {
 
 type PArg = PointArg
 
+func (this *PointArg) SetValue(value string) {
+	this.ArgValue = value
+}
+
+func (this *PointArg) AppendValue(value string) {
+	this.ArgValue += value
+}
+
+func (this *PointArg) Format(value uint64) string {
+	// 暂时只对 TYPE_NUM 处理
+	switch this.AliasType {
+	case TYPE_EXP_INT:
+		this.ArgValue = fmt.Sprintf("%s=%d", this.ArgName, int32(value))
+	case TYPE_INT64:
+		value_fixed := int64(value)
+		if value_fixed <= 0 {
+			this.ArgValue = fmt.Sprintf("%s=%d", this.ArgName, value_fixed)
+		} else {
+			this.ArgValue = fmt.Sprintf("%s=0x%x", this.ArgName, value_fixed)
+		}
+	default:
+		this.ArgValue = fmt.Sprintf("%s=0x%x", this.ArgName, value)
+	}
+	return this.ArgValue
+}
+
 func (this *ArgType) SetType(item uint32) {
 	this.Type = item
 }
@@ -145,20 +171,16 @@ func (this *ArgType) Clone() ArgType {
 	return at
 }
 
-func (this *PointArg) SetValue(value string) {
-	this.ArgValue = value
-}
-
-func (this *PointArg) AppendValue(value string) {
-	this.ArgValue += value
-}
-
 func AT(arg_alias_type, arg_type, read_count uint32) ArgType {
 	return ArgType{READ_INDEX_REG, arg_alias_type, arg_type, read_count, 1, READ_INDEX_SKIP, 0}
 }
 
 func PA(nr string, args []PArg) PArgs {
 	return PArgs{nr, B("ret", UINT64), args}
+}
+
+func PAI(nr string, args []PArg) PArgs {
+	return PArgs{nr, B("ret", EXP_INT), args}
 }
 
 func (this *PointArgs) Clone() IWatchPoint {
