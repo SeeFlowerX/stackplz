@@ -1,15 +1,11 @@
 package event
 
-// // #include <load_so.h>
-// // #cgo LDFLAGS: -ldl
-// import "C"
-
 import (
-	"encoding/binary"
-	"fmt"
-	"stackplz/user/config"
-	"stackplz/user/util"
-	"strings"
+    "encoding/binary"
+    "fmt"
+    "stackplz/user/config"
+    "stackplz/user/util"
+    "strings"
 )
 
 type UprobeEvent struct {
@@ -24,7 +20,6 @@ type UprobeEvent struct {
 }
 
 func (this *UprobeEvent) ParseContext() (err error) {
-    // this.logger.Printf("UprobeEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
     if err = binary.Read(this.buf, binary.LittleEndian, &this.probe_index); err != nil {
         panic(err)
     }
@@ -48,23 +43,12 @@ func (this *UprobeEvent) ParseContext() (err error) {
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(err)
         }
-        // if this.mconf.Debug {
-        //     this.logger.Printf("[buf] len:%d cap:%d off:%d", this.buf.Len(), this.buf.Cap(), this.buf.Cap()-this.buf.Len())
-        // }
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
         point_arg.SetValue(base_arg_str)
-        // if this.mconf.Debug {
-        //     point_arg.AppendValue(ptr.Format())
-        // }
         if point_arg.Type == config.TYPE_NUM {
             results = append(results, point_arg.ArgValue)
             continue
         }
-        // if point_arg.ReadFlag == config.UPROBE_ENTER_READ {
-        //     results = append(results, point_arg.ArgValue)
-        //     continue
-        // }
-
         this.ParseArgByType(&point_arg, ptr)
         results = append(results, point_arg.ArgValue)
     }
@@ -73,7 +57,6 @@ func (this *UprobeEvent) ParseContext() (err error) {
     err = this.ParseContextStack()
     if err != nil {
         panic(fmt.Sprintf("ParseContextStack err:%v", err))
-        // return err
     }
     return nil
 }

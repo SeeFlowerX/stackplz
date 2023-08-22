@@ -1,21 +1,12 @@
 package event
 
 import (
-	"encoding/binary"
-	"fmt"
-	"stackplz/user/config"
-	"stackplz/user/util"
-	"strings"
+    "encoding/binary"
+    "fmt"
+    "stackplz/user/config"
+    "stackplz/user/util"
+    "strings"
 )
-
-type Timespec struct {
-    TvSec  uint64 /* seconds */
-    TvNsec uint64 /* nanoseconds */
-}
-
-func (this *Timespec) String() string {
-    return fmt.Sprintf("seconds=%d,nanoseconds=%d", this.TvSec, this.TvNsec)
-}
 
 type SyscallEvent struct {
     ContextEvent
@@ -54,7 +45,6 @@ func (this *SyscallEvent) ParseContextSysEnter() (err error) {
     this.nr_point = nr_point
     var results []string
     for _, point_arg := range this.nr_point.Args {
-        // this.logger.Printf(".... AliasType:%d %d %d", point_arg.AliasType, this.EventId, point_arg.ReadFlag)
         var ptr config.Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(err)
@@ -124,7 +114,6 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
 }
 
 func (this *SyscallEvent) ParseContext() (err error) {
-    // this.logger.Printf("SyscallEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
     // 处理参数 常规参数的构成 是 索引 + 值
     if err = binary.Read(this.buf, binary.LittleEndian, &this.nr); err != nil {
         panic(err)

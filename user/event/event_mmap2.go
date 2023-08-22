@@ -68,8 +68,6 @@ func (this *MapsHelper) GetRegionInfo(pid_maps *ProcMaps, addr uint64) string {
 }
 
 func (this *ProcMaps) Clone() ProcMaps {
-    // maps_lock.Lock()
-    // defer maps_lock.Unlock()
     maps := ProcMaps{}
     for key, value := range *this {
         var infos []LibInfo
@@ -81,13 +79,6 @@ func (this *ProcMaps) Clone() ProcMaps {
     return maps
 }
 
-func (this *ProcMaps) ToMapBuffer(pid uint32, del_old bool) string {
-    // 把自身转换成 /proc/{pid}/maps 这样的内容
-
-    return ""
-}
-
-// type MapsHelper map[uint32]ProcMaps
 type MapsHelper struct {
     logger           *log.Logger
     pid_maps         map[uint32]*ProcMaps
@@ -217,12 +208,10 @@ func (this *MapsHelper) GetStack(pid uint32, ubuf *UnwindBuf) (info string, err 
             break
         }
         fp = next_fp
-        // stack_arr = append(stack_arr, next_lr)
         if next_lr != 0 {
             stack_infos = append(stack_infos, this.GetRegionInfo(pid_maps, next_lr))
         }
     }
-    // backtrace := fmt.Sprintf("Backtrace:\n\t%s", strings.Join(stack_infos, "\n\t"))
     backtrace := fmt.Sprintf("\t%s", strings.Join(stack_infos, "\n\t"))
     return backtrace, nil
     // return this.GetOffset(pid, addr), nil
@@ -432,7 +421,6 @@ func (this *Mmap2Event) ParseContext() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
         return err
     }
-
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Addr); err != nil {
         return err
     }

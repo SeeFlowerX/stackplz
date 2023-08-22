@@ -53,7 +53,6 @@ func (this *BrkEvent) ParseContextStack() (err error) {
             maps_helper.SetLogger(this.logger)
             info, err := maps_helper.GetStack(this.mconf.Pid, this.UnwindBuffer)
             if err != nil {
-                // this.logger.Printf("Error when opening file:%v", err)
                 this.logger.Printf("Error when GetStack:%v", err)
             } else {
                 this.Stackinfo = info
