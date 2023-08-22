@@ -39,7 +39,11 @@ func (this *SysCallArgs) ParseFlags(value int32) string {
 			info = append(info, k)
 		}
 	}
-	return "(" + strings.Join(info, "|") + ")"
+	if len(info) > 0 {
+		return "(" + strings.Join(info, "|") + ")"
+	} else {
+		return ""
+	}
 }
 
 func (this *SysCallArgs) ParseProt(value int32) string {
@@ -56,7 +60,11 @@ func (this *SysCallArgs) ParseProt(value int32) string {
 			info = append(info, k)
 		}
 	}
-	return "(" + strings.Join(info, "|") + ")"
+	if len(info) > 0 {
+		return "(" + strings.Join(info, "|") + ")"
+	} else {
+		return ""
+	}
 }
 
 func (this *SysCallArgs) GetConfig() *SPointTypes {
