@@ -19,7 +19,6 @@ func (this *Timespec) String() string {
 
 type SyscallEvent struct {
     ContextEvent
-    WaitExit     bool
     UUID         string
     Stackinfo    string
     RegsBuffer   RegsBuf
@@ -75,13 +74,6 @@ func (this *SyscallEvent) ParseContextSysEnter() (err error) {
         this.ParseArgByType(&point_arg, ptr)
         results = append(results, point_arg.ArgValue)
     }
-    // if !this.WaitExit {
-    //     var results []string
-    //     for _, point_arg := range this.nr_point.Args {
-    //         results = append(results, point_arg.ArgValue)
-    //     }
-    //     this.arg_str = "(" + strings.Join(results, ", ") + ")"
-    // }
     this.arg_str = "(" + strings.Join(results, ", ") + ")"
     return nil
 }
@@ -131,29 +123,7 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     return nil
 }
 
-func (this *SyscallEvent) WaitNextEvent() bool {
-    return this.WaitExit
-}
-
-// func (this *SyscallEvent) MergeEvent(exit_event IEventStruct) {
-//     exit_p, ok := (exit_event).(*SyscallEvent)
-//     if !ok {
-//         panic("cast event.SYSCALL_EXIT to event.SyscallEvent failed")
-//     }
-//     var results []string
-//     for index, point_arg := range this.nr_point.Args {
-//         if point_arg.ReadFlag == config.SYS_EXIT {
-//             point_arg = exit_p.nr_point.Args[index]
-//         }
-//         results = append(results, point_arg.ArgValue)
-//     }
-//     results = append(results, exit_p.nr_point.Ret.ArgValue)
-//     this.arg_str = "(" + strings.Join(results, ", ") + ")"
-//     this.WaitExit = false
-// }
-
 func (this *SyscallEvent) ParseContext() (err error) {
-    this.WaitExit = false
     // this.logger.Printf("SyscallEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
     // 处理参数 常规参数的构成 是 索引 + 值
     if err = binary.Read(this.buf, binary.LittleEndian, &this.nr); err != nil {
@@ -161,8 +131,7 @@ func (this *SyscallEvent) ParseContext() (err error) {
     }
     if this.EventId == SYSCALL_ENTER {
         // 是否有不执行 sys_exit 的情况 ?
-        // 有的调用耗时 也有可能 要不还是把执行结果分开输出吧
-        // this.WaitExit = true
+        // 有的调用耗时 也有可能 暂时还是把执行结果分开输出吧
         this.ParseContextSysEnter()
     } else if this.EventId == SYSCALL_EXIT {
         this.ParseContextSysExit()
