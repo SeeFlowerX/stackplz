@@ -196,12 +196,10 @@ func (this *SyscallEvent) String() string {
         }
         base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.sp.Address)
     }
-    base_str = this.GetStackTrace(base_str)
+    if this.EventId == SYSCALL_ENTER {
+        base_str = this.GetStackTrace(base_str)
+    }
     return base_str
-}
-
-func (this *SyscallEvent) ParseLRV1() (string, error) {
-    return maps_helper.GetOffset(this.Pid, this.lr.Address), nil
 }
 
 func (this *SyscallEvent) Clone() IEventStruct {

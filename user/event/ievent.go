@@ -211,7 +211,6 @@ func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
                     if this.mconf.BrkAddr != 0 {
                         event = this.NewBrkEvent(event)
                     } else {
-
                         event = this
                         this.logger.Printf("CommonEvent.ParseEvent() unsupported EventId:%d\n", EventId)
                         this.logger.Printf("CommonEvent.ParseEvent() PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
