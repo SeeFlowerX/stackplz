@@ -1,11 +1,11 @@
 package event
 
 import (
-    "encoding/binary"
-    "fmt"
-    "stackplz/user/config"
-    "stackplz/user/util"
-    "strings"
+	"encoding/binary"
+	"fmt"
+	"stackplz/user/config"
+	"stackplz/user/util"
+	"strings"
 )
 
 type Timespec struct {
@@ -37,13 +37,13 @@ type Arg_bytes = config.Arg_str
 
 func (this *SyscallEvent) ParseContextSysEnter() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        panic(err)
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        panic(err)
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        panic(err)
     }
     // 根据调用号解析剩余参数
     point := config.GetWatchPointByNR(this.nr.Value)
@@ -57,7 +57,7 @@ func (this *SyscallEvent) ParseContextSysEnter() (err error) {
         // this.logger.Printf(".... AliasType:%d %d %d", point_arg.AliasType, this.EventId, point_arg.ReadFlag)
         var ptr config.Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
         point_arg.SetValue(base_arg_str)
@@ -108,7 +108,7 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     // 处理返回参数
     var ptr config.Arg_reg
     if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        panic(err)
     }
     point_arg := this.nr_point.Ret
     base_arg_str := fmt.Sprintf("0x%x", ptr.Address)
@@ -127,7 +127,7 @@ func (this *SyscallEvent) ParseContext() (err error) {
     // this.logger.Printf("SyscallEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
     // 处理参数 常规参数的构成 是 索引 + 值
     if err = binary.Read(this.buf, binary.LittleEndian, &this.nr); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        panic(err)
     }
     if this.EventId == SYSCALL_ENTER {
         // 是否有不执行 sys_exit 的情况 ?

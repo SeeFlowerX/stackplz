@@ -5,11 +5,11 @@ package event
 // import "C"
 
 import (
-    "encoding/binary"
-    "fmt"
-    "stackplz/user/config"
-    "stackplz/user/util"
-    "strings"
+	"encoding/binary"
+	"fmt"
+	"stackplz/user/config"
+	"stackplz/user/util"
+	"strings"
 )
 
 type UprobeEvent struct {
@@ -26,16 +26,16 @@ type UprobeEvent struct {
 func (this *UprobeEvent) ParseContext() (err error) {
     // this.logger.Printf("UprobeEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
     if err = binary.Read(this.buf, binary.LittleEndian, &this.probe_index); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        panic(err)
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        panic(err)
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        panic(err)
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        panic(err)
     }
     // 根据预设索引解析参数
     if (this.probe_index.Value + 1) > uint32(len(this.mconf.StackUprobeConf.Points)) {
@@ -46,7 +46,7 @@ func (this *UprobeEvent) ParseContext() (err error) {
     for _, point_arg := range this.uprobe_point.Args {
         var ptr config.Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         // if this.mconf.Debug {
         //     this.logger.Printf("[buf] len:%d cap:%d off:%d", this.buf.Len(), this.buf.Cap(), this.buf.Cap()-this.buf.Len())

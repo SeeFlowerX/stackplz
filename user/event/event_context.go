@@ -167,7 +167,7 @@ type Arg_raw_size struct {
 func (this *ContextEvent) ParsePadding() (err error) {
     var arg Arg_raw_size
     if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
-        panic(fmt.Sprintf("binary.Read err:%v", err))
+        panic(err)
     }
     // this.logger.Printf("[buf] len:%d cap:%d off:%d", this.buf.Len(), this.buf.Cap(), this.buf.Cap()-this.buf.Len())
     // this.logger.Printf("[buf] this.rec.SampleSize:%d", this.rec.SampleSize)
@@ -181,7 +181,7 @@ func (this *ContextEvent) ParsePadding() (err error) {
         payload := make([]byte, padding_size)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
             this.logger.Printf("ContextEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
     }
     // if this.mconf.Debug {
@@ -252,7 +252,7 @@ func (this *ContextEvent) ParseArgByType(point_arg *config.PointArg, ptr config.
         // 对于指针类型 需要先处理
         var next_ptr config.Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &next_ptr); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         // if this.mconf.Debug {
         //     this.logger.Printf("[buf] len:%d cap:%d off:%d", this.buf.Len(), this.buf.Cap(), this.buf.Cap()-this.buf.Len())
@@ -283,11 +283,11 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr config.Arg_re
     case config.TYPE_BUFFER_T:
         var arg config.Arg_Buffer_t
         if err = binary.Read(this.buf, binary.LittleEndian, &arg.Arg_str); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         payload := make([]byte, arg.Len)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         arg.Payload = payload
         if this.mconf.DumpHex {
@@ -298,27 +298,27 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr config.Arg_re
     case config.TYPE_STRING:
         var arg config.Arg_str
         if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         payload := make([]byte, arg.Len)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         return fmt.Sprintf("(%s)", util.B2STrim(payload))
     case config.TYPE_STRING_ARR:
         var arg_str_arr config.Arg_str_arr
         if err = binary.Read(this.buf, binary.LittleEndian, &arg_str_arr); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         var str_arr []string
         for i := 0; i < int(arg_str_arr.Count); i++ {
             var len uint32
             if err = binary.Read(this.buf, binary.LittleEndian, &len); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
+                panic(err)
             }
             payload := make([]byte, len)
             if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-                panic(fmt.Sprintf("binary.Read err:%v", err))
+                panic(err)
             }
             str_arr = append(str_arr, util.B2STrim(payload))
         }
@@ -328,13 +328,13 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr config.Arg_re
         var ptr_value config.Arg_reg
         // 再解析参数寄存器指向地址的值
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr_value); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         return fmt.Sprintf("(0x%x)", ptr_value.Address)
     case config.TYPE_SIGSET:
         var sigs [8]uint32
         if err = binary.Read(this.buf, binary.LittleEndian, &sigs); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         var fmt_sigs []string
         for i := 0; i < len(sigs); i++ {
@@ -346,7 +346,7 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr config.Arg_re
     case config.TYPE_STRUCT:
         payload := make([]byte, point_arg.Size)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         return fmt.Sprintf("([hex]%x)", payload)
     case config.TYPE_TIMEZONE:
@@ -373,11 +373,11 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr config.Arg_re
         // IOVEC 这里本质上是一个数组 还不太一样...
         var arg config.Arg_Iovec_t
         if err = binary.Read(this.buf, binary.LittleEndian, &arg.Arg_Iovec); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         payload := make([]byte, arg.BufLen)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-            panic(fmt.Sprintf("binary.Read err:%v", err))
+            panic(err)
         }
         arg.Payload = payload
         return arg.Format()
