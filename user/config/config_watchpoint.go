@@ -66,11 +66,26 @@ func (this *PointArg) AppendValue(value string) {
 	this.ArgValue += value
 }
 
-func (this *PointArg) Format(value uint64) string {
+func (this *PointArg) Format(watch_point IWatchPoint, value uint64) string {
 	// 暂时只对 TYPE_NUM 处理
 	switch this.AliasType {
 	case TYPE_EXP_INT:
-		this.ArgValue = fmt.Sprintf("%s=%d", this.ArgName, int32(value))
+		value_fixed := int32(value)
+		if this.ArgName == "flags" || this.ArgName == "prot" {
+			p, ok := (watch_point).(*SysCallArgs)
+			if !ok {
+				panic("cast watchpoint to SysCallArgs failed")
+			}
+			var value_str string
+			if this.ArgName == "flags" {
+				value_str = p.ParseFlags(value_fixed)
+			} else {
+				value_str = p.ParseProt(value_fixed)
+			}
+			this.ArgValue = fmt.Sprintf("%s=0x%x%s", this.ArgName, value_fixed, value_str)
+		} else {
+			this.ArgValue = fmt.Sprintf("%s=%d", this.ArgName, value_fixed)
+		}
 	case TYPE_INT64:
 		value_fixed := int64(value)
 		if value_fixed <= 0 {

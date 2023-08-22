@@ -50,7 +50,7 @@ func (this *SyscallEvent) ParseContextSysEnter() (err error) {
             panic(err)
         }
         if point_arg.Type == config.TYPE_NUM {
-            results = append(results, point_arg.Format(ptr.Address))
+            results = append(results, point_arg.Format(this.nr_point, ptr.Address))
             continue
         }
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
@@ -82,7 +82,7 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
             panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.Comm[:]), err))
         }
         if point_arg.Type == config.TYPE_NUM {
-            results = append(results, point_arg.Format(ptr.Address))
+            results = append(results, point_arg.Format(this.nr_point, ptr.Address))
             continue
         }
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
@@ -101,7 +101,7 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     }
     point_arg := this.nr_point.Ret
     if point_arg.Type == config.TYPE_NUM {
-        point_arg.SetValue(point_arg.Format(ptr.Address))
+        point_arg.SetValue(point_arg.Format(this.nr_point, ptr.Address))
     } else {
         point_arg.SetValue(fmt.Sprintf("0x%x", ptr.Address))
     }
