@@ -234,8 +234,6 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
     }
 
-    u32 out_size = sizeof(event_context_t) + p.event->buf_off;
-    save_to_submit_buf(p.event, (void *) &out_size, sizeof(u32), next_arg_index);
     events_perf_submit(&p, SYSCALL_ENTER);
     common_filter_t* c_filter = bpf_map_lookup_elem(&common_filter, &filter_key);
     if (c_filter == NULL) {
@@ -368,8 +366,6 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     // 取返回值的参数配置 并尝试进一步读取
     struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_arg_ret;
     next_arg_index = read_arg(p, point_arg, ret, 0, next_arg_index);
-    u32 out_size = sizeof(event_context_t) + p.event->buf_off;
-    save_to_submit_buf(p.event, (void *) &out_size, sizeof(u32), next_arg_index);
     // 发送数据
     events_perf_submit(&p, SYSCALL_EXIT);
     return 0;

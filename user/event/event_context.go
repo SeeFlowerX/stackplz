@@ -159,22 +159,8 @@ func (this *ContextEvent) GetEventId() uint32 {
     return this.EventId
 }
 
-type Arg_raw_size struct {
-    Index       uint8
-    PartRawSize uint32
-}
-
 func (this *ContextEvent) ParsePadding() (err error) {
-    var arg Arg_raw_size
-    if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
-        panic(err)
-    }
-    // this.logger.Printf("[buf] len:%d cap:%d off:%d", this.buf.Len(), this.buf.Cap(), this.buf.Cap()-this.buf.Len())
-    // this.logger.Printf("[buf] this.rec.SampleSize:%d", this.rec.SampleSize)
-    // PERF_SAMPLE_RAW 末尾可能包含 padding 这里先把
-    // ... nr/probe_index|lr|pc|sp|args...|size_before|padding
-    // // RawSample 这部分读取逻辑后面必须转到这边来处理
-    // // 处理掉 padding
+    // 好在 SampleSize 是明确的 这样我们可以正确计算下一部分 perf 数据起始位置
     // ebpf库改为全部读取之后 这里的 4 是 PERF_SAMPLE_RAW 的 size
     padding_size := this.rec.SampleSize + 4 - uint32(this.buf.Cap()-this.buf.Len())
     if padding_size > 0 {
@@ -184,9 +170,6 @@ func (this *ContextEvent) ParsePadding() (err error) {
             panic(err)
         }
     }
-    // if this.mconf.Debug {
-    //     this.logger.Printf("PartRawSize:%d padding_size:%d", arg.PartRawSize, padding_size)
-    // }
     return nil
 }
 
