@@ -22,42 +22,47 @@ type SPointTypes struct {
 
 func (this *SysCallArgs) ParseFlags(value int32) string {
 	// 借助这个函数对 flags 进行解析 增强可读性
-	var flags_map map[string]int32
+	var ops []FlagOp
 	switch this.PointArgs.PointName {
 	case "openat":
-		flags_map = FileFlags
+		ops = FileFlags
 	case "mmap":
-		flags_map = MapFlags
+		ops = MapFlags
 	case "mremap":
-		flags_map = MreapFlags
+		ops = MreapFlags
 	default:
 		return ""
 	}
-	var info []string
-	for k, v := range flags_map {
-		if value&v == v {
-			info = append(info, k)
-		}
-	}
-	if len(info) > 0 {
-		return "(" + strings.Join(info, "|") + ")"
-	} else {
-		return ""
-	}
+	return this.ParseOp(value, &ops)
 }
 
 func (this *SysCallArgs) ParseProt(value int32) string {
-	var prot_map map[string]int32
+	var ops []FlagOp
 	switch this.PointArgs.PointName {
 	case "mmap":
-		prot_map = ProtFlags
+		ops = ProtFlags
 	default:
 		return ""
 	}
+	return this.ParseOp(value, &ops)
+}
+
+func (this *SysCallArgs) ParseMode(value int32) string {
+	var ops []FlagOp
+	switch this.PointArgs.PointName {
+	case "openat":
+		ops = PermissionFlags
+	default:
+		return ""
+	}
+	return this.ParseOp(value, &ops)
+}
+
+func (this *SysCallArgs) ParseOp(value int32, ops *[]FlagOp) string {
 	var info []string
-	for k, v := range prot_map {
-		if value&v == v {
-			info = append(info, k)
+	for _, op := range *ops {
+		if value&op.Value == op.Value {
+			info = append(info, op.Name)
 		}
 	}
 	if len(info) > 0 {
@@ -93,6 +98,9 @@ const (
 	TYPE_EXP_INT
 	TYPE_INT
 	TYPE_UINT
+	TYPE_INT16
+	TYPE_UINT16
+	TYPE_INT32
 	TYPE_UINT32
 	TYPE_INT64
 	TYPE_UINT64
@@ -132,12 +140,23 @@ func B(arg_name string, arg_type ArgType) PArg {
 }
 
 var NONE = AT(TYPE_NONE, TYPE_NONE, 0)
+
 var EXP_INT = AT(TYPE_EXP_INT, TYPE_NUM, uint32(unsafe.Sizeof(int(0))))
 var INT = AT(TYPE_INT, TYPE_NUM, uint32(unsafe.Sizeof(int(0))))
-var UINT = AT(TYPE_UINT, TYPE_NUM, uint32(unsafe.Sizeof(int(0))))
-var UINT32 = AT(TYPE_UINT32, TYPE_NUM, uint32(unsafe.Sizeof(uint(0))))
-var INT64 = AT(TYPE_INT64, TYPE_NUM, uint32(unsafe.Sizeof(uint64(0))))
+var UINT = AT(TYPE_UINT, TYPE_NUM, uint32(unsafe.Sizeof(uint(0))))
+var INT16 = AT(TYPE_INT16, TYPE_NUM, uint32(unsafe.Sizeof(int16(0))))
+var UINT16 = AT(TYPE_UINT16, TYPE_NUM, uint32(unsafe.Sizeof(uint16(0))))
+var INT32 = AT(TYPE_INT32, TYPE_NUM, uint32(unsafe.Sizeof(int32(0))))
+var UINT32 = AT(TYPE_UINT32, TYPE_NUM, uint32(unsafe.Sizeof(uint32(0))))
+var INT64 = AT(TYPE_INT64, TYPE_NUM, uint32(unsafe.Sizeof(int64(0))))
 var UINT64 = AT(TYPE_UINT64, TYPE_NUM, uint32(unsafe.Sizeof(uint64(0))))
+
+// typedef short unsigned int umode_t;
+var UMODE_T = UINT16.Clone()
+
+// unsigned long
+var ULONG = UINT64.Clone()
+
 var STRING = AT(TYPE_STRING, TYPE_STRING, uint32(unsafe.Sizeof(uint64(0))))
 var STRING_ARR = AT(TYPE_STRING_ARR, TYPE_STRING_ARR, uint32(unsafe.Sizeof(uint64(0))))
 var POINTER = AT(TYPE_POINTER, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
@@ -219,8 +238,8 @@ func init() {
 	Register(&SArgs{30, PA("ioprio_set", []PArg{A("which", INT), A("who", INT), A("ioprio", INT)})})
 	Register(&SArgs{31, PA("ioprio_get", []PArg{A("which", INT), A("who", INT)})})
 	Register(&SArgs{32, PA("flock", []PArg{A("fd", EXP_INT), A("operation", INT)})})
-	Register(&SArgs{33, PA("mknodat", []PArg{A("dfd", INT), A("filename", STRING), A("mode", INT), A("dev", INT)})})
-	Register(&SArgs{34, PA("mkdirat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("mode", INT)})})
+	Register(&SArgs{33, PA("mknodat", []PArg{A("dfd", INT), A("filename", STRING), A("mode", UMODE_T), A("dev", INT)})})
+	Register(&SArgs{34, PA("mkdirat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("mode", UMODE_T)})})
 	Register(&SArgs{35, PA("unlinkat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("flags", EXP_INT)})})
 	Register(&SArgs{36, PA("symlinkat", []PArg{A("target", STRING), A("newdirfd", INT), A("linkpath", STRING)})})
 	Register(&SArgs{37, PA("linkat", []PArg{A("olddirfd", INT), A("oldpath", STRING), A("newdirfd", INT), A("newpath", STRING), A("flags", EXP_INT)})})
@@ -233,16 +252,16 @@ func init() {
 	Register(&SArgs{44, PA("fstatfs", []PArg{A("fd", EXP_INT), B("buf", STATFS)})})
 	Register(&SArgs{45, PA("truncate", []PArg{A("path", STRING), A("length", INT)})})
 	Register(&SArgs{46, PA("ftruncate", []PArg{A("fd", EXP_INT), A("length", INT)})})
-	Register(&SArgs{47, PA("fallocate", []PArg{A("fd", EXP_INT), A("mode", INT), A("offset", INT), A("len", INT)})})
-	Register(&SArgs{48, PA("faccessat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("flags", EXP_INT), A("mode", UINT32)})})
+	Register(&SArgs{47, PA("fallocate", []PArg{A("fd", EXP_INT), A("mode", EXP_INT), A("offset", INT), A("len", INT)})})
+	Register(&SArgs{48, PA("faccessat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("flags", EXP_INT), A("mode", EXP_INT)})})
 	Register(&SArgs{49, PA("chdir", []PArg{A("path", STRING)})})
 	Register(&SArgs{50, PA("fchdir", []PArg{A("fd", EXP_INT)})})
 	Register(&SArgs{51, PA("chroot", []PArg{A("path", STRING)})})
-	Register(&SArgs{52, PA("fchmod", []PArg{A("fd", EXP_INT), A("mode", INT)})})
-	Register(&SArgs{53, PA("fchmodat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("mode", INT), A("flags", EXP_INT)})})
+	Register(&SArgs{52, PA("fchmod", []PArg{A("fd", EXP_INT), A("mode", UMODE_T)})})
+	Register(&SArgs{53, PA("fchmodat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("mode", UMODE_T), A("flags", EXP_INT)})})
 	Register(&SArgs{54, PA("fchownat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("owner", INT), A("group", INT), A("flags", EXP_INT)})})
 	Register(&SArgs{55, PA("fchown", []PArg{A("fd", EXP_INT), A("owner", INT), A("group", INT)})})
-	Register(&SArgs{56, PAI("openat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("flags", EXP_INT), A("mode", UINT32)})})
+	Register(&SArgs{56, PAI("openat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("flags", EXP_INT), A("mode", UMODE_T)})})
 	Register(&SArgs{57, PA("close", []PArg{A("fd", EXP_INT)})})
 	Register(&SArgs{58, PA("vhangup", []PArg{})})
 	Register(&SArgs{59, PA("pipe2", []PArg{B("pipefd", POINTER), A("flags", EXP_INT)})})
@@ -353,7 +372,7 @@ func init() {
 	Register(&SArgs{163, PA("getrlimit", []PArg{A("resource", INT), B("rlim", POINTER)})})
 	Register(&SArgs{164, PA("setrlimit", []PArg{A("resource", UTSNAME), A("rlim", POINTER)})})
 	Register(&SArgs{165, PA("getrusage", []PArg{A("who", INT), B("usage", RUSAGE)})})
-	Register(&SArgs{166, PA("umask", []PArg{A("mode", INT)})})
+	Register(&SArgs{166, PA("umask", []PArg{A("mode", EXP_INT)})})
 	Register(&SArgs{167, PA("prctl", []PArg{A("option", INT), A("arg2", UINT64), A("arg3", UINT64), A("arg4", UINT64), A("arg5", UINT64)})})
 	Register(&SArgs{168, PA("getcpu", []PArg{A("cpup", INT), A("nodep", INT), A("unused", POINTER)})})
 	Register(&SArgs{169, PA("gettimeofday", []PArg{B("tv", TIMEVAL), B("tz", TIMEZONE)})})
@@ -367,7 +386,7 @@ func init() {
 	Register(&SArgs{177, PA("getegid", []PArg{})})
 	Register(&SArgs{178, PA("gettid", []PArg{})})
 	Register(&SArgs{179, PA("sysinfo", []PArg{B("info", SYSINFO)})})
-	Register(&SArgs{180, PA("mq_open", []PArg{A("u_name", STRING), A("oflag", INT), A("mode", INT), A("u_attr", POINTER)})})
+	Register(&SArgs{180, PA("mq_open", []PArg{A("u_name", STRING), A("oflag", INT), A("mode", UMODE_T), A("u_attr", POINTER)})})
 	Register(&SArgs{181, PA("mq_unlink", []PArg{A("u_name", STRING)})})
 	Register(&SArgs{182, PA("mq_timedsend", []PArg{A("mqdes", INT), A("u_msg_ptr", STRING), A("msg_len", INT), A("msg_prio", INT), A("u_abs_timeout", TIMESPEC)})})
 	Register(&SArgs{183, PA("mq_timedreceive", []PArg{A("mqdes", INT), A("u_msg_ptr", STRING), A("msg_len", INT), A("u_msg_prio", INT), A("u_abs_timeout", TIMESPEC)})})
@@ -422,9 +441,9 @@ func init() {
 	Register(&SArgs{232, PA("mincore", []PArg{A("start", INT), A("len", INT), A("vec", STRING)})})
 	Register(&SArgs{233, PA("madvise", []PArg{A("addr", POINTER), A("len", INT), A("advice", INT)})})
 	Register(&SArgs{234, PA("remap_file_pages", []PArg{A("start", INT), A("size", INT), A("prot", EXP_INT), A("pgoff", INT), A("flags", EXP_INT)})})
-	Register(&SArgs{235, PA("mbind", []PArg{A("start", INT), A("len", INT), A("mode", INT), A("nmask", INT), A("maxnode", INT), A("flags", EXP_INT)})})
+	Register(&SArgs{235, PA("mbind", []PArg{A("start", ULONG), A("len", ULONG), A("mode", ULONG), A("nmask", INT), A("maxnode", INT), A("flags", EXP_INT)})})
 	Register(&SArgs{236, PA("get_mempolicy", []PArg{A("policy", INT), A("nmask", INT), A("maxnode", INT), A("addr", INT), A("flags", EXP_INT)})})
-	Register(&SArgs{237, PA("set_mempolicy", []PArg{A("mode", INT), A("nmask", INT), A("maxnode", INT)})})
+	Register(&SArgs{237, PA("set_mempolicy", []PArg{A("mode", EXP_INT), A("nmask", INT), A("maxnode", INT)})})
 	Register(&SArgs{238, PA("migrate_pages", []PArg{A("pid", INT), A("maxnode", INT), A("old_nodes", INT), A("new_nodes", INT)})})
 	Register(&SArgs{239, PA("move_pages", []PArg{A("pid", INT), A("nr_pages", INT), A("pages", POINTER), A("nodes", INT), A("status", INT), A("flags", EXP_INT)})})
 	Register(&SArgs{240, PA("rt_tgsigqueueinfo", []PArg{A("tgid", INT), A("tid", INT), A("sig", INT), A("siginfo", SIGINFO)})})
@@ -481,7 +500,7 @@ func init() {
 	Register(&SArgs{436, PA("close_range", []PArg{A("fd", EXP_INT), A("max_fd", INT), A("flags", EXP_INT)})})
 	Register(&SArgs{437, PA("openat2", []PArg{A("dfd", INT), A("filename", STRING), A("how", POINTER), A("usize", INT)})})
 	Register(&SArgs{438, PA("pidfd_getfd", []PArg{A("pidfd", INT), A("fd", EXP_INT), A("flags", EXP_INT)})})
-	Register(&SArgs{439, PA("faccessat2", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("flags", EXP_INT), A("mode", UINT32)})})
+	Register(&SArgs{439, PA("faccessat2", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("flags", EXP_INT), A("mode", EXP_INT)})})
 	Register(&SArgs{440, PA("process_madvise", []PArg{A("pidfd", INT), A("vec", POINTER), A("vlen", INT), A("behavior", INT), A("flags", EXP_INT)})})
 	Register(&SArgs{441, PA("epoll_pwait2", []PArg{A("epfd", INT), A("events", POINTER), A("maxevents", INT), A("timeout", TIMESPEC), A("sigmask", POINTER), A("sigsetsize", INT)})})
 	Register(&SArgs{442, PA("mount_setattr", []PArg{A("dfd", INT), A("path", STRING), A("flags", EXP_INT), A("uattr", POINTER), A("usize", INT)})})

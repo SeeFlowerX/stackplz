@@ -33,6 +33,9 @@ type ArgType struct {
 type IWatchPoint interface {
 	Name() string
 	Format() string
+	ParseFlags(int32) string
+	ParseProt(int32) string
+	ParseMode(int32) string
 	Clone() IWatchPoint
 }
 
@@ -66,24 +69,22 @@ func (this *PointArg) AppendValue(value string) {
 	this.ArgValue += value
 }
 
-func (this *PointArg) Format(watch_point IWatchPoint, value uint64) string {
-	// 暂时只对 TYPE_NUM 处理
+func (this *PointArg) Format(p IWatchPoint, value uint64) string {
+	switch this.ArgType {
+	case UMODE_T:
+		value_fixed := int32(uint16(value))
+		this.ArgValue = fmt.Sprintf("%s=0x%x%s", this.ArgName, value_fixed, p.ParseMode(value_fixed))
+		return this.ArgValue
+	}
 	switch this.AliasType {
 	case TYPE_EXP_INT:
 		value_fixed := int32(value)
-		if this.ArgName == "flags" || this.ArgName == "prot" {
-			p, ok := (watch_point).(*SysCallArgs)
-			if !ok {
-				panic("cast watchpoint to SysCallArgs failed")
-			}
-			var value_str string
-			if this.ArgName == "flags" {
-				value_str = p.ParseFlags(value_fixed)
-			} else {
-				value_str = p.ParseProt(value_fixed)
-			}
-			this.ArgValue = fmt.Sprintf("%s=0x%x%s", this.ArgName, value_fixed, value_str)
-		} else {
+		switch this.ArgName {
+		case "flags":
+			this.ArgValue = fmt.Sprintf("%s=0x%x%s", this.ArgName, value_fixed, p.ParseFlags(value_fixed))
+		case "prot":
+			this.ArgValue = fmt.Sprintf("%s=0x%x%s", this.ArgName, value_fixed, p.ParseProt(value_fixed))
+		default:
 			this.ArgValue = fmt.Sprintf("%s=%d", this.ArgName, value_fixed)
 		}
 	case TYPE_INT64:
@@ -219,6 +220,15 @@ func (this *PointArgs) Format() string {
 
 func (this *PointArgs) Name() string {
 	return this.PointName
+}
+func (this *PointArgs) ParseFlags(value int32) string {
+	panic("PointArgs.ParseFlags() not implemented yet")
+}
+func (this *PointArgs) ParseProt(value int32) string {
+	panic("PointArgs.ParseProt() not implemented yet")
+}
+func (this *PointArgs) ParseMode(value int32) string {
+	panic("PointArgs.ParseMode() not implemented yet")
 }
 
 func NewWatchPoint(name string) IWatchPoint {
