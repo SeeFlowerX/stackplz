@@ -66,7 +66,13 @@ func ParseArgType(arg_str string) (ArgType, error) {
     }
     switch arg_desc {
     case "int":
-        arg_type = INT
+        arg_type = EXP_INT
+    case "uint":
+        arg_type = UINT32
+    case "int64":
+        arg_type = INT64
+    case "uint64":
+        arg_type = UINT64
     case "str":
         arg_type = STRING
     case "ptr":

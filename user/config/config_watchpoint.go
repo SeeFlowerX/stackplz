@@ -93,6 +93,9 @@ func (this *PointArg) Format(watch_point IWatchPoint, value uint64) string {
 		} else {
 			this.ArgValue = fmt.Sprintf("%s=0x%x", this.ArgName, value_fixed)
 		}
+	case TYPE_UINT32:
+		value_fixed := uint32(value)
+		this.ArgValue = fmt.Sprintf("%s=0x%x", this.ArgName, value_fixed)
 	default:
 		this.ArgValue = fmt.Sprintf("%s=0x%x", this.ArgName, value)
 	}
