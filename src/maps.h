@@ -33,8 +33,18 @@ BPF_PERF_OUTPUT(events, 1024);      // events submission
 BPF_HASH(args_map, u64, args_t, 1024);                             // persist args between function entry and return
 BPF_HASH(child_parent_map, u32, u32, 512);
 BPF_HASH(common_filter, u32, common_filter_t, 1);
-BPF_HASH(sys_whitelist, u32, u32, 40);
-BPF_HASH(sys_blacklist, u32, u32, 40);
+
+// 对于这同一类的map 即key和value都是u32 可以给它们分配一个偏移
+// 这样它们会在不同范围而不会干扰 那么好几个map就可以简化到一个了
+BPF_HASH(common_list, u32, u32, 1024);
+
+// BPF_HASH(sys_whitelist, u32, u32, 40);
+// BPF_HASH(sys_blacklist, u32, u32, 40);
+// BPF_HASH(trace_uid_whitelist, u32, u32, 40);
+// BPF_HASH(trace_uid_blacklist, u32, u32, 40);
+// BPF_HASH(trace_pid_whitelist, u32, u32, 40);
+// BPF_HASH(trace_pid_blacklist, u32, u32, 40);
+
 BPF_HASH(thread_filter, thread_name_t, u32, 40);
 BPF_HASH(rev_filter, rev_string_t, u32, 40);
 BPF_PERCPU_ARRAY(event_data_map, event_data_t, 1);

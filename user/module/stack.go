@@ -235,7 +235,35 @@ func (this *MStack) update_base_config() {
     this.update_map(map_name, filter_key, unsafe.Pointer(&filter_value))
 }
 
+func (this *MStack) update_common_list(items []uint32, offset uint32) {
+    map_name := "common_list"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    for _, v := range items {
+        v += offset
+        err := bpf_map.Update(unsafe.Pointer(&v), unsafe.Pointer(&v), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+    if this.mconf.Debug {
+        p, ok := util.START_OFFSETS[offset]
+        if !ok {
+            panic(fmt.Sprintf("offset%d invalid", offset))
+        }
+        this.logger.Printf("update %s success, count:%d offset:%s", map_name, len(items), p)
+    }
+}
+
 func (this *MStack) update_common_filter() {
+    this.update_common_list(this.mconf.UidWhitelist, util.UID_WHITELIST_START)
+    this.update_common_list(this.mconf.UidBlacklist, util.UID_BLACKLIST_START)
+    this.update_common_list(this.mconf.PidWhitelist, util.PID_WHITELIST_START)
+    this.update_common_list(this.mconf.PidBlacklist, util.PID_BLACKLIST_START)
+    this.update_common_list(this.mconf.TidWhitelist, util.TID_WHITELIST_START)
+    this.update_common_list(this.mconf.TidBlacklist, util.TID_BLACKLIST_START)
     var filter_key uint32 = 0
     map_name := "common_filter"
     filter_value := this.mconf.GetCommonFilter()
@@ -243,13 +271,11 @@ func (this *MStack) update_common_filter() {
 }
 
 func (this *MStack) update_child_parent() {
-    if this.mconf.Pid == config.MAGIC_PID {
-        return
-    }
-    var filter_key uint32 = this.mconf.Pid
+    // 这个可以合并到 common_list 后面改进
     map_name := "child_parent_map"
-    filter_value := this.mconf.Pid
-    this.update_map(map_name, filter_key, unsafe.Pointer(&filter_value))
+    for _, v := range this.mconf.PidWhitelist {
+        this.update_map(map_name, v, unsafe.Pointer(&v))
+    }
 }
 
 func (this *MStack) update_thread_filter() {
@@ -349,40 +375,6 @@ func (this *MStack) update_rev_filter() {
     }
 }
 
-func (this *MStack) update_syscall_blacklist() {
-    map_name := "sys_blacklist"
-    bpf_map, err := this.FindMap(map_name)
-    if err != nil {
-        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
-    }
-    for _, v := range this.mconf.SysCallConf.GetBlackList() {
-        err := bpf_map.Update(unsafe.Pointer(&v), unsafe.Pointer(&v), ebpf.UpdateAny)
-        if err != nil {
-            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
-        }
-    }
-    if this.mconf.Debug {
-        this.logger.Printf("update %s success", map_name)
-    }
-}
-
-func (this *MStack) update_syscall_whitelist() {
-    map_name := "sys_whitelist"
-    bpf_map, err := this.FindMap(map_name)
-    if err != nil {
-        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
-    }
-    for _, v := range this.mconf.SysCallConf.GetWhiteList() {
-        err := bpf_map.Update(unsafe.Pointer(&v), unsafe.Pointer(&v), ebpf.UpdateAny)
-        if err != nil {
-            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
-        }
-    }
-    if this.mconf.Debug {
-        this.logger.Printf("update %s success", map_name)
-    }
-}
-
 func (this *MStack) update_syscall_filter() {
     var filter_key uint32 = 0
     map_name := "syscall_filter"
@@ -420,9 +412,10 @@ func (this *MStack) update_syscall_config() {
     }
     this.update_syscall_point_args()
     this.update_syscall_filter()
-    this.update_syscall_whitelist()
-    this.update_syscall_blacklist()
+    this.update_common_list(this.mconf.SysCallConf.SysWhitelist, util.SYS_WHITELIST_START)
+    this.update_common_list(this.mconf.SysCallConf.SysBlacklist, util.SYS_BLACKLIST_START)
 }
+
 func (this *MStack) update_stack_config() {
     if !this.mconf.StackUprobeConf.IsEnable() {
         return

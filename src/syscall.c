@@ -128,7 +128,8 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     if (filter->trace_mode == 0) {
         // 非 追踪全部syscall模式
         if (filter->whitelist_mode == 1) {
-            u32 *flag = bpf_map_lookup_elem(&sys_whitelist, &sysno);
+            u32 expected_key = sysno + SYS_WHITELIST_START;
+            u32 *flag = bpf_map_lookup_elem(&common_list, &expected_key);
             if (flag == NULL) {
                 return 0;
             }
@@ -137,7 +138,8 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
     // 黑名单同样对 追踪全部syscall模式 有效
     if (filter->blacklist_mode == 1) {
-        u32 *flag = bpf_map_lookup_elem(&sys_blacklist, &sysno);
+        u32 expected_key = sysno + SYS_BLACKLIST_START;
+        u32 *flag = bpf_map_lookup_elem(&common_list, &expected_key);
         if (flag != NULL) {
             return 0;
         }
@@ -279,7 +281,8 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     if (filter->trace_mode == 0) {
         // 非 追踪全部syscall模式
         if (filter->whitelist_mode == 1) {
-            u32 *flag = bpf_map_lookup_elem(&sys_whitelist, &sysno);
+            u32 expected_key = sysno + SYS_WHITELIST_START;
+            u32 *flag = bpf_map_lookup_elem(&common_list, &expected_key);
             if (flag == NULL) {
                 return 0;
             }
@@ -288,7 +291,8 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
 
     // 黑名单同样对 追踪全部syscall模式 有效
     if (filter->blacklist_mode == 1) {
-        u32 *flag = bpf_map_lookup_elem(&sys_blacklist, &sysno);
+        u32 expected_key = sysno + SYS_BLACKLIST_START;
+        u32 *flag = bpf_map_lookup_elem(&common_list, &expected_key);
         if (flag != NULL) {
             return 0;
         }

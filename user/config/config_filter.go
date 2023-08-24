@@ -14,7 +14,7 @@ type CommonFilter struct {
 	blacklist_pids        [MAX_COUNT]uint32
 	blacklist_tids        [MAX_COUNT]uint32
 	thread_name_whitelist uint32
-	trace_isolated        uint32
+	trace_uid_group       uint32
 	signal                uint32
 }
 
@@ -43,6 +43,10 @@ func (this *SyscallFilter) SetArch(is_32bit bool) {
 
 func (this *SyscallFilter) SetTraceMode(mode uint32) {
 	this.trace_mode = mode
+}
+
+func (this *SyscallFilter) GetTraceMode() uint32 {
+	return this.trace_mode
 }
 
 func (this *SyscallFilter) SetWhitelistMode(flag bool) {

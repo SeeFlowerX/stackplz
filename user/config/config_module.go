@@ -10,6 +10,8 @@ import (
     "strconv"
     "strings"
     "unsafe"
+
+    "golang.org/x/exp/slices"
 )
 
 type StackUprobeConfig struct {
@@ -252,12 +254,12 @@ func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
 }
 
 type SyscallConfig struct {
-    logger            *log.Logger
-    debug             bool
-    Enable            bool
-    syscall_ilter     SyscallFilter
-    syscall_whitelist []uint32
-    syscall_blacklist []uint32
+    logger         *log.Logger
+    debug          bool
+    Enable         bool
+    syscall_filter SyscallFilter
+    SysWhitelist   []uint32
+    SysBlacklist   []uint32
 }
 
 func (this *SyscallConfig) SetDebug(debug bool) {
@@ -268,65 +270,131 @@ func (this *SyscallConfig) SetLogger(logger *log.Logger) {
 }
 
 func (this *SyscallConfig) GetSyscallFilter() SyscallFilter {
-    return this.syscall_ilter
+    return this.syscall_filter
 }
 
-func (this *SyscallConfig) GetWhiteList() []uint32 {
-    return this.syscall_whitelist
-}
-
-func (this *SyscallConfig) GetBlackList() []uint32 {
-    return this.syscall_blacklist
-}
-
-func (this *SyscallConfig) SetSysCallWhiteList(syscall string) error {
+func (this *SyscallConfig) Parse_SysWhitelist(syscall string) {
+    if syscall == "" {
+        this.Enable = false
+        return
+    }
     this.Enable = true
-    this.syscall_ilter.SetTraceMode(TRACE_COMMON)
+    this.syscall_filter.SetTraceMode(TRACE_COMMON)
     if syscall == "all" {
-        this.syscall_ilter.SetTraceMode(TRACE_ALL)
+        this.syscall_filter.SetTraceMode(TRACE_ALL)
     } else if syscall == "%file" {
-        this.syscall_ilter.SetTraceMode(TRACE_FILE)
+        this.syscall_filter.SetTraceMode(TRACE_FILE)
     } else if syscall == "%process" {
-        this.syscall_ilter.SetTraceMode(TRACE_PROCESS)
+        this.syscall_filter.SetTraceMode(TRACE_PROCESS)
     } else if syscall == "%net" {
-        this.syscall_ilter.SetTraceMode(TRACE_NET)
+        this.syscall_filter.SetTraceMode(TRACE_NET)
     } else if syscall == "%signal" {
-        this.syscall_ilter.SetTraceMode(TRACE_SIGNAL)
+        this.syscall_filter.SetTraceMode(TRACE_SIGNAL)
     } else if syscall == "%stat" {
-        this.syscall_ilter.SetTraceMode(TRACE_STAT)
+        this.syscall_filter.SetTraceMode(TRACE_STAT)
     } else {
         items := strings.Split(syscall, ",")
-        if len(items) > MAX_COUNT {
-            return fmt.Errorf("max syscall whitelist count is %d, provided count:%d", MAX_COUNT, len(items))
-        }
+        var syscall_items []string
         for _, v := range items {
+            switch v {
+            case "all":
+                this.syscall_filter.SetTraceMode(TRACE_ALL)
+            case "%attr":
+                this.syscall_filter.SetTraceMode(TRACE_FILE)
+                syscall_items = append(syscall_items, []string{"setxattr", "lsetxattr", "fsetxattr"}...)
+                syscall_items = append(syscall_items, []string{"getxattr", "lgetxattr", "fgetxattr"}...)
+                syscall_items = append(syscall_items, []string{"listxattr", "llistxattr", "flistxattr"}...)
+                syscall_items = append(syscall_items, []string{"removexattr", "lremovexattr", "fremovexattr"}...)
+            case "%file":
+                this.syscall_filter.SetTraceMode(TRACE_FILE)
+                syscall_items = append(syscall_items, []string{"openat", "openat2", "faccessat", "faccessat2", "mknodat", "mkdirat"}...)
+                syscall_items = append(syscall_items, []string{"unlinkat", "symlinkat", "linkat", "renameat", "renameat2", "readlinkat"}...)
+                syscall_items = append(syscall_items, []string{"chdir", "fchdir", "chroot", "fchmod", "fchmodat", "fchownat", "fchown"}...)
+            case "%process":
+                this.syscall_filter.SetTraceMode(TRACE_PROCESS)
+                syscall_items = append(syscall_items, []string{"clone", "clone3"}...)
+                syscall_items = append(syscall_items, []string{"execve", "execveat"}...)
+                syscall_items = append(syscall_items, []string{"wait4", "waitid"}...)
+                syscall_items = append(syscall_items, []string{"exit", "exit_group", "rt_sigqueueinfo"}...)
+                syscall_items = append(syscall_items, []string{"kill", "tkill", "tgkill"}...)
+                syscall_items = append(syscall_items, []string{"pidfd_send_signal", "pidfd_open", "pidfd_getfd"}...)
+            case "%net":
+                this.syscall_filter.SetTraceMode(TRACE_NET)
+                syscall_items = append(syscall_items, "socket")
+                syscall_items = append(syscall_items, "socketpair")
+                syscall_items = append(syscall_items, "bind")
+                syscall_items = append(syscall_items, "listen")
+                syscall_items = append(syscall_items, "accept")
+                syscall_items = append(syscall_items, "connect")
+                syscall_items = append(syscall_items, "getsockname")
+                syscall_items = append(syscall_items, "getpeername")
+                syscall_items = append(syscall_items, "sendto")
+                syscall_items = append(syscall_items, "recvfrom")
+                syscall_items = append(syscall_items, "setsockopt")
+                syscall_items = append(syscall_items, "getsockopt")
+                syscall_items = append(syscall_items, "shutdown")
+                syscall_items = append(syscall_items, "recvmsg")
+                syscall_items = append(syscall_items, "sendmsg")
+                syscall_items = append(syscall_items, "recvmmsg")
+                syscall_items = append(syscall_items, "sendmmsg")
+                syscall_items = append(syscall_items, "accept4")
+            case "%signal":
+                this.syscall_filter.SetTraceMode(TRACE_SIGNAL)
+                syscall_items = append(syscall_items, "sigaltstack")
+                syscall_items = append(syscall_items, "rt_sigsuspend")
+                syscall_items = append(syscall_items, "rt_sigaction")
+                syscall_items = append(syscall_items, "rt_sigprocmask")
+                syscall_items = append(syscall_items, "rt_sigpending")
+                syscall_items = append(syscall_items, "rt_sigtimedwait")
+                syscall_items = append(syscall_items, "rt_sigqueueinfo")
+                syscall_items = append(syscall_items, "rt_sigreturn")
+                syscall_items = append(syscall_items, "rt_tgsigqueueinfo")
+                syscall_items = append(syscall_items, "kill")
+                syscall_items = append(syscall_items, "tkill")
+                syscall_items = append(syscall_items, "tgkill")
+            case "%stat":
+                this.syscall_filter.SetTraceMode(TRACE_STAT)
+                syscall_items = append(syscall_items, "statfs")
+                syscall_items = append(syscall_items, "fstatfs")
+                syscall_items = append(syscall_items, "newfstatat")
+                syscall_items = append(syscall_items, "fstat")
+                syscall_items = append(syscall_items, "statx")
+            default:
+                syscall_items = append(syscall_items, v)
+            }
+        }
+        // 去重
+        var unique_items []string
+        if this.syscall_filter.GetTraceMode() != TRACE_ALL {
+            for _, v := range syscall_items {
+                if !slices.Contains(unique_items, v) {
+                    unique_items = append(unique_items, v)
+                }
+            }
+        }
+        for _, v := range unique_items {
             point := GetWatchPointByName(v)
             nr_point, ok := (point).(*SysCallArgs)
             if !ok {
-                return errors.New(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
+                panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
             }
-            this.syscall_whitelist = append(this.syscall_whitelist, uint32(nr_point.NR))
+            this.SysWhitelist = append(this.SysWhitelist, uint32(nr_point.NR))
         }
-        this.syscall_ilter.SetWhitelistMode(len(this.syscall_whitelist) > 0)
+        this.syscall_filter.SetWhitelistMode(len(this.SysWhitelist) > 0)
     }
-    return nil
 }
 
-func (this *SyscallConfig) SetSysCallBlacklist(syscall_blacklist string) error {
+func (this *SyscallConfig) Parse_SysBlacklist(syscall_blacklist string) {
     items := strings.Split(syscall_blacklist, ",")
-    if len(items) > MAX_COUNT {
-        return fmt.Errorf("max syscall blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
-    }
     for _, v := range items {
         point := GetWatchPointByName(v)
         nr_point, ok := (point).(*SysCallArgs)
         if !ok {
             panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
         }
-        this.syscall_blacklist = append(this.syscall_blacklist, uint32(nr_point.NR))
+        this.SysBlacklist = append(this.SysBlacklist, uint32(nr_point.NR))
     }
-    this.syscall_ilter.SetWhitelistMode(len(this.syscall_blacklist) > 0)
-    return nil
+    this.syscall_filter.SetBlacklistMode(len(this.SysBlacklist) > 0)
 }
 
 func (this *SyscallConfig) IsEnable() bool {
@@ -335,7 +403,7 @@ func (this *SyscallConfig) IsEnable() bool {
 
 func (this *SyscallConfig) Info() string {
     var watchlist []string
-    for _, v := range this.syscall_whitelist {
+    for _, v := range this.SysWhitelist {
         point := GetWatchPointByNR(v)
         nr_point, ok := (point).(*SysCallArgs)
         if !ok {
@@ -349,11 +417,16 @@ func (this *SyscallConfig) Info() string {
 type ModuleConfig struct {
     BaseConfig
 
-    SelfPid       uint32
-    FilterMode    uint32
-    Uid           uint32
-    Pid           uint32
-    Tid           uint32
+    SelfPid    uint32
+    FilterMode uint32
+
+    UidWhitelist []uint32
+    UidBlacklist []uint32
+    PidWhitelist []uint32
+    PidBlacklist []uint32
+    TidWhitelist []uint32
+    TidBlacklist []uint32
+
     TraceIsolated bool
     HideRoot      bool
     UprobeSignal  uint32
@@ -370,15 +443,11 @@ type ModuleConfig struct {
     Color         bool
     DumpHex       bool
 
-    TidsBlacklistMask uint32
-    TidsBlacklist     [MAX_COUNT]uint32
-    PidsBlacklistMask uint32
-    PidsBlacklist     [MAX_COUNT]uint32
-    TNamesWhitelist   []string
-    TNamesBlacklist   []string
-    Name              string
-    StackUprobeConf   *StackUprobeConfig
-    SysCallConf       *SyscallConfig
+    TNamesWhitelist []string
+    TNamesBlacklist []string
+    Name            string
+    StackUprobeConf *StackUprobeConfig
+    SysCallConf     *SyscallConfig
 }
 
 func NewModuleConfig() *ModuleConfig {
@@ -386,15 +455,6 @@ func NewModuleConfig() *ModuleConfig {
     config.SelfPid = uint32(os.Getpid())
     config.FilterMode = util.UNKNOWN_MODE
     // 虽然会通过全局配置进程覆盖 但是还是做好在初始化时就进行默认赋值
-    config.Uid = MAGIC_UID
-    config.Pid = MAGIC_PID
-    config.Tid = MAGIC_TID
-    for i := 0; i < len(config.PidsBlacklist); i++ {
-        config.PidsBlacklist[i] = MAGIC_PID
-    }
-    for i := 0; i < len(config.TidsBlacklist); i++ {
-        config.PidsBlacklist[i] = MAGIC_TID
-    }
     return config
 }
 
@@ -416,89 +476,113 @@ func (this *ModuleConfig) Info() string {
     return fmt.Sprintf("-")
 }
 
-func (this *ModuleConfig) SetTidsBlacklist(tids_blacklist string) error {
+func (this *ModuleConfig) Parse_TidBlacklist(tids_blacklist string) {
     if tids_blacklist == "" {
-        return nil
+        return
     }
-    this.TidsBlacklistMask = 0
     items := strings.Split(tids_blacklist, ",")
     if len(items) > MAX_COUNT {
-        return fmt.Errorf("max tid blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
+        panic(fmt.Sprintf("max tid blacklist count is %d, provided count:%d", MAX_COUNT, len(items)))
     }
-    for i, v := range items {
-        value, _ := strconv.ParseUint(v, 10, 32)
-        this.TidsBlacklist[i] = uint32(value)
-        this.TidsBlacklistMask |= (1 << i)
+    for _, v := range items {
+        value, err := strconv.ParseUint(v, 10, 32)
+        if err != nil {
+            panic(err)
+        }
+        this.TidBlacklist = append(this.TidBlacklist, uint32(value))
     }
-    return nil
 }
 
-func (this *ModuleConfig) SetPidsBlacklist(pids_blacklist string) error {
+func (this *ModuleConfig) Parse_PidBlacklist(pids_blacklist string) {
     if pids_blacklist == "" {
-        return nil
+        return
     }
-    this.PidsBlacklistMask = 0
     items := strings.Split(pids_blacklist, ",")
     if len(items) > MAX_COUNT {
-        return fmt.Errorf("max pid blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
+        panic(fmt.Sprintf("max pid blacklist count is %d, provided count:%d", MAX_COUNT, len(items)))
     }
-    for i, v := range items {
-        value, _ := strconv.ParseUint(v, 10, 32)
-        this.PidsBlacklist[i] = uint32(value)
-        this.PidsBlacklistMask |= (1 << i)
+    for _, v := range items {
+        value, err := strconv.ParseUint(v, 10, 32)
+        if err != nil {
+            panic(err)
+        }
+        this.PidBlacklist = append(this.PidBlacklist, uint32(value))
     }
-    return nil
 }
-func (this *ModuleConfig) SetTNamesBlacklist(t_names_blacklist string) error {
+func (this *ModuleConfig) Parse_Idlist(list_key, id_list string) {
+    if id_list == "" {
+        return
+    }
+    items := strings.Split(id_list, ",")
+    if len(items) > MAX_COUNT {
+        panic(fmt.Sprintf("max %s count is %d, provided count:%d", list_key, MAX_COUNT, len(items)))
+    }
+    for _, v := range items {
+        value, err := strconv.ParseUint(v, 10, 32)
+        if err != nil {
+            panic(err)
+        }
+        item_value := uint32(value)
+        switch list_key {
+        case "UidWhitelist":
+            this.UidWhitelist = append(this.UidWhitelist, item_value)
+        case "UidBlacklist":
+            this.UidBlacklist = append(this.UidBlacklist, item_value)
+        case "PidWhitelist":
+            this.PidWhitelist = append(this.PidWhitelist, item_value)
+        case "PidBlacklist":
+            this.PidBlacklist = append(this.PidBlacklist, item_value)
+        case "TidWhitelist":
+            this.TidWhitelist = append(this.TidWhitelist, item_value)
+        case "TidBlacklist":
+            this.TidBlacklist = append(this.TidBlacklist, item_value)
+        default:
+            panic(fmt.Sprintf("unknown list_key:%s", list_key))
+        }
+    }
+}
+
+func (this *ModuleConfig) SetTNamesBlacklist(t_names_blacklist string) {
     if t_names_blacklist == "" {
-        return nil
+        return
     }
     items := strings.Split(t_names_blacklist, ",")
     if len(items) > MAX_COUNT {
-        return fmt.Errorf("max thread name blacklist count is %d, provided count:%d", MAX_COUNT, len(items))
+        panic(fmt.Sprintf("max thread name blacklist count is %d, provided count:%d", MAX_COUNT, len(items)))
     }
     for _, v := range items {
         this.TNamesBlacklist = append(this.TNamesBlacklist, v)
     }
-    return nil
 }
-func (this *ModuleConfig) SetTNamesWhitelist(t_names_blacklist string) error {
+func (this *ModuleConfig) SetTNamesWhitelist(t_names_blacklist string) {
     if t_names_blacklist == "" {
-        return nil
+        return
     }
     items := strings.Split(t_names_blacklist, ",")
     if len(items) > MAX_COUNT {
-        return fmt.Errorf("max thread name whitelist count is %d, provided count:%d", MAX_COUNT, len(items))
+        panic(fmt.Sprintf("max thread name whitelist count is %d, provided count:%d", MAX_COUNT, len(items)))
     }
     for _, v := range items {
         this.TNamesWhitelist = append(this.TNamesWhitelist, v)
     }
-    return nil
 }
 
 func (this *ModuleConfig) GetCommonFilter() CommonFilter {
     filter := CommonFilter{}
     filter.is_32bit = 0
-    filter.uid = this.Uid
-    filter.pid = this.Pid
-    filter.tid = this.Tid
+
     // 这些暂时硬编码
     for i := 0; i < MAX_COUNT; i++ {
         filter.pid_list[i] = MAGIC_PID
     }
-    for i := 0; i < MAX_COUNT; i++ {
-        filter.blacklist_pids[i] = this.PidsBlacklist[i]
-    }
-    for i := 0; i < MAX_COUNT; i++ {
-        filter.blacklist_tids[i] = this.TidsBlacklist[i]
-    }
+
     filter.thread_name_whitelist = 0
     if len(this.TNamesWhitelist) > 0 {
         filter.thread_name_whitelist = 1
     }
-    filter.trace_isolated = 0
+    filter.trace_uid_group = 0
     if this.TraceIsolated {
-        filter.trace_isolated = 1
+        filter.trace_uid_group = 1
     }
     filter.signal = this.UprobeSignal
     if this.Debug {

@@ -59,7 +59,19 @@ static __always_inline u64 should_trace(program_data_t *p)
     if (filter == NULL) {
         return 0;
     }
-    if ((filter->trace_isolated == 1) && (context->uid >= 99000) && (context->uid <= 99999)) {
+    if (((filter->trace_uid_group & GROUP_ROOT) == GROUP_ROOT) && (context->uid == 0)) {
+        return 1;
+    }
+    if (((filter->trace_uid_group & GROUP_SYSTEM) == GROUP_SYSTEM) && (context->uid == 1000)) {
+        return 1;
+    }
+    if (((filter->trace_uid_group & GROUP_SHELL) == GROUP_SHELL) && (context->uid == 2000)) {
+        return 1;
+    }
+    if (((filter->trace_uid_group & GROUP_APP) == GROUP_APP) && (context->uid >= 10000) && (context->uid <= 19999)) {
+        return 1;
+    }
+    if (((filter->trace_uid_group & GROUP_ISO) == GROUP_ISO) && (context->uid >= 99000) && (context->uid <= 99999)) {
         return 1;
     }
 

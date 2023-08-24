@@ -12,7 +12,7 @@ typedef struct common_filter {
     u32 blacklist_pids[MAX_COUNT];
     u32 blacklist_tids[MAX_COUNT];
     u32 thread_name_whitelist;
-    u32 trace_isolated;
+    u32 trace_uid_group;
     u32 signal;
 } common_filter_t;
 
@@ -40,6 +40,16 @@ enum filter_mode_e
     UID_MODE,
     PID_MODE,
     PID_TID_MODE
+};
+
+enum trace_group_e
+{
+    GROUP_NONE = 1 << 0,
+    GROUP_ROOT = 1 << 1,
+    GROUP_SYSTEM = 1 << 2,
+    GROUP_SHELL = 1 << 3,
+    GROUP_APP = 1 << 4,
+    GROUP_ISO = 1 << 5,
 };
 
 enum event_id_e

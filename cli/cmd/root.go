@@ -169,54 +169,27 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         os.Exit(0)
     }
 
-    // 第二步 通过包名获取uid和库路径 先通过pm命令获取安装位置
-    // 支持设置单独的pid，但是要排除程序本身的pid
-    if gconfig.Name != "" {
-        err = parseByPackage(gconfig.Name)
-        if err != nil {
-            return err
-        }
-        if gconfig.Uid == config.MAGIC_UID {
-            logger.Fatalf("get uid by package name:%s failed", gconfig.Name)
-        }
-        // 如果说是系统APP 那么这里解析出来的uid是2000 应该用 PID_MODE
-        if gconfig.Uid == 2000 {
-            // 这里现在还有一种情况没有继续适配
-            // 如果系统APP这个时候还没有运行 那么实际上没有pid...
-            mconfig.FilterMode = util.PID_MODE
-            panic("watch system app by --name not supported yet, plz use --pid")
-        } else {
-            mconfig.FilterMode = util.UID_MODE
-        }
-    } else if gconfig.Uid != config.MAGIC_UID {
-        err = parseByUid(gconfig.Uid)
-        if err != nil {
-            return err
-        }
-        mconfig.FilterMode = util.UID_MODE
-    } else if gconfig.Pid != 0 {
-        if gconfig.Tid != config.MAGIC_TID {
-            mconfig.FilterMode = util.PID_TID_MODE
-            logger.Printf("watch for pid:%d + tid:%d", gconfig.Pid, gconfig.Tid)
-        } else {
-            if gconfig.Pid == config.MAGIC_PID {
-                logger.Fatalf("please set one of them --pid/--uid/--name")
-            }
-            mconfig.FilterMode = util.PID_MODE
-            logger.Printf("watch for pid:%d", gconfig.Pid)
-        }
-        err = parseByPid(gconfig.Pid)
-        if err != nil {
-            return err
-        }
-    } else {
-        return errors.New("please set --uid/--name/--pid/--pid + --tid")
-    }
+    mconfig.Parse_Idlist("UidWhitelist", gconfig.Uid)
+    mconfig.Parse_Idlist("UidBlacklist", gconfig.NoUid)
+    mconfig.Parse_Idlist("PidWhitelist", gconfig.Pid)
+    mconfig.Parse_Idlist("PidBlacklist", gconfig.NoPid)
+    mconfig.Parse_Idlist("TidWhitelist", gconfig.Tid)
+    mconfig.Parse_Idlist("TidBlacklist", gconfig.NoTid)
+    mconfig.SetTNamesBlacklist(gconfig.TNamesBlacklist)
+    mconfig.SetTNamesWhitelist(gconfig.TNamesWhitelist)
 
-    // 转换命令行的选项 并且进行检查
-    mconfig.Uid = gconfig.Uid
-    mconfig.Pid = gconfig.Pid
-    mconfig.Tid = gconfig.Tid
+    // 解析包名取 uid 如果是 System APP 则取 pid
+    pkg_names := strings.Split(gconfig.Name, ",")
+    for _, pkg_name := range pkg_names {
+        err = parseByPackage(pkg_name)
+        if err != nil {
+            return err
+        }
+    }
+    // 去重
+
+    // 注意 对于系统APP 要取 pid 后面补上
+
     mconfig.TraceIsolated = gconfig.TraceIsolated
     mconfig.HideRoot = gconfig.HideRoot
     if gconfig.UprobeSignal != "" {
@@ -229,10 +202,14 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Buffer = gconfig.Buffer
     var brk_base uint64 = 0x0
     if gconfig.BrkLib != "" {
-        if gconfig.Pid == config.MAGIC_PID {
+        if gconfig.Pid == "" {
             return errors.New("plz set pid when use breakpoint")
         }
-        lib_info, err := event.FindLibInMaps(gconfig.Pid, gconfig.BrkLib)
+        value, err := strconv.ParseUint(gconfig.Pid, 10, 32)
+        if err != nil {
+            return err
+        }
+        lib_info, err := event.FindLibInMaps(uint32(value), gconfig.BrkLib)
         if err != nil {
             return err
         }
@@ -277,22 +254,6 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Is32Bit = gconfig.Is32Bit
     mconfig.Color = gconfig.Color
     mconfig.DumpHex = gconfig.DumpHex
-    err = mconfig.SetTidsBlacklist(gconfig.TidsBlacklist)
-    if err != nil {
-        return err
-    }
-    err = mconfig.SetPidsBlacklist(gconfig.PidsBlacklist)
-    if err != nil {
-        return err
-    }
-    err = mconfig.SetTNamesBlacklist(gconfig.TNamesBlacklist)
-    if err != nil {
-        return err
-    }
-    err = mconfig.SetTNamesWhitelist(gconfig.TNamesWhitelist)
-    if err != nil {
-        return err
-    }
 
     mconfig.InitSyscallConfig()
     mconfig.InitStackUprobeConfig()
@@ -304,18 +265,10 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
 
     // 处理 syscall 的命令
-    if gconfig.SysCall != "" {
-        err = mconfig.SysCallConf.SetSysCallWhiteList(gconfig.SysCall)
-        if err != nil {
-            return err
-        }
-        if gconfig.SysCallBlacklist != "" {
-            err = mconfig.SysCallConf.SetSysCallBlacklist(gconfig.SysCallBlacklist)
-            if err != nil {
-                return err
-            }
-        }
-    } else if len(gconfig.HookPoint) != 0 {
+    mconfig.SysCallConf.Parse_SysWhitelist(gconfig.SysCall)
+    mconfig.SysCallConf.Parse_SysBlacklist(gconfig.NoSysCall)
+
+    if len(gconfig.HookPoint) != 0 {
         if len(gconfig.HookPoint) > 8 {
             logger.Fatal("max uprobe hook point count is 8")
         }
@@ -405,29 +358,29 @@ func runCommand(executable string, args ...string) (string, error) {
     return strings.TrimSpace(string(bytes)), nil
 }
 
-func parseByUid(uid uint32) error {
+func parseByUid(uid string) error {
     // pm list package --uid 10245
 
-    if uid == 1000 || uid == 2000 || uid == 0 {
+    if uid == "1000" || uid == "2000" || uid == "0" {
         gconfig.Is32Bit = false
         return nil
     }
 
-    lines, err := runCommand("pm", "list", "package", "--uid", strconv.FormatUint(uint64(uid), 10))
+    lines, err := runCommand("pm", "list", "package", "--uid", uid)
     if err != nil {
         return err
     }
 
     if lines == "" {
-        return fmt.Errorf("can not find package by uid=%d", uid)
+        return fmt.Errorf("can not find package by uid=%s", uid)
     }
     parts := strings.SplitN(lines, " ", 2)
     if len(parts) != 2 {
-        return fmt.Errorf("get package name by uid=%d failed, sep => <=", uid)
+        return fmt.Errorf("get package name by uid=%s failed, sep => <=", uid)
     }
     name := strings.SplitN(parts[0], ":", 2)
     if len(name) != 2 {
-        return fmt.Errorf("get package name by uid=%d failed, sep =>:<=", uid)
+        return fmt.Errorf("get package name by uid=%s failed, sep =>:<=", uid)
     }
     return parseByPackage(name[1])
 }
@@ -464,8 +417,8 @@ func parseByPid(pid uint32) error {
     value, _ := strconv.ParseUint(lines, 10, 32)
     uid := uint32(value)
     // 这个范围内的是常规的 APP 进程
-    if uid > 10000 && uid < 20000 {
-        return parseByUid(uid)
+    if uid >= 10000 && uid <= 19999 {
+        return parseByUid(fmt.Sprintf("%d", uid))
     }
     // 特殊的 uid
     // root 0
@@ -566,26 +519,21 @@ func parseByPackage(name string) error {
             value := parts[1]
             switch key {
             case "userId":
-                value, _ := strconv.ParseUint(value, 10, 32)
+                value, err := strconv.ParseUint(value, 10, 32)
+                if err != nil {
+                    panic(err)
+                }
                 // 考虑到是基于 特定模式 的过滤 对于单个系统APP进程 这里赋值了也没有影响
                 // 不过后续的逻辑发生变更 要注意这里什么情况下才赋值
-                gconfig.Uid = uint32(value)
+                mconfig.UidWhitelist = append(mconfig.UidWhitelist, uint32(value))
             case "legacyNativeLibraryDir":
                 // 考虑到后面会通过其他方式增加搜索路径 所以是数组
-                gconfig.LibraryDirs = append(gconfig.LibraryDirs, value)
+                gconfig.LibraryDirs = append(gconfig.LibraryDirs, value+"/"+"arm64")
             case "dataDir":
                 gconfig.DataDir = value
             case "primaryCpuAbi":
                 // 只支持 arm64 否则直接返回错误
-                // 不过对于syscall则是支持 32 位的 后面优化逻辑
-                if value == "arm64-v8a" {
-                    gconfig.Is32Bit = false
-                    if len(gconfig.LibraryDirs) != 1 {
-                        // 一般是不会进入这个分支 万一呢
-                        return fmt.Errorf("can not find legacyNativeLibraryDir, cmd:%s", strings.Join(cmd.Args, " "))
-                    }
-                    gconfig.LibraryDirs[0] = gconfig.LibraryDirs[0] + "/" + "arm64"
-                } else {
+                if value != "" && value != "arm64-v8a" {
                     return fmt.Errorf("not support package=%s primaryCpuAbi=%s", name, value)
                 }
             }
@@ -594,9 +542,6 @@ func parseByPackage(name string) error {
     // wait 方法会一直阻塞到其所属的命令完全运行结束为止
     if err := cmd.Wait(); err != nil {
         return err
-    }
-    if gconfig.Uid == 0 {
-        return fmt.Errorf("parseByPackage failed, uid is 0, package name:%s", name)
     }
     return nil
 }
@@ -619,11 +564,12 @@ func init() {
     rootCmd.PersistentFlags().BoolVar(&gconfig.Prepare, "prepare", false, "prepare libs")
     // 过滤设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.Name, "name", "n", "", "must set uid or package name")
-    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Uid, "uid", "u", config.MAGIC_UID, "must set uid or package name")
-    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Pid, "pid", "p", config.MAGIC_PID, "add pid to filter")
-    rootCmd.PersistentFlags().Uint32VarP(&gconfig.Tid, "tid", "t", config.MAGIC_TID, "add tid to filter")
-    rootCmd.PersistentFlags().StringVar(&gconfig.TidsBlacklist, "no-tids", "", "tid black list, max 20")
-    rootCmd.PersistentFlags().StringVar(&gconfig.PidsBlacklist, "no-pids", "", "pid black list, max 20")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.Uid, "uid", "u", "", "uid white list")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.Pid, "pid", "p", "", "pid white list")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.Tid, "tid", "t", "", "tid white list")
+    rootCmd.PersistentFlags().StringVar(&gconfig.NoUid, "no-uid", "", "uid black list")
+    rootCmd.PersistentFlags().StringVar(&gconfig.NoPid, "no-pid", "", "pid black list")
+    rootCmd.PersistentFlags().StringVar(&gconfig.NoTid, "no-tid", "", "tid black list")
     rootCmd.PersistentFlags().StringVar(&gconfig.TNamesWhitelist, "tnames", "", "thread name white list, max 20")
     rootCmd.PersistentFlags().StringVar(&gconfig.TNamesBlacklist, "no-tnames", "", "thread name black list, max 20")
     rootCmd.PersistentFlags().BoolVar(&gconfig.TraceIsolated, "iso", false, "watch isolated process")
@@ -653,5 +599,5 @@ func init() {
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Btf, "btf", "", false, "declare BTF enabled")
     // syscall hook
     rootCmd.PersistentFlags().StringVarP(&gconfig.SysCall, "syscall", "s", "", "filter syscalls")
-    rootCmd.PersistentFlags().StringVar(&gconfig.SysCallBlacklist, "no-syscall", "", "syscall black list, max 20")
+    rootCmd.PersistentFlags().StringVar(&gconfig.NoSysCall, "no-syscall", "", "syscall black list, max 20")
 }
