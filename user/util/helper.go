@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -51,6 +52,44 @@ func RemoveDuplication_map(arr []string) []string {
 	}
 
 	return arr[:j]
+}
+
+type PackageInfo struct {
+	Name string
+	Uid  uint32
+}
+
+type PackageInfos struct {
+	items []PackageInfo
+}
+
+func (this *PackageInfos) FindPackage(name string) (bool, PackageInfo) {
+	for _, item := range this.items {
+		if item.Name == name {
+			return true, item
+		}
+	}
+	return false, PackageInfo{}
+}
+
+func Get_PackageInfos() *PackageInfos {
+	// https://zhuanlan.zhihu.com/p/31124919
+	// /data/system/packages.list
+	content, err := ioutil.ReadFile("/data/system/packages.list")
+	if err != nil {
+		panic(err)
+	}
+	var pis PackageInfos
+	lines := string(content)
+	for _, line := range strings.Split(lines, "\n") {
+		parts := strings.Split(line, " ")
+		value, err := strconv.ParseUint(parts[1], 10, 32)
+		if err != nil {
+			panic(err)
+		}
+		pis.items = append(pis.items, PackageInfo{parts[0], uint32(value)})
+	}
+	return &pis
 }
 
 func FindLib(library string, search_paths []string) (string, error) {

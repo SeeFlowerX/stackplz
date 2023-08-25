@@ -420,12 +420,14 @@ type ModuleConfig struct {
     SelfPid    uint32
     FilterMode uint32
 
-    UidWhitelist []uint32
-    UidBlacklist []uint32
-    PidWhitelist []uint32
-    PidBlacklist []uint32
-    TidWhitelist []uint32
-    TidBlacklist []uint32
+    UidWhitelist   []uint32
+    UidBlacklist   []uint32
+    PidWhitelist   []uint32
+    PidBlacklist   []uint32
+    TidWhitelist   []uint32
+    TidBlacklist   []uint32
+    TNameWhitelist []string
+    TNameBlacklist []string
 
     TraceIsolated bool
     HideRoot      bool
@@ -443,8 +445,6 @@ type ModuleConfig struct {
     Color         bool
     DumpHex       bool
 
-    TNamesWhitelist []string
-    TNamesBlacklist []string
     Name            string
     StackUprobeConf *StackUprobeConfig
     SysCallConf     *SyscallConfig
@@ -476,39 +476,6 @@ func (this *ModuleConfig) Info() string {
     return fmt.Sprintf("-")
 }
 
-func (this *ModuleConfig) Parse_TidBlacklist(tids_blacklist string) {
-    if tids_blacklist == "" {
-        return
-    }
-    items := strings.Split(tids_blacklist, ",")
-    if len(items) > MAX_COUNT {
-        panic(fmt.Sprintf("max tid blacklist count is %d, provided count:%d", MAX_COUNT, len(items)))
-    }
-    for _, v := range items {
-        value, err := strconv.ParseUint(v, 10, 32)
-        if err != nil {
-            panic(err)
-        }
-        this.TidBlacklist = append(this.TidBlacklist, uint32(value))
-    }
-}
-
-func (this *ModuleConfig) Parse_PidBlacklist(pids_blacklist string) {
-    if pids_blacklist == "" {
-        return
-    }
-    items := strings.Split(pids_blacklist, ",")
-    if len(items) > MAX_COUNT {
-        panic(fmt.Sprintf("max pid blacklist count is %d, provided count:%d", MAX_COUNT, len(items)))
-    }
-    for _, v := range items {
-        value, err := strconv.ParseUint(v, 10, 32)
-        if err != nil {
-            panic(err)
-        }
-        this.PidBlacklist = append(this.PidBlacklist, uint32(value))
-    }
-}
 func (this *ModuleConfig) Parse_Idlist(list_key, id_list string) {
     if id_list == "" {
         return
@@ -542,28 +509,23 @@ func (this *ModuleConfig) Parse_Idlist(list_key, id_list string) {
     }
 }
 
-func (this *ModuleConfig) SetTNamesBlacklist(t_names_blacklist string) {
-    if t_names_blacklist == "" {
+func (this *ModuleConfig) Parse_Namelist(list_key, name_list string) {
+    if name_list == "" {
         return
     }
-    items := strings.Split(t_names_blacklist, ",")
+    items := strings.Split(name_list, ",")
     if len(items) > MAX_COUNT {
-        panic(fmt.Sprintf("max thread name blacklist count is %d, provided count:%d", MAX_COUNT, len(items)))
+        panic(fmt.Sprintf("max %s count is %d, provided count:%d", list_key, MAX_COUNT, len(items)))
     }
     for _, v := range items {
-        this.TNamesBlacklist = append(this.TNamesBlacklist, v)
-    }
-}
-func (this *ModuleConfig) SetTNamesWhitelist(t_names_blacklist string) {
-    if t_names_blacklist == "" {
-        return
-    }
-    items := strings.Split(t_names_blacklist, ",")
-    if len(items) > MAX_COUNT {
-        panic(fmt.Sprintf("max thread name whitelist count is %d, provided count:%d", MAX_COUNT, len(items)))
-    }
-    for _, v := range items {
-        this.TNamesWhitelist = append(this.TNamesWhitelist, v)
+        switch list_key {
+        case "TNameWhitelist":
+            this.TNameWhitelist = append(this.TNameWhitelist, v)
+        case "TNameBlacklist":
+            this.TNameBlacklist = append(this.TNameBlacklist, v)
+        default:
+            panic(fmt.Sprintf("unknown list_key:%s", list_key))
+        }
     }
 }
 
@@ -577,7 +539,7 @@ func (this *ModuleConfig) GetCommonFilter() CommonFilter {
     }
 
     filter.thread_name_whitelist = 0
-    if len(this.TNamesWhitelist) > 0 {
+    if len(this.TNameWhitelist) > 0 {
         filter.thread_name_whitelist = 1
     }
     filter.trace_uid_group = 0

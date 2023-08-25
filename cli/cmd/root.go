@@ -175,15 +175,22 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Parse_Idlist("PidBlacklist", gconfig.NoPid)
     mconfig.Parse_Idlist("TidWhitelist", gconfig.Tid)
     mconfig.Parse_Idlist("TidBlacklist", gconfig.NoTid)
-    mconfig.SetTNamesBlacklist(gconfig.TNamesBlacklist)
-    mconfig.SetTNamesWhitelist(gconfig.TNamesWhitelist)
+    mconfig.Parse_Namelist("TNameWhitelist", gconfig.TName)
+    mconfig.Parse_Namelist("TNameBlacklist", gconfig.NoTName)
 
     // 解析包名取 uid 如果是 System APP 则取 pid
+    pis := util.Get_PackageInfos()
     pkg_names := strings.Split(gconfig.Name, ",")
     for _, pkg_name := range pkg_names {
-        err = parseByPackage(pkg_name)
-        if err != nil {
-            return err
+        is_find, info := pis.FindPackage(pkg_name)
+        if !is_find {
+            return fmt.Errorf("can not find package=%s", pkg_name)
+        }
+        if info.Uid == 1000 {
+            pid_list := FindPidByName(pkg_name)
+            mconfig.UidWhitelist = append(mconfig.PidWhitelist, pid_list...)
+        } else {
+            mconfig.UidWhitelist = append(mconfig.UidWhitelist, info.Uid)
         }
     }
     // 去重
@@ -482,6 +489,24 @@ func findKallsymsSymbol(symbol string) (bool, error) {
     return find, nil
 }
 
+func FindPidByName(name string) []uint32 {
+    var pid_list []uint32
+    content, err := runCommand("sh", "-c", "ps -ef -o name,pid,ppid | grep `^"+name+"`")
+    if err != nil {
+        panic(err)
+    }
+    lines := strings.Split(content, "\n")
+    for _, line := range lines {
+        parts := strings.Fields(line)
+        value, err := strconv.ParseUint(parts[1], 10, 32)
+        if err != nil {
+            panic(err)
+        }
+        pid_list = append(pid_list, uint32(value))
+    }
+    return pid_list
+}
+
 func parseByPackage(name string) error {
     // 先设置默认值
     gconfig.Is32Bit = true
@@ -529,8 +554,6 @@ func parseByPackage(name string) error {
             case "legacyNativeLibraryDir":
                 // 考虑到后面会通过其他方式增加搜索路径 所以是数组
                 gconfig.LibraryDirs = append(gconfig.LibraryDirs, value+"/"+"arm64")
-            case "dataDir":
-                gconfig.DataDir = value
             case "primaryCpuAbi":
                 // 只支持 arm64 否则直接返回错误
                 if value != "" && value != "arm64-v8a" {
@@ -564,14 +587,17 @@ func init() {
     rootCmd.PersistentFlags().BoolVar(&gconfig.Prepare, "prepare", false, "prepare libs")
     // 过滤设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.Name, "name", "n", "", "must set uid or package name")
+
     rootCmd.PersistentFlags().StringVarP(&gconfig.Uid, "uid", "u", "", "uid white list")
     rootCmd.PersistentFlags().StringVarP(&gconfig.Pid, "pid", "p", "", "pid white list")
     rootCmd.PersistentFlags().StringVarP(&gconfig.Tid, "tid", "t", "", "tid white list")
     rootCmd.PersistentFlags().StringVar(&gconfig.NoUid, "no-uid", "", "uid black list")
     rootCmd.PersistentFlags().StringVar(&gconfig.NoPid, "no-pid", "", "pid black list")
     rootCmd.PersistentFlags().StringVar(&gconfig.NoTid, "no-tid", "", "tid black list")
-    rootCmd.PersistentFlags().StringVar(&gconfig.TNamesWhitelist, "tnames", "", "thread name white list, max 20")
-    rootCmd.PersistentFlags().StringVar(&gconfig.TNamesBlacklist, "no-tnames", "", "thread name black list, max 20")
+
+    rootCmd.PersistentFlags().StringVar(&gconfig.TName, "tname", "", "thread name white list")
+    rootCmd.PersistentFlags().StringVar(&gconfig.NoTName, "no-tname", "", "thread name black list")
+
     rootCmd.PersistentFlags().BoolVar(&gconfig.TraceIsolated, "iso", false, "watch isolated process")
     rootCmd.PersistentFlags().BoolVar(&gconfig.HideRoot, "hide-root", false, "hide some root feature")
     rootCmd.PersistentFlags().StringVar(&gconfig.UprobeSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")

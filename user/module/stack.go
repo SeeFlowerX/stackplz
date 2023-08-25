@@ -310,7 +310,7 @@ func (this *MStack) update_thread_filter() {
             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
         }
     }
-    for _, v := range this.mconf.TNamesBlacklist {
+    for _, v := range this.mconf.TNameBlacklist {
         if len(v) > 16 {
             panic(fmt.Sprintf("[%s] thread name max len is 16", v))
         }
@@ -322,7 +322,7 @@ func (this *MStack) update_thread_filter() {
             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
         }
     }
-    for _, v := range this.mconf.TNamesWhitelist {
+    for _, v := range this.mconf.TNameWhitelist {
         if len(v) > 16 {
             panic(fmt.Sprintf("[%s] thread name max len is 16", v))
         }
