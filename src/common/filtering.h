@@ -75,7 +75,15 @@ static __always_inline u64 should_trace(program_data_t *p)
         return 1;
     }
 
+
     if (config->filter_mode == UID_MODE) {
+
+        u32 uid_expected_key = UID_WHITELIST_START + context->uid;
+        common_filter_t* filter = bpf_map_lookup_elem(&common_list, &uid_expected_key);
+        if (filter == NULL) {
+            return 0;
+        }
+
         if (filter->uid == context->uid) {
             for (int i = 0; i < MAX_COUNT; i++) {
                 // 因为列表肯定是挨着填充的 所以遇到 MAGIC 就可以直接结束循环了

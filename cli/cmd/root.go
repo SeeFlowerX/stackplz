@@ -5,7 +5,6 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-    "bufio"
     "context"
     "errors"
     "fmt"
@@ -192,10 +191,11 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         } else {
             mconfig.UidWhitelist = append(mconfig.UidWhitelist, info.Uid)
         }
+        addLibPath(pkg_name)
     }
-    // 去重
+    // 后面更新map的时候不影响 列表不去重也行
 
-    // 注意 对于系统APP 要取 pid 后面补上
+    // 还需要增加的内容 -> 根据uid/pid解析进程架构、获取库文件搜索路径
 
     mconfig.TraceIsolated = gconfig.TraceIsolated
     mconfig.HideRoot = gconfig.HideRoot
@@ -365,32 +365,48 @@ func runCommand(executable string, args ...string) (string, error) {
     return strings.TrimSpace(string(bytes)), nil
 }
 
-func parseByUid(uid string) error {
-    // pm list package --uid 10245
-
-    if uid == "1000" || uid == "2000" || uid == "0" {
-        gconfig.Is32Bit = false
-        return nil
-    }
-
-    lines, err := runCommand("pm", "list", "package", "--uid", uid)
+func addLibPath(name string) {
+    content, err := runCommand("pm", "path", name)
     if err != nil {
-        return err
+        panic(err)
     }
-
-    if lines == "" {
-        return fmt.Errorf("can not find package by uid=%s", uid)
+    parts := strings.Split(content, ":")
+    if len(parts) == 2 {
+        items := strings.Split(parts[1], "/")
+        lib_search_path := strings.Join(items[:len(items)-1], "/") + "/lib/arm64"
+        _, err := os.Stat(lib_search_path)
+        if err == nil {
+            gconfig.LibraryDirs = append(gconfig.LibraryDirs, lib_search_path)
+        }
     }
-    parts := strings.SplitN(lines, " ", 2)
-    if len(parts) != 2 {
-        return fmt.Errorf("get package name by uid=%s failed, sep => <=", uid)
-    }
-    name := strings.SplitN(parts[0], ":", 2)
-    if len(name) != 2 {
-        return fmt.Errorf("get package name by uid=%s failed, sep =>:<=", uid)
-    }
-    return parseByPackage(name[1])
 }
+
+// func parseByUid(uid string) error {
+//     // pm list package --uid 10245
+
+//     if uid == "1000" || uid == "2000" || uid == "0" {
+//         gconfig.Is32Bit = false
+//         return nil
+//     }
+
+//     lines, err := runCommand("pm", "list", "package", "--uid", uid)
+//     if err != nil {
+//         return err
+//     }
+
+//     if lines == "" {
+//         return fmt.Errorf("can not find package by uid=%s", uid)
+//     }
+//     parts := strings.SplitN(lines, " ", 2)
+//     if len(parts) != 2 {
+//         return fmt.Errorf("get package name by uid=%s failed, sep => <=", uid)
+//     }
+//     name := strings.SplitN(parts[0], ":", 2)
+//     if len(name) != 2 {
+//         return fmt.Errorf("get package name by uid=%s failed, sep =>:<=", uid)
+//     }
+//     return parseByPackage(name[1])
+// }
 
 func findBTFAssets() string {
     lines, err := runCommand("uname", "-r")
@@ -407,67 +423,67 @@ func findBTFAssets() string {
     return btf_file
 }
 
-func parseByPid(pid uint32) error {
+// func parseByPid(pid uint32) error {
 
-    pid_str := strconv.FormatUint(uint64(pid), 10)
-    maps_path := "/proc/" + pid_str + "/maps"
+//     pid_str := strconv.FormatUint(uint64(pid), 10)
+//     maps_path := "/proc/" + pid_str + "/maps"
 
-    // uid=$(ps -o user= -p 22812) && id -u $uid
-    // 先通过这样的命令获取到进程的 uid 判断是不是APP进程
-    lines, err := runCommand("sh", "-c", fmt.Sprintf("uid=$(ps -o user= -p %s ) && id -u $uid", pid_str))
-    if err != nil {
-        return err
-    }
-    if gconfig.Debug {
-        Logger.Printf("[parseByPid] get uid by pid=%d result:\n\t%s", pid, lines)
-    }
-    value, _ := strconv.ParseUint(lines, 10, 32)
-    uid := uint32(value)
-    // 这个范围内的是常规的 APP 进程
-    if uid >= 10000 && uid <= 19999 {
-        return parseByUid(fmt.Sprintf("%d", uid))
-    }
-    // 特殊的 uid
-    // root 0
-    // system 1000
-    // shell 2000
-    if uid == 1000 {
-        // 考虑到 system app 进程的 uid 都是 1000
-        // 那么这种尝试通过检查 maps 的 app_process 来确定架构以及库文件路径
-        lines, err = runCommand("sh", "-c", fmt.Sprintf("cat %s | grep -m1 bin/app_process", maps_path))
-        if err != nil {
-            return err
-        }
-        if gconfig.Debug {
-            Logger.Printf("[parseByPid] check app_process by pid=%d result:\n\t%s", pid, lines)
-        }
-        if strings.HasSuffix(lines, "/app_process64") {
-            gconfig.Is32Bit = false
-        } else if strings.HasSuffix(lines, "/app_process") {
-            gconfig.Is32Bit = true
-        } else {
-            return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
-        }
-    }
+//     // uid=$(ps -o user= -p 22812) && id -u $uid
+//     // 先通过这样的命令获取到进程的 uid 判断是不是APP进程
+//     lines, err := runCommand("sh", "-c", fmt.Sprintf("uid=$(ps -o user= -p %s ) && id -u $uid", pid_str))
+//     if err != nil {
+//         return err
+//     }
+//     if gconfig.Debug {
+//         Logger.Printf("[parseByPid] get uid by pid=%d result:\n\t%s", pid, lines)
+//     }
+//     value, _ := strconv.ParseUint(lines, 10, 32)
+//     uid := uint32(value)
+//     // 这个范围内的是常规的 APP 进程
+//     if uid >= 10000 && uid <= 19999 {
+//         return parseByUid(fmt.Sprintf("%d", uid))
+//     }
+//     // 特殊的 uid
+//     // root 0
+//     // system 1000
+//     // shell 2000
+//     if uid == 1000 {
+//         // 考虑到 system app 进程的 uid 都是 1000
+//         // 那么这种尝试通过检查 maps 的 app_process 来确定架构以及库文件路径
+//         lines, err = runCommand("sh", "-c", fmt.Sprintf("cat %s | grep -m1 bin/app_process", maps_path))
+//         if err != nil {
+//             return err
+//         }
+//         if gconfig.Debug {
+//             Logger.Printf("[parseByPid] check app_process by pid=%d result:\n\t%s", pid, lines)
+//         }
+//         if strings.HasSuffix(lines, "/app_process64") {
+//             gconfig.Is32Bit = false
+//         } else if strings.HasSuffix(lines, "/app_process") {
+//             gconfig.Is32Bit = true
+//         } else {
+//             return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
+//         }
+//     }
 
-    // 通过检查 进程 maps 中 linker 的名字确定是 32 还是 64
-    // cat /proc/22812/maps | grep -m1 bin/linker
-    lines, err = runCommand("sh", "-c", fmt.Sprintf("cat %s | grep -m1 bin/linker", maps_path))
-    if err != nil {
-        return err
-    }
-    if lines == "" {
-        return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
-    }
-    if strings.HasSuffix(lines, "/linker64") {
-        gconfig.Is32Bit = false
-    } else if strings.HasSuffix(lines, "/linker") {
-        gconfig.Is32Bit = true
-    } else {
-        return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
-    }
-    return nil
-}
+//     // 通过检查 进程 maps 中 linker 的名字确定是 32 还是 64
+//     // cat /proc/22812/maps | grep -m1 bin/linker
+//     lines, err = runCommand("sh", "-c", fmt.Sprintf("cat %s | grep -m1 bin/linker", maps_path))
+//     if err != nil {
+//         return err
+//     }
+//     if lines == "" {
+//         return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
+//     }
+//     if strings.HasSuffix(lines, "/linker64") {
+//         gconfig.Is32Bit = false
+//     } else if strings.HasSuffix(lines, "/linker") {
+//         gconfig.Is32Bit = true
+//     } else {
+//         return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
+//     }
+//     return nil
+// }
 
 func findKallsymsSymbol(symbol string) (bool, error) {
     find := false
@@ -507,67 +523,67 @@ func FindPidByName(name string) []uint32 {
     return pid_list
 }
 
-func parseByPackage(name string) error {
-    // 先设置默认值
-    gconfig.Is32Bit = true
-    gconfig.Name = name
-    cmd := exec.Command("dumpsys", "package", name)
+// func parseByPackage(name string) error {
+//     // 先设置默认值
+//     gconfig.Is32Bit = true
+//     gconfig.Name = name
+//     cmd := exec.Command("dumpsys", "package", name)
 
-    // 创建获取命令输出管道
-    stdout, err := cmd.StdoutPipe()
-    if err != nil {
-        return err
-    }
+//     // 创建获取命令输出管道
+//     stdout, err := cmd.StdoutPipe()
+//     if err != nil {
+//         return err
+//     }
 
-    // 执行命令
-    if err := cmd.Start(); err != nil {
-        return err
-    }
+//     // 执行命令
+//     if err := cmd.Start(); err != nil {
+//         return err
+//     }
 
-    // 使用带缓冲的读取器
-    outputBuf := bufio.NewReader(stdout)
+//     // 使用带缓冲的读取器
+//     outputBuf := bufio.NewReader(stdout)
 
-    for {
-        // 按行读
-        output, _, err := outputBuf.ReadLine()
-        if err != nil {
-            // 判断是否到文件的结尾了否则出错
-            if err.Error() != "EOF" {
-                return err
-            }
-            break
-        }
-        line := strings.Trim(string(output), " ")
-        parts := strings.SplitN(line, "=", 2)
-        if len(parts) == 2 {
-            key := parts[0]
-            value := parts[1]
-            switch key {
-            case "userId":
-                value, err := strconv.ParseUint(value, 10, 32)
-                if err != nil {
-                    panic(err)
-                }
-                // 考虑到是基于 特定模式 的过滤 对于单个系统APP进程 这里赋值了也没有影响
-                // 不过后续的逻辑发生变更 要注意这里什么情况下才赋值
-                mconfig.UidWhitelist = append(mconfig.UidWhitelist, uint32(value))
-            case "legacyNativeLibraryDir":
-                // 考虑到后面会通过其他方式增加搜索路径 所以是数组
-                gconfig.LibraryDirs = append(gconfig.LibraryDirs, value+"/"+"arm64")
-            case "primaryCpuAbi":
-                // 只支持 arm64 否则直接返回错误
-                if value != "" && value != "arm64-v8a" {
-                    return fmt.Errorf("not support package=%s primaryCpuAbi=%s", name, value)
-                }
-            }
-        }
-    }
-    // wait 方法会一直阻塞到其所属的命令完全运行结束为止
-    if err := cmd.Wait(); err != nil {
-        return err
-    }
-    return nil
-}
+//     for {
+//         // 按行读
+//         output, _, err := outputBuf.ReadLine()
+//         if err != nil {
+//             // 判断是否到文件的结尾了否则出错
+//             if err.Error() != "EOF" {
+//                 return err
+//             }
+//             break
+//         }
+//         line := strings.Trim(string(output), " ")
+//         parts := strings.SplitN(line, "=", 2)
+//         if len(parts) == 2 {
+//             key := parts[0]
+//             value := parts[1]
+//             switch key {
+//             case "userId":
+//                 value, err := strconv.ParseUint(value, 10, 32)
+//                 if err != nil {
+//                     panic(err)
+//                 }
+//                 // 考虑到是基于 特定模式 的过滤 对于单个系统APP进程 这里赋值了也没有影响
+//                 // 不过后续的逻辑发生变更 要注意这里什么情况下才赋值
+//                 mconfig.UidWhitelist = append(mconfig.UidWhitelist, uint32(value))
+//             case "legacyNativeLibraryDir":
+//                 // 考虑到后面会通过其他方式增加搜索路径 所以是数组
+//                 gconfig.LibraryDirs = append(gconfig.LibraryDirs, value+"/"+"arm64")
+//             case "primaryCpuAbi":
+//                 // 只支持 arm64 否则直接返回错误
+//                 if value != "" && value != "arm64-v8a" {
+//                     return fmt.Errorf("not support package=%s primaryCpuAbi=%s", name, value)
+//                 }
+//             }
+//         }
+//     }
+//     // wait 方法会一直阻塞到其所属的命令完全运行结束为止
+//     if err := cmd.Wait(); err != nil {
+//         return err
+//     }
+//     return nil
+// }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.

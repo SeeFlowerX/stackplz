@@ -531,7 +531,7 @@ func (this *ModuleConfig) Parse_Namelist(list_key, name_list string) {
 
 func (this *ModuleConfig) GetCommonFilter() CommonFilter {
     filter := CommonFilter{}
-    filter.is_32bit = 0
+    // filter.is_32bit = 0
 
     // 这些暂时硬编码
     for i := 0; i < MAX_COUNT; i++ {
@@ -547,9 +547,9 @@ func (this *ModuleConfig) GetCommonFilter() CommonFilter {
         filter.trace_uid_group = 1
     }
     filter.signal = this.UprobeSignal
-    if this.Debug {
-        this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d, whitelist:%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit, filter.thread_name_whitelist)
-    }
+    // if this.Debug {
+    //     this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d, whitelist:%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit, filter.thread_name_whitelist)
+    // }
     return filter
 }
 

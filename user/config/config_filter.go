@@ -6,13 +6,13 @@ type ConfigMap struct {
 }
 
 type CommonFilter struct {
-	is_32bit              uint32
-	uid                   uint32
-	pid                   uint32
-	tid                   uint32
-	pid_list              [MAX_WATCH_PROC_COUNT]uint32
-	blacklist_pids        [MAX_COUNT]uint32
-	blacklist_tids        [MAX_COUNT]uint32
+	// is_32bit              uint32
+	// uid                   uint32
+	// pid                   uint32
+	// tid                   uint32
+	pid_list [MAX_WATCH_PROC_COUNT]uint32
+	// blacklist_pids        [MAX_COUNT]uint32
+	// blacklist_tids        [MAX_COUNT]uint32
 	thread_name_whitelist uint32
 	trace_uid_group       uint32
 	signal                uint32
