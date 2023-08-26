@@ -348,17 +348,6 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 ![](./images/Snipaste_2022-11-13_14-19-38.png)
 
-4. uprobe hook与断点功能不生效
-
-在近期测试中，发现：
-
-1. 先安装过debug版apk，一切正常，但是换成release之后有的符号的hook失效（使用偏移也不生效）
-2. 测试当前安装的其他release版APP，三方库hook正常
-3. 无论debug还是release，系统库hook都正常
-4. 卸载APP+关闭docker+重启板子+安装release版APP，测试hook失效
-
-也许是因为和使用docker有关系（也许有什么奇怪的缓存机制），待使用真机测试排查
-
 # 交流
 
 有关eBPF on Android系列可以加群交流
