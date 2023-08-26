@@ -20,6 +20,10 @@ func (this *BaseConfig) SetLogger(logger *log.Logger) {
 	this.logger = logger
 }
 
+func (this *BaseConfig) GetLogger() *log.Logger {
+	return this.logger
+}
+
 func (this *BaseConfig) SetDebug(debug bool) {
 	this.Debug = debug
 }

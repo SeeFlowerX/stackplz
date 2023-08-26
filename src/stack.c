@@ -8,13 +8,6 @@
 #include "common/context.h"
 #include "common/filtering.h"
 
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u32);
-    __type(value, u32);
-    __uint(max_entries, MAX_WATCH_PROC_COUNT);
-} watch_proc_map SEC(".maps");
-
 typedef struct uprobe_point_args_t {
     u32 count;
     point_arg point_args[MAX_POINT_ARG_COUNT];

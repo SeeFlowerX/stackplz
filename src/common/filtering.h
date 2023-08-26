@@ -54,6 +54,61 @@ static __always_inline u64 should_trace(program_data_t *p)
     // 上面的情况，都应该只能以其中一种模式进行过滤
     // 考虑到指明了过滤模式 那么就不需要使用 MAGIC_PID 去判断了 因为对应的模式下对应参数必须有值
 
+    // 线程名放在最前面
+    u32* thread_name_flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
+    if (thread_name_flag != NULL) {
+        if (*thread_name_flag == THREAD_NAME_BLACKLIST) {
+            return 0;
+        }
+        if (*thread_name_flag == THREAD_NAME_WHITELIST) {
+            return 1;
+        } 
+    }
+
+    // 黑名单优先 依次检查 thread_name tid pid uid trace_uid_group
+
+    // context->tid [in] tid_blacklist return false, or skip
+    u32 tid_blacklist_key = TID_BLACKLIST_START + context->tid;
+    u32* tid_blacklist_value = bpf_map_lookup_elem(&common_list, &tid_blacklist_key);
+    if (tid_blacklist_value != NULL) {
+        return 0;
+    }
+    // context->tid [in] tid_whitelist return true, or skip
+    u32 tid_whitelist_key = TID_WHITELIST_START + context->tid;
+    u32* tid_whitelist_value = bpf_map_lookup_elem(&common_list, &tid_whitelist_key);
+    if (tid_whitelist_value != NULL) {
+        return 1;
+    }
+    // context->pid [in] pid_blacklist return false, or skip
+    u32 pid_blacklist_key = PID_BLACKLIST_START + context->pid;
+    u32* pid_blacklist_value = bpf_map_lookup_elem(&common_list, &pid_blacklist_key);
+    if (pid_blacklist_value != NULL) {
+        return 0;
+    }
+    // context->pid [in] pid_whitelist return true, or skip
+    u32 pid_whitelist_key = PID_WHITELIST_START + context->pid;
+    u32* pid_whitelist_value = bpf_map_lookup_elem(&common_list, &pid_whitelist_key);
+    if (pid_whitelist_value != NULL) {
+        return 1;
+    }
+    // context->pid [in] pid_forklist return true, or skip
+    u32* pid_forklist_value = bpf_map_lookup_elem(&child_parent_map, &context->pid);
+    if (pid_forklist_value != NULL) {
+        return 1;
+    }
+    // context->uid [in] uid_blacklist return false, or skip
+    u32 uid_blacklist_key = UID_BLACKLIST_START + context->uid;
+    u32* uid_blacklist_value = bpf_map_lookup_elem(&common_list, &uid_blacklist_key);
+    if (uid_blacklist_value != NULL) {
+        return 0;
+    }
+    // context->uid [in] uid_whitelist return true, or skip
+    u32 uid_whitelist_key = UID_WHITELIST_START + context->uid;
+    u32* uid_whitelist_value = bpf_map_lookup_elem(&common_list, &uid_whitelist_key);
+    if (uid_whitelist_value != NULL) {
+        return 1;
+    }
+
     u32 filter_key = 0;
     common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
     if (filter == NULL) {
@@ -75,94 +130,7 @@ static __always_inline u64 should_trace(program_data_t *p)
         return 1;
     }
 
-
-    if (config->filter_mode == UID_MODE) {
-
-        u32 uid_expected_key = UID_WHITELIST_START + context->uid;
-        common_filter_t* filter = bpf_map_lookup_elem(&common_list, &uid_expected_key);
-        if (filter == NULL) {
-            return 0;
-        }
-
-        if (filter->uid == context->uid) {
-            for (int i = 0; i < MAX_COUNT; i++) {
-                // 因为列表肯定是挨着填充的 所以遇到 MAGIC 就可以直接结束循环了
-                if (filter->blacklist_pids[i] == MAGIC_PID) break;
-                if (filter->blacklist_pids[i] == context->pid) {
-                    return 0;
-                };
-            }
-            for (int i = 0; i < MAX_COUNT; i++) {
-                if (filter->blacklist_tids[i] == MAGIC_TID) break;
-                if (filter->blacklist_tids[i] == context->tid) {
-                    return 0;
-                };
-            }
-            // 这样过滤很方便 思路打开 简而言之就是不要自己维护列表 直接把 map 当列表用最方便
-            // 即直接用 黑/白名单 作为key 然后 value 作为 flag 后面也可以改进 uid pid 
-            u32 *flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
-            if (filter->thread_name_whitelist == 1) {
-                if (flag != NULL && *flag == 2) {
-                    return 1;
-                }
-                return 0;
-            }
-            if (flag != NULL && *flag == 1) {
-                return 0;
-            }
-
-            return 1;
-        }
-        return 0;
-    } else if (config->filter_mode == PID_MODE) {
-        if (filter->pid == context->pid) {
-            for (int i = 0; i < MAX_COUNT; i++) {
-                if (filter->blacklist_tids[i] == MAGIC_TID) break;
-                if (filter->blacklist_tids[i] == context->tid) {
-                    return 0;
-                };
-            }
-            u32 *flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
-            if (filter->thread_name_whitelist == 1) {
-                if (flag != NULL && *flag == 2) {
-                    return 1;
-                }
-                return 0;
-            }
-            if (flag != NULL && *flag == 1) {
-                return 0;
-            }
-            return 1;
-        }
-        // fork 产生的情况
-        u32* pid = bpf_map_lookup_elem(&child_parent_map, &context->pid);
-        if (pid != NULL) {
-            return 1;
-        }
-        return 0;
-    } else if (config->filter_mode == PID_TID_MODE) {
-        if (filter->pid == context->pid && filter->tid == context->tid) {
-            u32 *flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
-            if (filter->thread_name_whitelist == 1) {
-                if (flag != NULL && *flag == 2) {
-                    return 1;
-                }
-                return 0;
-            }
-            if (flag != NULL && *flag == 1) {
-                return 0;
-            }
-            return 1;
-        }
-        return 0;
-    } else {
-        return 0;
-    }
-
-    // 有时候希望对一些额外的进程进行追踪或者屏蔽
-    // 还需要提供 uid pid tid 的黑白名单列表以达成更加精细的追踪
-
-    return 1;
+    return 0;
 }
 
 #endif

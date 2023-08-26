@@ -126,6 +126,72 @@ pid + 偏移 + 库文件
 ./stackplz --name com.sfx.ebpf -w 0xA94E8[int:x1,int:x0]
 ```
 
+3.8 按分组批量追踪进程
+
+追踪全部APP类型的进程，但是排除一个特定的uid：
+
+```bash
+./stackplz -n app --no-uid 10084 --point open[str,int] -o tmp.log
+```
+
+同时追踪一个APP和（所有）isolated进程：
+
+```bash
+./stackplz -n com.starbucks.cn,iso --syscall openat -o tmp.log
+```
+
+可选的进程分组如下：
+
+- root
+- system
+- shell
+- app
+- iso
+
+3.9 按分组批量追踪syscall
+
+```bash
+./stackplz -n com.xingin.xhs -s %file,%net --no-syscall openat,recvfrom
+```
+
+可选的syscall分组如下：
+
+- all
+    - trace all syscall
+- %attr
+    - setxattr,lsetxattr,fsetxattr
+    - getxattr,lgetxattr,fgetxattr
+    - listxattr,llistxattr,flistxattr
+    - removexattr,lremovexattr,fremovexattr
+- %file
+    - openat,openat2,faccessat,faccessat2,mknodat,mkdirat
+    - unlinkat,symlinkat,linkat,renameat,renameat2,readlinkat
+    - chdir,fchdir,chroot,fchmod,fchmodat,fchownat,fchown
+- %exec
+    - execve,execveat
+- %clone
+    - clone,clone3
+- %process
+    - clone,clone3
+    - execve,execveat
+    - wait4,waitid
+    - exit,exit_group,rt_sigqueueinfo
+    - pidfd_send_signal,pidfd_open,pidfd_getfd
+- %net
+    - socket,socketpair
+    - bind,listen,accept,connect
+    - getsockname,getpeername,setsockopt,getsockopt
+    - sendto,recvfrom,sendmsg,recvmsg
+    - shutdown,recvmmsg,sendmmsg,accept4
+- %signal
+    - sigaltstack
+    - rt_sigsuspend,rt_sigaction,rt_sigprocmask,rt_sigpending
+    - rt_sigtimedwait,rt_sigqueueinfo,rt_sigreturn,rt_tgsigqueueinfo
+- %kill
+    - kill,tkill,tgkill
+- %stat
+    - statfs,fstatfs,newfstatat,fstat,statx
+
 使用提示：
 
 - 可以用`--name`指定包名，用`--uid`指定进程所属uid，用`--pid`指定进程
@@ -148,6 +214,22 @@ pid + 偏移 + 库文件
 - 注意，本项目中syscall的返回值通常是**errno**，与libc的函数返回结果不一定一致
 - `--dumphex`表示将数据打印为hexdump，否则将记录为`ascii + hex`的形式
 - 输出到日志文件添加`-o/--out tmp.log`，只输出到日志，不输出到终端再加一个`--quiet`即可
+
+**注意**，默认屏蔽下列线程，原因是它们属于渲染相关的线程，会触发大量的syscall调用
+
+如果有需求追踪下列线程，请手动修改源码去除限制，重新编译使用
+
+- RenderThread
+- FinalizerDaemon
+- RxCachedThreadS
+- mali-cmar-backe
+- mali-utility-wo
+- mali-mem-purge
+- mali-hist-dump
+- mali-event-hand
+- hwuiTask0
+- hwuiTask1
+- NDK MediaCodec_
 
 更多用法，请通过`-h/--help`查看：
 
@@ -265,6 +347,17 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 如图，可以看到直接调用了`__strchr_aarch64`而不是经过`strchr`再去调用`__strchr_aarch64`
 
 ![](./images/Snipaste_2022-11-13_14-19-38.png)
+
+4. uprobe hook与断点功能不生效
+
+在近期测试中，发现：
+
+1. 先安装过debug版apk，一切正常，但是换成release之后有的符号的hook失效（使用偏移也不生效）
+2. 测试当前安装的其他release版APP，三方库hook正常
+3. 无论debug还是release，系统库hook都正常
+4. 卸载APP+关闭docker+重启板子+安装release版APP，测试hook失效
+
+也许是因为和使用docker有关系（也许有什么奇怪的缓存机制），待使用真机测试排查
 
 # 交流
 

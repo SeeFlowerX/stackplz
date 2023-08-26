@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
@@ -63,13 +64,57 @@ type PackageInfos struct {
 	items []PackageInfo
 }
 
-func (this *PackageInfos) FindPackage(name string) (bool, PackageInfo) {
+func (this *PackageInfos) FindPackageByName(name string) (bool, PackageInfo) {
 	for _, item := range this.items {
 		if item.Name == name {
 			return true, item
 		}
 	}
 	return false, PackageInfo{}
+}
+
+func (this *PackageInfos) FindPackageByUid(uid uint32) (bool, PackageInfo) {
+	for _, item := range this.items {
+		if item.Uid == uid {
+			return true, item
+		}
+	}
+	return false, PackageInfo{}
+}
+
+func (this *PackageInfos) FindPackageByPid(uid uint32) (bool, PackageInfo) {
+	for _, item := range this.items {
+		if item.Uid == uid {
+			return true, item
+		}
+	}
+	return false, PackageInfo{}
+}
+
+func (this *PackageInfos) FindUidByPid(pid uint32) uint32 {
+	// 安卓上检查进程架构的两种方法
+	// 1. 检查 maps 中 linker 的名字 => linker or linker64
+	// 2. 检查 maps 中 app_process 的名字 => app_process or app_process64
+
+	// cat /proc/22812/maps | grep -m1 bin/linker
+	// cat /proc/22812/maps | grep -m1 bin/app_process
+
+	// user => u0_xxx
+	// uid => 10xxx
+	// uid=$(ps -o user= -p 22812) && id -u $uid
+	// sh -c ps -o uid= -p 22812
+
+	// pid_str := strconv.FormatUint(uint64(pid), 10)
+	// lines, err := RunCommand("sh", "-c", fmt.Sprintf("uid=$(ps -o user= -p %s ) && id -u $uid", pid_str))
+	lines, err := RunCommand("sh", "-c", fmt.Sprintf("ps -o uid= -p %d", pid))
+	if err != nil {
+		panic(err)
+	}
+	value, err := strconv.ParseUint(lines, 10, 32)
+	if err != nil {
+		panic(fmt.Sprintf("find uid by pid failed, are you sure pid=%d exists ?", pid))
+	}
+	return uint32(value)
 }
 
 func Get_PackageInfos() *PackageInfos {
@@ -80,7 +125,7 @@ func Get_PackageInfos() *PackageInfos {
 		panic(err)
 	}
 	var pis PackageInfos
-	lines := string(content)
+	lines := strings.TrimSpace(string(content))
 	for _, line := range strings.Split(lines, "\n") {
 		parts := strings.Split(line, " ")
 		value, err := strconv.ParseUint(parts[1], 10, 32)
@@ -141,6 +186,9 @@ func ReadMapsByPid(pid uint32) (string, error) {
 }
 
 func ParseSignal(signal string) (uint32, error) {
+	if signal == "" {
+		return 0, nil
+	}
 	sigs := map[string]uint32{
 		"SIGABRT":   uint32(syscall.SIGABRT),
 		"SIGALRM":   uint32(syscall.SIGALRM),
@@ -369,3 +417,22 @@ const (
 	HW_BREAKPOINT_X       uint32 = 4
 	HW_BREAKPOINT_INVALID uint32 = HW_BREAKPOINT_RW | HW_BREAKPOINT_X
 )
+
+func RunCommand(executable string, args ...string) (string, error) {
+	cmd := exec.Command(executable, args...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", err
+	}
+	if err := cmd.Start(); err != nil {
+		return "", err
+	}
+	bytes, err := ioutil.ReadAll(stdout)
+	if err != nil {
+		return "", err
+	}
+	if err := cmd.Wait(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(bytes)), nil
+}

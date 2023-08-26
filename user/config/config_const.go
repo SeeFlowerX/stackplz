@@ -1,7 +1,6 @@
 package config
 
 const MAX_COUNT = 20
-const MAX_WATCH_PROC_COUNT = 256
 
 // stackplz => 737461636b706c7a
 const MAGIC_UID = 0x73746163
@@ -11,11 +10,11 @@ const MAGIC_TID = 0x61636b70
 const (
 	TRACE_COMMON uint32 = iota
 	TRACE_ALL
-	TRACE_FILE
-	TRACE_PROCESS
-	TRACE_NET
-	TRACE_SIGNAL
-	TRACE_STAT
+	// TRACE_FILE
+	// TRACE_PROCESS
+	// TRACE_NET
+	// TRACE_SIGNAL
+	// TRACE_STAT
 )
 
 const MAX_BUF_READ_SIZE uint32 = 4096
@@ -149,4 +148,17 @@ var MreapFlags []FlagOp = []FlagOp{
 	{"MREMAP_MAYMOVE", 1},
 	{"MREMAP_FIXED", 2},
 	{"MREMAP_DONTUNMAP", 4},
+}
+
+var SocketTypes []FlagOp = []FlagOp{
+	{"SOCK_STREAM", int32(1)},
+	{"SOCK_DGRAM", int32(2)},
+	{"SOCK_RAW", int32(3)},
+	{"SOCK_RDM", int32(4)},
+	{"SOCK_SEQPACKET", int32(5)},
+	{"SOCK_DCCP", int32(6)},
+	{"SOCK_PACKET", int32(10)},
+
+	{"SOCK_CLOEXEC", int32(02000000)},
+	{"SOCK_NONBLOCK", int32(00004000)},
 }

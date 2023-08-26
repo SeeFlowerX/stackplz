@@ -12,7 +12,6 @@ import (
     "io/ioutil"
     "log"
     "os"
-    "os/exec"
     "os/signal"
     "path"
     "stackplz/assets"
@@ -26,6 +25,7 @@ import (
     "syscall"
 
     "github.com/spf13/cobra"
+    "golang.org/x/exp/slices"
 )
 
 var Logger *log.Logger
@@ -177,36 +177,95 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Parse_Namelist("TNameWhitelist", gconfig.TName)
     mconfig.Parse_Namelist("TNameBlacklist", gconfig.NoTName)
 
-    // 解析包名取 uid 如果是 System APP 则取 pid
     pis := util.Get_PackageInfos()
+    // 根据 pid 解析进程架构、获取库文件搜索路径
+    for _, process_pid := range mconfig.PidWhitelist {
+        process_uid := pis.FindUidByPid(process_pid)
+        is_find, info := pis.FindPackageByUid(process_uid)
+        if !is_find {
+            return fmt.Errorf("can not find process_pid=%d", process_pid)
+        }
+        addLibPath(info.Name)
+    }
+    // 根据 uid 解析进程架构、获取库文件搜索路径
+    for _, pkg_uid := range mconfig.UidWhitelist {
+        if pkg_uid == 0 || pkg_uid == 1000 || pkg_uid == 2000 {
+            continue
+        }
+        is_find, info := pis.FindPackageByUid(pkg_uid)
+        if !is_find {
+            return fmt.Errorf("can not find pkg_uid=%d", pkg_uid)
+        }
+        addLibPath(info.Name)
+    }
+    // 根据 pkg_name 解析进程架构、获取库文件搜索路径
     pkg_names := strings.Split(gconfig.Name, ",")
     for _, pkg_name := range pkg_names {
-        is_find, info := pis.FindPackage(pkg_name)
-        if !is_find {
-            return fmt.Errorf("can not find package=%s", pkg_name)
+        switch pkg_name {
+        case "":
+        case "root":
+            mconfig.TraceGroup |= util.GROUP_ROOT
+        case "system":
+            mconfig.TraceGroup |= util.GROUP_SYSTEM
+        case "shell":
+            mconfig.TraceGroup |= util.GROUP_SHELL
+        case "app":
+            mconfig.TraceGroup |= util.GROUP_APP
+        case "iso":
+            mconfig.TraceGroup |= util.GROUP_ISO
+        default:
+            is_find, info := pis.FindPackageByName(pkg_name)
+            if !is_find {
+                return fmt.Errorf("can not find pkg_name=%s", pkg_name)
+            }
+            if info.Uid == 1000 {
+                pid_list := FindPidByName(pkg_name)
+                mconfig.PidWhitelist = append(mconfig.PidWhitelist, pid_list...)
+            } else {
+                mconfig.UidWhitelist = append(mconfig.UidWhitelist, info.Uid)
+            }
+            addLibPath(pkg_name)
         }
-        if info.Uid == 1000 {
-            pid_list := FindPidByName(pkg_name)
-            mconfig.UidWhitelist = append(mconfig.PidWhitelist, pid_list...)
-        } else {
-            mconfig.UidWhitelist = append(mconfig.UidWhitelist, info.Uid)
-        }
-        addLibPath(pkg_name)
     }
     // 后面更新map的时候不影响 列表不去重也行
 
-    // 还需要增加的内容 -> 根据uid/pid解析进程架构、获取库文件搜索路径
-
-    mconfig.TraceIsolated = gconfig.TraceIsolated
     mconfig.HideRoot = gconfig.HideRoot
-    if gconfig.UprobeSignal != "" {
-        signal, err := util.ParseSignal(gconfig.UprobeSignal)
-        if err != nil {
-            return err
-        }
-        mconfig.UprobeSignal = signal
-    }
     mconfig.Buffer = gconfig.Buffer
+    mconfig.UnwindStack = gconfig.UnwindStack
+    if gconfig.StackSize&7 != 0 {
+        return errors.New(fmt.Sprintf("dump stack size %d is not 8-byte aligned.", gconfig.StackSize))
+    }
+    mconfig.StackSize = gconfig.StackSize
+    mconfig.ShowRegs = gconfig.ShowRegs
+    mconfig.GetOff = gconfig.GetOff
+    mconfig.Debug = gconfig.Debug
+    mconfig.Is32Bit = false
+    mconfig.Color = gconfig.Color
+    mconfig.DumpHex = gconfig.DumpHex
+
+    // 1. hook uprobe
+    mconfig.InitStackUprobeConfig()
+    mconfig.StackUprobeConf.LibPath, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
+    if err != nil {
+        logger.Fatal(err)
+        os.Exit(1)
+    }
+    err = mconfig.StackUprobeConf.Parse_HookPoint(gconfig.HookPoint)
+    if err != nil {
+        return err
+    }
+    signal, err := util.ParseSignal(gconfig.UprobeSignal)
+    if err != nil {
+        return err
+    }
+    mconfig.UprobeSignal = signal
+
+    // 2. hook syscall
+    mconfig.InitSyscallConfig()
+    mconfig.SysCallConf.Parse_SysWhitelist(gconfig.SysCall)
+    mconfig.SysCallConf.Parse_SysBlacklist(gconfig.NoSysCall)
+
+    // 3. watch breakpoint
     var brk_base uint64 = 0x0
     if gconfig.BrkLib != "" {
         if gconfig.Pid == "" {
@@ -238,7 +297,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             } else if infos[1] == "rw" {
                 mconfig.BrkType = util.HW_BREAKPOINT_RW
             } else {
-                return errors.New(fmt.Sprintf("parse BrkType for %s failed", infos[1]))
+                return errors.New(fmt.Sprintf("parse BrkType for %s failed, choose:r,w,x,rw", infos[1]))
             }
         } else {
             mconfig.BrkType = util.HW_BREAKPOINT_X
@@ -250,45 +309,23 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         mconfig.BrkAddr = brk_base + addr
     }
 
-    mconfig.UnwindStack = gconfig.UnwindStack
-    if gconfig.StackSize&7 != 0 {
-        return errors.New(fmt.Sprintf("dump stack size %d is not 8-byte aligned.", gconfig.StackSize))
+    // 检查hook设定
+    enable_hook := false
+    if len(mconfig.StackUprobeConf.Points) > 0 {
+        enable_hook = true
+        logger.Printf("hook uprobe, count:%d", len(mconfig.StackUprobeConf.Points))
     }
-    mconfig.StackSize = gconfig.StackSize
-    mconfig.ShowRegs = gconfig.ShowRegs
-    mconfig.GetOff = gconfig.GetOff
-    mconfig.Debug = gconfig.Debug
-    mconfig.Is32Bit = gconfig.Is32Bit
-    mconfig.Color = gconfig.Color
-    mconfig.DumpHex = gconfig.DumpHex
-
-    mconfig.InitSyscallConfig()
-    mconfig.InitStackUprobeConfig()
-
-    mconfig.StackUprobeConf.LibPath, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
-    if err != nil {
-        logger.Fatal(err)
-        os.Exit(1)
+    if mconfig.SysCallConf.Enable {
+        enable_hook = true
+        logger.Printf("hook syscall count:%d", len(mconfig.SysCallConf.SysWhitelist))
     }
-
-    // 处理 syscall 的命令
-    mconfig.SysCallConf.Parse_SysWhitelist(gconfig.SysCall)
-    mconfig.SysCallConf.Parse_SysBlacklist(gconfig.NoSysCall)
-
-    if len(gconfig.HookPoint) != 0 {
-        if len(gconfig.HookPoint) > 8 {
-            logger.Fatal("max uprobe hook point count is 8")
-        }
-        err = mconfig.StackUprobeConf.ParseConfig(gconfig.HookPoint)
-        if err != nil {
-            return err
-        }
-    } else if mconfig.BrkAddr != 0 {
+    if mconfig.BrkAddr > 0 {
+        enable_hook = true
         logger.Printf("set breakpoint addr:0x%x", mconfig.BrkAddr)
-    } else {
-        logger.Fatal("hook nothing, plz set -w/--point or -s/--syscall")
     }
-
+    if !enable_hook {
+        logger.Fatal("hook nothing, plz set -w/--point or -s/--syscall or --brk")
+    }
     return nil
 }
 
@@ -346,27 +383,8 @@ func runFunc(command *cobra.Command, args []string) {
     os.Exit(0)
 }
 
-func runCommand(executable string, args ...string) (string, error) {
-    cmd := exec.Command(executable, args...)
-    stdout, err := cmd.StdoutPipe()
-    if err != nil {
-        return "", err
-    }
-    if err := cmd.Start(); err != nil {
-        return "", err
-    }
-    bytes, err := ioutil.ReadAll(stdout)
-    if err != nil {
-        return "", err
-    }
-    if err := cmd.Wait(); err != nil {
-        return "", err
-    }
-    return strings.TrimSpace(string(bytes)), nil
-}
-
 func addLibPath(name string) {
-    content, err := runCommand("pm", "path", name)
+    content, err := util.RunCommand("pm", "path", name)
     if err != nil {
         panic(err)
     }
@@ -376,40 +394,18 @@ func addLibPath(name string) {
         lib_search_path := strings.Join(items[:len(items)-1], "/") + "/lib/arm64"
         _, err := os.Stat(lib_search_path)
         if err == nil {
-            gconfig.LibraryDirs = append(gconfig.LibraryDirs, lib_search_path)
+            if !slices.Contains(gconfig.LibraryDirs, lib_search_path) {
+                if gconfig.Debug {
+                    mconfig.GetLogger().Printf("add lib_search_path => [%s]", lib_search_path)
+                }
+                gconfig.LibraryDirs = append(gconfig.LibraryDirs, lib_search_path)
+            }
         }
     }
 }
 
-// func parseByUid(uid string) error {
-//     // pm list package --uid 10245
-
-//     if uid == "1000" || uid == "2000" || uid == "0" {
-//         gconfig.Is32Bit = false
-//         return nil
-//     }
-
-//     lines, err := runCommand("pm", "list", "package", "--uid", uid)
-//     if err != nil {
-//         return err
-//     }
-
-//     if lines == "" {
-//         return fmt.Errorf("can not find package by uid=%s", uid)
-//     }
-//     parts := strings.SplitN(lines, " ", 2)
-//     if len(parts) != 2 {
-//         return fmt.Errorf("get package name by uid=%s failed, sep => <=", uid)
-//     }
-//     name := strings.SplitN(parts[0], ":", 2)
-//     if len(name) != 2 {
-//         return fmt.Errorf("get package name by uid=%s failed, sep =>:<=", uid)
-//     }
-//     return parseByPackage(name[1])
-// }
-
 func findBTFAssets() string {
-    lines, err := runCommand("uname", "-r")
+    lines, err := util.RunCommand("uname", "-r")
     if err != nil {
         panic(fmt.Sprintf("findBTFAssets failed, can not exec uname -r, err:%v", err))
     }
@@ -418,72 +414,10 @@ func findBTFAssets() string {
         btf_file = "rock5b-5.10-arm64_min.btf"
     }
     if gconfig.Debug {
-        Logger.Printf("[findBTFAssets] btf_file=%s", btf_file)
+        Logger.Printf("findBTFAssets btf_file=%s", btf_file)
     }
     return btf_file
 }
-
-// func parseByPid(pid uint32) error {
-
-//     pid_str := strconv.FormatUint(uint64(pid), 10)
-//     maps_path := "/proc/" + pid_str + "/maps"
-
-//     // uid=$(ps -o user= -p 22812) && id -u $uid
-//     // 先通过这样的命令获取到进程的 uid 判断是不是APP进程
-//     lines, err := runCommand("sh", "-c", fmt.Sprintf("uid=$(ps -o user= -p %s ) && id -u $uid", pid_str))
-//     if err != nil {
-//         return err
-//     }
-//     if gconfig.Debug {
-//         Logger.Printf("[parseByPid] get uid by pid=%d result:\n\t%s", pid, lines)
-//     }
-//     value, _ := strconv.ParseUint(lines, 10, 32)
-//     uid := uint32(value)
-//     // 这个范围内的是常规的 APP 进程
-//     if uid >= 10000 && uid <= 19999 {
-//         return parseByUid(fmt.Sprintf("%d", uid))
-//     }
-//     // 特殊的 uid
-//     // root 0
-//     // system 1000
-//     // shell 2000
-//     if uid == 1000 {
-//         // 考虑到 system app 进程的 uid 都是 1000
-//         // 那么这种尝试通过检查 maps 的 app_process 来确定架构以及库文件路径
-//         lines, err = runCommand("sh", "-c", fmt.Sprintf("cat %s | grep -m1 bin/app_process", maps_path))
-//         if err != nil {
-//             return err
-//         }
-//         if gconfig.Debug {
-//             Logger.Printf("[parseByPid] check app_process by pid=%d result:\n\t%s", pid, lines)
-//         }
-//         if strings.HasSuffix(lines, "/app_process64") {
-//             gconfig.Is32Bit = false
-//         } else if strings.HasSuffix(lines, "/app_process") {
-//             gconfig.Is32Bit = true
-//         } else {
-//             return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
-//         }
-//     }
-
-//     // 通过检查 进程 maps 中 linker 的名字确定是 32 还是 64
-//     // cat /proc/22812/maps | grep -m1 bin/linker
-//     lines, err = runCommand("sh", "-c", fmt.Sprintf("cat %s | grep -m1 bin/linker", maps_path))
-//     if err != nil {
-//         return err
-//     }
-//     if lines == "" {
-//         return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
-//     }
-//     if strings.HasSuffix(lines, "/linker64") {
-//         gconfig.Is32Bit = false
-//     } else if strings.HasSuffix(lines, "/linker") {
-//         gconfig.Is32Bit = true
-//     } else {
-//         return fmt.Errorf("[parseByPid] can not find detect process arch by pid=%d", pid)
-//     }
-//     return nil
-// }
 
 func findKallsymsSymbol(symbol string) (bool, error) {
     find := false
@@ -507,7 +441,7 @@ func findKallsymsSymbol(symbol string) (bool, error) {
 
 func FindPidByName(name string) []uint32 {
     var pid_list []uint32
-    content, err := runCommand("sh", "-c", "ps -ef -o name,pid,ppid | grep `^"+name+"`")
+    content, err := util.RunCommand("sh", "-c", "ps -ef -o name,pid,ppid | grep `^"+name+"`")
     if err != nil {
         panic(err)
     }
@@ -522,68 +456,6 @@ func FindPidByName(name string) []uint32 {
     }
     return pid_list
 }
-
-// func parseByPackage(name string) error {
-//     // 先设置默认值
-//     gconfig.Is32Bit = true
-//     gconfig.Name = name
-//     cmd := exec.Command("dumpsys", "package", name)
-
-//     // 创建获取命令输出管道
-//     stdout, err := cmd.StdoutPipe()
-//     if err != nil {
-//         return err
-//     }
-
-//     // 执行命令
-//     if err := cmd.Start(); err != nil {
-//         return err
-//     }
-
-//     // 使用带缓冲的读取器
-//     outputBuf := bufio.NewReader(stdout)
-
-//     for {
-//         // 按行读
-//         output, _, err := outputBuf.ReadLine()
-//         if err != nil {
-//             // 判断是否到文件的结尾了否则出错
-//             if err.Error() != "EOF" {
-//                 return err
-//             }
-//             break
-//         }
-//         line := strings.Trim(string(output), " ")
-//         parts := strings.SplitN(line, "=", 2)
-//         if len(parts) == 2 {
-//             key := parts[0]
-//             value := parts[1]
-//             switch key {
-//             case "userId":
-//                 value, err := strconv.ParseUint(value, 10, 32)
-//                 if err != nil {
-//                     panic(err)
-//                 }
-//                 // 考虑到是基于 特定模式 的过滤 对于单个系统APP进程 这里赋值了也没有影响
-//                 // 不过后续的逻辑发生变更 要注意这里什么情况下才赋值
-//                 mconfig.UidWhitelist = append(mconfig.UidWhitelist, uint32(value))
-//             case "legacyNativeLibraryDir":
-//                 // 考虑到后面会通过其他方式增加搜索路径 所以是数组
-//                 gconfig.LibraryDirs = append(gconfig.LibraryDirs, value+"/"+"arm64")
-//             case "primaryCpuAbi":
-//                 // 只支持 arm64 否则直接返回错误
-//                 if value != "" && value != "arm64-v8a" {
-//                     return fmt.Errorf("not support package=%s primaryCpuAbi=%s", name, value)
-//                 }
-//             }
-//         }
-//     }
-//     // wait 方法会一直阻塞到其所属的命令完全运行结束为止
-//     if err := cmd.Wait(); err != nil {
-//         return err
-//     }
-//     return nil
-// }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
@@ -614,7 +486,6 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.TName, "tname", "", "thread name white list")
     rootCmd.PersistentFlags().StringVar(&gconfig.NoTName, "no-tname", "", "thread name black list")
 
-    rootCmd.PersistentFlags().BoolVar(&gconfig.TraceIsolated, "iso", false, "watch isolated process")
     rootCmd.PersistentFlags().BoolVar(&gconfig.HideRoot, "hide-root", false, "hide some root feature")
     rootCmd.PersistentFlags().StringVar(&gconfig.UprobeSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
     // 硬件断点设定

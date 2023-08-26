@@ -15,6 +15,11 @@ const (
     MODULE_NAME_SYSCALL = "SyscallMod"
 )
 
+const (
+    THREAD_NAME_WHITELIST uint32 = 1
+    THREAD_NAME_BLACKLIST uint32 = 2
+)
+
 // http://aospxref.com/android-11.0.0_r21/xref/bionic/libc/kernel/uapi/asm-arm/asm/perf_regs.h
 const (
     PERF_REG_ARM_R0 uint32 = iota

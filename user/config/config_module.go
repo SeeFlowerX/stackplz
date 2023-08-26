@@ -194,7 +194,12 @@ func (this *StackUprobeConfig) IsEnable() bool {
     return len(this.Points) > 0
 }
 
-func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
+func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
+
+    if len(configs) > 8 {
+        return errors.New("max uprobe hook point count is 8")
+    }
+
     // strstr+0x0[str,str] 命中 strstr + 0x0 时将x0和x1读取为字符串
     // write[int,buf:128,int] 命中 write 时将x0读取为int、x1读取为字节数组、x2读取为int
     // 0x89ab[buf:64,int] 命中hook点时读取 x0 处64字节数据 读取 x1 值
@@ -254,12 +259,12 @@ func (this *StackUprobeConfig) ParseConfig(configs []string) (err error) {
 }
 
 type SyscallConfig struct {
-    logger         *log.Logger
-    debug          bool
-    Enable         bool
-    syscall_filter SyscallFilter
-    SysWhitelist   []uint32
-    SysBlacklist   []uint32
+    logger       *log.Logger
+    debug        bool
+    Enable       bool
+    TraceMode    uint32
+    SysWhitelist []uint32
+    SysBlacklist []uint32
 }
 
 func (this *SyscallConfig) SetDebug(debug bool) {
@@ -269,123 +274,82 @@ func (this *SyscallConfig) SetLogger(logger *log.Logger) {
     this.logger = logger
 }
 
-func (this *SyscallConfig) GetSyscallFilter() SyscallFilter {
-    return this.syscall_filter
-}
-
-func (this *SyscallConfig) Parse_SysWhitelist(syscall string) {
-    if syscall == "" {
+func (this *SyscallConfig) Parse_SysWhitelist(text string) {
+    if text == "" {
         this.Enable = false
         return
     }
     this.Enable = true
-    this.syscall_filter.SetTraceMode(TRACE_COMMON)
-    if syscall == "all" {
-        this.syscall_filter.SetTraceMode(TRACE_ALL)
-    } else if syscall == "%file" {
-        this.syscall_filter.SetTraceMode(TRACE_FILE)
-    } else if syscall == "%process" {
-        this.syscall_filter.SetTraceMode(TRACE_PROCESS)
-    } else if syscall == "%net" {
-        this.syscall_filter.SetTraceMode(TRACE_NET)
-    } else if syscall == "%signal" {
-        this.syscall_filter.SetTraceMode(TRACE_SIGNAL)
-    } else if syscall == "%stat" {
-        this.syscall_filter.SetTraceMode(TRACE_STAT)
-    } else {
-        items := strings.Split(syscall, ",")
-        var syscall_items []string
-        for _, v := range items {
-            switch v {
-            case "all":
-                this.syscall_filter.SetTraceMode(TRACE_ALL)
-            case "%attr":
-                this.syscall_filter.SetTraceMode(TRACE_FILE)
-                syscall_items = append(syscall_items, []string{"setxattr", "lsetxattr", "fsetxattr"}...)
-                syscall_items = append(syscall_items, []string{"getxattr", "lgetxattr", "fgetxattr"}...)
-                syscall_items = append(syscall_items, []string{"listxattr", "llistxattr", "flistxattr"}...)
-                syscall_items = append(syscall_items, []string{"removexattr", "lremovexattr", "fremovexattr"}...)
-            case "%file":
-                this.syscall_filter.SetTraceMode(TRACE_FILE)
-                syscall_items = append(syscall_items, []string{"openat", "openat2", "faccessat", "faccessat2", "mknodat", "mkdirat"}...)
-                syscall_items = append(syscall_items, []string{"unlinkat", "symlinkat", "linkat", "renameat", "renameat2", "readlinkat"}...)
-                syscall_items = append(syscall_items, []string{"chdir", "fchdir", "chroot", "fchmod", "fchmodat", "fchownat", "fchown"}...)
-            case "%process":
-                this.syscall_filter.SetTraceMode(TRACE_PROCESS)
-                syscall_items = append(syscall_items, []string{"clone", "clone3"}...)
-                syscall_items = append(syscall_items, []string{"execve", "execveat"}...)
-                syscall_items = append(syscall_items, []string{"wait4", "waitid"}...)
-                syscall_items = append(syscall_items, []string{"exit", "exit_group", "rt_sigqueueinfo"}...)
-                syscall_items = append(syscall_items, []string{"kill", "tkill", "tgkill"}...)
-                syscall_items = append(syscall_items, []string{"pidfd_send_signal", "pidfd_open", "pidfd_getfd"}...)
-            case "%net":
-                this.syscall_filter.SetTraceMode(TRACE_NET)
-                syscall_items = append(syscall_items, "socket")
-                syscall_items = append(syscall_items, "socketpair")
-                syscall_items = append(syscall_items, "bind")
-                syscall_items = append(syscall_items, "listen")
-                syscall_items = append(syscall_items, "accept")
-                syscall_items = append(syscall_items, "connect")
-                syscall_items = append(syscall_items, "getsockname")
-                syscall_items = append(syscall_items, "getpeername")
-                syscall_items = append(syscall_items, "sendto")
-                syscall_items = append(syscall_items, "recvfrom")
-                syscall_items = append(syscall_items, "setsockopt")
-                syscall_items = append(syscall_items, "getsockopt")
-                syscall_items = append(syscall_items, "shutdown")
-                syscall_items = append(syscall_items, "recvmsg")
-                syscall_items = append(syscall_items, "sendmsg")
-                syscall_items = append(syscall_items, "recvmmsg")
-                syscall_items = append(syscall_items, "sendmmsg")
-                syscall_items = append(syscall_items, "accept4")
-            case "%signal":
-                this.syscall_filter.SetTraceMode(TRACE_SIGNAL)
-                syscall_items = append(syscall_items, "sigaltstack")
-                syscall_items = append(syscall_items, "rt_sigsuspend")
-                syscall_items = append(syscall_items, "rt_sigaction")
-                syscall_items = append(syscall_items, "rt_sigprocmask")
-                syscall_items = append(syscall_items, "rt_sigpending")
-                syscall_items = append(syscall_items, "rt_sigtimedwait")
-                syscall_items = append(syscall_items, "rt_sigqueueinfo")
-                syscall_items = append(syscall_items, "rt_sigreturn")
-                syscall_items = append(syscall_items, "rt_tgsigqueueinfo")
-                syscall_items = append(syscall_items, "kill")
-                syscall_items = append(syscall_items, "tkill")
-                syscall_items = append(syscall_items, "tgkill")
-            case "%stat":
-                this.syscall_filter.SetTraceMode(TRACE_STAT)
-                syscall_items = append(syscall_items, "statfs")
-                syscall_items = append(syscall_items, "fstatfs")
-                syscall_items = append(syscall_items, "newfstatat")
-                syscall_items = append(syscall_items, "fstat")
-                syscall_items = append(syscall_items, "statx")
-            default:
-                syscall_items = append(syscall_items, v)
+    this.TraceMode = TRACE_COMMON
+    items := strings.Split(text, ",")
+    var syscall_items []string
+    for _, v := range items {
+        switch v {
+        case "all":
+            this.TraceMode = TRACE_ALL
+            syscall_items = []string{}
+            break
+        case "%attr":
+            syscall_items = append(syscall_items, []string{"setxattr", "lsetxattr", "fsetxattr"}...)
+            syscall_items = append(syscall_items, []string{"getxattr", "lgetxattr", "fgetxattr"}...)
+            syscall_items = append(syscall_items, []string{"listxattr", "llistxattr", "flistxattr"}...)
+            syscall_items = append(syscall_items, []string{"removexattr", "lremovexattr", "fremovexattr"}...)
+        case "%file":
+            syscall_items = append(syscall_items, []string{"openat", "openat2", "faccessat", "faccessat2", "mknodat", "mkdirat"}...)
+            syscall_items = append(syscall_items, []string{"unlinkat", "symlinkat", "linkat", "renameat", "renameat2", "readlinkat"}...)
+            syscall_items = append(syscall_items, []string{"chdir", "fchdir", "chroot", "fchmod", "fchmodat", "fchownat", "fchown"}...)
+        case "%clone":
+            syscall_items = append(syscall_items, []string{"clone", "clone3"}...)
+        case "%exec":
+            syscall_items = append(syscall_items, []string{"execve", "execveat"}...)
+        case "%process":
+            syscall_items = append(syscall_items, []string{"clone", "clone3"}...)
+            syscall_items = append(syscall_items, []string{"execve", "execveat"}...)
+            syscall_items = append(syscall_items, []string{"wait4", "waitid"}...)
+            syscall_items = append(syscall_items, []string{"exit", "exit_group", "rt_sigqueueinfo"}...)
+            syscall_items = append(syscall_items, []string{"pidfd_send_signal", "pidfd_open", "pidfd_getfd"}...)
+        case "%net":
+            syscall_items = append(syscall_items, []string{"socket", "socketpair"}...)
+            syscall_items = append(syscall_items, []string{"bind", "listen", "accept", "connect"}...)
+            syscall_items = append(syscall_items, []string{"getsockname", "getpeername", "setsockopt", "getsockopt"}...)
+            syscall_items = append(syscall_items, []string{"sendto", "recvfrom", "sendmsg", "recvmsg"}...)
+            syscall_items = append(syscall_items, []string{"shutdown", "recvmmsg", "sendmmsg", "accept4"}...)
+        case "%signal":
+            syscall_items = append(syscall_items, []string{"sigaltstack"}...)
+            syscall_items = append(syscall_items, []string{"rt_sigsuspend", "rt_sigaction", "rt_sigprocmask", "rt_sigpending"}...)
+            syscall_items = append(syscall_items, []string{"rt_sigtimedwait", "rt_sigqueueinfo", "rt_sigreturn", "rt_tgsigqueueinfo"}...)
+        case "%kill":
+            syscall_items = append(syscall_items, []string{"kill", "tkill", "tgkill"}...)
+        case "%stat":
+            syscall_items = append(syscall_items, []string{"statfs", "fstatfs", "newfstatat", "fstat", "statx"}...)
+        default:
+            syscall_items = append(syscall_items, v)
+        }
+    }
+    // 去重
+    var unique_items []string
+    if this.TraceMode != TRACE_ALL {
+        for _, v := range syscall_items {
+            if !slices.Contains(unique_items, v) {
+                unique_items = append(unique_items, v)
             }
         }
-        // 去重
-        var unique_items []string
-        if this.syscall_filter.GetTraceMode() != TRACE_ALL {
-            for _, v := range syscall_items {
-                if !slices.Contains(unique_items, v) {
-                    unique_items = append(unique_items, v)
-                }
-            }
+    }
+    for _, v := range unique_items {
+        point := GetWatchPointByName(v)
+        nr_point, ok := (point).(*SysCallArgs)
+        if !ok {
+            panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
         }
-        for _, v := range unique_items {
-            point := GetWatchPointByName(v)
-            nr_point, ok := (point).(*SysCallArgs)
-            if !ok {
-                panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
-            }
-            this.SysWhitelist = append(this.SysWhitelist, uint32(nr_point.NR))
-        }
-        this.syscall_filter.SetWhitelistMode(len(this.SysWhitelist) > 0)
+        this.SysWhitelist = append(this.SysWhitelist, uint32(nr_point.NR))
     }
 }
 
-func (this *SyscallConfig) Parse_SysBlacklist(syscall_blacklist string) {
-    items := strings.Split(syscall_blacklist, ",")
+func (this *SyscallConfig) Parse_SysBlacklist(text string) {
+    if text == "" {
+        return
+    }
+    items := strings.Split(text, ",")
     for _, v := range items {
         point := GetWatchPointByName(v)
         nr_point, ok := (point).(*SysCallArgs)
@@ -394,7 +358,6 @@ func (this *SyscallConfig) Parse_SysBlacklist(syscall_blacklist string) {
         }
         this.SysBlacklist = append(this.SysBlacklist, uint32(nr_point.NR))
     }
-    this.syscall_filter.SetBlacklistMode(len(this.SysBlacklist) > 0)
 }
 
 func (this *SyscallConfig) IsEnable() bool {
@@ -402,16 +365,25 @@ func (this *SyscallConfig) IsEnable() bool {
 }
 
 func (this *SyscallConfig) Info() string {
-    var watchlist []string
+    var whitelist []string
     for _, v := range this.SysWhitelist {
         point := GetWatchPointByNR(v)
         nr_point, ok := (point).(*SysCallArgs)
         if !ok {
             panic(fmt.Sprintf("cast [%d] watchpoint to SysCallArgs failed", v))
         }
-        watchlist = append(watchlist, nr_point.Name())
+        whitelist = append(whitelist, nr_point.Name())
     }
-    return fmt.Sprintf("watch:%s", strings.Join(watchlist, ","))
+    var blacklist []string
+    for _, v := range this.SysBlacklist {
+        point := GetWatchPointByNR(v)
+        nr_point, ok := (point).(*SysCallArgs)
+        if !ok {
+            panic(fmt.Sprintf("cast [%d] watchpoint to SysCallArgs failed", v))
+        }
+        blacklist = append(blacklist, nr_point.Name())
+    }
+    return fmt.Sprintf("whitelist:[%s];blacklist:[%s]", strings.Join(whitelist, ","), strings.Join(blacklist, ","))
 }
 
 type ModuleConfig struct {
@@ -429,21 +401,21 @@ type ModuleConfig struct {
     TNameWhitelist []string
     TNameBlacklist []string
 
-    TraceIsolated bool
-    HideRoot      bool
-    UprobeSignal  uint32
-    UnwindStack   bool
-    StackSize     uint32
-    ShowRegs      bool
-    GetOff        bool
-    RegName       string
-    ExternalBTF   string
-    Is32Bit       bool
-    Buffer        uint32
-    BrkAddr       uint64
-    BrkType       uint32
-    Color         bool
-    DumpHex       bool
+    TraceGroup   uint32
+    HideRoot     bool
+    UprobeSignal uint32
+    UnwindStack  bool
+    StackSize    uint32
+    ShowRegs     bool
+    GetOff       bool
+    RegName      string
+    ExternalBTF  string
+    Is32Bit      bool
+    Buffer       uint32
+    BrkAddr      uint64
+    BrkType      uint32
+    Color        bool
+    DumpHex      bool
 
     Name            string
     StackUprobeConf *StackUprobeConfig
@@ -454,6 +426,7 @@ func NewModuleConfig() *ModuleConfig {
     config := &ModuleConfig{}
     config.SelfPid = uint32(os.Getpid())
     config.FilterMode = util.UNKNOWN_MODE
+    config.TraceGroup = util.GROUP_NONE
     // 虽然会通过全局配置进程覆盖 但是还是做好在初始化时就进行默认赋值
     return config
 }
@@ -531,25 +504,16 @@ func (this *ModuleConfig) Parse_Namelist(list_key, name_list string) {
 
 func (this *ModuleConfig) GetCommonFilter() CommonFilter {
     filter := CommonFilter{}
-    // filter.is_32bit = 0
+    if this.Is32Bit {
+        filter.is_32bit = 1
+    } else {
+        filter.is_32bit = 0
+    }
+    // 按设计应当分离 但是为了减少一个 map ...
+    filter.trace_mode = this.SysCallConf.TraceMode
 
-    // 这些暂时硬编码
-    for i := 0; i < MAX_COUNT; i++ {
-        filter.pid_list[i] = MAGIC_PID
-    }
-
-    filter.thread_name_whitelist = 0
-    if len(this.TNameWhitelist) > 0 {
-        filter.thread_name_whitelist = 1
-    }
-    filter.trace_uid_group = 0
-    if this.TraceIsolated {
-        filter.trace_uid_group = 1
-    }
+    filter.trace_uid_group = this.TraceGroup
     filter.signal = this.UprobeSignal
-    // if this.Debug {
-    //     this.logger.Printf("CommonFilter{uid=%d, pid=%d, tid=%d, is_32bit=%d, whitelist:%d}", filter.uid, filter.pid, filter.tid, filter.is_32bit, filter.thread_name_whitelist)
-    // }
     return filter
 }
 
@@ -558,7 +522,7 @@ func (this *ModuleConfig) GetConfigMap() ConfigMap {
     config.stackplz_pid = this.SelfPid
     config.filter_mode = this.FilterMode
     if this.Debug {
-        this.logger.Printf("ConfigMap{stackplz_pid=%d}", config.stackplz_pid)
+        this.logger.Printf("ConfigMap{stackplz_pid=%d, filter_mode=%d}", config.stackplz_pid, config.filter_mode)
     }
     return config
 }

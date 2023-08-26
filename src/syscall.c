@@ -8,27 +8,12 @@
 #include "common/context.h"
 #include "common/filtering.h"
 
-// syscall过滤配置
-struct syscall_filter_t {
-    u32 is_32bit;
-    u32 trace_mode;
-    u32 whitelist_mode;
-    u32 blacklist_mode;
-};
-
 typedef struct syscall_point_args_t {
     // u32 nr;
     u32 count;
     point_arg point_args[MAX_POINT_ARG_COUNT];
     point_arg point_arg_ret;
 } syscall_point_args;
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u32);
-    __type(value, u32);
-    __uint(max_entries, MAX_WATCH_PROC_COUNT);
-} watch_proc_map SEC(".maps");
 
 // syscall_point_args_map 的 key 就是 nr
 struct {
@@ -37,13 +22,6 @@ struct {
     __type(value, struct syscall_point_args_t);
     __uint(max_entries, 512);
 } syscall_point_args_map SEC(".maps");
-
-struct {
-    __uint(type, BPF_MAP_TYPE_HASH);
-    __type(key, u32);
-    __type(value, struct syscall_filter_t);
-    __uint(max_entries, 1);
-} syscall_filter SEC(".maps");
 
 SEC("raw_tracepoint/sched_process_fork")
 int tracepoint__sched__sched_process_fork(struct bpf_raw_tracepoint_args *ctx)
@@ -120,29 +98,25 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     }
 
     u32 filter_key = 0;
-    struct syscall_filter_t* filter = bpf_map_lookup_elem(&syscall_filter, &filter_key);
+    common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
     if (filter == NULL) {
         return 0;
     }
 
-    if (filter->trace_mode == 0) {
+    if (filter->trace_mode == TRACE_COMMON) {
         // 非 追踪全部syscall模式
-        if (filter->whitelist_mode == 1) {
-            u32 expected_key = sysno + SYS_WHITELIST_START;
-            u32 *flag = bpf_map_lookup_elem(&common_list, &expected_key);
-            if (flag == NULL) {
-                return 0;
-            }
+        u32 sysno_whitelist_key = sysno + SYS_WHITELIST_START;
+        u32 *sysno_whitelist_value = bpf_map_lookup_elem(&common_list, &sysno_whitelist_key);
+        if (sysno_whitelist_value == NULL) {
+            return 0;
         }
     }
 
     // 黑名单同样对 追踪全部syscall模式 有效
-    if (filter->blacklist_mode == 1) {
-        u32 expected_key = sysno + SYS_BLACKLIST_START;
-        u32 *flag = bpf_map_lookup_elem(&common_list, &expected_key);
-        if (flag != NULL) {
-            return 0;
-        }
+    u32 sysno_blacklist_key = sysno + SYS_BLACKLIST_START;
+    u32 *sysno_blacklist_value = bpf_map_lookup_elem(&common_list, &sysno_blacklist_key);
+    if (sysno_blacklist_value != NULL) {
+        return 0;
     }
 
     // 保存寄存器应该放到所有过滤完成之后
@@ -237,12 +211,8 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     }
 
     events_perf_submit(&p, SYSCALL_ENTER);
-    common_filter_t* c_filter = bpf_map_lookup_elem(&common_filter, &filter_key);
-    if (c_filter == NULL) {
-        return 0;
-    }
-    if (c_filter->signal > 0) {
-        bpf_send_signal(c_filter->signal);
+    if (filter->signal > 0) {
+        bpf_send_signal(filter->signal);
     }
     return 0;
 }
@@ -267,7 +237,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     }
 
     u32 filter_key = 0;
-    struct syscall_filter_t* filter = bpf_map_lookup_elem(&syscall_filter, &filter_key);
+    common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
     if (filter == NULL) {
         return 0;
     }
@@ -278,24 +248,20 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     }
     del_args(SYSCALL_ENTER);
 
-    if (filter->trace_mode == 0) {
+    if (filter->trace_mode == TRACE_COMMON) {
         // 非 追踪全部syscall模式
-        if (filter->whitelist_mode == 1) {
-            u32 expected_key = sysno + SYS_WHITELIST_START;
-            u32 *flag = bpf_map_lookup_elem(&common_list, &expected_key);
-            if (flag == NULL) {
-                return 0;
-            }
+        u32 sysno_whitelist_key = sysno + SYS_WHITELIST_START;
+        u32 *sysno_whitelist_value = bpf_map_lookup_elem(&common_list, &sysno_whitelist_key);
+        if (sysno_whitelist_value == NULL) {
+            return 0;
         }
     }
 
     // 黑名单同样对 追踪全部syscall模式 有效
-    if (filter->blacklist_mode == 1) {
-        u32 expected_key = sysno + SYS_BLACKLIST_START;
-        u32 *flag = bpf_map_lookup_elem(&common_list, &expected_key);
-        if (flag != NULL) {
-            return 0;
-        }
+    u32 sysno_blacklist_key = sysno + SYS_BLACKLIST_START;
+    u32 *sysno_blacklist_value = bpf_map_lookup_elem(&common_list, &sysno_blacklist_key);
+    if (sysno_blacklist_value != NULL) {
+        return 0;
     }
 
     int next_arg_index = 0;

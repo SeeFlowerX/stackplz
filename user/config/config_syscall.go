@@ -20,7 +20,7 @@ type SPointTypes struct {
 	ArgTypeRet FilterArgType
 }
 
-func (this *SysCallArgs) ParseFlags(value int32) string {
+func (this *SysCallArgs) ParseFlag(value int32) string {
 	// 借助这个函数对 flags 进行解析 增强可读性
 	var ops []FlagOp
 	switch this.PointArgs.PointName {
@@ -30,6 +30,17 @@ func (this *SysCallArgs) ParseFlags(value int32) string {
 		ops = MapFlags
 	case "mremap":
 		ops = MreapFlags
+	default:
+		return ""
+	}
+	return this.ParseOp(value, &ops)
+}
+
+func (this *SysCallArgs) ParseType(value int32) string {
+	var ops []FlagOp
+	switch this.PointArgs.PointName {
+	case "socket", "socketpair":
+		ops = SocketTypes
 	default:
 		return ""
 	}
@@ -404,8 +415,8 @@ func init() {
 	Register(&SArgs{195, PA("shmctl", []PArg{A("shmid", INT), A("cmd", INT), A("buf", POINTER)})})
 	Register(&SArgs{196, PA("shmat", []PArg{A("shmid", INT), A("shmaddr", POINTER), A("shmflg", INT)})})
 	Register(&SArgs{197, PA("shmdt", []PArg{A("shmaddr", POINTER)})})
-	Register(&SArgs{198, PA("socket", []PArg{A("domain", INT), A("type", INT), A("protocol", INT)})})
-	Register(&SArgs{199, PA("socketpair", []PArg{A("domain", INT), A("type", INT), A("protocol", INT), A("sv", POINTER)})})
+	Register(&SArgs{198, PA("socket", []PArg{A("domain", INT), A("type", EXP_INT), A("protocol", INT)})})
+	Register(&SArgs{199, PA("socketpair", []PArg{A("domain", INT), A("type", EXP_INT), A("protocol", INT), A("sv", POINTER)})})
 	Register(&SArgs{200, PA("bind", []PArg{A("sockfd", EXP_INT), A("addr", SOCKADDR), A("addrlen", INT)})})
 	Register(&SArgs{201, PA("listen", []PArg{A("sockfd", EXP_INT), A("backlog", INT)})})
 	Register(&SArgs{202, PA("accept", []PArg{A("sockfd", EXP_INT), A("addr", SOCKADDR), A("addrlen", INT)})})

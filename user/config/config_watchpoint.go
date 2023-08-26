@@ -33,7 +33,8 @@ type ArgType struct {
 type IWatchPoint interface {
 	Name() string
 	Format() string
-	ParseFlags(int32) string
+	ParseType(int32) string
+	ParseFlag(int32) string
 	ParseProt(int32) string
 	ParseMode(int32) string
 	Clone() IWatchPoint
@@ -81,9 +82,11 @@ func (this *PointArg) Format(p IWatchPoint, value uint64) string {
 		value_fixed := int32(value)
 		switch this.ArgName {
 		case "flags":
-			this.ArgValue = fmt.Sprintf("%s=0x%x%s", this.ArgName, value_fixed, p.ParseFlags(value_fixed))
+			this.ArgValue = fmt.Sprintf("%s=0x%x%s", this.ArgName, value_fixed, p.ParseFlag(value_fixed))
 		case "prot":
 			this.ArgValue = fmt.Sprintf("%s=0x%x%s", this.ArgName, value_fixed, p.ParseProt(value_fixed))
+		case "type":
+			this.ArgValue = fmt.Sprintf("%s=0x%x%s", this.ArgName, value_fixed, p.ParseType(value_fixed))
 		default:
 			this.ArgValue = fmt.Sprintf("%s=%d", this.ArgName, value_fixed)
 		}
@@ -221,14 +224,17 @@ func (this *PointArgs) Format() string {
 func (this *PointArgs) Name() string {
 	return this.PointName
 }
-func (this *PointArgs) ParseFlags(value int32) string {
-	panic("PointArgs.ParseFlags() not implemented yet")
+func (this *PointArgs) ParseFlag(value int32) string {
+	panic("PointArgs.ParseFlag() not implemented yet")
 }
 func (this *PointArgs) ParseProt(value int32) string {
 	panic("PointArgs.ParseProt() not implemented yet")
 }
 func (this *PointArgs) ParseMode(value int32) string {
 	panic("PointArgs.ParseMode() not implemented yet")
+}
+func (this *PointArgs) ParseType(value int32) string {
+	panic("PointArgs.ParseType() not implemented yet")
 }
 
 func NewWatchPoint(name string) IWatchPoint {

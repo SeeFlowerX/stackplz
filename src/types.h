@@ -5,13 +5,7 @@
 
 typedef struct common_filter {
     u32 is_32bit;
-    u32 uid;
-    u32 pid;
-    u32 tid;
-    u32 pid_list[MAX_WATCH_PROC_COUNT];
-    u32 blacklist_pids[MAX_COUNT];
-    u32 blacklist_tids[MAX_COUNT];
-    u32 thread_name_whitelist;
+    u32 trace_mode;
     u32 trace_uid_group;
     u32 signal;
 } common_filter_t;

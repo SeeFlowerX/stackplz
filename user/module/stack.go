@@ -12,6 +12,7 @@ import (
     "stackplz/user/config"
     "stackplz/user/event"
     "stackplz/user/util"
+    "strings"
     "unsafe"
 
     "github.com/cilium/ebpf"
@@ -93,9 +94,6 @@ func (this *MStack) setupManager() error {
     }
 
     if this.mconf.SysCallConf.IsEnable() {
-        if this.mconf.Debug {
-            this.logger.Printf("Syscall:%s", this.mconf.SysCallConf.Info())
-        }
         // syscall hook 配置
         sys_enter_probe := &manager.Probe{
             Section:      "raw_tracepoint/sys_enter",
@@ -257,6 +255,14 @@ func (this *MStack) update_common_list(items []uint32, offset uint32) {
     }
 }
 
+func (this *MStack) list2string(items []uint32) string {
+    var results []string
+    for _, v := range items {
+        results = append(results, fmt.Sprintf("%d", v))
+    }
+    return strings.Join(results, ",")
+}
+
 func (this *MStack) update_common_filter() {
     this.update_common_list(this.mconf.UidWhitelist, util.UID_WHITELIST_START)
     this.update_common_list(this.mconf.UidBlacklist, util.UID_BLACKLIST_START)
@@ -264,6 +270,11 @@ func (this *MStack) update_common_filter() {
     this.update_common_list(this.mconf.PidBlacklist, util.PID_BLACKLIST_START)
     this.update_common_list(this.mconf.TidWhitelist, util.TID_WHITELIST_START)
     this.update_common_list(this.mconf.TidBlacklist, util.TID_BLACKLIST_START)
+    if this.mconf.Debug {
+        this.logger.Printf("uid => whitelist:[%s];blacklist:[%s]", this.list2string(this.mconf.UidWhitelist), this.list2string(this.mconf.UidBlacklist))
+        this.logger.Printf("pid => whitelist:[%s];blacklist:[%s]", this.list2string(this.mconf.PidWhitelist), this.list2string(this.mconf.PidBlacklist))
+        this.logger.Printf("tid => whitelist:[%s];blacklist:[%s]", this.list2string(this.mconf.TidWhitelist), this.list2string(this.mconf.TidBlacklist))
+    }
     var filter_key uint32 = 0
     map_name := "common_filter"
     filter_value := this.mconf.GetCommonFilter()
@@ -293,6 +304,7 @@ func (this *MStack) update_thread_filter() {
         "mali-utility-wo",
         "mali-mem-purge",
         "mali-hist-dump",
+        "mali-event-hand",
         "hwuiTask0",
         "hwuiTask1",
         "NDK MediaCodec_",
@@ -302,7 +314,7 @@ func (this *MStack) update_thread_filter() {
         if len(v) > 16 {
             panic(fmt.Sprintf("[%s] thread name max len is 16", v))
         }
-        filter_value := 1
+        filter_value := THREAD_NAME_BLACKLIST
         filter_key := config.ThreadFilter{}
         copy(filter_key.ThreadName[:], v)
         err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
@@ -314,7 +326,7 @@ func (this *MStack) update_thread_filter() {
         if len(v) > 16 {
             panic(fmt.Sprintf("[%s] thread name max len is 16", v))
         }
-        filter_value := 1
+        filter_value := THREAD_NAME_BLACKLIST
         filter_key := config.ThreadFilter{}
         copy(filter_key.ThreadName[:], v)
         err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
@@ -326,7 +338,7 @@ func (this *MStack) update_thread_filter() {
         if len(v) > 16 {
             panic(fmt.Sprintf("[%s] thread name max len is 16", v))
         }
-        filter_value := 2
+        filter_value := THREAD_NAME_WHITELIST
         filter_key := config.ThreadFilter{}
         copy(filter_key.ThreadName[:], v)
         err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
@@ -346,7 +358,7 @@ func (this *MStack) update_rev_filter() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
-    // ./stackplz -n com.starbucks.cn --iso -s newfstatat,openat,faccessat --hide-root -o tmp.log -q
+    // ./stackplz -n com.starbucks.cn,iso -s newfstatat,openat,faccessat --hide-root -o tmp.log -q
     var rev_list []string = []string{
         "/sbin/su",
         "/sbin/.magisk/",
@@ -373,13 +385,6 @@ func (this *MStack) update_rev_filter() {
     if this.mconf.Debug {
         this.logger.Printf("update %s success", map_name)
     }
-}
-
-func (this *MStack) update_syscall_filter() {
-    var filter_key uint32 = 0
-    map_name := "syscall_filter"
-    filter_value := this.mconf.SysCallConf.GetSyscallFilter()
-    this.update_map(map_name, filter_key, unsafe.Pointer(&filter_value))
 }
 
 func (this *MStack) update_syscall_point_args() {
@@ -411,9 +416,12 @@ func (this *MStack) update_syscall_config() {
         return
     }
     this.update_syscall_point_args()
-    this.update_syscall_filter()
+    // this.update_syscall_filter()
     this.update_common_list(this.mconf.SysCallConf.SysWhitelist, util.SYS_WHITELIST_START)
     this.update_common_list(this.mconf.SysCallConf.SysBlacklist, util.SYS_BLACKLIST_START)
+    if this.mconf.Debug {
+        this.logger.Printf("SysCallConf:%s", this.mconf.SysCallConf.Info())
+    }
 }
 
 func (this *MStack) update_stack_config() {
