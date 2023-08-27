@@ -45,7 +45,7 @@ func (this *UprobeEvent) ParseContext() (err error) {
         }
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
         point_arg.SetValue(base_arg_str)
-        if point_arg.Type == config.TYPE_NUM {
+        if point_arg.BaseType == config.TYPE_NUM {
             results = append(results, point_arg.ArgValue)
             continue
         }

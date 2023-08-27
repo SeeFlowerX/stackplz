@@ -22,12 +22,12 @@ const (
 
 type ArgType struct {
 	ReadIndex      uint32
+	ReadOffset     uint32
 	AliasType      uint32
-	Type           uint32
-	Size           uint32
+	BaseType       uint32
+	ReadCount      uint32
 	ItemPerSize    uint32
 	ItemCountIndex uint32
-	ReadOffset     uint32
 }
 
 type IWatchPoint interface {
@@ -106,12 +106,12 @@ func (this *PointArg) Format(p IWatchPoint, value uint64) string {
 	return this.ArgValue
 }
 
-func (this *ArgType) SetType(item uint32) {
-	this.Type = item
+func (this *ArgType) SetBaseType(base_type uint32) {
+	this.BaseType = base_type
 }
 
-func (this *ArgType) SetSize(size uint32) {
-	this.Size = size
+func (this *ArgType) SetReadCount(read_count uint32) {
+	this.ReadCount = read_count
 }
 
 func (this *ArgType) SetCountIndex(index uint32) {
@@ -132,19 +132,19 @@ func (this *ArgType) SetItemPerSize(persize uint32) {
 
 func (this *ArgType) ToPtr() ArgType {
 	at := this.Clone()
-	at.Type = TYPE_POINTER
+	at.BaseType = TYPE_POINTER
 	return at
 }
 
-func (this *ArgType) NewType(item uint32) ArgType {
+func (this *ArgType) NewBaseType(base_type uint32) ArgType {
 	at := this.Clone()
-	at.Type = item
+	at.BaseType = base_type
 	return at
 }
 
-func (this *ArgType) NewSize(size uint32) ArgType {
+func (this *ArgType) NewReadCount(read_count uint32) ArgType {
 	at := this.Clone()
-	at.Size = size
+	at.ReadCount = read_count
 	return at
 }
 
@@ -174,8 +174,8 @@ func (this *ArgType) NewItemPerSize(persize uint32) ArgType {
 
 func (this *ArgType) String() string {
 	var s string = ""
-	s += fmt.Sprintf("read_index:%d, alias_type:%d type:%d ", this.ReadIndex, this.AliasType, this.Type)
-	s += fmt.Sprintf("size:%d per:%d count_index:%d ", this.Size, this.ItemPerSize, this.ItemCountIndex)
+	s += fmt.Sprintf("read_index:%d, alias_type:%d base_type:%d ", this.ReadIndex, this.AliasType, this.BaseType)
+	s += fmt.Sprintf("read_count:%d per:%d count_index:%d ", this.ReadCount, this.ItemPerSize, this.ItemCountIndex)
 	s += fmt.Sprintf("off:%d", this.ReadOffset)
 	return s
 }
@@ -184,17 +184,17 @@ func (this *ArgType) Clone() ArgType {
 	// 在涉及到类型变更的时候 记得先调用这个
 	at := ArgType{}
 	at.ReadIndex = this.ReadIndex
+	at.ReadOffset = this.ReadOffset
 	at.AliasType = this.AliasType
-	at.Type = this.Type
-	at.Size = this.Size
+	at.BaseType = this.BaseType
+	at.ReadCount = this.ReadCount
 	at.ItemPerSize = this.ItemPerSize
 	at.ItemCountIndex = this.ItemCountIndex
-	at.ReadIndex = this.ReadIndex
 	return at
 }
 
 func AT(arg_alias_type, arg_type, read_count uint32) ArgType {
-	return ArgType{READ_INDEX_REG, arg_alias_type, arg_type, read_count, 1, READ_INDEX_SKIP, 0}
+	return ArgType{READ_INDEX_REG, 0, arg_alias_type, arg_type, read_count, 1, READ_INDEX_SKIP}
 }
 
 func PA(nr string, args []PArg) PArgs {

@@ -193,7 +193,7 @@ var BUFFER_T = AT(TYPE_BUFFER_T, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
 var READ_BUFFER_T = BUFFER_T.NewCountIndex(2)
 var WRITE_BUFFER_T = BUFFER_T.NewCountIndex(2)
 var IOVEC_T = IOVEC.NewCountIndex(2)
-var IOVEC_T_PTR = IOVEC.NewType(TYPE_POINTER)
+var IOVEC_T_PTR = IOVEC.NewBaseType(TYPE_POINTER)
 
 // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
 // #define _NSIG       64

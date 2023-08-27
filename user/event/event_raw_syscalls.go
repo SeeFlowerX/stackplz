@@ -49,7 +49,7 @@ func (this *SyscallEvent) ParseContextSysEnter() (err error) {
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(err)
         }
-        if point_arg.Type == config.TYPE_NUM {
+        if point_arg.BaseType == config.TYPE_NUM {
             results = append(results, point_arg.Format(this.nr_point, ptr.Address))
             continue
         }
@@ -81,7 +81,7 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
             this.logger.Printf("SyscallEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
             panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.Comm[:]), err))
         }
-        if point_arg.Type == config.TYPE_NUM {
+        if point_arg.BaseType == config.TYPE_NUM {
             results = append(results, point_arg.Format(this.nr_point, ptr.Address))
             continue
         }
@@ -100,12 +100,12 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
         panic(err)
     }
     point_arg := this.nr_point.Ret
-    if point_arg.Type == config.TYPE_NUM {
+    if point_arg.BaseType == config.TYPE_NUM {
         point_arg.SetValue(point_arg.Format(this.nr_point, ptr.Address))
     } else {
         point_arg.SetValue(fmt.Sprintf("0x%x", ptr.Address))
     }
-    if point_arg.Type != config.TYPE_NUM {
+    if point_arg.BaseType != config.TYPE_NUM {
         this.ParseArgByType(&point_arg, ptr)
     }
     if len(results) == 0 {

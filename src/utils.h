@@ -17,12 +17,12 @@
 typedef struct point_arg_t {
     u32 read_flag;
     u32 read_index;
+	u32 read_offset;
     u32 alias_type;
-    u32 type;
-    u32 size;
+    u32 base_type;
+    u32 read_count;
 	u32 item_persize;
 	u32 item_countindex;
-	u32 read_offset;
 } point_arg;
 
 static __always_inline u32 save_bytes_with_len(program_data_t p, u64 ptr, u32 read_len, u32 next_arg_index) {
@@ -46,8 +46,8 @@ static __always_inline u32 read_ptr_arg(program_data_t p, struct point_arg_t* po
     if (point_arg->alias_type == TYPE_PTHREAD_ATTR) {
         // 结构体类型 直接读取对应大小的数据 具体转换交给前端
         u32 struct_size = MAX_BYTES_ARR_SIZE;
-        if (point_arg->size <= struct_size) {
-            struct_size = point_arg->size;
+        if (point_arg->read_count <= struct_size) {
+            struct_size = point_arg->read_count;
         }
         // 修复 MTE 读取可能不正常的情况
         int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), struct_size, next_arg_index);
@@ -90,17 +90,17 @@ static __always_inline u32 read_ptr_arg(program_data_t p, struct point_arg_t* po
 
 static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_arg, u64 ptr, u32 read_count, u32 next_arg_index) {
     ptr = ptr + point_arg->read_offset;
-    if (point_arg->type == TYPE_NONE) {
+    if (point_arg->base_type == TYPE_NONE) {
         return next_arg_index;
     }
-    if (point_arg->type == TYPE_NUM) {
+    if (point_arg->base_type == TYPE_NUM) {
         // 这种具体类型转换交给前端做
         return next_arg_index;
     }
     if (ptr == 0) {
         return next_arg_index;
     }
-    if (point_arg->type == TYPE_STRING) {
+    if (point_arg->base_type == TYPE_STRING) {
         u32 buf_off = 0;
         buf_t *string_p = get_buf(STRING_BUF_IDX);
         if (string_p == NULL) {
@@ -115,16 +115,16 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         next_arg_index += 1;
         return next_arg_index;
     }
-    if (point_arg->type == TYPE_STRING_ARR) {
+    if (point_arg->base_type == TYPE_STRING_ARR) {
         save_str_arr_to_buf(p.event, (const char *const *) ptr /*ptr*/, next_arg_index);
         next_arg_index += 1;
         return next_arg_index;
     }
-    if (point_arg->type == TYPE_STRUCT) {
+    if (point_arg->base_type == TYPE_STRUCT) {
         // 结构体类型 直接读取对应大小的数据 具体转换交给前端
         u32 struct_size = MAX_BYTES_ARR_SIZE;
-        if (point_arg->size <= struct_size) {
-            struct_size = point_arg->size;
+        if (point_arg->read_count <= struct_size) {
+            struct_size = point_arg->read_count;
         }
         // 修复 MTE 读取可能不正常的情况
         int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), struct_size, next_arg_index);
@@ -160,7 +160,7 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         }
         return next_arg_index;
     }
-    if (point_arg->type == TYPE_POINTER) {
+    if (point_arg->base_type == TYPE_POINTER) {
         // 指针类型 通常读一下对应指针的数据即可 后续记得考虑兼容下32位
         // 读取指针所指向位置的值 并且保存
         u64 addr = 0;

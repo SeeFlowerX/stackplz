@@ -204,8 +204,8 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
             if (item_count != 0 && item_count <= read_count) {
                 read_count = item_count;
             }
-        } else if (point_arg->size <= read_count) {
-            read_count = point_arg->size;
+        } else if (point_arg->read_count <= read_count) {
+            read_count = point_arg->read_count;
         }
         next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
     }
@@ -322,8 +322,8 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
             if (item_count != 0 && item_count <= read_count) {
                 read_count = item_count;
             }
-        } else if (point_arg->size <= read_count) {
-            read_count = point_arg->size;
+        } else if (point_arg->read_count <= read_count) {
+            read_count = point_arg->read_count;
         }
         next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
     }

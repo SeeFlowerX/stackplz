@@ -226,7 +226,7 @@ func (this *ContextEvent) ParseArgByType(point_arg *config.PointArg, ptr config.
     }
     // 这个函数先处理基础类型
 
-    if point_arg.Type == config.TYPE_POINTER {
+    if point_arg.BaseType == config.TYPE_POINTER {
         // BUFFER 比较特殊 单独处理
         if point_arg.AliasType == config.TYPE_BUFFER_T {
             point_arg.AppendValue(fmt.Sprintf("(*0x%x)%s", ptr.Address, this.ParseArg(point_arg, ptr)))
@@ -327,7 +327,7 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr config.Arg_re
     case config.TYPE_POLLFD:
         return this.ParseArgStruct(this.buf, &config.Arg_Pollfd{})
     case config.TYPE_STRUCT:
-        payload := make([]byte, point_arg.Size)
+        payload := make([]byte, point_arg.ReadCount)
         if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
             panic(err)
         }
