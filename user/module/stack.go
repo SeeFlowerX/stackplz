@@ -459,19 +459,15 @@ func (this *MStack) updateFilter() (err error) {
 
 func (this *MStack) initDecodeFun() error {
 
-    CommonEventsMap, err := this.FindMap("events")
-    if err != nil {
-        return err
-    }
-    this.eventMaps = append(this.eventMaps, CommonEventsMap)
-    commonEvent := &event.CommonEvent{}
-    commonEvent.SetConf(this.mconf)
-    this.eventFuncMaps[CommonEventsMap] = commonEvent
-
     EventsMap, err := this.FindMap("events")
     if err != nil {
         return err
     }
+    this.eventMaps = append(this.eventMaps, EventsMap)
+    commonEvent := &event.CommonEvent{}
+    commonEvent.SetConf(this.mconf)
+    this.eventFuncMaps[EventsMap] = commonEvent
+
     this.eventMaps = append(this.eventMaps, EventsMap)
     // 根据设置添加 map 不然即使不使用的map也会创建缓冲区
     if this.mconf.StackUprobeConf.IsEnable() {
