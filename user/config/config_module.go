@@ -389,8 +389,7 @@ func (this *SyscallConfig) Info() string {
 type ModuleConfig struct {
     BaseConfig
 
-    SelfPid    uint32
-    FilterMode uint32
+    SelfPid uint32
 
     UidWhitelist   []uint32
     UidBlacklist   []uint32
@@ -425,7 +424,6 @@ type ModuleConfig struct {
 func NewModuleConfig() *ModuleConfig {
     config := &ModuleConfig{}
     config.SelfPid = uint32(os.Getpid())
-    config.FilterMode = util.UNKNOWN_MODE
     config.TraceGroup = util.GROUP_NONE
     // 虽然会通过全局配置进程覆盖 但是还是做好在初始化时就进行默认赋值
     return config
@@ -520,9 +518,8 @@ func (this *ModuleConfig) GetCommonFilter() CommonFilter {
 func (this *ModuleConfig) GetConfigMap() ConfigMap {
     config := ConfigMap{}
     config.stackplz_pid = this.SelfPid
-    config.filter_mode = this.FilterMode
     if this.Debug {
-        this.logger.Printf("ConfigMap{stackplz_pid=%d, filter_mode=%d}", config.stackplz_pid, config.filter_mode)
+        this.logger.Printf("ConfigMap{stackplz_pid=%d}", config.stackplz_pid)
     }
     return config
 }

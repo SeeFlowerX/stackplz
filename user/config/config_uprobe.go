@@ -26,7 +26,7 @@ func (this *UprobeArgs) GetConfig() UPointTypes {
 		if i+1 > len(this.Args) {
 			break
 		}
-		point_arg_types[i].ReadFlag = this.Args[i].ReadFlag
+		point_arg_types[i].PointFlag = this.Args[i].PointFlag
 		point_arg_types[i].ArgType = this.Args[i].ArgType
 	}
 	config := UPointTypes{

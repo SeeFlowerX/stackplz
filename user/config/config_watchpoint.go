@@ -21,10 +21,11 @@ const (
 )
 
 type ArgType struct {
+	FilterIdx      uint32
 	ReadIndex      uint32
 	ReadOffset     uint32
-	AliasType      uint32
 	BaseType       uint32
+	AliasType      uint32
 	ReadCount      uint32
 	ItemPerSize    uint32
 	ItemCountIndex uint32
@@ -49,13 +50,13 @@ type PointArgs struct {
 type PArgs = PointArgs
 
 type FilterArgType struct {
-	ReadFlag uint32
+	PointFlag uint32
 	ArgType
 }
 
 type PointArg struct {
-	ArgName  string
-	ReadFlag uint32
+	ArgName   string
+	PointFlag uint32
 	ArgType
 	ArgValue string
 }
@@ -122,6 +123,10 @@ func (this *ArgType) SetReadIndex(index uint32) {
 	this.ReadIndex = index
 }
 
+func (this *ArgType) SetFilterIdx(index uint32) {
+	this.FilterIdx = index
+}
+
 func (this *ArgType) SetReadOffset(offset uint32) {
 	this.ReadOffset = offset
 }
@@ -174,7 +179,7 @@ func (this *ArgType) NewItemPerSize(persize uint32) ArgType {
 
 func (this *ArgType) String() string {
 	var s string = ""
-	s += fmt.Sprintf("read_index:%d, alias_type:%d base_type:%d ", this.ReadIndex, this.AliasType, this.BaseType)
+	s += fmt.Sprintf("read_index:%d, base_type:%d alias_type:%d ", this.ReadIndex, this.BaseType, this.AliasType)
 	s += fmt.Sprintf("read_count:%d per:%d count_index:%d ", this.ReadCount, this.ItemPerSize, this.ItemCountIndex)
 	s += fmt.Sprintf("off:%d", this.ReadOffset)
 	return s
@@ -183,18 +188,19 @@ func (this *ArgType) String() string {
 func (this *ArgType) Clone() ArgType {
 	// 在涉及到类型变更的时候 记得先调用这个
 	at := ArgType{}
+	at.FilterIdx = this.FilterIdx
 	at.ReadIndex = this.ReadIndex
 	at.ReadOffset = this.ReadOffset
-	at.AliasType = this.AliasType
 	at.BaseType = this.BaseType
+	at.AliasType = this.AliasType
 	at.ReadCount = this.ReadCount
 	at.ItemPerSize = this.ItemPerSize
 	at.ItemCountIndex = this.ItemCountIndex
 	return at
 }
 
-func AT(arg_alias_type, arg_type, read_count uint32) ArgType {
-	return ArgType{READ_INDEX_REG, 0, arg_alias_type, arg_type, read_count, 1, READ_INDEX_SKIP}
+func AT(arg_alias_type, arg_base_type, read_count uint32) ArgType {
+	return ArgType{0, READ_INDEX_REG, 0, arg_base_type, arg_alias_type, read_count, 1, READ_INDEX_SKIP}
 }
 
 func PA(nr string, args []PArg) PArgs {

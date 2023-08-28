@@ -14,12 +14,15 @@
 #define READ_INDEX_SKIP 100
 #define READ_INDEX_REG 101
 
+#define READ_ARG_SKIP 0x1234
+
 typedef struct point_arg_t {
-    u32 read_flag;
+    u32 point_flag;
+    u32 filter_idx;
     u32 read_index;
 	u32 read_offset;
-    u32 alias_type;
     u32 base_type;
+    u32 alias_type;
     u32 read_count;
 	u32 item_persize;
 	u32 item_countindex;

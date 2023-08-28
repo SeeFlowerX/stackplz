@@ -187,7 +187,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), next_arg_index);
         next_arg_index += 1;
 
-        if (point_arg->read_flag != SYS_ENTER) {
+        if (point_arg->point_flag != SYS_ENTER) {
             continue;
         }
         if (arg_ptr == 0) {
@@ -305,7 +305,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), next_arg_index);
         next_arg_index += 1;
 
-        if (point_arg->read_flag != SYS_EXIT) {
+        if (point_arg->point_flag != SYS_EXIT) {
             continue;
         }
         if (arg_ptr == 0) {

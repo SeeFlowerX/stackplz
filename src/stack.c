@@ -120,7 +120,7 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
         save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), next_arg_index);
         next_arg_index += 1;
 
-        if (point_arg->read_flag != UPROBE_ENTER_READ) {
+        if (point_arg->point_flag != UPROBE_ENTER_READ) {
             continue;
         }
         if (arg_ptr == 0) {

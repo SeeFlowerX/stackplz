@@ -352,35 +352,58 @@ func (this *MStack) update_thread_filter() {
     }
 }
 
-func (this *MStack) update_rev_filter() {
-    map_name := "rev_filter"
+// func (this *MStack) update_rev_filter() {
+//     map_name := "rev_filter"
+//     bpf_map, err := this.FindMap(map_name)
+//     if err != nil {
+//         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+//     }
+//     // ./stackplz -n com.starbucks.cn,iso -s newfstatat,openat,faccessat --hide-root -o tmp.log -q
+//     var rev_list []string = []string{
+//         "/sbin/su",
+//         "/sbin/.magisk/",
+//         "/dev/.magisk",
+//         "/system/bin/magisk",
+//         "/system/bin/su",
+//         "/system/xbin/su",
+//         "/proc/mounts",
+//         "which su",
+//         "mount",
+//     }
+//     for _, v := range rev_list {
+//         if len(v) > 32 {
+//             panic(fmt.Sprintf("[%s] rev string max len is 32", v))
+//         }
+//         filter_key := config.RevFilter{}
+//         filter_value := 1
+//         copy(filter_key.RevString[:], v)
+//         err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
+//         if err != nil {
+//             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+//         }
+//     }
+//     if this.mconf.Debug {
+//         this.logger.Printf("update %s success", map_name)
+//     }
+// }
+
+func (this *MStack) update_arg_filter() {
+    map_name := "arg_filter"
     bpf_map, err := this.FindMap(map_name)
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
-    // ./stackplz -n com.starbucks.cn,iso -s newfstatat,openat,faccessat --hide-root -o tmp.log -q
-    var rev_list []string = []string{
-        "/sbin/su",
-        "/sbin/.magisk/",
-        "/dev/.magisk",
-        "/system/bin/magisk",
-        "/system/bin/su",
-        "/system/xbin/su",
-        "/proc/mounts",
-        "which su",
-        "mount",
-    }
-    for _, v := range rev_list {
-        if len(v) > 32 {
-            panic(fmt.Sprintf("[%s] rev string max len is 32", v))
-        }
-        filter_key := config.RevFilter{}
-        filter_value := 1
-        copy(filter_key.RevString[:], v)
-        err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
-        if err != nil {
-            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
-        }
+    // w/white b/black
+    // ./stackplz -n com.starbucks.cn -s openat[w:/data/data/com.starbucks.cn/files] -o tmp.log
+    // r/replace 文本替换逻辑会比较复杂 应该考虑分离
+    filter_key := 1
+    filter_value := config.ArgFilter{}
+    filter_value.Filter_type = config.WHITELIST_FILTER
+    filter_value.Helper_index = 0
+    copy(filter_value.Str_val[:], "/data/data/com.starbucks.cn/files")
+    err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
+    if err != nil {
+        panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
     }
     if this.mconf.Debug {
         this.logger.Printf("update %s success", map_name)
@@ -451,7 +474,7 @@ func (this *MStack) updateFilter() (err error) {
     this.update_common_filter()
     this.update_child_parent()
     this.update_thread_filter()
-    this.update_rev_filter()
+    // this.update_arg_filter()
     this.update_stack_config()
     this.update_syscall_config()
     return nil

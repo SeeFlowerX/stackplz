@@ -1,7 +1,6 @@
 package config
 
 type ConfigMap struct {
-	filter_mode  uint32
 	stackplz_pid uint32
 }
 
@@ -16,6 +15,21 @@ type ThreadFilter struct {
 	ThreadName [16]byte
 }
 
-type RevFilter struct {
-	RevString [32]byte
+const (
+	UNKNOWN_FILTER uint32 = iota
+	WHITELIST_FILTER
+	BLACKLIST_FILTER
+	REPLACE_FILTER
+)
+
+type ArgFilter struct {
+	Filter_type  uint32
+	Helper_index uint32
+	Num_val      uint64
+	Str_val      [256]byte
+}
+
+type ArgReplaceFilter struct {
+	Old_str_val [256]byte
+	New_str_val [256]byte
 }

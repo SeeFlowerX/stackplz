@@ -56,7 +56,7 @@ func (this *SyscallEvent) ParseContextSysEnter() (err error) {
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
         point_arg.SetValue(base_arg_str)
         // 这一类参数要等执行结束后读取 这里只获取参数所对应的寄存器值就可以了
-        if point_arg.ReadFlag == config.SYS_EXIT {
+        if point_arg.PointFlag == config.SYS_EXIT {
             results = append(results, point_arg.ArgValue)
             continue
         }
@@ -87,7 +87,7 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
         }
         base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
         point_arg.SetValue(base_arg_str)
-        if point_arg.ReadFlag != config.SYS_EXIT {
+        if point_arg.PointFlag != config.SYS_EXIT {
             results = append(results, point_arg.ArgValue)
             continue
         }

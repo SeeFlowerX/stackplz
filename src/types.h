@@ -18,23 +18,29 @@ typedef struct thread_name {
     char name[16];
 } thread_name_t;
 
-typedef struct rev_string {
-    char name[32];
-} rev_string_t;
+typedef struct arg_filter {
+    u32 filter_type;
+    u32 helper_index;
+    u64 num_val;
+    char str_val[256];
+} arg_filter_t;
 
+typedef struct arg_replace_filter {
+    char old_str_val[256];
+    char new_str_val[256];
+} arg_replace_filter_t;
+
+enum arg_filter_e
+{
+    UNKNOWN_FILTER,
+    WHITELIST_FILTER,
+    BLACKLIST_FILTER,
+    REPLACE_FILTER
+};
 
 typedef struct config_entry {
-    u32 filter_mode;
     u32 stackplz_pid;
 } config_entry_t;
-
-enum filter_mode_e
-{
-    UNKNOWN_MODE,
-    UID_MODE,
-    PID_MODE,
-    PID_TID_MODE
-};
 
 enum trace_group_e
 {
@@ -131,7 +137,7 @@ enum arg_type_e
 	TYPE_BUFFER_T,
 };
 
-enum read_type_e
+enum point_flag_e
 {
 	FORBIDDEN = 0,
 	SYS_ENTER_EXIT,

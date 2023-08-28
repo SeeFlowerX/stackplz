@@ -284,13 +284,6 @@ func I2B(bs []int8) []byte {
 }
 
 const (
-	UNKNOWN_MODE uint32 = iota
-	UID_MODE
-	PID_MODE
-	PID_TID_MODE
-)
-
-const (
 	GROUP_NONE   uint32 = 1 << 0
 	GROUP_ROOT   uint32 = 1 << 1
 	GROUP_SYSTEM uint32 = 1 << 2
