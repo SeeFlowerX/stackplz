@@ -38,13 +38,6 @@ BPF_HASH(common_filter, u32, common_filter_t, 1);
 // 这样它们会在不同范围而不会干扰 那么好几个map就可以简化到一个了
 BPF_HASH(common_list, u32, u32, 1024);
 
-// BPF_HASH(sys_whitelist, u32, u32, 40);
-// BPF_HASH(sys_blacklist, u32, u32, 40);
-// BPF_HASH(trace_uid_whitelist, u32, u32, 40);
-// BPF_HASH(trace_uid_blacklist, u32, u32, 40);
-// BPF_HASH(trace_pid_whitelist, u32, u32, 40);
-// BPF_HASH(trace_pid_blacklist, u32, u32, 40);
-
 BPF_HASH(thread_filter, thread_name_t, u32, 40);
 BPF_HASH(rev_filter, rev_string_t, u32, 40);
 BPF_PERCPU_ARRAY(event_data_map, event_data_t, 1);
