@@ -115,6 +115,34 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
             // MTE 其实也正常读取到了
             bpf_probe_read_user_str(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
         }
+        // if (point_arg->filter_idx != FILTER_INDEX_NONE) {
+        //     arg_filter_t* filter_config = bpf_map_lookup_elem(&arg_filter, &point_arg->filter_idx);
+        //     // 按照设计这里必须不为NULL
+        //     if (filter_config == NULL) {
+        //         return next_arg_index;
+        //     }
+        //     u32 startswith = 0;
+        //     // 设置到256会出现 bad address
+        //     // 似乎是程序的指令数达到上限了
+        //     for (int i = 0; i < 128; i++) {
+        //         char c1 = string_p->buf[buf_off + i];
+        //         char c2 = filter_config->oldstr_val[i];
+        //         if (i != 0 && c2 == 0) {
+        //             startswith = 1;
+        //             break;
+        //         }
+        //         if (c1 == 0 || c2 == 0) {
+        //             break;
+        //         }
+        //     }
+        //     if (filter_config->filter_type == WHITELIST_FILTER && startswith == 0){
+        //         // 不匹配白名单的都跳过
+        //         return FILTER_INDEX_SKIP;
+        //     } else if (filter_config->filter_type == BLACKLIST_FILTER && startswith == 1){
+        //         // 匹配黑名单的都跳过
+        //         return FILTER_INDEX_SKIP;
+        //     }
+        // }
         save_str_to_buf(p.event, &string_p->buf[buf_off], next_arg_index);
         next_arg_index += 1;
         return next_arg_index;

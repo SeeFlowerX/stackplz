@@ -154,7 +154,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         point_arg_count = syscall_point_args->count;
     }
 
-    int next_arg_index = 4;
+    u32 next_arg_index = 4;
 
     for (int i = 0; i < point_arg_count; i++) {
         struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_args[i];
@@ -184,7 +184,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         }
 
         // 先保存参数值本身
-        save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), next_arg_index);
+        save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), (u8)next_arg_index);
         next_arg_index += 1;
 
         if (point_arg->point_flag != SYS_ENTER) {
@@ -208,8 +208,12 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
             read_count = point_arg->read_count;
         }
         next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
+        // argument list too long
+        // 加下面这句话之后就出现上面这个错误了 机理未知
+        // if (next_arg_index == FILTER_INDEX_SKIP) {
+        //     return 0;
+        // }
     }
-
     events_perf_submit(&p, SYSCALL_ENTER);
     if (filter->signal > 0) {
         bpf_send_signal(filter->signal);
@@ -264,8 +268,8 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         return 0;
     }
 
-    int next_arg_index = 0;
-    save_to_submit_buf(p.event, (void *) &sysno, sizeof(u32), next_arg_index);
+    u32 next_arg_index = 0;
+    save_to_submit_buf(p.event, (void *) &sysno, sizeof(u32), (u8)next_arg_index);
     next_arg_index += 1;
 
     u32 point_arg_count = MAX_POINT_ARG_COUNT;
@@ -302,7 +306,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         }
 
         // 先保存参数值本身
-        save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), next_arg_index);
+        save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), (u8)next_arg_index);
         next_arg_index += 1;
 
         if (point_arg->point_flag != SYS_EXIT) {
@@ -331,7 +335,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     // 读取返回值
     u64 ret = READ_KERN(regs->regs[0]);
     // 保存之
-    save_to_submit_buf(p.event, (void *) &ret, sizeof(ret), next_arg_index);
+    save_to_submit_buf(p.event, (void *) &ret, sizeof(ret), (u8)next_arg_index);
     next_arg_index += 1;
     // 取返回值的参数配置 并尝试进一步读取
     struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_arg_ret;

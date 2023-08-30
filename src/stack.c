@@ -92,7 +92,7 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
         point_arg_count = uprobe_point_args->count;
     }
 
-    int next_arg_index = 4;
+    u32 next_arg_index = 4;
     for (int i = 0; i < point_arg_count; i++) {
         struct point_arg_t* point_arg = (struct point_arg_t*) &uprobe_point_args->point_args[i];
 
@@ -117,7 +117,7 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
         }
 
         // 先保存参数值本身
-        save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), next_arg_index);
+        save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), (u8)next_arg_index);
         next_arg_index += 1;
 
         if (point_arg->point_flag != UPROBE_ENTER_READ) {

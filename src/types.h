@@ -22,13 +22,13 @@ typedef struct arg_filter {
     u32 filter_type;
     u32 filter_index;
     u64 num_val;
-    char oldstr_val[256];
-    char newstr_val[256];
+    char oldstr_val[128];
+    char newstr_val[128];
 } arg_filter_t;
 
 enum arg_filter_e
 {
-    UNKNOWN_FILTER,
+    UNKNOWN_FILTER = 0,
     EQUAL_FILTER,
     GREATER_FILTER,
     LESS_FILTER,
