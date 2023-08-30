@@ -352,41 +352,6 @@ func (this *MStack) update_thread_filter() {
     }
 }
 
-// func (this *MStack) update_rev_filter() {
-//     map_name := "rev_filter"
-//     bpf_map, err := this.FindMap(map_name)
-//     if err != nil {
-//         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
-//     }
-//     // ./stackplz -n com.starbucks.cn,iso -s newfstatat,openat,faccessat --hide-root -o tmp.log -q
-//     var rev_list []string = []string{
-//         "/sbin/su",
-//         "/sbin/.magisk/",
-//         "/dev/.magisk",
-//         "/system/bin/magisk",
-//         "/system/bin/su",
-//         "/system/xbin/su",
-//         "/proc/mounts",
-//         "which su",
-//         "mount",
-//     }
-//     for _, v := range rev_list {
-//         if len(v) > 32 {
-//             panic(fmt.Sprintf("[%s] rev string max len is 32", v))
-//         }
-//         filter_key := config.RevFilter{}
-//         filter_value := 1
-//         copy(filter_key.RevString[:], v)
-//         err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
-//         if err != nil {
-//             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
-//         }
-//     }
-//     if this.mconf.Debug {
-//         this.logger.Printf("update %s success", map_name)
-//     }
-// }
-
 func (this *MStack) update_arg_filter() {
     map_name := "arg_filter"
     bpf_map, err := this.FindMap(map_name)
@@ -394,16 +359,17 @@ func (this *MStack) update_arg_filter() {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
     // w/white b/black
-    // ./stackplz -n com.starbucks.cn -s openat[w:/data/data/com.starbucks.cn/files] -o tmp.log
+    // ./stackplz -n com.starbucks.cn -s openat:f0 -f w:/data/data/com.starbucks.cn/files -o tmp.log
+    // ./stackplz -n com.starbucks.cn -w strstr[str:x1:f0] -f w:/data/local/tmp -o tmp.log
+    // ./stackplz -n com.starbucks.cn -w strstr[str:f0,str:f1] -f w:/data/local/tmp -r w:/data/local/tmp -o tmp.log
     // r/replace 文本替换逻辑会比较复杂 应该考虑分离
-    filter_key := 1
-    filter_value := config.ArgFilter{}
-    filter_value.Filter_type = config.WHITELIST_FILTER
-    filter_value.Helper_index = 0
-    copy(filter_value.Str_val[:], "/data/data/com.starbucks.cn/files")
-    err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
-    if err != nil {
-        panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+    for _, filter := range this.mconf.ArgFilterRule {
+        filter_key := filter.Filter_index
+        filter_value := filter
+        err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
     }
     if this.mconf.Debug {
         this.logger.Printf("update %s success", map_name)
@@ -416,18 +382,27 @@ func (this *MStack) update_syscall_point_args() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
-    points := config.GetAllWatchPoints()
-    for nr_name, point := range points {
-        nr_point, ok := (point).(*config.SysCallArgs)
-        if !ok {
-            panic(fmt.Sprintf("cast [%s] point to SysCallArgs failed", nr_name))
+    if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
+        points := config.GetAllWatchPoints()
+        for nr_name, point := range points {
+            nr_point, ok := (point).(*config.SysCallArgs)
+            if !ok {
+                panic(fmt.Sprintf("cast [%s] point to SysCallArgs failed", nr_name))
+            }
+            err := bpf_map.Update(unsafe.Pointer(&nr_point.NR), unsafe.Pointer(nr_point.GetConfig()), ebpf.UpdateAny)
+            if err != nil {
+                panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+            }
         }
-        // 这里可以改成只更新追踪的syscall以加快速度
-        err := bpf_map.Update(unsafe.Pointer(&nr_point.NR), unsafe.Pointer(nr_point.GetConfig()), ebpf.UpdateAny)
-        if err != nil {
-            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+    } else {
+        for _, point_args := range this.mconf.SysCallConf.SyscallPointArgs {
+            err := bpf_map.Update(unsafe.Pointer(&point_args.NR), unsafe.Pointer(point_args), ebpf.UpdateAny)
+            if err != nil {
+                panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+            }
         }
     }
+
     if this.mconf.Debug {
         this.logger.Printf("update %s success", map_name)
     }

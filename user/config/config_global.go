@@ -11,6 +11,7 @@ type GlobalConfig struct {
     NoTid        string
     TName        string
     NoTName      string
+    ArgFilter    []string
     Color        bool
     UnwindStack  bool
     StackSize    uint32

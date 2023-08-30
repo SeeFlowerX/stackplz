@@ -11,6 +11,8 @@ import (
 const MAX_POINT_ARG_COUNT = 10
 const READ_INDEX_SKIP uint32 = 100
 const READ_INDEX_REG uint32 = 101
+const FILTER_INDEX_NONE uint32 = 0x1111
+const FILTER_INDEX_SKIP uint32 = 0x1234
 
 const (
 	FORBIDDEN uint32 = iota
@@ -200,7 +202,7 @@ func (this *ArgType) Clone() ArgType {
 }
 
 func AT(arg_alias_type, arg_base_type, read_count uint32) ArgType {
-	return ArgType{0, READ_INDEX_REG, 0, arg_base_type, arg_alias_type, read_count, 1, READ_INDEX_SKIP}
+	return ArgType{FILTER_INDEX_NONE, READ_INDEX_REG, 0, arg_base_type, arg_alias_type, read_count, 1, READ_INDEX_SKIP}
 }
 
 func PA(nr string, args []PArg) PArgs {

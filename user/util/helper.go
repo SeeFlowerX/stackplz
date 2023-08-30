@@ -26,6 +26,22 @@ func RandStringBytes(n int) string {
 	return string(b)
 }
 
+func StrToNum(text string) uint32 {
+	value, err := strconv.ParseUint(text, 10, 32)
+	if err != nil {
+		panic(err)
+	}
+	return uint32(value)
+}
+
+func StrToNum64(text string) uint64 {
+	value, err := strconv.ParseUint(text, 10, 32)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
 func IntToBytes(n int) []byte {
 	x := uint32(n)
 	bytesBuffer := bytes.NewBuffer([]byte{})

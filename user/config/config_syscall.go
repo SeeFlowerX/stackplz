@@ -14,7 +14,8 @@ type SysCallArgs struct {
 
 type SArgs = SysCallArgs
 
-type SPointTypes struct {
+type SyscallPointArgs_T struct {
+	NR         uint32
 	Count      uint32
 	ArgTypes   [MAX_POINT_ARG_COUNT]FilterArgType
 	ArgTypeRet FilterArgType
@@ -83,19 +84,21 @@ func (this *SysCallArgs) ParseOp(value int32, ops *[]FlagOp) string {
 	}
 }
 
-func (this *SysCallArgs) GetConfig() *SPointTypes {
+func (this *SysCallArgs) GetConfig() *SyscallPointArgs_T {
 	var point_arg_types [MAX_POINT_ARG_COUNT]FilterArgType
 	for i := 0; i < MAX_POINT_ARG_COUNT; i++ {
 		if i+1 > len(this.Args) {
-			break
+			point_arg_types[i].ArgType.FilterIdx = FILTER_INDEX_NONE
+		} else {
+			point_arg_types[i].PointFlag = this.Args[i].PointFlag
+			point_arg_types[i].ArgType = this.Args[i].ArgType
 		}
-		point_arg_types[i].PointFlag = this.Args[i].PointFlag
-		point_arg_types[i].ArgType = this.Args[i].ArgType
 	}
 	var point_arg_type_ret FilterArgType
 	point_arg_type_ret.PointFlag = this.Ret.PointFlag
 	point_arg_type_ret.ArgType = this.Ret.ArgType
-	config := &SPointTypes{
+	config := &SyscallPointArgs_T{
+		NR:         this.NR,
 		Count:      uint32(len(this.Args)),
 		ArgTypes:   point_arg_types,
 		ArgTypeRet: point_arg_type_ret,

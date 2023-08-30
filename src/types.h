@@ -20,19 +20,18 @@ typedef struct thread_name {
 
 typedef struct arg_filter {
     u32 filter_type;
-    u32 helper_index;
+    u32 filter_index;
     u64 num_val;
-    char str_val[256];
+    char oldstr_val[256];
+    char newstr_val[256];
 } arg_filter_t;
-
-typedef struct arg_replace_filter {
-    char old_str_val[256];
-    char new_str_val[256];
-} arg_replace_filter_t;
 
 enum arg_filter_e
 {
     UNKNOWN_FILTER,
+    EQUAL_FILTER,
+    GREATER_FILTER,
+    LESS_FILTER,
     WHITELIST_FILTER,
     BLACKLIST_FILTER,
     REPLACE_FILTER

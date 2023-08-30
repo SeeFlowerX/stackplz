@@ -258,20 +258,31 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
     return nil
 }
 
+type PointFilter struct {
+    FilterIndexList []uint32
+}
+
 type SyscallConfig struct {
-    logger       *log.Logger
-    debug        bool
-    Enable       bool
-    TraceMode    uint32
-    SysWhitelist []uint32
-    SysBlacklist []uint32
+    logger           *log.Logger
+    debug            bool
+    arg_filter       *[]ArgFilter
+    Enable           bool
+    TraceMode        uint32
+    SyscallPointArgs []*SyscallPointArgs_T
+    SysWhitelist     []uint32
+    SysBlacklist     []uint32
 }
 
 func (this *SyscallConfig) SetDebug(debug bool) {
     this.debug = debug
 }
+
 func (this *SyscallConfig) SetLogger(logger *log.Logger) {
     this.logger = logger
+}
+
+func (this *SyscallConfig) SetArgFilterRule(arg_filter *[]ArgFilter) {
+    this.arg_filter = arg_filter
 }
 
 func (this *SyscallConfig) Parse_SysWhitelist(text string) {
@@ -336,11 +347,36 @@ func (this *SyscallConfig) Parse_SysWhitelist(text string) {
         }
     }
     for _, v := range unique_items {
-        point := GetWatchPointByName(v)
+        var filter_index = FILTER_INDEX_NONE
+        syscall_name := v
+        items := strings.SplitN(syscall_name, ":", 2)
+        if len(items) == 2 {
+            find_filter := false
+            syscall_name = items[0]
+            for _, arg_filter := range *this.arg_filter {
+                if arg_filter.Match(items[1]) {
+                    find_filter = true
+                    filter_index = arg_filter.Filter_index
+                    break
+                }
+            }
+            if !find_filter {
+                panic(fmt.Sprintf("can not find filter for %s -> %s", syscall_name, items[1]))
+            }
+        }
+        point := GetWatchPointByName(syscall_name)
         nr_point, ok := (point).(*SysCallArgs)
         if !ok {
-            panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
+            panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", syscall_name))
         }
+        point_args := nr_point.GetConfig()
+        for i := 0; i < len(point_args.ArgTypes); i++ {
+            t := &point_args.ArgTypes[i]
+            if t.ArgType == STRING {
+                t.FilterIdx = filter_index
+            }
+        }
+        this.SyscallPointArgs = append(this.SyscallPointArgs, point_args)
         this.SysWhitelist = append(this.SysWhitelist, uint32(nr_point.NR))
     }
 }
@@ -400,6 +436,8 @@ type ModuleConfig struct {
     TNameWhitelist []string
     TNameBlacklist []string
 
+    ArgFilterRule []ArgFilter
+
     TraceGroup   uint32
     HideRoot     bool
     UprobeSignal uint32
@@ -434,6 +472,7 @@ func (this *ModuleConfig) InitSyscallConfig() {
     config.Enable = false
     config.SetDebug(this.Debug)
     config.SetLogger(this.logger)
+    config.SetArgFilterRule(&this.ArgFilterRule)
     this.SysCallConf = config
 }
 
@@ -497,6 +536,58 @@ func (this *ModuleConfig) Parse_Namelist(list_key, name_list string) {
         default:
             panic(fmt.Sprintf("unknown list_key:%s", list_key))
         }
+    }
+}
+
+func (this *ModuleConfig) Parse_ArgFilter(arg_filter []string) {
+    for filter_index, filter_str := range arg_filter {
+        var arg_filter ArgFilter
+        arg_filter.Filter_index = uint32(filter_index)
+        items := strings.SplitN(filter_str, ":", 2)
+        if len(items) != 2 {
+            panic(fmt.Sprintf("parse ArgFilterRule failed, filter_str:%s", filter_str))
+        }
+        switch items[0] {
+        case "eq", "equal":
+            arg_filter.Filter_type = EQUAL_FILTER
+            arg_filter.Num_val = util.StrToNum64(items[1])
+        case "gt", "greater":
+            arg_filter.Filter_type = GREATER_FILTER
+            arg_filter.Num_val = util.StrToNum64(items[1])
+        case "lt", "less":
+            arg_filter.Filter_type = LESS_FILTER
+            arg_filter.Num_val = util.StrToNum64(items[1])
+        case "w", "white":
+            arg_filter.Filter_type = WHITELIST_FILTER
+            str_old := []byte(items[1])
+            if len(str_old) > 256 {
+                panic(fmt.Sprintf("string is to long, max length is 256"))
+            }
+            copy(arg_filter.OldStr_val[:], str_old)
+        case "b", "black":
+            arg_filter.Filter_type = BLACKLIST_FILTER
+            str_old := []byte(items[1])
+            if len(str_old) > 256 {
+                panic(fmt.Sprintf("string is to long, max length is 256"))
+            }
+            copy(arg_filter.OldStr_val[:], str_old)
+        case "r", "replace":
+            r_items := strings.SplitN(items[1], ":::", 2)
+            if len(r_items) != 2 {
+                panic(fmt.Sprintf("parse replace ArgFilterRule failed, filter_str:%s", filter_str))
+            }
+            arg_filter.Filter_type = REPLACE_FILTER
+            str_old := []byte(r_items[0])
+            str_new := []byte(r_items[1])
+            if len(str_old) > 256 || len(str_new) > 256 {
+                panic(fmt.Sprintf("string is to long, max length is 256"))
+            }
+            copy(arg_filter.OldStr_val[:], str_old)
+            copy(arg_filter.NewStr_val[:], str_new)
+        default:
+            panic(fmt.Sprintf("parse ArgFilterRule failed, filter_str:%s", filter_str))
+        }
+        this.ArgFilterRule = append(this.ArgFilterRule, arg_filter)
     }
 }
 

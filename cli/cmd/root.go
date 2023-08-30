@@ -177,6 +177,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Parse_Namelist("TNameWhitelist", gconfig.TName)
     mconfig.Parse_Namelist("TNameBlacklist", gconfig.NoTName)
 
+    mconfig.Parse_ArgFilter(gconfig.ArgFilter)
+
     pis := util.Get_PackageInfos()
     // 根据 pid 解析进程架构、获取库文件搜索路径
     for _, process_pid := range mconfig.PidWhitelist {
@@ -485,6 +487,7 @@ func init() {
 
     rootCmd.PersistentFlags().StringVar(&gconfig.TName, "tname", "", "thread name white list")
     rootCmd.PersistentFlags().StringVar(&gconfig.NoTName, "no-tname", "", "thread name black list")
+    rootCmd.PersistentFlags().StringArrayVarP(&gconfig.ArgFilter, "filter", "f", []string{}, "arg filter rule")
 
     rootCmd.PersistentFlags().BoolVar(&gconfig.HideRoot, "hide-root", false, "hide some root feature")
     rootCmd.PersistentFlags().StringVar(&gconfig.UprobeSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")

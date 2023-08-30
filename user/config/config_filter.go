@@ -1,5 +1,7 @@
 package config
 
+import "fmt"
+
 type ConfigMap struct {
 	stackplz_pid uint32
 }
@@ -17,6 +19,9 @@ type ThreadFilter struct {
 
 const (
 	UNKNOWN_FILTER uint32 = iota
+	EQUAL_FILTER
+	GREATER_FILTER
+	LESS_FILTER
 	WHITELIST_FILTER
 	BLACKLIST_FILTER
 	REPLACE_FILTER
@@ -24,12 +29,12 @@ const (
 
 type ArgFilter struct {
 	Filter_type  uint32
-	Helper_index uint32
+	Filter_index uint32
 	Num_val      uint64
-	Str_val      [256]byte
+	OldStr_val   [256]byte
+	NewStr_val   [256]byte
 }
 
-type ArgReplaceFilter struct {
-	Old_str_val [256]byte
-	New_str_val [256]byte
+func (this *ArgFilter) Match(name string) bool {
+	return name == fmt.Sprintf("f%d", this.Filter_index)
 }

@@ -14,7 +14,8 @@
 #define READ_INDEX_SKIP 100
 #define READ_INDEX_REG 101
 
-#define READ_ARG_SKIP 0x1234
+#define FILTER_INDEX_NONE 0x1111
+#define FILTER_INDEX_SKIP 0x1234
 
 typedef struct point_arg_t {
     u32 point_flag;

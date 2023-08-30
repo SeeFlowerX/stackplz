@@ -9,7 +9,7 @@
 #include "common/filtering.h"
 
 typedef struct syscall_point_args_t {
-    // u32 nr;
+    u32 nr;
     u32 count;
     point_arg point_args[MAX_POINT_ARG_COUNT];
     point_arg point_arg_ret;
@@ -93,7 +93,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     // 先根据调用号确定有没有对应的参数获取方案 没有直接结束
     struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &sysno);
     if (syscall_point_args == NULL) {
-        bpf_printk("[syscall] unsupport nr:%d\n", sysno);
+        // bpf_printk("[syscall] unsupport nr:%d\n", sysno);
         return 0;
     }
 
