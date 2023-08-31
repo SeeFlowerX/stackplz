@@ -359,7 +359,7 @@ func (this *MStack) update_arg_filter() {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
     // w/white b/black
-    // ./stackplz -n com.starbucks.cn -s openat:f0 -f w:/data/data/com.starbucks.cn/files -o tmp.log
+    // ./stackplz -n com.starbucks.cn -s openat:f0 -f w:/system/framework/oat -o tmp.log
     // ./stackplz -n com.starbucks.cn -w strstr[str:x1:f0] -f w:/data/local/tmp -o tmp.log
     // ./stackplz -n com.starbucks.cn -w strstr[str:f0,str:f1] -f w:/data/local/tmp -r w:/data/local/tmp -o tmp.log
     // r/replace 文本替换逻辑会比较复杂 应该考虑分离
@@ -449,7 +449,7 @@ func (this *MStack) updateFilter() (err error) {
     this.update_common_filter()
     this.update_child_parent()
     this.update_thread_filter()
-    // this.update_arg_filter()
+    this.update_arg_filter()
     this.update_stack_config()
     this.update_syscall_config()
     return nil

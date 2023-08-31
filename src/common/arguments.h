@@ -34,6 +34,7 @@ static __always_inline int load_args(args_t *args, u32 event_id)
     args->args[3] = saved_args->args[3];
     args->args[4] = saved_args->args[4];
     args->args[5] = saved_args->args[5];
+    args->flag = saved_args->flag;
 
     return 0;
 }

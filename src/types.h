@@ -12,6 +12,7 @@ typedef struct common_filter {
 
 typedef struct args {
     unsigned long args[6];
+    u32 flag;
 } args_t;
 
 typedef struct thread_name {

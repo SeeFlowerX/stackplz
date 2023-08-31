@@ -126,6 +126,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     args.args[2] = READ_KERN(regs->regs[2]);
     args.args[3] = READ_KERN(regs->regs[3]);
     args.args[4] = READ_KERN(regs->regs[4]);
+    args.args[5] = READ_KERN(regs->regs[5]);
     save_args(&args, SYSCALL_ENTER);
 
     // event->context 已经有进程的信息了
@@ -208,11 +209,12 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
             read_count = point_arg->read_count;
         }
         next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
-        // argument list too long
-        // 加下面这句话之后就出现上面这个错误了 机理未知
-        // if (next_arg_index == FILTER_INDEX_SKIP) {
-        //     return 0;
-        // }
+        if (point_arg->tmp_index == FILTER_INDEX_SKIP) {
+            point_arg->tmp_index = 0;
+            args.flag = 1;
+            save_args(&args, SYSCALL_ENTER);
+            return 0;
+        }
     }
     events_perf_submit(&p, SYSCALL_ENTER);
     if (filter->signal > 0) {
@@ -251,6 +253,9 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         return 0;
     }
     del_args(SYSCALL_ENTER);
+    if (saved_args.flag == 1) {
+        return 0;
+    }
 
     if (filter->trace_mode == TRACE_COMMON) {
         // 非 追踪全部syscall模式

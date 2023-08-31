@@ -31,6 +31,7 @@ type ArgType struct {
 	ReadCount      uint32
 	ItemPerSize    uint32
 	ItemCountIndex uint32
+	tmp_index      uint32
 }
 
 type IWatchPoint interface {
@@ -198,11 +199,12 @@ func (this *ArgType) Clone() ArgType {
 	at.ReadCount = this.ReadCount
 	at.ItemPerSize = this.ItemPerSize
 	at.ItemCountIndex = this.ItemCountIndex
+	at.tmp_index = this.tmp_index
 	return at
 }
 
 func AT(arg_alias_type, arg_base_type, read_count uint32) ArgType {
-	return ArgType{FILTER_INDEX_NONE, READ_INDEX_REG, 0, arg_base_type, arg_alias_type, read_count, 1, READ_INDEX_SKIP}
+	return ArgType{FILTER_INDEX_NONE, READ_INDEX_REG, 0, arg_base_type, arg_alias_type, read_count, 1, READ_INDEX_SKIP, 0}
 }
 
 func PA(nr string, args []PArg) PArgs {
