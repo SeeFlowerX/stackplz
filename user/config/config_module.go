@@ -564,6 +564,7 @@ func (this *ModuleConfig) Parse_ArgFilter(arg_filter []string) {
             if len(str_old) > 256 {
                 panic(fmt.Sprintf("string is to long, max length is 256"))
             }
+            arg_filter.OldStr_len = uint32(len(str_old))
             copy(arg_filter.OldStr_val[:], str_old)
         case "b", "black":
             arg_filter.Filter_type = BLACKLIST_FILTER
@@ -571,6 +572,7 @@ func (this *ModuleConfig) Parse_ArgFilter(arg_filter []string) {
             if len(str_old) > 256 {
                 panic(fmt.Sprintf("string is to long, max length is 256"))
             }
+            arg_filter.OldStr_len = uint32(len(str_old))
             copy(arg_filter.OldStr_val[:], str_old)
         case "r", "replace":
             r_items := strings.SplitN(items[1], ":::", 2)
@@ -583,7 +585,9 @@ func (this *ModuleConfig) Parse_ArgFilter(arg_filter []string) {
             if len(str_old) > 256 || len(str_new) > 256 {
                 panic(fmt.Sprintf("string is to long, max length is 256"))
             }
+            arg_filter.OldStr_len = uint32(len(str_old))
             copy(arg_filter.OldStr_val[:], str_old)
+            arg_filter.NewStr_len = uint32(len(str_new))
             copy(arg_filter.NewStr_val[:], str_new)
         default:
             panic(fmt.Sprintf("parse ArgFilterRule failed, filter_str:%s", filter_str))

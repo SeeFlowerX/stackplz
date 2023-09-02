@@ -23,9 +23,15 @@ typedef struct arg_filter {
     u32 filter_type;
     u32 filter_index;
     u64 num_val;
-    char oldstr_val[128];
-    char newstr_val[128];
+    char oldstr_val[256];
+    u32 oldstr_len;
+    char newstr_val[256];
+    u32 newstr_len;
 } arg_filter_t;
+
+typedef struct str_buf {
+    char str_val[256];
+} str_buf_t;
 
 enum arg_filter_e
 {

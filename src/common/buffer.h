@@ -200,3 +200,25 @@ static __always_inline int events_perf_submit(program_data_t *p, u32 id)
 
     return bpf_perf_event_output(p->ctx, &events, BPF_F_CURRENT_CPU, p->event, size);
 }
+
+static __always_inline u32 strcmp_by_map(arg_filter_t *filter_config, buf_t *string_p) {
+    u32 zero = 0;
+    u32 str_len = 256;
+    if (str_len > filter_config->oldstr_len) {
+        str_len = filter_config->oldstr_len;
+    }
+    str_buf_t* str_key = bpf_map_lookup_elem(&str_buf_arr, &zero);
+    if (str_key == NULL) {
+        return 0;
+    }
+    if (str_len > 0) {
+        bpf_probe_read(str_key->str_val, str_len, string_p->buf);
+    }
+    bpf_map_update_elem(&str_buf, str_key, &str_len, BPF_ANY);
+    u32* str_len_value = bpf_map_lookup_elem(&str_buf, &filter_config->oldstr_val);
+    if (str_len_value == NULL) {
+        return 0;
+    }
+    bpf_map_delete_elem(&str_buf, str_key);
+    return 1;
+}

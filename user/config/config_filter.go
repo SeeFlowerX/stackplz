@@ -31,8 +31,10 @@ type ArgFilter struct {
 	Filter_type  uint32
 	Filter_index uint32
 	Num_val      uint64
-	OldStr_val   [128]byte
-	NewStr_val   [128]byte
+	OldStr_val   [256]byte
+	OldStr_len   uint32
+	NewStr_val   [256]byte
+	NewStr_len   uint32
 }
 
 func (this *ArgFilter) Match(name string) bool {

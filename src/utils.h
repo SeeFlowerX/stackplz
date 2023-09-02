@@ -117,29 +117,17 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
             bpf_probe_read_user_str(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
         }
         if (point_arg->filter_idx != FILTER_INDEX_NONE) {
-            // 后续改为借助map进行比较
             arg_filter_t* filter_config = bpf_map_lookup_elem(&arg_filter, &point_arg->filter_idx);
             // 按照设计这里必须不为NULL
             if (filter_config == NULL) {
                 return next_arg_index;
             }
-            u32 startswith = 0;
-            // 设置到256会出现 bad address
-            // 似乎是程序的指令数达到上限了
-            for (int i = 0; i < 128; i++) {
-                char c1 = string_p->buf[buf_off + i];
-                char c2 = filter_config->oldstr_val[i];
-                if (i != 0 && c2 == 0) {
-                    startswith = 1;
-                    break;
-                }
-                if (c1 == 0 || c2 == 0) {
-                    break;
-                }
-                if (c1 != c2) {
-                    break;
-                }
-            }
+            // 借助map来比较字符串：
+            // 1. 将读已经取到的字符串复制filter_config预设长度的内容到临时变量字符串
+            // 2. 将该临时变量字符串作为key，字符串长度作为value更新到map中
+            // 3. 以filter_config预设的字符串作为key，从map中取出值
+            // 4. 能取到说明两个字符串相同，否则不匹配
+            u32 startswith = strcmp_by_map(filter_config, string_p);
             if (filter_config->filter_type == WHITELIST_FILTER && startswith == 0){
                 // 不匹配白名单的都跳过
                 point_arg->tmp_index = FILTER_INDEX_SKIP;
