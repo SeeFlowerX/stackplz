@@ -6,13 +6,15 @@ import (
     "stackplz/user/util"
 )
 
+var hit_count uint32 = 0
+
 type BrkEvent struct {
     ContextEvent
     UUID string
 }
 
 func (this *BrkEvent) String() (s string) {
-    s = fmt.Sprintf("[%s] ", this.GetUUID())
+    s = fmt.Sprintf("[%s] hit_count:%d", this.GetUUID(), hit_count)
     s = this.GetStackTrace(s)
     return s
 }
@@ -27,6 +29,7 @@ func (this *BrkEvent) ParseContext() (err error) {
     if err != nil {
         panic(fmt.Sprintf("ParseContextStack err:%v", err))
     }
+    hit_count += 1
     return nil
 }
 
