@@ -212,6 +212,8 @@ static __always_inline u32 strcmp_by_map(arg_filter_t *filter_config, buf_t *str
         return 0;
     }
     if (str_len > 0) {
+        // 必须重置
+        __builtin_memset(str_key->str_val, 0, sizeof(str_key->str_val));
         bpf_probe_read(str_key->str_val, str_len, string_p->buf);
     }
     bpf_map_update_elem(&str_buf, str_key, &str_len, BPF_ANY);

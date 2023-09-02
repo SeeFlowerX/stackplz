@@ -1,13 +1,9 @@
 #ifndef __STACKPLZ_CONSTS_H__
 #define __STACKPLZ_CONSTS_H__
 
-// stackplz => 737461636b706c7a
-#define MAGIC_UID 0x73746163
-#define MAGIC_PID 0x6b706c7a
-#define MAGIC_TID 0x61636b70
-
 #define TASK_COMM_LEN 16
 #define MAX_COUNT 20
+#define MAX_FILTER_COUNT 6
 #define MAX_PATH_COMPONENTS   48
 
 // clang-format off

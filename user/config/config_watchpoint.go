@@ -23,7 +23,7 @@ const (
 )
 
 type ArgType struct {
-	FilterIdx      uint32
+	FilterIdx      [MAX_FILTER_COUNT]uint32
 	ReadIndex      uint32
 	ReadOffset     uint32
 	BaseType       uint32
@@ -126,10 +126,6 @@ func (this *ArgType) SetReadIndex(index uint32) {
 	this.ReadIndex = index
 }
 
-func (this *ArgType) SetFilterIdx(index uint32) {
-	this.FilterIdx = index
-}
-
 func (this *ArgType) SetReadOffset(offset uint32) {
 	this.ReadOffset = offset
 }
@@ -191,7 +187,7 @@ func (this *ArgType) String() string {
 func (this *ArgType) Clone() ArgType {
 	// 在涉及到类型变更的时候 记得先调用这个
 	at := ArgType{}
-	at.FilterIdx = this.FilterIdx
+	copy(at.FilterIdx[:], this.FilterIdx[:])
 	at.ReadIndex = this.ReadIndex
 	at.ReadOffset = this.ReadOffset
 	at.BaseType = this.BaseType
@@ -204,7 +200,11 @@ func (this *ArgType) Clone() ArgType {
 }
 
 func AT(arg_alias_type, arg_base_type, read_count uint32) ArgType {
-	return ArgType{FILTER_INDEX_NONE, READ_INDEX_REG, 0, arg_base_type, arg_alias_type, read_count, 1, READ_INDEX_SKIP, 0}
+	var tmp_idx [MAX_FILTER_COUNT]uint32
+	for i := 0; i < MAX_FILTER_COUNT; i++ {
+		tmp_idx[i] = FILTER_INDEX_NONE
+	}
+	return ArgType{tmp_idx, READ_INDEX_REG, 0, arg_base_type, arg_alias_type, read_count, 1, READ_INDEX_SKIP, 0}
 }
 
 func PA(nr string, args []PArg) PArgs {

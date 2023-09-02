@@ -88,7 +88,9 @@ func (this *SysCallArgs) GetConfig() *SyscallPointArgs_T {
 	var point_arg_types [MAX_POINT_ARG_COUNT]FilterArgType
 	for i := 0; i < MAX_POINT_ARG_COUNT; i++ {
 		if i+1 > len(this.Args) {
-			point_arg_types[i].ArgType.FilterIdx = FILTER_INDEX_NONE
+			for j := 0; j < MAX_FILTER_COUNT; j++ {
+				point_arg_types[i].ArgType.FilterIdx[j] = FILTER_INDEX_NONE
+			}
 		} else {
 			point_arg_types[i].PointFlag = this.Args[i].PointFlag
 			point_arg_types[i].ArgType = this.Args[i].ArgType

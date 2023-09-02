@@ -42,6 +42,7 @@ BPF_HASH(thread_filter, thread_name_t, u32, 40);
 BPF_HASH(arg_filter, u32, arg_filter_t, 40);
 BPF_HASH(str_buf, str_buf_t, u32, 256);
 BPF_ARRAY(str_buf_arr, str_buf_t, 1);
+BPF_ARRAY(match_ctx_map, match_ctx_t, 1); 
 BPF_PERCPU_ARRAY(event_data_map, event_data_t, 1);
 BPF_ARRAY(base_config, config_entry_t, 1);
 

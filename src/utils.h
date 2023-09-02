@@ -19,7 +19,7 @@
 
 typedef struct point_arg_t {
     u32 point_flag;
-    u32 filter_idx;
+    u32 filter_idx[MAX_FILTER_COUNT];
     u32 read_index;
 	u32 read_offset;
     u32 base_type;
@@ -116,27 +116,42 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
             // MTE 其实也正常读取到了
             bpf_probe_read_user_str(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
         }
-        if (point_arg->filter_idx != FILTER_INDEX_NONE) {
-            arg_filter_t* filter_config = bpf_map_lookup_elem(&arg_filter, &point_arg->filter_idx);
-            // 按照设计这里必须不为NULL
-            if (filter_config == NULL) {
-                return next_arg_index;
+        // Q: 这里为什么不直接定义变量呢
+        // A: 经过测试，发现直接定义变量 + 循环中赋值 + 循环中/外比较 => 会导致 argument list too long
+        // A: 但是从map中拿一个结构体出来不会受到影响，要注意的是记得每次重置结构体内容
+        match_ctx_t* match_ctx = bpf_map_lookup_elem(&match_ctx_map, &buf_off);
+        if (match_ctx == NULL) {
+            return next_arg_index;
+        }
+        match_ctx->match_blacklist = 0;
+        match_ctx->match_whitelist = 0;
+        for (int j = 0; j < MAX_FILTER_COUNT; j++) {
+            u32 filter_idx = point_arg->filter_idx[j];
+            if (filter_idx != FILTER_INDEX_NONE) {
+                arg_filter_t* filter_config = bpf_map_lookup_elem(&arg_filter, &filter_idx);
+                // 按照设计这里必须不为NULL
+                if (filter_config == NULL) {
+                    return next_arg_index;
+                }
+                // 借助map来比较字符串：
+                // 1. 将读已经取到的字符串复制filter_config预设长度的内容到临时变量字符串
+                // 2. 将该临时变量字符串作为key，字符串长度作为value更新到map中
+                // 3. 以filter_config预设的字符串作为key，从map中取出值
+                // 4. 能取到说明两个字符串相同，否则不匹配
+                u32 startswith = strcmp_by_map(filter_config, string_p);
+                if (filter_config->filter_type == WHITELIST_FILTER && startswith == 1){
+                    match_ctx->match_whitelist = 1;
+                } else if (filter_config->filter_type == BLACKLIST_FILTER && startswith == 1){
+                    match_ctx->match_blacklist = 1;
+                }
             }
-            // 借助map来比较字符串：
-            // 1. 将读已经取到的字符串复制filter_config预设长度的内容到临时变量字符串
-            // 2. 将该临时变量字符串作为key，字符串长度作为value更新到map中
-            // 3. 以filter_config预设的字符串作为key，从map中取出值
-            // 4. 能取到说明两个字符串相同，否则不匹配
-            u32 startswith = strcmp_by_map(filter_config, string_p);
-            if (filter_config->filter_type == WHITELIST_FILTER && startswith == 0){
-                // 不匹配白名单的都跳过
-                point_arg->tmp_index = FILTER_INDEX_SKIP;
-                return next_arg_index;
-            } else if (filter_config->filter_type == BLACKLIST_FILTER && startswith == 1){
-                // 匹配黑名单的都跳过
-                point_arg->tmp_index = FILTER_INDEX_SKIP;
-                return next_arg_index;
-            }
+        }
+        // 跳过逻辑：
+        // 1. 不与任何白名单规则匹配，跳过
+        // 2. 与任意黑名单规则之一匹配，跳过
+        if (match_ctx->match_whitelist == 0 || match_ctx->match_blacklist == 1) {
+            point_arg->tmp_index = FILTER_INDEX_SKIP;
+            return next_arg_index;
         }
         save_str_to_buf(p.event, &string_p->buf[buf_off], next_arg_index);
         next_arg_index += 1;

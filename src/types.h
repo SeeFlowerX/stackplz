@@ -15,6 +15,11 @@ typedef struct args {
     u32 flag;
 } args_t;
 
+typedef struct match_ctx {
+    u32 match_whitelist;
+    u32 match_blacklist;
+} match_ctx_t;
+
 typedef struct thread_name {
     char name[16];
 } thread_name_t;

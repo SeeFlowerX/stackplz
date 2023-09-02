@@ -347,21 +347,19 @@ func (this *SyscallConfig) Parse_SysWhitelist(text string) {
         }
     }
     for _, v := range unique_items {
-        var filter_index = FILTER_INDEX_NONE
+        var index_items []uint32
         syscall_name := v
         items := strings.SplitN(syscall_name, ":", 2)
         if len(items) == 2 {
-            find_filter := false
             syscall_name = items[0]
-            for _, arg_filter := range *this.arg_filter {
-                if arg_filter.Match(items[1]) {
-                    find_filter = true
-                    filter_index = arg_filter.Filter_index
-                    break
+            filter_names := strings.Split(items[1], ".")
+            // 改成map好点
+            for _, filter_name := range filter_names {
+                for _, arg_filter := range *this.arg_filter {
+                    if arg_filter.Match(filter_name) {
+                        index_items = append(index_items, arg_filter.Filter_index)
+                    }
                 }
-            }
-            if !find_filter {
-                panic(fmt.Sprintf("can not find filter for %s -> %s", syscall_name, items[1]))
             }
         }
         point := GetWatchPointByName(syscall_name)
@@ -373,7 +371,13 @@ func (this *SyscallConfig) Parse_SysWhitelist(text string) {
         for i := 0; i < len(point_args.ArgTypes); i++ {
             t := &point_args.ArgTypes[i]
             if t.ArgType == STRING {
-                t.FilterIdx = filter_index
+                for j := 0; j < MAX_FILTER_COUNT; j++ {
+                    if j < len(index_items) {
+                        t.FilterIdx[j] = index_items[j]
+                    } else {
+                        t.FilterIdx[j] = FILTER_INDEX_NONE
+                    }
+                }
             }
         }
         this.SyscallPointArgs = append(this.SyscallPointArgs, point_args)

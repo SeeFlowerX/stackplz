@@ -1,11 +1,7 @@
 package config
 
 const MAX_COUNT = 20
-
-// stackplz => 737461636b706c7a
-const MAGIC_UID = 0x73746163
-const MAGIC_PID = 0x6b706c7a
-const MAGIC_TID = 0x61636b70
+const MAX_FILTER_COUNT = 6
 
 const (
 	TRACE_COMMON uint32 = iota
