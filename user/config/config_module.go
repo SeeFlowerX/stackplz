@@ -451,6 +451,7 @@ type ModuleConfig struct {
     Buffer       uint32
     BrkAddr      uint64
     BrkType      uint32
+    BrkKernel    bool
     Color        bool
     DumpHex      bool
 

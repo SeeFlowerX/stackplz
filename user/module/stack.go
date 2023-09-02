@@ -414,7 +414,6 @@ func (this *MStack) update_syscall_config() {
         return
     }
     this.update_syscall_point_args()
-    // this.update_syscall_filter()
     this.update_common_list(this.mconf.SysCallConf.SysWhitelist, util.SYS_WHITELIST_START)
     this.update_common_list(this.mconf.SysCallConf.SysBlacklist, util.SYS_BLACKLIST_START)
     if this.mconf.Debug {

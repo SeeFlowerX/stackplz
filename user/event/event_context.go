@@ -174,6 +174,9 @@ func (this *ContextEvent) ParsePadding() (err error) {
 }
 
 func (this *ContextEvent) ParseContext() (err error) {
+    if this.mconf.BrkKernel {
+        return nil
+    }
     this.buf = bytes.NewBuffer(this.rec.RawSample)
     if err = binary.Read(this.buf, binary.LittleEndian, &this.rec.SampleSize); err != nil {
         return err
