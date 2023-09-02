@@ -53,10 +53,8 @@ func (this *BrkEvent) ParseContext() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &this.EventAddr); err != nil {
         return err
     }
-    err = this.ParseContextStack()
-    if err != nil {
-        panic(fmt.Sprintf("ParseContextStack err:%v", err))
-    }
+    this.ParseContextStack()
+
     return nil
 }
 
@@ -65,12 +63,12 @@ func (this *BrkEvent) Clone() IEventStruct {
     return event
 }
 
-func (this *BrkEvent) ParseContextStack() (err error) {
+func (this *BrkEvent) ParseContextStack() {
     this.Stackinfo = ""
     if this.rec.ExtraOptions.UnwindStack {
         // 读取完整的栈数据和寄存器数据 并解析为 UnwindBuf 结构体
         this.UnwindBuffer = &UnwindBuf{}
-        err = this.UnwindBuffer.ParseContext(this.buf)
+        err := this.UnwindBuffer.ParseContext(this.buf)
         if err != nil {
             panic(fmt.Sprintf("UnwindStack ParseContext failed, err:%v", err))
         }
@@ -87,14 +85,14 @@ func (this *BrkEvent) ParseContextStack() (err error) {
             } else {
                 this.Stackinfo = info
             }
-            return nil
+            return
         }
         this.Stackinfo = ParseStack(content, this.UnwindBuffer)
     } else if this.rec.ExtraOptions.ShowRegs {
-        err = this.RegsBuffer.ParseContext(this.buf)
+        err := this.RegsBuffer.ParseContext(this.buf)
         if err != nil {
             panic(fmt.Sprintf("UnwindStack ParseContext failed, err:%v", err))
         }
     }
-    return nil
+    return
 }
