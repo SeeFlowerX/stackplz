@@ -140,6 +140,9 @@ func (this *ContextEvent) NewBrkEvent() IEventStruct {
     if err != nil {
         panic(fmt.Sprintf("NewUprobeEvent.ParseContext() err:%v", err))
     }
+    if !event.Check() {
+        return nil
+    }
     return event
 }
 

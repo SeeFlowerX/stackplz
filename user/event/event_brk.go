@@ -2,6 +2,7 @@ package event
 
 import (
     "bytes"
+    "encoding/binary"
     "fmt"
     "stackplz/user/util"
 )
@@ -10,26 +11,52 @@ var hit_count uint32 = 0
 
 type BrkEvent struct {
     ContextEvent
-    UUID string
+    EventAddr uint64
+    UUID      string
 }
 
 func (this *BrkEvent) String() (s string) {
-    s = fmt.Sprintf("[%s] hit_count:%d", this.GetUUID(), hit_count)
+    s = fmt.Sprintf("[%s] event_addr:0x%x hit_count:%d", this.GetUUID(), this.EventAddr, hit_count)
     s = this.GetStackTrace(s)
     return s
 }
 
 func (this *BrkEvent) GetUUID() string {
-    return fmt.Sprintf("%d", this.mconf.PidWhitelist[0])
+    return fmt.Sprintf("%d|%d", this.Pid, this.Tid)
+}
+
+func (this *BrkEvent) Check() bool {
+    // 排除自己
+    if this.Pid == this.mconf.SelfPid {
+        return false
+    }
+    // 排除内核
+    // if this.Pid == 0 {
+    //     return false
+    // }
+    // 只记录最开始指定的pid
+    // if this.Pid != this.mconf.PidWhitelist[0] {
+    //     return false
+    // }
+    hit_count += 1
+    return true
 }
 
 func (this *BrkEvent) ParseContext() (err error) {
     this.buf = bytes.NewBuffer(this.rec.RawSample)
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
+        return err
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.EventAddr); err != nil {
+        return err
+    }
     err = this.ParseContextStack()
     if err != nil {
         panic(fmt.Sprintf("ParseContextStack err:%v", err))
     }
-    hit_count += 1
     return nil
 }
 
