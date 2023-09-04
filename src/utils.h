@@ -14,7 +14,7 @@
 #define READ_INDEX_SKIP 100
 #define READ_INDEX_REG 101
 
-#define FILTER_INDEX_NONE 0x1111
+#define FILTER_INDEX_NONE 0x0
 #define FILTER_INDEX_SKIP 0x1234
 
 typedef struct point_arg_t {
@@ -111,6 +111,7 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         if (string_p == NULL) {
             return next_arg_index;
         }
+        __builtin_memset((void *) string_p, 0, sizeof(string_p));
         int status = bpf_probe_read_user(&string_p->buf[buf_off], MAX_STRING_SIZE, (void *)ptr);
         if (status < 0) {
             // MTE 其实也正常读取到了
@@ -123,11 +124,13 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         if (match_ctx == NULL) {
             return next_arg_index;
         }
+        match_ctx->apply_filter = 0;
         match_ctx->match_blacklist = 0;
         match_ctx->match_whitelist = 0;
         for (int j = 0; j < MAX_FILTER_COUNT; j++) {
             u32 filter_idx = point_arg->filter_idx[j];
             if (filter_idx != FILTER_INDEX_NONE) {
+                match_ctx->apply_filter = 1;
                 arg_filter_t* filter_config = bpf_map_lookup_elem(&arg_filter, &filter_idx);
                 // 按照设计这里必须不为NULL
                 if (filter_config == NULL) {
@@ -143,15 +146,32 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
                     match_ctx->match_whitelist = 1;
                 } else if (filter_config->filter_type == BLACKLIST_FILTER && startswith == 1){
                     match_ctx->match_blacklist = 1;
+                } else if (filter_config->filter_type == REPLACE_FILTER && startswith == 1){
+                    // 将替换的参数 视作白名单处理
+                    match_ctx->match_whitelist = 1;
+                    // replace 是替换内容的操作 实际上不影响过滤
+                    // 这里注意写入有一个截断符 由用户态完成处理 实际上让长度+1即可
+                    // u32 str_len = 256;
+                    // if (str_len > filter_config->newstr_len) {
+                    //     str_len = filter_config->newstr_len;
+                    // }
+                    // 经过测试 bpf_probe_write_user 的 len 参数不能是动态的
+                    // 即使通过 if 设定一个上限也不行
+                    int write_status = bpf_probe_write_user((void *)(ptr & 0xffffffffff), filter_config->newstr_val, sizeof(filter_config->newstr_val));
+                    // bpf_printk("[syscall] ptr:0x%lx status:%d filter_index:%d\n", ptr, write_status, filter_config->filter_index);
+                    // bpf_printk("[syscall] ptr:0x%lx old:%s\n", ptr, filter_config->newstr_val);
+                    // bpf_printk("[syscall] ptr:0x%lx new:%s\n", ptr, string_p->buf);
                 }
             }
         }
         // 跳过逻辑：
         // 1. 不与任何白名单规则匹配，跳过
         // 2. 与任意黑名单规则之一匹配，跳过
-        if (match_ctx->match_whitelist == 0 || match_ctx->match_blacklist == 1) {
-            point_arg->tmp_index = FILTER_INDEX_SKIP;
-            return next_arg_index;
+        if (match_ctx->apply_filter == 1) {
+            if (match_ctx->match_whitelist == 0 || match_ctx->match_blacklist == 1) {
+                point_arg->tmp_index = FILTER_INDEX_SKIP;
+                return next_arg_index;
+            }
         }
         save_str_to_buf(p.event, &string_p->buf[buf_off], next_arg_index);
         next_arg_index += 1;

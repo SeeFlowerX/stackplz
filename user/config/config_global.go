@@ -17,7 +17,6 @@ type GlobalConfig struct {
     StackSize    uint32
     ShowRegs     bool
     GetOff       bool
-    HideRoot     bool
     UprobeSignal string
     Debug        bool
     Quiet        bool

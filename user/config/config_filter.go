@@ -38,5 +38,8 @@ type ArgFilter struct {
 }
 
 func (this *ArgFilter) Match(name string) bool {
-	return name == fmt.Sprintf("f%d", this.Filter_index)
+	if this.Filter_index == 0 {
+		return false
+	}
+	return name == fmt.Sprintf("f%d", this.Filter_index-1)
 }

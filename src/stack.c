@@ -141,6 +141,10 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
             read_count = point_arg->read_count;
         }
         next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
+        if (point_arg->tmp_index == FILTER_INDEX_SKIP) {
+            point_arg->tmp_index = 0;
+            return 0;
+        }
     }
     events_perf_submit(&p, UPROBE_ENTER);
     if (filter->signal > 0) {
@@ -169,8 +173,8 @@ PROBE_STACK(2);
 PROBE_STACK(3);
 PROBE_STACK(4);
 PROBE_STACK(5);
-PROBE_STACK(6);
-PROBE_STACK(7);
+// PROBE_STACK(6);
+// PROBE_STACK(7);
 // PROBE_STACK(8);
 // PROBE_STACK(9);
 // PROBE_STACK(10);

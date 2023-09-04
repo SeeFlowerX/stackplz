@@ -16,6 +16,7 @@ typedef struct args {
 } args_t;
 
 typedef struct match_ctx {
+    u32 apply_filter;
     u32 match_whitelist;
     u32 match_blacklist;
 } match_ctx_t;

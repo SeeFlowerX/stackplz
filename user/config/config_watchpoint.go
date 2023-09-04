@@ -11,7 +11,7 @@ import (
 const MAX_POINT_ARG_COUNT = 10
 const READ_INDEX_SKIP uint32 = 100
 const READ_INDEX_REG uint32 = 101
-const FILTER_INDEX_NONE uint32 = 0x1111
+const FILTER_INDEX_NONE uint32 = 0x0
 const FILTER_INDEX_SKIP uint32 = 0x1234
 
 const (

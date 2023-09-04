@@ -192,6 +192,27 @@ pid + 偏移 + 库文件
 - %stat
     - statfs,fstatfs,newfstatat,fstat,statx
 
+3.10 应用过滤规则
+
+黑白名单：
+
+```bash
+./stackplz -n com.starbucks.cn -s openat:f0.f1.f2 -f w:/system -f w:/dev -f b:/system/lib64 -o tmp.log
+```
+
+替换规则（下面的测试命令开两个shell执行）：
+
+```bash
+./stackplz -n com.starbucks.cn,iso -s execve,openat:f0 -f r:/system/bin/su:::/system/bin/zz -o tmp_s.log
+./stackplz -n com.starbucks.cn,iso -w popen[str.f0.f1] -f r:mount:::mounx -f "r:which su:::which zz" -o tmp_w.log
+```
+
+ebpf中`bpf_probe_write_user`需要预先指定写入数据大小，本项目暂且覆盖256字节，可能有潜在的问题
+
+替换功能仅做演示，用于展示ebpf操作数据的能力，如果要改为较为灵活的方式，会涉及常量编辑等功能，暂不实现
+
+---
+
 使用提示：
 
 - 可以用`--name`指定包名，用`--uid`指定进程所属uid，用`--pid`指定进程
@@ -237,70 +258,7 @@ pid + 偏移 + 库文件
 
 # 编译
 
-可参考[workflow](.github/workflows/build.yml)或下面的步骤：
-
-本项目依赖于[ehids/ebpfmanager](https://github.com/ehids/ebpfmanager)和[cilium/ebpf](https://github.com/cilium/ebpf)，但是做出了一些修改
-
-所以目前编译需要使用修改过的版本，三个项目需要放在同一目录下
-
-```bash
-git clone https://github.com/SeeFlowerX/ebpf
-git clone https://github.com/SeeFlowerX/ebpfmanager
-git clone https://github.com/SeeFlowerX/stackplz
-```
-
-本项目在linux x86_64环境下编译，编译时先进入本项目根目录
-
-准备必要的外部代码，记得挂全局代理或者使用`proxychains`等工具
-
-```bash
-./build_env.sh
-```
-
-然后下载ndk并解压，这里选的是`android-ndk-r25b`，解压后修改`build.sh`中的`NDK_ROOT`路径
-
-本项目还需要使用golang，版本要求为`1.18`，建议通过snap安装，**或者**使用如下方法安装
-
-```bash
-wget "https://golang.org/dl/go1.18.7.linux-amd64.tar.gz"
-tar -C /usr/local -xvf "go1.18.7.linux-amd64.tar.gz"
-```
-
-设置环境变量
-
-```bash
-nano ~/.bashrc
-```
-
-在末尾添加如下内容
-
-```bash
-export GOPATH=$HOME/go
-export PATH=/usr/local/go/bin:$PATH:$GOPATH/bin
-export GOPROXY=https://goproxy.cn,direct
-export GO111MODULE=on
-```
-
-对单个项目来说，似乎要用下面的命令手动操作下，再重新用vscode打开才不会报错
-
-```bash
-go env -w GO111MODULE=on
-go env -w GOPROXY=https://goproxy.cn,direct
-```
-
-使环境变量立即生效
-
-```bash
-source ~/.bashrc
-```
-
-执行`./build.sh`即可完成编译，产物在`bin`目录下
-
-将可执行文件推送到手机上后就可以开始使用了
-
-```bash
-adb push bin/stackplz /data/local/tmp
-```
+可参考[workflow](.github/workflows/build.yml)或查看[编译文档](BUILD.md)：
 
 # Q & A
 
@@ -352,7 +310,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 有关eBPF on Android系列可以加群交流
 
-![](./images/Snipaste_2023-08-28_11-39-44.png)
+![](./images/Snipaste_2023-09-04_17-28-08.png)
 
 个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 

@@ -15,9 +15,10 @@ import (
 )
 
 type StackUprobeConfig struct {
-    LibName string
-    LibPath string
-    Points  []UprobeArgs
+    arg_filter *[]ArgFilter
+    LibName    string
+    LibPath    string
+    Points     []UprobeArgs
 }
 
 func ParseStrAsNum(v string) (uint64, error) {
@@ -38,7 +39,7 @@ func ParseStrAsNum(v string) (uint64, error) {
     }
 }
 
-func ParseArgType(arg_str string) (ArgType, error) {
+func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
     // str
     // int:x10
     // buf:64:sp+0x20-0x8
@@ -66,6 +67,19 @@ func ParseArgType(arg_str string) (ArgType, error) {
         to_ptr = true
         arg_desc = arg_desc[1:]
     }
+    arg_desc_items := strings.SplitN(arg_desc, ".", 2)
+    var index_items []uint32
+    if len(arg_desc_items) == 2 {
+        arg_desc = arg_desc_items[0]
+        filter_names := strings.Split(arg_desc_items[1], ".")
+        for _, filter_name := range filter_names {
+            for _, arg_filter := range *this.arg_filter {
+                if arg_filter.Match(filter_name) {
+                    index_items = append(index_items, arg_filter.Filter_index)
+                }
+            }
+        }
+    }
     switch arg_desc {
     case "int":
         arg_type = EXP_INT
@@ -77,6 +91,11 @@ func ParseArgType(arg_str string) (ArgType, error) {
         arg_type = UINT64
     case "str":
         arg_type = STRING
+        for i := 0; i < MAX_FILTER_COUNT; i++ {
+            if i < len(index_items) {
+                arg_type.FilterIdx[i] = index_items[i]
+            }
+        }
     case "ptr":
         arg_type = POINTER
     case "buf":
@@ -194,10 +213,14 @@ func (this *StackUprobeConfig) IsEnable() bool {
     return len(this.Points) > 0
 }
 
+func (this *StackUprobeConfig) SetArgFilterRule(arg_filter *[]ArgFilter) {
+    this.arg_filter = arg_filter
+}
+
 func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
 
-    if len(configs) > 8 {
-        return errors.New("max uprobe hook point count is 8")
+    if len(configs) > 6 {
+        return errors.New("max uprobe hook point count is 6")
     }
 
     // strstr+0x0[str,str] 命中 strstr + 0x0 时将x0和x1读取为字符串
@@ -242,7 +265,7 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
                 for arg_index, arg_str := range args {
                     arg_name := fmt.Sprintf("arg_%d", arg_index)
                     arg := PointArg{arg_name, UPROBE_ENTER_READ, INT, "???"}
-                    arg_type, err := ParseArgType(arg_str)
+                    arg_type, err := this.ParseArgType(arg_str)
                     if err != nil {
                         return err
                     }
@@ -374,8 +397,6 @@ func (this *SyscallConfig) Parse_SysWhitelist(text string) {
                 for j := 0; j < MAX_FILTER_COUNT; j++ {
                     if j < len(index_items) {
                         t.FilterIdx[j] = index_items[j]
-                    } else {
-                        t.FilterIdx[j] = FILTER_INDEX_NONE
                     }
                 }
             }
@@ -443,7 +464,6 @@ type ModuleConfig struct {
     ArgFilterRule []ArgFilter
 
     TraceGroup   uint32
-    HideRoot     bool
     UprobeSignal uint32
     UnwindStack  bool
     StackSize    uint32
@@ -483,6 +503,7 @@ func (this *ModuleConfig) InitSyscallConfig() {
 
 func (this *ModuleConfig) InitStackUprobeConfig() {
     config := &StackUprobeConfig{}
+    config.SetArgFilterRule(&this.ArgFilterRule)
     this.StackUprobeConf = config
 }
 
@@ -547,7 +568,9 @@ func (this *ModuleConfig) Parse_Namelist(list_key, name_list string) {
 func (this *ModuleConfig) Parse_ArgFilter(arg_filter []string) {
     for filter_index, filter_str := range arg_filter {
         var arg_filter ArgFilter
-        arg_filter.Filter_index = uint32(filter_index)
+        // Filter_index 默认 0
+        // 这里 +1 的原因是：很多涉及 arg_type 操作的时候可能忘了挨个复制filter_idx
+        arg_filter.Filter_index = uint32(filter_index) + 1
         items := strings.SplitN(filter_str, ":", 2)
         if len(items) != 2 {
             panic(fmt.Sprintf("parse ArgFilterRule failed, filter_str:%s", filter_str))
@@ -586,12 +609,15 @@ func (this *ModuleConfig) Parse_ArgFilter(arg_filter []string) {
             arg_filter.Filter_type = REPLACE_FILTER
             str_old := []byte(r_items[0])
             str_new := []byte(r_items[1])
+            str_new = append(str_new, byte(0))
             if len(str_old) > 256 || len(str_new) > 256 {
                 panic(fmt.Sprintf("string is to long, max length is 256"))
             }
             arg_filter.OldStr_len = uint32(len(str_old))
             copy(arg_filter.OldStr_val[:], str_old)
-            arg_filter.NewStr_len = uint32(len(str_new))
+            // 注意这里长度 +1 是为了能写入一个 \0
+            // 由于写用户态的函数必须提前指定长度 所以这里 NewStr_len 没有其作用
+            arg_filter.NewStr_len = uint32(len(str_new) + 1)
             copy(arg_filter.NewStr_val[:], str_new)
         default:
             panic(fmt.Sprintf("parse ArgFilterRule failed, filter_str:%s", filter_str))

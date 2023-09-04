@@ -231,7 +231,6 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
     // 后面更新map的时候不影响 列表不去重也行
 
-    mconfig.HideRoot = gconfig.HideRoot
     mconfig.Buffer = gconfig.Buffer
     mconfig.UnwindStack = gconfig.UnwindStack
     if gconfig.StackSize&7 != 0 {
@@ -494,7 +493,6 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.NoTName, "no-tname", "", "thread name black list")
     rootCmd.PersistentFlags().StringArrayVarP(&gconfig.ArgFilter, "filter", "f", []string{}, "arg filter rule")
 
-    rootCmd.PersistentFlags().BoolVar(&gconfig.HideRoot, "hide-root", false, "hide some root feature")
     rootCmd.PersistentFlags().StringVar(&gconfig.UprobeSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
     // 硬件断点设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.BrkAddr, "brk", "", "", "set hardware breakpoint address")
