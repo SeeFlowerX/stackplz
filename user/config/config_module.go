@@ -218,7 +218,9 @@ func (this *StackUprobeConfig) SetArgFilterRule(arg_filter *[]ArgFilter) {
 }
 
 func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
-
+    if this.LibPath == "" {
+        return errors.New("library is empty, plz set with -l/--lib")
+    }
     if len(configs) > 6 {
         return errors.New("max uprobe hook point count is 6")
     }

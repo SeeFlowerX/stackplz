@@ -9,10 +9,13 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/exp/slices"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -138,6 +141,9 @@ func Get_PackageInfos() *PackageInfos {
 }
 
 func FindLib(library string, search_paths []string) (string, error) {
+	if library == "" {
+		return "", nil
+	}
 	// 以 / 开头的认为是完整路径 否则在提供的路径中查找
 	if strings.HasPrefix(library, "/") {
 		_, err := os.Stat(library)
@@ -158,7 +164,20 @@ func FindLib(library string, search_paths []string) (string, error) {
 				// 这里在debug模式下打印出来
 				continue
 			}
-			full_paths = append(full_paths, check_path)
+			path_info, err := os.Lstat(check_path)
+			if err != nil {
+				continue
+			}
+			if path_info.Mode()&os.ModeSymlink != 0 {
+				real_path, err := filepath.EvalSymlinks(check_path)
+				if err != nil {
+					continue
+				}
+				check_path = real_path
+			}
+			if !slices.Contains(full_paths, check_path) {
+				full_paths = append(full_paths, check_path)
+			}
 		}
 		if len(full_paths) == 0 {
 			// 没找到
