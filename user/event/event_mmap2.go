@@ -309,18 +309,11 @@ func (this *MapsHelper) UpdatePidList(pid uint32) {
     }
     pid_list = append(pid_list, pid)
 }
+
 func (this *MapsHelper) UpdateMaps(event *Mmap2Event) {
     maps_lock.Lock()
     defer maps_lock.Unlock()
-    // 只尝试解析存在于 pid_list 的
-    exists := false
-    for _, v := range pid_list {
-        if v == event.Pid {
-            exists = true
-            break
-        }
-    }
-    if !exists {
+    if !slices.Contains(pid_list, event.Pid) {
         return
     }
     // 遇到 mmap2 事件的时候都去尝试读取maps信息
@@ -477,6 +470,7 @@ func (this *Mmap2Event) ParseContext() (err error) {
         s := fmt.Sprintf("[Mmap2Event] pid=%d tid=%d addr=0x%x len=0x%x pgoff=0x%x mag=%d min=%d ino=%d ino_generation=%d prot=0x%x flags=0x%x <%s>", this.Pid, this.Tid, this.Addr, this.Len, this.Pgoff, this.Maj, this.Min, this.Ino, this.Ino_generation, this.Prot, this.Flags, this.Filename)
         this.logger.Printf(s)
     }
+    maps_helper.UpdateMaps(this)
     return nil
 }
 

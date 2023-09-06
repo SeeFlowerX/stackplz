@@ -452,7 +452,8 @@ func (this *SyscallConfig) Info() string {
 type ModuleConfig struct {
     BaseConfig
 
-    SelfPid uint32
+    SelfPid     uint32
+    PkgNamelist []string
 
     UidWhitelist   []uint32
     UidBlacklist   []uint32

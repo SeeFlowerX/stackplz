@@ -4,6 +4,10 @@ import (
     "bytes"
     "encoding/binary"
     "fmt"
+    "io/ioutil"
+    "strings"
+
+    "golang.org/x/exp/slices"
 )
 
 type ForkEvent struct {
@@ -51,6 +55,24 @@ func (this *ForkEvent) ParseContext() (err error) {
         s := fmt.Sprintf("[ForkEvent] pid=%d ppid=%d tid=%d ptid=%d time=%d", this.Pid, this.Ppid, this.Tid, this.Ptid, this.Time)
         this.logger.Printf(s)
     }
-    maps_helper.UpdateForkEvent(this)
+    if slices.Contains(this.mconf.PidWhitelist, this.Pid) {
+        maps_helper.UpdateForkEvent(this)
+        return nil
+    }
+    proc_name, err := ReadProcNameByPid(this.Pid)
+    if slices.Contains(this.mconf.PkgNamelist, proc_name) {
+        maps_helper.UpdateForkEvent(this)
+    }
     return nil
+}
+
+func ReadProcNameByPid(pid uint32) (string, error) {
+    filename := fmt.Sprintf("/proc/%d/cmdline", pid)
+    content, err := ioutil.ReadFile(filename)
+    if err != nil {
+        return "", err
+    }
+    cmdline := string(bytes.TrimSpace(bytes.Trim(content, "\x00")))
+    items := strings.SplitN(cmdline, ":", 2)
+    return items[0], nil
 }

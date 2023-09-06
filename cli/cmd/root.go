@@ -250,6 +250,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
                 mconfig.UidWhitelist = append(mconfig.UidWhitelist, info.Uid)
             }
             addLibPath(pkg_name)
+            mconfig.PkgNamelist = append(mconfig.PkgNamelist, pkg_name)
         }
     }
     // 后面更新map的时候不影响 列表不去重也行
