@@ -270,11 +270,9 @@ func (this *MStack) update_common_filter() {
     this.update_common_list(this.mconf.PidBlacklist, util.PID_BLACKLIST_START)
     this.update_common_list(this.mconf.TidWhitelist, util.TID_WHITELIST_START)
     this.update_common_list(this.mconf.TidBlacklist, util.TID_BLACKLIST_START)
-    if this.mconf.Debug {
-        this.logger.Printf("uid => whitelist:[%s];blacklist:[%s]", this.list2string(this.mconf.UidWhitelist), this.list2string(this.mconf.UidBlacklist))
-        this.logger.Printf("pid => whitelist:[%s];blacklist:[%s]", this.list2string(this.mconf.PidWhitelist), this.list2string(this.mconf.PidBlacklist))
-        this.logger.Printf("tid => whitelist:[%s];blacklist:[%s]", this.list2string(this.mconf.TidWhitelist), this.list2string(this.mconf.TidBlacklist))
-    }
+    this.logger.Printf("uid => whitelist:[%s];blacklist:[%s]", this.list2string(this.mconf.UidWhitelist), this.list2string(this.mconf.UidBlacklist))
+    this.logger.Printf("pid => whitelist:[%s];blacklist:[%s]", this.list2string(this.mconf.PidWhitelist), this.list2string(this.mconf.PidBlacklist))
+    this.logger.Printf("tid => whitelist:[%s];blacklist:[%s]", this.list2string(this.mconf.TidWhitelist), this.list2string(this.mconf.TidBlacklist))
     var filter_key uint32 = 0
     map_name := "common_filter"
     filter_value := this.mconf.GetCommonFilter()

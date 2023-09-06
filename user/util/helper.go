@@ -181,7 +181,7 @@ func FindLib(library string, search_paths []string) (string, error) {
 		}
 		if len(full_paths) == 0 {
 			// 没找到
-			return library, fmt.Errorf("can not find %s in these paths\n%s", library, strings.Join(search_paths[:], "\n\t"))
+			return library, fmt.Errorf("can not find %s in these paths\n\t%s", library, strings.Join(search_paths[:], "\n\t"))
 		}
 		if len(full_paths) > 1 {
 			// 在已有的搜索路径下可能存在多个同名的库 提示用户指定全路径

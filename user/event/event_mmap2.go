@@ -12,6 +12,8 @@ import (
     "stackplz/user/util"
     "strings"
     "sync"
+
+    "golang.org/x/exp/slices"
 )
 
 type LibInfo struct {
@@ -114,6 +116,24 @@ func (this *MapsHelper) FindLib(pid uint32) (ProcMaps, error) {
         }
     }
     return pid_maps.Clone(), nil
+}
+
+func FindLibPaths(pid uint32) ([]string, error) {
+    var search_paths []string
+    pid_maps, err := maps_helper.FindLib(pid)
+    if err != nil {
+        return search_paths, err
+    }
+    for seg_path, _ := range pid_maps {
+        if strings.HasPrefix(seg_path, "/") && strings.HasSuffix(seg_path, ".so") {
+            items := strings.Split(seg_path, "/")
+            lib_search_path := strings.Join(items[:len(items)-1], "/")
+            if !slices.Contains(search_paths, lib_search_path) {
+                search_paths = append(search_paths, lib_search_path)
+            }
+        }
+    }
+    return search_paths, nil
 }
 
 func (this *MapsHelper) UpdateForkEvent(event *ForkEvent) {

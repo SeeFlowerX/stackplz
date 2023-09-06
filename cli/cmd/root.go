@@ -188,6 +188,16 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             return fmt.Errorf("can not find process_pid=%d", process_pid)
         }
         addLibPath(info.Name)
+        // 解析maps 将maps中的路径加入搜索路径中
+        search_paths, err := event.FindLibPaths(process_pid)
+        if err != nil {
+            return err
+        }
+        for _, search_path := range search_paths {
+            if !slices.Contains(gconfig.LibraryDirs, search_path) {
+                gconfig.LibraryDirs = append(gconfig.LibraryDirs, search_path)
+            }
+        }
     }
     // 根据 uid 解析进程架构、获取库文件搜索路径
     for _, pkg_uid := range mconfig.UidWhitelist {
@@ -220,10 +230,23 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             if !is_find {
                 return fmt.Errorf("can not find pkg_name=%s", pkg_name)
             }
-            if info.Uid == 1000 {
-                pid_list := FindPidByName(pkg_name)
-                mconfig.PidWhitelist = append(mconfig.PidWhitelist, pid_list...)
-            } else {
+            // 根据包名查找进程名 再获取库搜索路径
+            pid_list := FindPidByName(pkg_name)
+            for _, pkg_pid := range pid_list {
+                // 解析maps 将maps中的路径加入搜索路径中
+                search_paths, err := event.FindLibPaths(pkg_pid)
+                if err != nil {
+                    return err
+                }
+                for _, search_path := range search_paths {
+                    if !slices.Contains(gconfig.LibraryDirs, search_path) {
+                        gconfig.LibraryDirs = append(gconfig.LibraryDirs, search_path)
+                    }
+                }
+            }
+            // 对于system进程不添加uid
+            mconfig.PidWhitelist = append(mconfig.PidWhitelist, pid_list...)
+            if info.Uid != 1000 {
                 mconfig.UidWhitelist = append(mconfig.UidWhitelist, info.Uid)
             }
             addLibPath(pkg_name)
@@ -419,9 +442,7 @@ func findBTFAssets() string {
     if strings.Contains(lines, "rockchip") {
         btf_file = "rock5b-5.10-arm64_min.btf"
     }
-    if gconfig.Debug {
-        Logger.Printf("findBTFAssets btf_file=%s", btf_file)
-    }
+    Logger.Printf("findBTFAssets btf_file=%s", btf_file)
     return btf_file
 }
 
@@ -447,9 +468,10 @@ func findKallsymsSymbol(symbol string) (bool, error) {
 
 func FindPidByName(name string) []uint32 {
     var pid_list []uint32
-    content, err := util.RunCommand("sh", "-c", "ps -ef -o name,pid,ppid | grep `^"+name+"`")
+    content, err := util.RunCommand("sh", "-c", "ps -ef -o name,pid,ppid | grep ^"+name)
     if err != nil {
-        panic(err)
+        Logger.Printf("warn, no running process of %s", name)
+        return pid_list
     }
     lines := strings.Split(content, "\n")
     for _, line := range lines {
