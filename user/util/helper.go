@@ -55,22 +55,6 @@ func UIntToBytes(x uint32) []byte {
 	return bytesBuffer.Bytes()
 }
 
-func RemoveDuplication_map(arr []string) []string {
-	set := make(map[string]struct{}, len(arr))
-	j := 0
-	for _, v := range arr {
-		_, ok := set[v]
-		if ok {
-			continue
-		}
-		set[v] = struct{}{}
-		arr[j] = v
-		j++
-	}
-
-	return arr[:j]
-}
-
 type PackageInfo struct {
 	Name string
 	Uid  uint32
@@ -154,8 +138,6 @@ func Get_PackageInfos() *PackageInfos {
 }
 
 func FindLib(library string, search_paths []string) (string, error) {
-	// 尝试在给定的路径中搜索 主要目的是方便用户输入库名即可
-	search_paths = RemoveDuplication_map(search_paths)
 	// 以 / 开头的认为是完整路径 否则在提供的路径中查找
 	if strings.HasPrefix(library, "/") {
 		_, err := os.Stat(library)
