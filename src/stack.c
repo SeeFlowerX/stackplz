@@ -1,12 +1,11 @@
-#include "utils.h"
-#include <stdbool.h>
-
 #include "types.h"
 #include "common/arguments.h"
 #include "common/common.h"
 #include "common/consts.h"
 #include "common/context.h"
 #include "common/filtering.h"
+
+#include "utils.h"
 
 typedef struct uprobe_point_args_t {
     u32 count;

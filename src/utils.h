@@ -30,6 +30,15 @@ typedef struct point_arg_t {
 	u32 tmp_index;
 } point_arg;
 
+static __always_inline match_ctx_t *make_match_ctx() {
+    u32 zero = 0;
+    struct match_ctx_t *match_ctx = bpf_map_lookup_elem(&match_ctx_gen, &zero);
+    if (match_ctx == NULL) return NULL;
+    u64 id = bpf_get_current_pid_tgid();
+    bpf_map_update_elem(&match_ctx_map, &id, match_ctx, BPF_ANY);
+    return bpf_map_lookup_elem(&match_ctx_map, &id);
+}
+
 static __always_inline u32 save_bytes_with_len(program_data_t p, u64 ptr, u32 read_len, u32 next_arg_index) {
     if (read_len > MAX_BUF_READ_SIZE) {
         read_len = MAX_BUF_READ_SIZE;
@@ -94,6 +103,7 @@ static __always_inline u32 read_ptr_arg(program_data_t p, struct point_arg_t* po
 }
 
 static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_arg, u64 ptr, u32 read_count, u32 next_arg_index) {
+    point_arg->tmp_index = FILTER_INDEX_NONE;
     ptr = ptr + point_arg->read_offset;
     if (point_arg->base_type == TYPE_NONE) {
         return next_arg_index;
@@ -120,7 +130,7 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         // Q: 这里为什么不直接定义变量呢
         // A: 经过测试，发现直接定义变量 + 循环中赋值 + 循环中/外比较 => 会导致 argument list too long
         // A: 但是从map中拿一个结构体出来不会受到影响，要注意的是记得每次重置结构体内容
-        match_ctx_t* match_ctx = bpf_map_lookup_elem(&match_ctx_map, &buf_off);
+        match_ctx_t* match_ctx = make_match_ctx();
         if (match_ctx == NULL) {
             return next_arg_index;
         }

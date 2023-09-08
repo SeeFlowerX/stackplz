@@ -41,8 +41,10 @@ BPF_HASH(common_list, u32, u32, 1024);
 BPF_HASH(thread_filter, thread_name_t, u32, 40);
 BPF_HASH(arg_filter, u32, arg_filter_t, 40);
 BPF_HASH(str_buf, str_buf_t, u32, 256);
-BPF_ARRAY(str_buf_arr, str_buf_t, 1);
-BPF_ARRAY(match_ctx_map, match_ctx_t, 1); 
+BPF_ARRAY(str_buf_gen, str_buf_t, 1);
+BPF_LRU_HASH(str_buf_map, u64, str_buf_t, 1024);
+BPF_ARRAY(match_ctx_gen, match_ctx_t, 1);
+BPF_LRU_HASH(match_ctx_map, u64, match_ctx_t, 1024);
 BPF_PERCPU_ARRAY(event_data_map, event_data_t, 1);
 BPF_ARRAY(base_config, config_entry_t, 1);
 

@@ -1,6 +1,7 @@
 #ifndef __STACKPLZ_TYPES_H__
 #define __STACKPLZ_TYPES_H__
 
+#include "vmlinux_510.h"
 #include "common/consts.h"
 
 typedef struct common_filter {
