@@ -55,13 +55,13 @@ cd /data/local/tmp && ./stackplz --prepare
 
 ![](./images/Snipaste_2023-07-22_21-21-33.png)
 
-3.3 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook
+3.3 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook，并打印堆栈
 
 ```bash
-./stackplz --name com.sfx.ebpf --lib libnative-lib.so --point _Z5func1v --stack
+./stackplz -p 37919 --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
 ```
 
-![](./images/Snipaste_2022-11-13_14-11-03.png)
+![](./images/Snipaste_2023-09-08_17-08-42.png)
 
 3.4 在命中uprobe hook时发送信号
 
