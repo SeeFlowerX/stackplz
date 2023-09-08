@@ -184,7 +184,8 @@ func (this *MapsHelper) CloneMaps(pid, parent_pid uint32) (err error) {
 
 func (this *MapsHelper) GetStack(pid uint32, ubuf *UnwindBuf) (info string, err error) {
     // 当直接读取 maps 文件失败的时候 就采用这个方案获取堆栈
-
+    maps_lock.Lock()
+    defer maps_lock.Unlock()
     // 首先尝试获取 pid 对应的 maps 信息
     pid_maps, ok := this.pid_maps[pid]
     if !ok {

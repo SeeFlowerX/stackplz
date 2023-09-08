@@ -14,6 +14,7 @@ type GlobalConfig struct {
     ArgFilter    []string
     Color        bool
     UnwindStack  bool
+    ManualStack  bool
     StackSize    uint32
     ShowRegs     bool
     GetOff       bool

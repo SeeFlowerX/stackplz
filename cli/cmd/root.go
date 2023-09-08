@@ -257,6 +257,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
 
     mconfig.Buffer = gconfig.Buffer
     mconfig.UnwindStack = gconfig.UnwindStack
+    mconfig.ManualStack = gconfig.ManualStack
     if gconfig.StackSize&7 != 0 {
         return errors.New(fmt.Sprintf("dump stack size %d is not 8-byte aligned.", gconfig.StackSize))
     }
@@ -523,6 +524,7 @@ func init() {
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定
+    rootCmd.PersistentFlags().BoolVar(&gconfig.ManualStack, "mstack", false, "manual parse stack")
     rootCmd.PersistentFlags().BoolVar(&gconfig.UnwindStack, "stack", false, "enable unwindstack")
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.StackSize, "stack-size", "", 8192, "stack dump size, default 8192 bytes, max 65528 bytes")
     rootCmd.PersistentFlags().BoolVar(&gconfig.ShowRegs, "regs", false, "show regs")

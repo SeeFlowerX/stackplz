@@ -469,6 +469,7 @@ type ModuleConfig struct {
     TraceGroup   uint32
     UprobeSignal uint32
     UnwindStack  bool
+    ManualStack  bool
     StackSize    uint32
     ShowRegs     bool
     GetOff       bool
