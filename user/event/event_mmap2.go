@@ -317,7 +317,7 @@ func (this *MapsHelper) UpdateMaps(event *Mmap2Event) {
         return
     }
     // 遇到 mmap2 事件的时候都去尝试读取maps信息
-    this.ParseMaps(event.Pid, true)
+    this.ParseMaps(event.Pid, false)
     pid_maps, ok := this.pid_maps[event.Pid]
     if !ok {
         this.pid_maps[event.Pid] = &ProcMaps{}
@@ -382,7 +382,10 @@ func (this *MapsHelper) GetOffset(pid uint32, addr uint64) (info string) {
         for _, lib_info := range lib_infos {
             if addr >= lib_info.BaseAddr && addr < lib_info.EndAddr {
                 offset := lib_info.Off + (addr - lib_info.BaseAddr)
-                off_list = append(off_list, fmt.Sprintf("%s + 0x%x", lib_info.LibName, offset))
+                off_info := fmt.Sprintf("%s + 0x%x", lib_info.LibName, offset)
+                if !slices.Contains(off_list, off_info) {
+                    off_list = append(off_list, off_info)
+                }
             }
         }
     }
