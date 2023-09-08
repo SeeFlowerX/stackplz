@@ -310,12 +310,13 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 有关eBPF on Android系列可以加群交流
 
-![](./images/Snipaste_2023-09-04_17-28-08.png)
+![](./images/Snipaste_2023-09-08_21-19-26.png)
 
 个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 
 - [eBPF on Android之stackplz从0到1](https://blog.seeflower.dev/archives/176/)
 - [eBPF on Android之stackplz从0到1（补充）手机为何重启](https://blog.seeflower.dev/archives/177/)
+- [基于eBPF的安卓逆向辅助工具——stackplz](https://blog.seeflower.dev/archives/269/)
 
 之前针对syscall追踪并获取参数单独开了一个项目，整体结构更简单，没有interface，有兴趣请移步[estrace](https://github.com/SeeFlowerX/estrace)
 
