@@ -53,6 +53,7 @@ enum arg_filter_e
 
 typedef struct config_entry {
     u32 stackplz_pid;
+    u32 thread_whitelist;
 } config_entry_t;
 
 enum trace_group_e

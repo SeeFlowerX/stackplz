@@ -647,6 +647,9 @@ func (this *ModuleConfig) GetCommonFilter() CommonFilter {
 func (this *ModuleConfig) GetConfigMap() ConfigMap {
     config := ConfigMap{}
     config.stackplz_pid = this.SelfPid
+    if len(this.TNameWhitelist) > 0 {
+        config.thread_whitelist = 1
+    }
     if this.Debug {
         this.logger.Printf("ConfigMap{stackplz_pid=%d}", config.stackplz_pid)
     }

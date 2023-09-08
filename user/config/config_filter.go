@@ -3,7 +3,8 @@ package config
 import "fmt"
 
 type ConfigMap struct {
-	stackplz_pid uint32
+	stackplz_pid     uint32
+	thread_whitelist uint32
 }
 
 type CommonFilter struct {

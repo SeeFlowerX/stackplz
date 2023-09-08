@@ -25,6 +25,11 @@ static __always_inline u64 should_trace(program_data_t *p)
 
     // 线程名放在最前面
     u32* thread_name_flag = bpf_map_lookup_elem(&thread_filter, &p->event->context.comm);
+    if (config->thread_whitelist == 1) {
+        if (thread_name_flag == NULL) {
+            return 0;
+        }
+    }
     if (thread_name_flag != NULL) {
         if (*thread_name_flag == THREAD_NAME_BLACKLIST) {
             return 0;
