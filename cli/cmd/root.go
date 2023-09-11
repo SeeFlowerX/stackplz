@@ -185,7 +185,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         process_uid := pis.FindUidByPid(process_pid)
         is_find, info := pis.FindPackageByUid(process_uid)
         if !is_find {
-            return fmt.Errorf("can not find process_pid=%d", process_pid)
+            logger.Printf("can not find package for process_pid=%d", process_pid)
+            continue
         }
         addLibPath(info.Name)
         // 解析maps 将maps中的路径加入搜索路径中
