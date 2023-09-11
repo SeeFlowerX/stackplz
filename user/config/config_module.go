@@ -482,6 +482,7 @@ type ModuleConfig struct {
     BrkKernel    bool
     Color        bool
     DumpHex      bool
+    ShowUid      bool
 
     Name            string
     StackUprobeConf *StackUprobeConfig

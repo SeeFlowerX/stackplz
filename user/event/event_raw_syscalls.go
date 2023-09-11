@@ -78,7 +78,6 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     for _, point_arg := range this.nr_point.Args {
         var ptr config.Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-            this.logger.Printf("SyscallEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
             panic(fmt.Sprintf("binary.Read %d %s err:%v", this.nr.Value, util.B2STrim(this.Comm[:]), err))
         }
         if point_arg.BaseType == config.TYPE_NUM {
@@ -138,6 +137,9 @@ func (this *SyscallEvent) ParseContext() (err error) {
 }
 
 func (this *SyscallEvent) GetUUID() string {
+    if this.mconf.ShowUid {
+        return fmt.Sprintf("%d|%d|%d|%s", this.Uid, this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
+    }
     return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
 }
 

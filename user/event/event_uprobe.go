@@ -67,6 +67,9 @@ func (this *UprobeEvent) Clone() IEventStruct {
 }
 
 func (this *UprobeEvent) GetUUID() string {
+    if this.mconf.ShowUid {
+        return fmt.Sprintf("%d|%d|%d|%s", this.Uid, this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
+    }
     return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
 }
 
