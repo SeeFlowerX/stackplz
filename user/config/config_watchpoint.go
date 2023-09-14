@@ -146,6 +146,12 @@ func (this *ArgType) NewBaseType(base_type uint32) ArgType {
 	return at
 }
 
+func (this *ArgType) NewAliasType(alias_type uint32) ArgType {
+	at := this.Clone()
+	at.AliasType = alias_type
+	return at
+}
+
 func (this *ArgType) NewReadCount(read_count uint32) ArgType {
 	at := this.Clone()
 	at.ReadCount = read_count
@@ -172,6 +178,13 @@ func (this *ArgType) NewReadOffset(offset uint32) ArgType {
 
 func (this *ArgType) NewItemPerSize(persize uint32) ArgType {
 	at := this.Clone()
+	at.ItemPerSize = persize
+	return at
+}
+
+func (this *ArgType) NewArrayArgType(alias_type, persize uint32) ArgType {
+	at := this.Clone()
+	at.AliasType = alias_type
 	at.ItemPerSize = persize
 	return at
 }

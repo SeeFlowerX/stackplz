@@ -192,14 +192,15 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         next_arg_index += 1;
         return next_arg_index;
     }
-    if (point_arg->base_type == TYPE_STRUCT) {
+    if (point_arg->base_type == TYPE_STRUCT || point_arg->base_type == TYPE_ARRAY) {
         // 结构体类型 直接读取对应大小的数据 具体转换交给前端
-        u32 struct_size = MAX_BYTES_ARR_SIZE;
-        if (point_arg->read_count <= struct_size) {
-            struct_size = point_arg->read_count;
+        u32 max_read_len = MAX_BYTES_ARR_SIZE;
+        u32 exp_read_len = read_count * point_arg->item_persize;
+        if (exp_read_len <= max_read_len) {
+            max_read_len = exp_read_len;
         }
         // 修复 MTE 读取可能不正常的情况
-        int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), struct_size, next_arg_index);
+        int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), max_read_len, next_arg_index);
         if (status == 0) {
             // 保存失败的情况 比如 ptr 是一个非法的地址 ...
             buf_t *zero_p = get_buf(ZERO_BUF_IDX);
@@ -207,25 +208,7 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
                 return next_arg_index;
             }
             // 这个时候填充一个全0的内容进去 不然前端不好解析
-            save_bytes_to_buf(p.event, &zero_p->buf[0], struct_size, next_arg_index);
-            next_arg_index += 1;
-        } else {
-            next_arg_index += 1;
-        }
-        return next_arg_index;
-    }
-    // 这是像 write 这样的函数中的 buf 参数 直接读取对应长度的数据即可
-    if (point_arg->alias_type == TYPE_BUFFER_T) {
-        // buffer 的单个元素长度就是 1 所以这里就是 read_count
-        // u32 read_len = read_count * 1;
-        u32 read_len = read_count * point_arg->item_persize;
-        int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), read_len, next_arg_index);
-        if (status == 0) {
-            buf_t *zero_p = get_buf(ZERO_BUF_IDX);
-            if (zero_p == NULL) {
-                return next_arg_index;
-            }
-            save_bytes_to_buf(p.event, &zero_p->buf[0], read_len, next_arg_index);
+            save_bytes_to_buf(p.event, &zero_p->buf[0], max_read_len, next_arg_index);
             next_arg_index += 1;
         } else {
             next_arg_index += 1;

@@ -154,23 +154,18 @@ type Arg_Pthread_attr_t struct {
 	Pthread_attr_t
 }
 
-type Arg_Buffer_t struct {
-	Arg_str
-	Payload []byte
-}
-
-func (this *Arg_Buffer_t) Format() string {
-	// hexdump := util.HexDumpPure(this.Payload)
-	hexdump := util.PrettyByteSlice(this.Payload)
+func (this *Arg_str) Format(payload []byte) string {
+	// hexdump := util.HexDumpPure(payload)
+	hexdump := util.PrettyByteSlice(payload)
 	return fmt.Sprintf("(%s)", hexdump)
 }
 
-func (this *Arg_Buffer_t) HexFormat(color bool) string {
+func (this *Arg_str) HexFormat(payload []byte, color bool) string {
 	var hexdump string
 	if color {
-		hexdump = util.HexDumpGreen(this.Payload)
+		hexdump = util.HexDumpGreen(payload)
 	} else {
-		hexdump = util.HexDumpPure(this.Payload)
+		hexdump = util.HexDumpPure(payload)
 	}
 	return fmt.Sprintf("(\n%s)", hexdump)
 }

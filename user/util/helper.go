@@ -402,6 +402,31 @@ func PrettyByteSlice(buffer []byte) string {
 	return out.String()
 }
 
+func ArrayFormat(arr interface{}) string {
+	var result []string
+	switch arr := arr.(type) {
+	case []int32:
+		for _, num := range arr {
+			result = append(result, fmt.Sprintf("%d", num))
+		}
+	case []uint32:
+		for _, num := range arr {
+			result = append(result, fmt.Sprintf("%d", num))
+		}
+	case []int64:
+		for _, num := range arr {
+			result = append(result, fmt.Sprintf("%d", num))
+		}
+	case []uint64:
+		for _, num := range arr {
+			result = append(result, fmt.Sprintf("%d", num))
+		}
+	default:
+		return ""
+	}
+	return "[" + strings.Join(result, ", ") + "]"
+}
+
 func HexDump(buffer []byte, color string) string {
 	b := dumpByteSlice(buffer, color)
 	b.WriteString(COLORRESET)

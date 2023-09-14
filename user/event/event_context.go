@@ -94,6 +94,40 @@ type ContextEvent struct {
     RegName      string
 }
 
+func (this *ContextEvent) ParseArgArray(point_arg *config.PointArg, ptr config.Arg_reg) string {
+    // 数组本质上是作为 struct 处理的
+    var arg config.Arg_str
+    if err := binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+        panic(err)
+    }
+    switch point_arg.AliasType {
+    case config.TYPE_BUFFER:
+        payload := make([]byte, arg.Len)
+        if err := binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+            panic(err)
+        }
+        if this.mconf.DumpHex {
+            return arg.HexFormat(payload, this.mconf.Color)
+        } else {
+            return arg.Format(payload)
+        }
+    case config.TYPE_ARRAY_INT32:
+        arr := make([]int32, point_arg.ReadCount)
+        if err := binary.Read(this.buf, binary.LittleEndian, arr); err != nil {
+            panic(err)
+        }
+        return util.ArrayFormat(arr)
+    case config.TYPE_ARRAY_UINT32:
+        arr := make([]uint32, point_arg.ReadCount)
+        if err := binary.Read(this.buf, binary.LittleEndian, arr); err != nil {
+            panic(err)
+        }
+        return util.ArrayFormat(arr)
+    default:
+        panic(fmt.Sprintf("unsupported array type:%d", point_arg.AliasType))
+    }
+}
+
 func (this *ContextEvent) ParseArgStruct(buf *bytes.Buffer, arg config.ArgFormatter) string {
     if err := binary.Read(buf, binary.LittleEndian, arg); err != nil {
         this.logger.Printf("ContextEvent EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
@@ -233,11 +267,6 @@ func (this *ContextEvent) ParseArgByType(point_arg *config.PointArg, ptr config.
     // 这个函数先处理基础类型
 
     if point_arg.BaseType == config.TYPE_POINTER {
-        // BUFFER 比较特殊 单独处理
-        if point_arg.AliasType == config.TYPE_BUFFER_T {
-            point_arg.AppendValue(fmt.Sprintf("(*0x%x)%s", ptr.Address, this.ParseArg(point_arg, ptr)))
-            return
-        }
         // 对于指针类型 需要先处理
         var next_ptr config.Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &next_ptr); err != nil {
@@ -257,6 +286,8 @@ func (this *ContextEvent) ParseArgByType(point_arg *config.PointArg, ptr config.
             // pointer + struct
             point_arg.AppendValue(fmt.Sprintf("(*0x%x)%s", next_ptr.Address, this.ParseArg(point_arg, next_ptr)))
         }
+    } else if point_arg.BaseType == config.TYPE_ARRAY {
+        point_arg.AppendValue(this.ParseArgArray(point_arg, ptr))
     } else {
         // 这种一般就是特殊类型 获取结构体了
         point_arg.AppendValue(this.ParseArg(point_arg, ptr))
@@ -269,21 +300,6 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr config.Arg_re
         panic("AliasType TYPE_NONE can not be here")
     case config.TYPE_NUM:
         panic("AliasType TYPE_NUM can not be here")
-    case config.TYPE_BUFFER_T:
-        var arg config.Arg_Buffer_t
-        if err = binary.Read(this.buf, binary.LittleEndian, &arg.Arg_str); err != nil {
-            panic(err)
-        }
-        payload := make([]byte, arg.Len)
-        if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-            panic(err)
-        }
-        arg.Payload = payload
-        if this.mconf.DumpHex {
-            return arg.HexFormat(this.mconf.Color)
-        } else {
-            return arg.Format()
-        }
     case config.TYPE_STRING:
         var arg config.Arg_str
         if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {

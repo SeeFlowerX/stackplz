@@ -144,7 +144,10 @@ const (
 	TYPE_TIMEVAL
 	TYPE_TIMEZONE
 	TYPE_PTHREAD_ATTR
-	TYPE_BUFFER_T
+	TYPE_ARRAY
+	TYPE_ARRAY_INT32
+	TYPE_ARRAY_UINT32
+	TYPE_BUFFER
 )
 
 func A(arg_name string, arg_type ArgType) PArg {
@@ -193,10 +196,30 @@ var STACK_T = AT(TYPE_STACK_T, TYPE_STRUCT, uint32(unsafe.Sizeof(Stack_t{})))
 var TIMEVAL = AT(TYPE_TIMEVAL, TYPE_STRUCT, uint32(unsafe.Sizeof(syscall.Timeval{})))
 var TIMEZONE = AT(TYPE_TIMEZONE, TYPE_STRUCT, uint32(unsafe.Sizeof(TimeZone_t{})))
 var PTHREAD_ATTR = AT(TYPE_PTHREAD_ATTR, TYPE_STRUCT, uint32(binary.Size(Pthread_attr_t{})))
-var BUFFER_T = AT(TYPE_BUFFER_T, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
 
+// 注意 ARRAY_T read_count item_persize 均为 1
+var ARRAY_T = AT(TYPE_ARRAY, TYPE_ARRAY, 1)
+
+// 常规数组
+// item_persize 就是数组元素的大小
+// read_count 则根据具体需要设定
+var INT32_ARR = ARRAY_T.NewArrayArgType(TYPE_ARRAY_INT32, uint32(unsafe.Sizeof(int32(0))))
+var UINT32_ARR = ARRAY_T.NewArrayArgType(TYPE_ARRAY_UINT32, uint32(unsafe.Sizeof(uint32(0))))
+
+// 特定类型的数组
+// 例如 pipe2 的 pipefd 参数 是一个 int[2]
+// 那么设定 read_count 为2
+var PIPEFD_T = INT32_ARR.NewReadCount(2)
+
+// buffer数组
+// 单个元素长度都是 1
+// 但是为了在输出结果的时候进行区分 重置其类型
+var BUFFER_T = ARRAY_T.NewAliasType(TYPE_BUFFER)
+
+// BUFFER 的一个特点 其长度可能由某个参数所控制
 var READ_BUFFER_T = BUFFER_T.NewCountIndex(2)
 var WRITE_BUFFER_T = BUFFER_T.NewCountIndex(2)
+
 var IOVEC_T = IOVEC.NewCountIndex(2)
 var IOVEC_T_PTR = IOVEC.NewBaseType(TYPE_POINTER)
 
@@ -280,7 +303,7 @@ func init() {
 	Register(&SArgs{56, PAI("openat", []PArg{A("dirfd", EXP_INT), A("pathname", STRING), A("flags", EXP_INT), A("mode", UMODE_T)})})
 	Register(&SArgs{57, PA("close", []PArg{A("fd", EXP_INT)})})
 	Register(&SArgs{58, PA("vhangup", []PArg{})})
-	Register(&SArgs{59, PA("pipe2", []PArg{B("pipefd", POINTER), A("flags", EXP_INT)})})
+	Register(&SArgs{59, PA("pipe2", []PArg{B("pipefd", PIPEFD_T), A("flags", EXP_INT)})})
 	Register(&SArgs{60, PA("quotactl", []PArg{A("cmd", INT), A("special", STRING), A("id", INT), A("addr", INT)})})
 	Register(&SArgs{61, PA("getdents64", []PArg{A("fd", EXP_INT), B("dirp", POINTER), A("count", INT)})})
 	Register(&SArgs{62, PA("lseek", []PArg{A("fd", EXP_INT), A("offset", INT), A("whence", INT)})})

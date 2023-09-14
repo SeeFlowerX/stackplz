@@ -9,7 +9,6 @@ import (
     "stackplz/user/util"
     "strconv"
     "strings"
-    "unsafe"
 
     "golang.org/x/exp/slices"
 )
@@ -99,8 +98,7 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
     case "ptr":
         arg_type = POINTER
     case "buf":
-        arg_type = AT(TYPE_BUFFER_T, TYPE_POINTER, uint32(unsafe.Sizeof(uint64(0))))
-        arg_type.SetReadCount(256)
+        arg_type = BUFFER_T.NewReadCount(256)
         // 特别处理
         if len(items) == 2 {
             size_str = arg_index
