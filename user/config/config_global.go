@@ -30,6 +30,7 @@ type GlobalConfig struct {
     HookPoint    []string
     Library      string
     RegName      string
+    DumpRet      bool
     DumpHex      bool
     ShowTime     bool
     ShowUid      bool

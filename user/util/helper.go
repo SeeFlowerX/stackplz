@@ -58,6 +58,39 @@ func UIntToBytes(x uint32) []byte {
 	return bytesBuffer.Bytes()
 }
 
+func FindRet(lib_path string, sym_offset, sym_size int64) (string, error) {
+	file, err := os.Open(lib_path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	sym_data := make([]byte, sym_size)
+	_, err = file.Seek(sym_offset, 0)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = file.Read(sym_data)
+	if err != nil {
+		return "", err
+	}
+
+	// https://armconverter.com/?code=RET -> C0035FD6
+	return FindIns(sym_offset, sym_data, []byte{0xC0, 0x03, 0x5F, 0xD6}), nil
+}
+
+func FindIns(sym_offset int64, sym_data, ins []byte) string {
+	var result []string
+	ret_offset := bytes.Index(sym_data, ins)
+	for ret_offset > 0 {
+		result = append(result, fmt.Sprintf("0x%x", sym_offset+int64(ret_offset)))
+		sym_data = sym_data[ret_offset:]
+		ret_offset = bytes.Index(sym_data, ins)
+	}
+	return strings.Join(result, ",")
+}
+
 type PackageInfo struct {
 	Name string
 	Uid  uint32

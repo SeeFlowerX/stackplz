@@ -341,6 +341,9 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 检查hook设定
     enable_hook := false
     if len(mconfig.StackUprobeConf.Points) > 0 {
+        if gconfig.DumpRet {
+            DumpSymbolRet()
+        }
         enable_hook = true
         logger.Printf("hook uprobe, count:%d", len(mconfig.StackUprobeConf.Points))
     }
@@ -471,6 +474,48 @@ func findKallsymsSymbol(symbol string) (bool, error) {
     return find, nil
 }
 
+func DumpSymbolRet() {
+    for _, point := range mconfig.StackUprobeConf.Points {
+        if point.Symbol == "" {
+            continue
+        }
+        content, err := util.RunCommand("sh", "-c", fmt.Sprintf("readelf -s %s | grep %s", point.LibPath, point.Symbol))
+        if err != nil {
+            Logger.Printf("warn, readelf parse for %s failed, lib:%s", point.Symbol, point.LibPath)
+            continue
+        }
+        var (
+            sym_num   uint32
+            sym_value int64
+            sym_size  int64
+            sym_type  string
+            sym_bind  string
+            sym_vis   string
+            sym_ndx   string
+            sym_name  string
+        )
+        lines := strings.Split(content, "\n")
+        for _, line := range lines {
+            line = strings.TrimSpace(line)
+            if line == "" {
+                continue
+            }
+            reader := strings.NewReader(line)
+            n, err := fmt.Fscanf(reader, "%d: %x %d %s %s %s %s %s", &sym_num, &sym_value, &sym_size, &sym_type, &sym_bind, &sym_vis, &sym_ndx, &sym_name)
+            if err == nil && n == 8 {
+                ret_info, err := util.FindRet(point.LibPath, sym_value, sym_size)
+                if err != nil || ret_info == "" {
+                    Logger.Printf("FindRet for %s failed, sym:%s offset:0x%x", point.Symbol, sym_name, sym_value)
+                    continue
+                } else {
+                    Logger.Printf("FindRet for %s -> [%s] sym:%s offset:0x%x", point.Symbol, ret_info, sym_name, sym_value)
+                }
+            }
+        }
+    }
+    os.Exit(0)
+}
+
 func FindPidByName(name string) []uint32 {
     var pid_list []uint32
     content, err := util.RunCommand("sh", "-c", "ps -ef -o name,pid,ppid | grep ^"+name)
@@ -541,6 +586,7 @@ func init() {
     rootCmd.PersistentFlags().StringVarP(&gconfig.Library, "lib", "l", "libc.so", "lib name or lib full path, default is libc.so")
     rootCmd.PersistentFlags().StringArrayVarP(&gconfig.HookPoint, "point", "w", []string{}, "hook point config, e.g. strstr+0x0[str,str] write[int,buf:128,int]")
     rootCmd.PersistentFlags().StringVar(&gconfig.RegName, "reg", "", "get the offset of reg")
+    rootCmd.PersistentFlags().BoolVarP(&gconfig.DumpRet, "dumpret", "", false, "dump ret offset for symbol")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.DumpHex, "dumphex", "", false, "dump buffer as hex")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.ShowTime, "showtime", "", false, "show event boot time info")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.ShowUid, "showuid", "", false, "show process uid info")
