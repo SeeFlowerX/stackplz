@@ -215,6 +215,11 @@ ebpf中`bpf_probe_write_user`需要预先指定写入数据大小，本项目暂
 
 使用提示：
 
+- `--showtime` 输出事件发生的时间
+    - 因为日志中的顺序和实际发生顺序不完全一致
+    - 如果要精确发生顺序，请使用该选项
+- `--showuid` 输出触发事件的进程的uid
+    - 在大范围追踪的时候建议使用
 - 可以用`--name`指定包名，用`--uid`指定进程所属uid，用`--pid`指定进程
 - 默认hook的库是`/apex/com.android.runtime/lib64/bionic/libc.so`，可以只提供符号进行hook
 - hook目标加载的库时，默认在对应的库目录搜索，所以可以直接指定库名而不需要完整路径

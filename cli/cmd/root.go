@@ -269,6 +269,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Is32Bit = false
     mconfig.Color = gconfig.Color
     mconfig.DumpHex = gconfig.DumpHex
+    mconfig.ShowTime = gconfig.ShowTime
     mconfig.ShowUid = gconfig.ShowUid
 
     // 1. hook uprobe
@@ -541,6 +542,7 @@ func init() {
     rootCmd.PersistentFlags().StringArrayVarP(&gconfig.HookPoint, "point", "w", []string{}, "hook point config, e.g. strstr+0x0[str,str] write[int,buf:128,int]")
     rootCmd.PersistentFlags().StringVar(&gconfig.RegName, "reg", "", "get the offset of reg")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.DumpHex, "dumphex", "", false, "dump buffer as hex")
+    rootCmd.PersistentFlags().BoolVarP(&gconfig.ShowTime, "showtime", "", false, "show event boot time info")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.ShowUid, "showuid", "", false, "show process uid info")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.NoCheck, "nocheck", "", false, "disable check for bpf")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Btf, "btf", "", false, "declare BTF enabled")

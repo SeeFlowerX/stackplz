@@ -480,6 +480,7 @@ type ModuleConfig struct {
     BrkKernel    bool
     Color        bool
     DumpHex      bool
+    ShowTime     bool
     ShowUid      bool
 
     Name            string

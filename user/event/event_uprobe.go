@@ -67,10 +67,14 @@ func (this *UprobeEvent) Clone() IEventStruct {
 }
 
 func (this *UprobeEvent) GetUUID() string {
-    if this.mconf.ShowUid {
-        return fmt.Sprintf("%d|%d|%d|%s", this.Uid, this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
+    s := fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
+    if this.mconf.ShowTime {
+        s = fmt.Sprintf("%d|%s", this.Ts, s)
     }
-    return fmt.Sprintf("%d|%d|%s", this.Pid, this.Tid, util.B2STrim(this.Comm[:]))
+    if this.mconf.ShowUid {
+        s = fmt.Sprintf("%d|%s", this.Uid, s)
+    }
+    return s
 }
 
 func (this *UprobeEvent) String() string {

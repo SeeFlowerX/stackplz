@@ -31,6 +31,7 @@ type GlobalConfig struct {
     Library      string
     RegName      string
     DumpHex      bool
+    ShowTime     bool
     ShowUid      bool
     NoCheck      bool
     Btf          bool
