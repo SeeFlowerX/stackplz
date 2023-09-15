@@ -305,7 +305,9 @@ func ParseReg(pid uint32, value uint64) (string, error) {
 		if err == nil && n == 7 {
 			if value >= seg_start && value < seg_end {
 				offset := seg_offset + (value - seg_start)
-				info = fmt.Sprintf("%s + 0x%x", seg_path, offset)
+				parts := strings.Split(seg_path, "/")
+				seg_name := parts[len(parts)-1]
+				info = fmt.Sprintf("%s + 0x%x", seg_name, offset)
 				break
 			}
 		}

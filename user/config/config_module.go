@@ -40,6 +40,7 @@ func ParseStrAsNum(v string) (uint64, error) {
 
 func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
     // ./stackplz -n icu.nullptr.nativetest -l libc.so -w 0x5B950[intptr:x20,intptr:x20+4]
+    // ./stackplz -n com.xingin.xhs -l libart.so -w 0x4B8A74[str:x22,str:x8] --tname com.xingin.xhs --reg x28
     // str
     // int:x10
     // buf:64:sp+0x20-0x8

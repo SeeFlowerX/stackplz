@@ -268,6 +268,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Debug = gconfig.Debug
     mconfig.Is32Bit = false
     mconfig.Color = gconfig.Color
+    mconfig.RegName = gconfig.RegName
     mconfig.DumpHex = gconfig.DumpHex
     mconfig.ShowTime = gconfig.ShowTime
     mconfig.ShowUid = gconfig.ShowUid

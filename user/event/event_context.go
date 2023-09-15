@@ -76,22 +76,20 @@ func (this *RegsBuf) ParseContext(buf *bytes.Buffer) (err error) {
 
 type ContextEvent struct {
     CommonEvent
-    Ts            uint64
-    EventId       uint32
-    HostTid       uint32
-    HostPid       uint32
-    Tid           uint32
-    Pid           uint32
-    Uid           uint32
-    Comm          [16]byte
-    Argnum        uint8
-    Padding       [7]byte
-    Part_raw_size uint32
+    Ts      uint64
+    EventId uint32
+    HostTid uint32
+    HostPid uint32
+    Tid     uint32
+    Pid     uint32
+    Uid     uint32
+    Comm    [16]byte
+    Argnum  uint8
+    Padding [7]byte
 
     Stackinfo    string
     RegsBuffer   RegsBuf
     UnwindBuffer *UnwindBuf
-    RegName      string
 }
 
 func (this *ContextEvent) ParseArgArray(point_arg *config.PointArg, ptr config.Arg_reg) string {
@@ -415,7 +413,7 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr config.Arg_re
 }
 
 func (this *ContextEvent) GetStackTrace(s string) string {
-    if this.RegName != "" {
+    if this.mconf.RegName != "" {
         // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
         // 当然前提是取了寄存器数据
         var tmp_regs [33]uint64
@@ -426,29 +424,30 @@ func (this *ContextEvent) GetStackTrace(s string) string {
         }
         has_reg_value := false
         var regvalue uint64
-        if strings.HasPrefix(this.RegName, "x") {
-            parts := strings.SplitN(this.RegName, "x", 2)
+        if strings.HasPrefix(this.mconf.RegName, "x") {
+            parts := strings.SplitN(this.mconf.RegName, "x", 2)
             regno, _ := strconv.ParseUint(parts[1], 10, 32)
             if regno >= 0 && regno <= uint64(config.REG_ARM64_X29) {
                 // 取到对应的寄存器值
                 regvalue = tmp_regs[regno]
                 has_reg_value = true
             }
-        } else if this.RegName == "lr" {
+        } else if this.mconf.RegName == "lr" {
             regvalue = tmp_regs[config.REG_ARM64_LR]
             has_reg_value = true
         }
         if has_reg_value {
-            // 读取maps 获取偏移信息
+            // maps_helper 的结构复杂 并且存在锁限制 不如直接读maps来的快
+            // info := maps_helper.GetOffset(this.Pid, regvalue)
+            // s += fmt.Sprintf(", Reg %s(%s)", this.mconf.RegName, info)
             info, err := util.ParseReg(this.Pid, regvalue)
             if err != nil {
-                fmt.Printf("ParseReg for %s=0x%x failed", this.RegName, regvalue)
+                fmt.Printf("ParseReg for %s=0x%x failed", this.mconf.RegName, regvalue)
             } else {
-                s += fmt.Sprintf(", Reg %s Info:\n%s", this.RegName, info)
+                s += fmt.Sprintf(", Reg %s(%s)", this.mconf.RegName, info)
             }
         }
-    }
-    if this.rec.ExtraOptions.ShowRegs {
+    } else if this.rec.ExtraOptions.ShowRegs {
         var tmp_regs [33]uint64
         if this.rec.ExtraOptions.UnwindStack {
             tmp_regs = this.UnwindBuffer.Regs
