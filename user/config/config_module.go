@@ -39,6 +39,7 @@ func ParseStrAsNum(v string) (uint64, error) {
 }
 
 func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
+    // ./stackplz -n icu.nullptr.nativetest -l libc.so -w 0x5B950[intptr:x20,intptr:x20+4]
     // str
     // int:x10
     // buf:64:sp+0x20-0x8
@@ -97,6 +98,8 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
         }
     case "ptr":
         arg_type = POINTER
+    case "intptr":
+        arg_type = EXP_INT.NewBaseType(TYPE_STRUCT)
     case "buf":
         arg_type = BUFFER_T.NewReadCount(256)
         // 特别处理
@@ -137,11 +140,7 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
         arg_type = arg_type.NewBaseType(TYPE_POINTER)
     }
     if arg_index != "" {
-        read_offset := ""
-        if len(arg_index) > 2 {
-            read_offset = arg_index[2:]
-            arg_index = arg_index[:2]
-        }
+        arg_index, read_offset := ParseArgIndex(arg_index)
         read_index, err := ParseAsReg(arg_index)
         if err != nil {
             return arg_type, err
@@ -655,4 +654,16 @@ func (this *ModuleConfig) GetConfigMap() ConfigMap {
         this.logger.Printf("ConfigMap{stackplz_pid=%d}", config.stackplz_pid)
     }
     return config
+}
+
+func MySplit(r rune) bool {
+    return r == '+' || r == '-'
+}
+
+func ParseArgIndex(arg_str string) (string, string) {
+    items := strings.FieldsFunc(arg_str, MySplit)
+    if len(items) > 0 {
+        return items[0], arg_str[len(items[0]):]
+    }
+    return arg_str, ""
 }

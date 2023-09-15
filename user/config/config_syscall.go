@@ -160,7 +160,7 @@ func B(arg_name string, arg_type ArgType) PArg {
 
 var NONE = AT(TYPE_NONE, TYPE_NONE, 0)
 
-var EXP_INT = AT(TYPE_EXP_INT, TYPE_NUM, uint32(unsafe.Sizeof(int(0))))
+var EXP_INT = AT(TYPE_EXP_INT, TYPE_NUM, uint32(unsafe.Sizeof(int32(0))))
 var INT = AT(TYPE_INT, TYPE_NUM, uint32(unsafe.Sizeof(int(0))))
 var UINT = AT(TYPE_UINT, TYPE_NUM, uint32(unsafe.Sizeof(uint(0))))
 var INT16 = AT(TYPE_INT16, TYPE_NUM, uint32(unsafe.Sizeof(int16(0))))

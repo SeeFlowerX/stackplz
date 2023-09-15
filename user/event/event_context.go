@@ -300,6 +300,17 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr config.Arg_re
         panic("AliasType TYPE_NONE can not be here")
     case config.TYPE_NUM:
         panic("AliasType TYPE_NUM can not be here")
+    case config.TYPE_EXP_INT:
+        // 只有基础类型为 STRUCT 才会走这里
+        var arg config.Arg_str
+        if err := binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(err)
+        }
+        var result int32
+        if err = binary.Read(this.buf, binary.LittleEndian, &result); err != nil {
+            panic(err)
+        }
+        return fmt.Sprintf("(%d)", result)
     case config.TYPE_STRING:
         var arg config.Arg_str
         if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
