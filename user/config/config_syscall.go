@@ -218,6 +218,7 @@ var BUFFER_T = ARRAY_T.NewAliasType(TYPE_BUFFER)
 // BUFFER 的一个特点 其长度可能由某个参数所控制
 var READ_BUFFER_T = BUFFER_T.NewCountIndex(2)
 var WRITE_BUFFER_T = BUFFER_T.NewCountIndex(2)
+var MPROTECT_BUFFER_T = BUFFER_T.NewCountIndex(1)
 
 var IOVEC_T = IOVEC.NewCountIndex(2)
 var IOVEC_T_PTR = IOVEC.NewBaseType(TYPE_POINTER)
