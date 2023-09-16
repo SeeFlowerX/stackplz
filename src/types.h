@@ -108,7 +108,9 @@ enum arm64_reg_e
     REG_ARM64_LR,
     REG_ARM64_SP,
     REG_ARM64_PC,
-    REG_ARM64_MAX
+    REG_ARM64_MAX,
+    REG_ARM64_INDEX,
+    REG_ARM64_ABS
 };
 
 enum arg_type_e

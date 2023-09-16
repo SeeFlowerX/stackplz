@@ -92,28 +92,14 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
     }
 
     u32 next_arg_index = 4;
+    u64 reg_0 = READ_KERN(ctx->regs[0]);
     for (int i = 0; i < point_arg_count; i++) {
         struct point_arg_t* point_arg = (struct point_arg_t*) &uprobe_point_args->point_args[i];
+        if (point_arg->read_index == REG_ARM64_MAX) {
+            continue;
+        }
+        u64 arg_ptr = get_arg_ptr(ctx, point_arg, i, reg_0);
 
-        u64 arg_ptr = 0;
-        if (point_arg->read_index == READ_INDEX_SKIP) {
-            continue;
-        }
-        if (point_arg->read_index == READ_INDEX_REG) {
-            // 未来可能允许读取很多个参数...
-            if (i > REG_ARM64_LR) {
-                continue;
-            }
-            arg_ptr = READ_KERN(ctx->regs[i]);
-        } else if (point_arg->read_index == REG_ARM64_SP) {
-            arg_ptr = READ_KERN(ctx->sp);
-        } else if (point_arg->read_index == REG_ARM64_PC) {
-            arg_ptr = READ_KERN(ctx->pc);
-        } else if (point_arg->read_index <= REG_ARM64_LR) {
-            arg_ptr = READ_KERN(ctx->regs[point_arg->read_index]);
-        } else {
-            continue;
-        }
 
         // 先保存参数值本身
         save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), (u8)next_arg_index);
@@ -126,7 +112,7 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 args_key) {
             continue;
         }
         u32 read_count = MAX_BUF_READ_SIZE;
-        if (point_arg->item_countindex != READ_INDEX_SKIP) {
+        if (point_arg->item_countindex != REG_ARM64_MAX) {
             u32 item_count = 0;
             // 以寄存器值作为索引 只包含 x0-x28
             // x29 是fp寄存器 所以不包含在内

@@ -50,6 +50,8 @@ const (
 	REG_ARM64_SP
 	REG_ARM64_PC
 	REG_ARM64_MAX
+	REG_ARM64_INDEX
+	REG_ARM64_ABS
 )
 
 type FlagOp struct {

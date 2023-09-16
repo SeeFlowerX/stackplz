@@ -9,8 +9,7 @@ import (
 // 而不是依赖配置文件去转换 某种程度上来说 硬编码反而是更好的选择
 
 const MAX_POINT_ARG_COUNT = 10
-const READ_INDEX_SKIP uint32 = 100
-const READ_INDEX_REG uint32 = 101
+
 const FILTER_INDEX_NONE uint32 = 0x0
 const FILTER_INDEX_SKIP uint32 = 0x1234
 
@@ -217,7 +216,7 @@ func AT(arg_alias_type, arg_base_type, read_count uint32) ArgType {
 	for i := 0; i < MAX_FILTER_COUNT; i++ {
 		tmp_idx[i] = FILTER_INDEX_NONE
 	}
-	return ArgType{tmp_idx, READ_INDEX_REG, 0, arg_base_type, arg_alias_type, read_count, 1, READ_INDEX_SKIP, 0}
+	return ArgType{tmp_idx, REG_ARM64_INDEX, 0, arg_base_type, arg_alias_type, read_count, 1, REG_ARM64_MAX, 0}
 }
 
 func PA(nr string, args []PArg) PArgs {

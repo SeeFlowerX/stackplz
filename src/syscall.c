@@ -156,33 +156,13 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     }
 
     u32 next_arg_index = 4;
-
+    u64 reg_0 = READ_KERN(regs->regs[0]);
     for (int i = 0; i < point_arg_count; i++) {
         struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_args[i];
-
-        u64 arg_ptr = 0;
-        if (point_arg->read_index == READ_INDEX_SKIP) {
+        if (point_arg->read_index == REG_ARM64_MAX) {
             continue;
         }
-        if (point_arg->read_index == READ_INDEX_REG) {
-            // 未来可能允许读取很多个参数...
-            if (i > REG_ARM64_PC) {
-                continue;
-            }
-            arg_ptr = READ_KERN(regs->regs[i]);
-        } else if (point_arg->read_index > READ_INDEX_SKIP) {
-            if (point_arg->read_index <= REG_ARM64_LR) {
-                arg_ptr = READ_KERN(regs->regs[point_arg->read_index]);
-            } else if (point_arg->read_index == REG_ARM64_SP) {
-                arg_ptr = READ_KERN(regs->sp);
-            } else if (point_arg->read_index == REG_ARM64_PC) {
-                arg_ptr = READ_KERN(regs->pc);
-            } else {
-                continue;
-            }
-        } else {
-            continue;
-        }
+        u64 arg_ptr = get_arg_ptr(regs, point_arg, i, reg_0);
 
         // 先保存参数值本身
         save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), (u8)next_arg_index);
@@ -195,7 +175,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
             continue;
         }
         u32 read_count = MAX_BUF_READ_SIZE;
-        if (point_arg->item_countindex != READ_INDEX_SKIP) {
+        if (point_arg->item_countindex != REG_ARM64_MAX) {
             u32 item_count = 0;
             // 以寄存器值作为索引 只包含 x0-x28
             // x29 是fp寄存器 所以不包含在内
@@ -281,34 +261,13 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     if (syscall_point_args->count <= point_arg_count) {
         point_arg_count = syscall_point_args->count;
     }
-
+    u64 reg_0 = saved_args.args[0];
     for (int i = 0; i < point_arg_count; i++) {
         struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_args[i];
-
-        u64 arg_ptr = 0;
-        if (point_arg->read_index == READ_INDEX_SKIP) {
+        if (point_arg->read_index == REG_ARM64_MAX) {
             continue;
         }
-        if (point_arg->read_index == READ_INDEX_REG) {
-            // 未来可能允许读取很多个参数...
-            if (i > REG_ARM64_LR) {
-                continue;
-            }
-            // 考虑到这里是syscall执行结束 尽可能优先采用之前保存的寄存器的值
-            if (i < REG_ARM64_X6) {
-                arg_ptr = saved_args.args[i];
-            } else {
-                arg_ptr = READ_KERN(regs->regs[i]);
-            }
-        } else if (point_arg->read_index == REG_ARM64_SP) {
-            arg_ptr = READ_KERN(regs->sp);
-        } else if (point_arg->read_index == REG_ARM64_PC) {
-            arg_ptr = READ_KERN(regs->pc);
-        } else if (point_arg->read_index <= REG_ARM64_LR) {
-            arg_ptr = READ_KERN(regs->regs[point_arg->read_index]);
-        } else {
-            continue;
-        }
+        u64 arg_ptr = get_arg_ptr(regs, point_arg, i, reg_0);
 
         // 先保存参数值本身
         save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), (u8)next_arg_index);
@@ -321,7 +280,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
             continue;
         }
         u32 read_count = MAX_BUF_READ_SIZE;
-        if (point_arg->item_countindex != READ_INDEX_SKIP) {
+        if (point_arg->item_countindex != REG_ARM64_MAX) {
             u32 item_count = 0;
             // 以寄存器值作为索引 只包含 x0-x28
             // x29 是fp寄存器 所以不包含在内

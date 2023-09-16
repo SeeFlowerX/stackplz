@@ -7,12 +7,11 @@
 #include "bpf_core_read.h"
 #include "bpf_tracing.h"
 
+#include "common/common.h"
 #include "common/consts.h"
 #include "common/buffer.h"
 
 #define MAX_POINT_ARG_COUNT 10
-#define READ_INDEX_SKIP 100
-#define READ_INDEX_REG 101
 
 #define FILTER_INDEX_NONE 0x0
 #define FILTER_INDEX_SKIP 0x1234
@@ -37,6 +36,39 @@ static __always_inline match_ctx_t *make_match_ctx() {
     u64 id = bpf_get_current_pid_tgid();
     bpf_map_update_elem(&match_ctx_map, &id, match_ctx, BPF_ANY);
     return bpf_map_lookup_elem(&match_ctx_map, &id);
+}
+
+static __always_inline u64 get_arg_ptr(struct pt_regs* ctx, struct point_arg_t* point_arg, int arg_index, u64 reg_0) {
+    // REG_ARM64_MAX 意味着需要跳过 但在调用本函数前就应该进行判断
+    // REG_ARM64_ABS 意味着 read_offset 作为 绝对地址 用于后续读取
+    // REG_ARM64_X0 有关的比较是因为 sys_exit 完成后要读取执行前的寄存器
+    u64 ptr = point_arg->read_offset;
+    if (point_arg->read_index == REG_ARM64_ABS) {
+        /* return ptr; */
+    } else if (point_arg->read_index == REG_ARM64_INDEX) {
+        if (arg_index == REG_ARM64_X0) {
+            ptr += reg_0;
+        } else if (arg_index <= REG_ARM64_LR) {
+            ptr += READ_KERN(ctx->regs[arg_index]);
+        } else {
+            ptr = 0; // never
+        }
+    } else if (point_arg->read_index == REG_ARM64_MAX) {
+        ptr = 0; // never
+    } else if (point_arg->read_index == REG_ARM64_PC) {
+        ptr += READ_KERN(ctx->pc);
+    } else if (point_arg->read_index == REG_ARM64_SP) {
+        ptr += READ_KERN(ctx->sp);
+    } else if (point_arg->read_index <= REG_ARM64_LR) {
+        if (point_arg->read_index == REG_ARM64_X0) {
+            ptr += reg_0;
+        } else {
+            ptr += READ_KERN(ctx->regs[point_arg->read_index]);
+        }
+    } else {
+        ptr = 0; // never
+    }
+    return ptr;
 }
 
 static __always_inline u32 save_bytes_with_len(program_data_t p, u64 ptr, u32 read_len, u32 next_arg_index) {
@@ -104,7 +136,6 @@ static __always_inline u32 read_ptr_arg(program_data_t p, struct point_arg_t* po
 
 static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_arg, u64 ptr, u32 read_count, u32 next_arg_index) {
     point_arg->tmp_index = FILTER_INDEX_NONE;
-    ptr = ptr + point_arg->read_offset;
     if (point_arg->base_type == TYPE_NONE) {
         return next_arg_index;
     }
