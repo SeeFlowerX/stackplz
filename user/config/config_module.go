@@ -90,8 +90,6 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
         }
     case "ptr":
         arg_type = POINTER
-    case "intptr":
-        arg_type = EXP_INT.NewBaseType(TYPE_STRUCT)
     case "buf":
         arg_type = BUFFER_T.NewReadCount(256)
         // 对于 buf 类型 其参数读取索引位于最后
@@ -129,7 +127,8 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
         return arg_type, err
     }
     if to_ptr {
-        arg_type = arg_type.NewBaseType(TYPE_POINTER)
+        // 实际上应该视作一个结构体
+        arg_type = arg_type.NewBaseType(TYPE_STRUCT)
     }
     if arg_index != "" {
         arg_index, read_offset := ParseArgIndex(arg_index)

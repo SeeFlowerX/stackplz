@@ -92,7 +92,7 @@ type ContextEvent struct {
     UnwindBuffer *UnwindBuf
 }
 
-func (this *ContextEvent) ParseArgArray(point_arg *config.PointArg, ptr config.Arg_reg) string {
+func (this *ContextEvent) ParseArgArray(point_arg *config.PointArg) string {
     // 数组本质上是作为 struct 处理的
     var arg config.Arg_str
     if err := binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
@@ -257,7 +257,6 @@ func (this *ContextEvent) Clone() IEventStruct {
 }
 
 func (this *ContextEvent) ParseArgByType(point_arg *config.PointArg, ptr config.Arg_reg) {
-    var err error
     if ptr.Address == 0 {
         point_arg.AppendValue("(NULL)")
         return
@@ -265,33 +264,16 @@ func (this *ContextEvent) ParseArgByType(point_arg *config.PointArg, ptr config.
     // 这个函数先处理基础类型
 
     if point_arg.BaseType == config.TYPE_POINTER {
-        // 对于指针类型 需要先处理
-        var next_ptr config.Arg_reg
-        if err = binary.Read(this.buf, binary.LittleEndian, &next_ptr); err != nil {
-            panic(err)
-        }
-        // if this.mconf.Debug {
-        //     this.logger.Printf("[buf] len:%d cap:%d off:%d", this.buf.Len(), this.buf.Cap(), this.buf.Cap()-this.buf.Len())
-        // }
-        if next_ptr.Address == 0 {
-            point_arg.AppendValue("(0x0)")
-            return
-        }
-        if point_arg.AliasType == config.TYPE_POINTER {
-            // 这种不再需要进一步解析了
-            point_arg.AppendValue(fmt.Sprintf("(0x%x)", next_ptr.Address))
-        } else {
-            // pointer + struct
-            point_arg.AppendValue(fmt.Sprintf("(*0x%x)%s", next_ptr.Address, this.ParseArg(point_arg, next_ptr)))
-        }
+        point_arg.SetValue("")
+        point_arg.AppendValue(fmt.Sprintf("*0x%x%s", ptr.Address, this.ParseArg(point_arg)))
     } else if point_arg.BaseType == config.TYPE_ARRAY {
-        point_arg.AppendValue(this.ParseArgArray(point_arg, ptr))
+        point_arg.AppendValue(this.ParseArgArray(point_arg))
     } else {
         // 这种一般就是特殊类型 获取结构体了
-        point_arg.AppendValue(this.ParseArg(point_arg, ptr))
+        point_arg.AppendValue(this.ParseArg(point_arg))
     }
 }
-func (this *ContextEvent) ParseArg(point_arg *config.PointArg, ptr config.Arg_reg) string {
+func (this *ContextEvent) ParseArg(point_arg *config.PointArg) string {
     var err error
     switch point_arg.AliasType {
     case config.TYPE_NONE:

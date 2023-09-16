@@ -151,13 +151,6 @@ static __always_inline u32 read_ptr_arg(program_data_t p, struct point_arg_t* po
 
 static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_arg, u64 ptr, u32 read_count, u32 next_arg_index) {
     point_arg->tmp_index = FILTER_INDEX_NONE;
-    if (point_arg->base_type == TYPE_NONE) {
-        return next_arg_index;
-    }
-    if (point_arg->base_type == TYPE_NUM) {
-        // 这种具体类型转换交给前端做
-        return next_arg_index;
-    }
     if (ptr == 0) {
         return next_arg_index;
     }
@@ -169,14 +162,20 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         bpf_probe_read_user(&addr, sizeof(addr), (void*) ptr);
         save_to_submit_buf(p.event, (void *) &addr, sizeof(u64), next_arg_index);
         next_arg_index += 1;
-        // 如果指向的是一个结构体 那么我们就再进一步把结构体数据读取出来
         if (addr == 0) {
             return next_arg_index;
         }
-        next_arg_index = read_ptr_arg(p, point_arg, addr, read_count, next_arg_index);
+        // 指针的指针 暂时没有这个需求
+        // next_arg_index = read_ptr_arg(p, point_arg, addr, read_count, next_arg_index);
         return next_arg_index;
     }
-
+    if (point_arg->base_type == TYPE_NONE) {
+        return next_arg_index;
+    }
+    if (point_arg->base_type == TYPE_NUM) {
+        // 这种具体类型转换交给前端做
+        return next_arg_index;
+    }
     if (point_arg->base_type == TYPE_STRING) {
         u32 buf_off = 0;
         buf_t *string_p = get_buf(STRING_BUF_IDX);
