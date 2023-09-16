@@ -8,6 +8,7 @@ import (
 // 结合其他项目构想一种新的方案 便于后续增补各类结构体的数据解析
 // 而不是依赖配置文件去转换 某种程度上来说 硬编码反而是更好的选择
 
+const MAX_IOV_COUNT = 6
 const MAX_POINT_ARG_COUNT = 10
 
 const FILTER_INDEX_NONE uint32 = 0x0

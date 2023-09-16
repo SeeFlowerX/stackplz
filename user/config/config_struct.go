@@ -99,6 +99,10 @@ type Arg_nr struct {
 	Index uint8
 	Value uint32
 }
+type Arg_iovcnt struct {
+	Index uint8
+	Value uint32
+}
 type Arg_probe_index struct {
 	Index uint8
 	Value uint32

@@ -366,17 +366,32 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg) string {
     case config.TYPE_RUSAGE:
         return this.ParseArgStruct(this.buf, &config.Arg_Rusage{})
     case config.TYPE_IOVEC:
-        // IOVEC 这里本质上是一个数组 还不太一样...
-        var arg config.Arg_Iovec_t
-        if err = binary.Read(this.buf, binary.LittleEndian, &arg.Arg_Iovec); err != nil {
+        var iovcnt config.Arg_iovcnt
+        if err = binary.Read(this.buf, binary.LittleEndian, &iovcnt); err != nil {
             panic(err)
         }
-        payload := make([]byte, arg.BufLen)
-        if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-            panic(err)
+        var iov_read_count int = config.MAX_IOV_COUNT
+        if int(iovcnt.Value) < iov_read_count {
+            iov_read_count = int(iovcnt.Value)
         }
-        arg.Payload = payload
-        return arg.Format()
+        var result []string
+        for i := 0; i < iov_read_count; i++ {
+            var arg config.Arg_Iovec_t
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg.Arg_Iovec); err != nil {
+                panic(err)
+            }
+            var iov_buf config.Arg_str
+            if err = binary.Read(this.buf, binary.LittleEndian, &iov_buf); err != nil {
+                panic(err)
+            }
+            payload := make([]byte, iov_buf.Len)
+            if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+                panic(err)
+            }
+            arg.Payload = payload
+            result = append(result, arg.Format())
+        }
+        return "\n\t" + strings.Join(result, "\n\t") + "\n"
     case config.TYPE_EPOLLEVENT:
         return this.ParseArgStruct(this.buf, &config.Arg_EpollEvent{})
     case config.TYPE_SYSINFO:

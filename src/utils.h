@@ -11,6 +11,7 @@
 #include "common/consts.h"
 #include "common/buffer.h"
 
+#define MAX_IOV_COUNT 6
 #define MAX_POINT_ARG_COUNT 10
 
 #define FILTER_INDEX_NONE 0x0
@@ -50,7 +51,7 @@ static __always_inline u32 get_read_count(struct pt_regs* ctx, struct point_arg_
     } else {
         read_count = point_arg->read_count;
     }
-    return read_count * point_arg->item_persize;
+    return read_count;
 }
 
 static __always_inline u64 get_arg_ptr(struct pt_regs* ctx, struct point_arg_t* point_arg, int arg_index, u64 reg_0) {
@@ -125,26 +126,6 @@ static __always_inline u32 read_ptr_arg(program_data_t p, struct point_arg_t* po
             next_arg_index += 1;
         }
         return next_arg_index;
-    }
-    // 比较复杂的 指针 + 结构体
-    if (point_arg->alias_type == TYPE_IOVEC) {
-        struct iovec iovec_ptr;
-        int errno = bpf_probe_read_user(&iovec_ptr, sizeof(iovec_ptr), (void*) ptr);
-        if (errno == 0) {
-            save_to_submit_buf(p.event, (void *)&iovec_ptr, sizeof(iovec_ptr), next_arg_index);
-            next_arg_index += 1;
-            // 目前这样只是读取了第一个 iov 实际上要多次读取 数量是 iovcnt
-            // 但是注意多个缓冲区并不是连续的
-            u64 iov_base = (u64)iovec_ptr.iov_base;
-            u32 iov_len = (u64)iovec_ptr.iov_len;
-            // u32 read_len = read_count * iov_len;
-            u32 read_len = iov_len;
-            if (read_len > MAX_BUF_READ_SIZE) {
-                read_len = MAX_BUF_READ_SIZE;
-            }
-            next_arg_index = save_bytes_with_len(p, iov_base, read_len, next_arg_index);
-            return next_arg_index;
-        }
     }
     return next_arg_index;
 }
@@ -253,9 +234,45 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
         next_arg_index += 1;
         return next_arg_index;
     }
+
+    // 为了获取到具体的数据 进行特别处理
+    // 单次提交不超过 ARGS_BUF_SIZE 所以 MAX_IOV_COUNT 最大设置为6 6 * 4096 + ... < ARGS_BUF_SIZE
+    // 对于 process_vm_readv/process_vm_writev 远程进程间传递数据 实际读取其中一个 iov 即可
+    if (point_arg->base_type == TYPE_STRUCT && point_arg->alias_type == TYPE_IOVEC) {
+        save_to_submit_buf(p.event, (void *)&read_count, sizeof(u32), next_arg_index);
+        next_arg_index += 1;
+        for (int iov_index = 0; iov_index < MAX_IOV_COUNT; iov_index++) {
+            if (iov_index >= read_count) {
+                continue;
+            }
+            struct iovec iovec_ptr;
+            int errno = bpf_probe_read_user(&iovec_ptr, sizeof(iovec_ptr), (void*) ptr);
+            if (errno == 0) {
+                save_to_submit_buf(p.event, (void *)&iovec_ptr, sizeof(iovec_ptr), next_arg_index);
+                next_arg_index += 1;
+                u32 max_read_len = MAX_BUF_READ_SIZE;
+                if (iovec_ptr.iov_len <= max_read_len) {
+                    max_read_len = iovec_ptr.iov_len;
+                }
+                next_arg_index = save_bytes_with_len(p, (u64)iovec_ptr.iov_base, max_read_len, next_arg_index);
+            } else {
+                // 可能有失败的情况
+                buf_t *zero_p = get_buf(ZERO_BUF_IDX);
+                if (zero_p == NULL) {
+                    return next_arg_index;
+                }
+                save_bytes_to_buf(p.event, &zero_p->buf[0], MAX_BUF_READ_SIZE, next_arg_index);
+                next_arg_index += 1;
+            }
+            ptr = ptr + sizeof(iovec_ptr);
+        }
+        return next_arg_index;
+    }
+
     if (point_arg->base_type == TYPE_STRUCT || point_arg->base_type == TYPE_ARRAY) {
         // 结构体类型 直接读取对应大小的数据 具体转换交给前端
         u32 max_read_len = MAX_BYTES_ARR_SIZE;
+        read_count = read_count * point_arg->item_persize;
         if (read_count <= max_read_len) {
             max_read_len = read_count;
         }
