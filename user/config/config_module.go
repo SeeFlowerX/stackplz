@@ -42,13 +42,16 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
     var type_name string = ""
     var arg_index string = ""
     var arg_filter string = ""
+    var items []string
     // 参数是否为指针
     if strings.HasPrefix(arg_str, "*") {
         to_ptr = true
         type_name = arg_str[1:]
+        items = strings.SplitN(arg_str[1:], ":", 2)
+    } else {
+        items = strings.SplitN(arg_str, ":", 2)
     }
     // 提取类型、参数读取索引
-    items := strings.SplitN(arg_str, ":", 2)
     if len(items) == 1 {
         type_name = items[0]
     } else if len(items) == 2 {
