@@ -21,21 +21,12 @@ type StackUprobeConfig struct {
 }
 
 func ParseStrAsNum(v string) (uint64, error) {
-    if strings.HasPrefix(v, "0x") {
-        op_value, err := strconv.ParseUint(strings.TrimPrefix(v, "0x"), 16, 32)
-        if err != nil {
-            err = errors.New(fmt.Sprintf("parse op_value:%s as hex failed, err:%v", v, err))
-            return 0, err
-        }
-        return op_value, nil
-    } else {
-        op_value, err := strconv.ParseUint(v, 10, 32)
-        if err != nil {
-            err = errors.New(fmt.Sprintf("parse op_value:%s failed, err:%v", v, err))
-            return 0, err
-        }
-        return op_value, nil
+    op_value, err := strconv.ParseUint(v, 0, 32)
+    if err != nil {
+        err = errors.New(fmt.Sprintf("parse op_value:%s failed, err:%v", v, err))
+        return 0, err
     }
+    return op_value, nil
 }
 
 func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
@@ -48,40 +39,31 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
     var err error = nil
     var arg_type ArgType
     var to_ptr bool = false
-    var arg_desc string = ""
+    var type_name string = ""
     var arg_index string = ""
-    var size_str string = ""
-    items := strings.Split(arg_str, ":")
+    var arg_filter string = ""
+    // 参数是否为指针
+    if strings.HasPrefix(arg_str, "*") {
+        to_ptr = true
+        type_name = arg_str[1:]
+    }
+    // 提取类型、参数读取索引
+    items := strings.SplitN(arg_str, ":", 2)
     if len(items) == 1 {
-        arg_desc = items[0]
+        type_name = items[0]
     } else if len(items) == 2 {
-        arg_desc = items[0]
+        type_name = items[0]
         arg_index = items[1]
-    } else if len(items) == 3 {
-        arg_desc = items[0]
-        size_str = items[1]
-        arg_index = items[2]
     } else {
         return arg_type, errors.New(fmt.Sprintf("parse arg_str:%s failed, err:%v", arg_str, err))
     }
-    if strings.HasPrefix(arg_desc, "*") {
-        to_ptr = true
-        arg_desc = arg_desc[1:]
+    // 提取参数过滤规则
+    filter_items := strings.SplitN(type_name, ".", 2)
+    if len(filter_items) == 2 {
+        type_name = filter_items[0]
+        arg_filter = filter_items[1]
     }
-    arg_desc_items := strings.SplitN(arg_desc, ".", 2)
-    var index_items []uint32
-    if len(arg_desc_items) == 2 {
-        arg_desc = arg_desc_items[0]
-        filter_names := strings.Split(arg_desc_items[1], ".")
-        for _, filter_name := range filter_names {
-            for _, arg_filter := range *this.arg_filter {
-                if arg_filter.Match(filter_name) {
-                    index_items = append(index_items, arg_filter.Filter_index)
-                }
-            }
-        }
-    }
-    switch arg_desc {
+    switch type_name {
     case "int":
         arg_type = EXP_INT
     case "uint":
@@ -92,9 +74,15 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
         arg_type = UINT64
     case "str":
         arg_type = STRING
-        for i := 0; i < MAX_FILTER_COUNT; i++ {
-            if i < len(index_items) {
-                arg_type.FilterIdx[i] = index_items[i]
+        filter_names := strings.Split(arg_filter, ".")
+        for i, filter_name := range filter_names {
+            if i >= MAX_FILTER_COUNT {
+                break
+            }
+            for _, arg_filter := range *this.arg_filter {
+                if arg_filter.Match(filter_name) {
+                    arg_type.FilterIdx[i] = arg_filter.Filter_index
+                }
             }
         }
     case "ptr":
@@ -103,31 +91,31 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
         arg_type = EXP_INT.NewBaseType(TYPE_STRUCT)
     case "buf":
         arg_type = BUFFER_T.NewReadCount(256)
-        // 特别处理
-        if len(items) == 2 {
-            size_str = arg_index
+        // 对于 buf 类型 其参数读取索引位于最后
+        buf_items := strings.SplitN(arg_index, ":", 2)
+        var size_str = ""
+        if len(buf_items) == 1 {
+            size_str = buf_items[0]
             arg_index = ""
+        } else if len(buf_items) == 2 {
+            size_str = buf_items[0]
+            arg_index = buf_items[1]
+        } else {
+            return arg_type, errors.New(fmt.Sprintf("parse buf arg_str:%s failed", arg_str))
         }
-        if size_str != "" {
-            if strings.HasPrefix(size_str, "0x") {
-                size, err := strconv.ParseUint(strings.TrimPrefix(size_str, "0x"), 16, 32)
-                if err != nil {
-                    err = errors.New(fmt.Sprintf("parse size_str:%s as hex failed, arg_str:%s, err:%v", size_str, arg_str, err))
-                    break
-                }
-                arg_type.SetReadCount(uint32(size))
-            } else {
-                size, err := strconv.ParseUint(size_str, 10, 32)
-                if err != nil {
-                    count_index, err := ParseAsReg(size_str)
-                    if err != nil {
-                        return arg_type, err
-                    }
-                    arg_type.SetCountIndex(count_index)
-                } else {
-                    arg_type.SetReadCount(uint32(size))
-                }
+        if size_str == "" {
+            break
+        }
+        // base 指定为 0 的时候 会自动判断是不是16进制 但必须有 0x/0X 前缀
+        size, err := strconv.ParseUint(size_str, 0, 32)
+        if err == nil {
+            arg_type.SetReadCount(uint32(size))
+        } else {
+            count_index, err := ParseAsReg(size_str)
+            if err != nil {
+                return arg_type, errors.New(fmt.Sprintf("parse size_str:%s as hex/reg failed, arg_str:%s", size_str, arg_str))
             }
+            arg_type.SetCountIndex(count_index)
         }
     case "pattr":
         arg_type = PTHREAD_ATTR
@@ -200,7 +188,7 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
             } else {
                 return arg_type, errors.New(fmt.Sprintf("parse read_offset:%s failed", read_offset))
             }
-            arg_type.SetReadOffset(uint32(offset))
+            arg_type.SetReadOffset(offset)
         }
     }
     // fmt.Println("arg_type", arg_type.String())

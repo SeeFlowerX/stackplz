@@ -125,8 +125,8 @@ func (this *ArgType) SetReadIndex(index uint32) {
 	this.ReadIndex = index
 }
 
-func (this *ArgType) SetReadOffset(offset uint32) {
-	this.ReadOffset = offset
+func (this *ArgType) SetReadOffset(offset uint64) {
+	this.ReadOffset = uint32(offset)
 }
 
 func (this *ArgType) SetItemPerSize(persize uint32) {
@@ -169,9 +169,9 @@ func (this *ArgType) NewReadIndex(index uint32) ArgType {
 	return at
 }
 
-func (this *ArgType) NewReadOffset(offset uint32) ArgType {
+func (this *ArgType) NewReadOffset(offset uint64) ArgType {
 	at := this.Clone()
-	at.ReadOffset = offset
+	at.ReadOffset = uint32(offset)
 	return at
 }
 
