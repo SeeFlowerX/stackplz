@@ -291,6 +291,36 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg) string {
             panic(err)
         }
         return fmt.Sprintf("(%d)", result)
+    case config.TYPE_UINT32:
+        var arg config.Arg_str
+        if err := binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(err)
+        }
+        var result uint32
+        if err = binary.Read(this.buf, binary.LittleEndian, &result); err != nil {
+            panic(err)
+        }
+        return fmt.Sprintf("(%d)", result)
+    case config.TYPE_INT64:
+        var arg config.Arg_str
+        if err := binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(err)
+        }
+        var result int64
+        if err = binary.Read(this.buf, binary.LittleEndian, &result); err != nil {
+            panic(err)
+        }
+        return fmt.Sprintf("(%d)", result)
+    case config.TYPE_UINT64:
+        var arg config.Arg_str
+        if err := binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+            panic(err)
+        }
+        var result uint64
+        if err = binary.Read(this.buf, binary.LittleEndian, &result); err != nil {
+            panic(err)
+        }
+        return fmt.Sprintf("(%d)", result)
     case config.TYPE_STRING:
         var arg config.Arg_str
         if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
@@ -404,6 +434,8 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg) string {
         return this.ParseArgStruct(this.buf, &config.Arg_ItTmerspec{})
     case config.TYPE_STACK_T:
         return this.ParseArgStruct(this.buf, &config.Arg_Stack_t{})
+    case config.TYPE_BUFFER:
+        return this.ParseArgArray(point_arg)
     default:
         panic(fmt.Sprintf("unknown point_arg.AliasType %d", point_arg.AliasType))
     }
