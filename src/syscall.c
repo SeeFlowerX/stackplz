@@ -174,20 +174,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         if (arg_ptr == 0) {
             continue;
         }
-        u32 read_count = MAX_BUF_READ_SIZE;
-        if (point_arg->item_countindex != REG_ARM64_MAX) {
-            u32 item_count = 0;
-            // 以寄存器值作为索引 只包含 x0-x28
-            // x29 是fp寄存器 所以不包含在内
-            if (point_arg->item_countindex < REG_ARM64_X29) {
-                item_count = READ_KERN(regs->regs[point_arg->item_countindex]);
-            }
-            if (item_count != 0 && item_count <= read_count) {
-                read_count = item_count;
-            }
-        } else if (point_arg->read_count <= read_count) {
-            read_count = point_arg->read_count;
-        }
+        u32 read_count = get_read_count(regs, point_arg);
         next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
         if (point_arg->tmp_index == FILTER_INDEX_SKIP) {
             point_arg->tmp_index = 0;
@@ -279,20 +266,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
         if (arg_ptr == 0) {
             continue;
         }
-        u32 read_count = MAX_BUF_READ_SIZE;
-        if (point_arg->item_countindex != REG_ARM64_MAX) {
-            u32 item_count = 0;
-            // 以寄存器值作为索引 只包含 x0-x28
-            // x29 是fp寄存器 所以不包含在内
-            if (point_arg->item_countindex < REG_ARM64_X29) {
-                item_count = READ_KERN(regs->regs[point_arg->item_countindex]);
-            }
-            if (item_count != 0 && item_count <= read_count) {
-                read_count = item_count;
-            }
-        } else if (point_arg->read_count <= read_count) {
-            read_count = point_arg->read_count;
-        }
+        u32 read_count = get_read_count(regs, point_arg);
         next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
     }
 

@@ -38,6 +38,21 @@ static __always_inline match_ctx_t *make_match_ctx() {
     return bpf_map_lookup_elem(&match_ctx_map, &id);
 }
 
+static __always_inline u32 get_read_count(struct pt_regs* ctx, struct point_arg_t* point_arg) {
+    // 以寄存器值作为读取大小 只包含 x0-x28 fp寄存器就是x29 所以不包含在内
+    // 或者以预设 read_count 作为读取大小
+    // 这里还可以改进一下 read_count 本身有上限 可以设为一个大于上限的值
+    // 即先比较 发现大于上限 那么减去特定值 作为 item_countindex
+    // 这样可以实际省去 item_countindex
+    u32 read_count = 0;
+    if (point_arg->item_countindex >= REG_ARM64_X0 && point_arg->item_countindex < REG_ARM64_X29) {
+        read_count = READ_KERN(ctx->regs[point_arg->item_countindex]);
+    } else {
+        read_count = point_arg->read_count;
+    }
+    return read_count * point_arg->item_persize;
+}
+
 static __always_inline u64 get_arg_ptr(struct pt_regs* ctx, struct point_arg_t* point_arg, int arg_index, u64 reg_0) {
     // REG_ARM64_MAX 意味着需要跳过 但在调用本函数前就应该进行判断
     // REG_ARM64_ABS 意味着 read_offset 作为 绝对地址 用于后续读取
@@ -242,9 +257,8 @@ static __always_inline u32 read_arg(program_data_t p, struct point_arg_t* point_
     if (point_arg->base_type == TYPE_STRUCT || point_arg->base_type == TYPE_ARRAY) {
         // 结构体类型 直接读取对应大小的数据 具体转换交给前端
         u32 max_read_len = MAX_BYTES_ARR_SIZE;
-        u32 exp_read_len = read_count * point_arg->item_persize;
-        if (exp_read_len <= max_read_len) {
-            max_read_len = exp_read_len;
+        if (read_count <= max_read_len) {
+            max_read_len = read_count;
         }
         // 修复 MTE 读取可能不正常的情况
         int status = save_bytes_to_buf(p.event, (void *)(ptr & 0xffffffffff), max_read_len, next_arg_index);
