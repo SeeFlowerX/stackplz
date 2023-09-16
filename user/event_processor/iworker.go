@@ -78,7 +78,7 @@ func (this *eventWorker) parserEvent(e event.IEventStruct) {
 		}
 	default:
 		{
-			logger.Printf(e.String())
+			logger.Println(e.String())
 		}
 	}
 
