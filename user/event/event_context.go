@@ -404,6 +404,8 @@ func (this *ContextEvent) ParseArg(point_arg *config.PointArg) string {
         return this.ParseArgStruct(this.buf, &config.Arg_ItTmerspec{})
     case config.TYPE_STACK_T:
         return this.ParseArgStruct(this.buf, &config.Arg_Stack_t{})
+    case config.TYPE_BUFFER:
+        return this.ParseArgArray(point_arg)
     default:
         panic(fmt.Sprintf("unknown point_arg.AliasType %d", point_arg.AliasType))
     }
