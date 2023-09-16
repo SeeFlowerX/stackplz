@@ -189,6 +189,8 @@ pid + 偏移 + 库文件
     - rt_sigtimedwait,rt_sigqueueinfo,rt_sigreturn,rt_tgsigqueueinfo
 - %kill
     - kill,tkill,tgkill
+- %epoll
+    - epoll_create1,epoll_ctl,epoll_pwait,epoll_pwait2
 - %stat
     - statfs,fstatfs,newfstatat,fstat,statx
 

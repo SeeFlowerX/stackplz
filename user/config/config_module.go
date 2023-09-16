@@ -30,7 +30,7 @@ func ParseStrAsNum(v string) (uint64, error) {
 }
 
 func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
-    // ./stackplz -n icu.nullptr.nativetest -l libc.so -w 0x5B950[intptr:x20,intptr:x20+4]
+    // ./stackplz -n icu.nullptr.nativetest -l libc.so -w 0x5B950[*int:x20,*int:x20+4] -w 0x5B7BC[*int:x20,*int:x20+4]
     // ./stackplz -n com.xingin.xhs -l libart.so -w 0x4B8A74[str:x22,str:x8] --tname com.xingin.xhs --reg x28
     // str
     // int:x10
@@ -344,6 +344,8 @@ func (this *SyscallConfig) Parse_SysWhitelist(text string) {
             syscall_items = append(syscall_items, []string{"rt_sigtimedwait", "rt_sigqueueinfo", "rt_sigreturn", "rt_tgsigqueueinfo"}...)
         case "%kill":
             syscall_items = append(syscall_items, []string{"kill", "tkill", "tgkill"}...)
+        case "%epoll":
+            syscall_items = append(syscall_items, []string{"epoll_create1", "epoll_ctl", "epoll_pwait", "epoll_pwait2"}...)
         case "%stat":
             syscall_items = append(syscall_items, []string{"statfs", "fstatfs", "newfstatat", "fstat", "statx"}...)
         default:
