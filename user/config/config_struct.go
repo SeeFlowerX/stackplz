@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"net"
 	"stackplz/user/util"
@@ -302,7 +304,32 @@ func (this *Arg_RawSockaddrUnix) Format() string {
 		fields = append(fields, fmt.Sprintf("zero=%x", sockaddr.Zero))
 	} else if this.Family == syscall.AF_INET6 {
 		fields = append(fields, "family=AF_INET6")
-		sockaddr6 := (*syscall.RawSockaddrInet6)(unsafe.Pointer(&this.RawSockaddrUnix))
+		buf := &bytes.Buffer{}
+		err := binary.Write(buf, binary.BigEndian, this.RawSockaddrUnix)
+		if err != nil {
+			panic(err)
+		}
+		var sockaddr6 syscall.RawSockaddrInet6
+		err = binary.Read(buf, binary.LittleEndian, &sockaddr6.Family)
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Read(buf, binary.BigEndian, &sockaddr6.Port)
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Read(buf, binary.BigEndian, &sockaddr6.Flowinfo)
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Read(buf, binary.LittleEndian, &sockaddr6.Addr)
+		if err != nil {
+			panic(err)
+		}
+		err = binary.Read(buf, binary.LittleEndian, &sockaddr6.Scope_id)
+		if err != nil {
+			panic(err)
+		}
 		fields = append(fields, fmt.Sprintf("port=%d", sockaddr6.Port))
 		fields = append(fields, fmt.Sprintf("flowinfo=%d", sockaddr6.Flowinfo))
 		// 好像还是会解析成ipv4
