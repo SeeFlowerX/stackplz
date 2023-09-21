@@ -52,3 +52,85 @@ type SyscallExitFmt struct {
 	Ret     uint64 `json:"ret"`
 	Arg_str string `json:"arg_str"`
 }
+
+type BPF_record_mmap2 struct {
+	Pid            uint32
+	Tid            uint32
+	Addr           uint64
+	Len            uint64
+	Pgoff          uint64
+	Maj            uint32
+	Min            uint32
+	Ino            uint64
+	Ino_generation uint64
+	Prot           uint32
+	Flags          uint32
+	Filename       string
+	Sample_id      []byte
+}
+
+type FMT_record_mmap2 struct {
+	Event          string `json:"event"`
+	Pid            uint32 `json:"pid"`
+	Tid            uint32 `json:"tid"`
+	Addr           string `json:"addr"`
+	Len            string `json:"len"`
+	Pgoff          string `json:"pgoff"`
+	Maj            uint32 `json:"maj"`
+	Min            uint32 `json:"min"`
+	Ino            uint64 `json:"ino"`
+	Ino_generation uint64 `json:"ino_generation"`
+	Prot           string `json:"prot"`
+	Flags          string `json:"flags"`
+	Filename       string `json:"filename"`
+}
+
+type BPF_record_fork struct {
+	Pid       uint32
+	Ppid      uint32
+	Tid       uint32
+	Ptid      uint32
+	Time      uint64
+	Sample_id []byte
+}
+
+type FMT_record_fork struct {
+	Event string `json:"event"`
+	Pid   uint32 `json:"pid"`
+	Ppid  uint32 `json:"ppid"`
+	Tid   uint32 `json:"tid"`
+	Ptid  uint32 `json:"ptid"`
+	Time  uint64 `json:"time"`
+}
+
+type BPF_record_exit struct {
+	Pid       uint32
+	Ppid      uint32
+	Tid       uint32
+	Ptid      uint32
+	Time      uint64
+	Sample_id []byte
+}
+
+type FMT_record_exit struct {
+	Event string `json:"event"`
+	Pid   uint32 `json:"pid"`
+	Ppid  uint32 `json:"ppid"`
+	Tid   uint32 `json:"tid"`
+	Ptid  uint32 `json:"ptid"`
+	Time  uint64 `json:"time"`
+}
+
+type BPF_record_comm struct {
+	Pid       uint32
+	Tid       uint32
+	Comm      string
+	Sample_id []byte
+}
+
+type FMT_record_comm struct {
+	Event string `json:"event"`
+	Pid   uint32 `json:"pid"`
+	Tid   uint32 `json:"tid"`
+	Comm  string `json:"comm"`
+}

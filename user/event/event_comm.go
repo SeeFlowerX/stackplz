@@ -3,16 +3,28 @@ package event
 import (
     "bytes"
     "encoding/binary"
+    "encoding/json"
     "fmt"
+    "stackplz/user/config"
     "stackplz/user/util"
 )
 
 type CommEvent struct {
     CommonEvent
-    Pid       uint32
-    Tid       uint32
-    Comm      string
-    Sample_id []byte
+    config.BPF_record_comm
+}
+
+func (this *CommEvent) JsonString(stack_str string) string {
+    v := config.FMT_record_comm{}
+    v.Event = "comm"
+    v.Pid = this.Pid
+    v.Tid = this.Tid
+    v.Comm = this.Comm
+    data, err := json.Marshal(v)
+    if err != nil {
+        panic(err)
+    }
+    return string(data)
 }
 
 func (this *CommEvent) String() string {
@@ -42,9 +54,12 @@ func (this *CommEvent) ParseContext() (err error) {
         return err
     }
     this.Comm = util.B2STrim(tmp)
-    if this.mconf.Debug {
-        s := fmt.Sprintf("[CommEvent] pid=%d tid=%d comm=<%s>", this.Pid, this.Tid, this.Comm)
-        this.logger.Printf(s)
+    if this.mconf.FmtJson {
+        this.logger.Printf(this.JsonString(""))
     }
+    // if this.mconf.Debug {
+    //     s := fmt.Sprintf("[CommEvent] pid=%d tid=%d comm=<%s>", this.Pid, this.Tid, this.Comm)
+    //     this.logger.Printf(s)
+    // }
     return nil
 }

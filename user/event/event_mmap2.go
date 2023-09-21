@@ -3,6 +3,7 @@ package event
 import (
     "bytes"
     "encoding/binary"
+    "encoding/json"
     "errors"
     "fmt"
     "io"
@@ -401,19 +402,29 @@ var maps_lock sync.Mutex
 
 type Mmap2Event struct {
     CommonEvent
-    Pid            uint32
-    Tid            uint32
-    Addr           uint64
-    Len            uint64
-    Pgoff          uint64
-    Maj            uint32
-    Min            uint32
-    Ino            uint64
-    Ino_generation uint64
-    Prot           uint32
-    Flags          uint32
-    Filename       string
-    Sample_id      []byte
+    config.BPF_record_mmap2
+}
+
+func (this *Mmap2Event) JsonString(stack_str string) string {
+    v := config.FMT_record_mmap2{}
+    v.Event = "mmap2"
+    v.Pid = this.Pid
+    v.Tid = this.Tid
+    v.Addr = fmt.Sprintf("0x%x", this.Addr)
+    v.Len = fmt.Sprintf("0x%x", this.Len)
+    v.Pgoff = fmt.Sprintf("0x%x", this.Pgoff)
+    v.Maj = this.Maj
+    v.Min = this.Min
+    v.Ino = this.Ino
+    v.Ino_generation = this.Ino_generation
+    v.Prot = fmt.Sprintf("0x%x", this.Prot)
+    v.Flags = fmt.Sprintf("0x%x", this.Flags)
+    v.Filename = this.Filename
+    data, err := json.Marshal(v)
+    if err != nil {
+        panic(err)
+    }
+    return string(data)
 }
 
 func (this *Mmap2Event) String() string {
@@ -470,10 +481,13 @@ func (this *Mmap2Event) ParseContext() (err error) {
         return err
     }
     this.Filename = util.B2STrim(tmp)
-    if this.mconf.Debug {
-        s := fmt.Sprintf("[Mmap2Event] pid=%d tid=%d addr=0x%x len=0x%x pgoff=0x%x mag=%d min=%d ino=%d ino_generation=%d prot=0x%x flags=0x%x <%s>", this.Pid, this.Tid, this.Addr, this.Len, this.Pgoff, this.Maj, this.Min, this.Ino, this.Ino_generation, this.Prot, this.Flags, this.Filename)
-        this.logger.Printf(s)
+    if this.mconf.FmtJson {
+        this.logger.Printf(this.JsonString(""))
     }
+    // if this.mconf.Debug {
+    //     s := fmt.Sprintf("[Mmap2Event] pid=%d tid=%d addr=0x%x len=0x%x pgoff=0x%x mag=%d min=%d ino=%d ino_generation=%d prot=0x%x flags=0x%x <%s>", this.Pid, this.Tid, this.Addr, this.Len, this.Pgoff, this.Maj, this.Min, this.Ino, this.Ino_generation, this.Prot, this.Flags, this.Filename)
+    //     this.logger.Printf(s)
+    // }
     maps_helper.UpdateMaps(this)
     return nil
 }

@@ -3,17 +3,29 @@ package event
 import (
     "bytes"
     "encoding/binary"
+    "encoding/json"
     "fmt"
+    "stackplz/user/config"
 )
 
 type ExitEvent struct {
     CommonEvent
-    Pid       uint32
-    Ppid      uint32
-    Tid       uint32
-    Ptid      uint32
-    Time      uint64
-    Sample_id []byte
+    config.BPF_record_exit
+}
+
+func (this *ExitEvent) JsonString(stack_str string) string {
+    v := config.FMT_record_fork{}
+    v.Event = "exit"
+    v.Pid = this.Pid
+    v.Ppid = this.Ppid
+    v.Tid = this.Tid
+    v.Ptid = this.Ptid
+    v.Time = this.Time
+    data, err := json.Marshal(v)
+    if err != nil {
+        panic(err)
+    }
+    return string(data)
 }
 
 func (this *ExitEvent) String() string {
@@ -53,9 +65,12 @@ func (this *ExitEvent) ParseContext() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Time); err != nil {
         return err
     }
-    if this.mconf.Debug {
-        s := fmt.Sprintf("[ExitEvent] pid=%d ppid=%d tid=%d ptid=%d time=%d", this.Pid, this.Ppid, this.Tid, this.Ptid, this.Time)
-        this.logger.Printf(s)
+    if this.mconf.FmtJson {
+        this.logger.Printf(this.JsonString(""))
     }
+    // if this.mconf.Debug {
+    //     s := fmt.Sprintf("[ExitEvent] pid=%d ppid=%d tid=%d ptid=%d time=%d", this.Pid, this.Ppid, this.Tid, this.Ptid, this.Time)
+    //     this.logger.Printf(s)
+    // }
     return nil
 }
