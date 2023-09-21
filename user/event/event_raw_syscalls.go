@@ -2,6 +2,7 @@ package event
 
 import (
     "encoding/binary"
+    "encoding/json"
     "fmt"
     "stackplz/user/config"
     "stackplz/user/util"
@@ -19,7 +20,6 @@ type SyscallEvent struct {
     sp           config.Arg_reg
     pc           config.Arg_reg
     ret          uint64
-    args         [6]uint64
     arg_str      string
 }
 
@@ -146,7 +146,59 @@ func (this *SyscallEvent) GetUUID() string {
     return s
 }
 
+func (this *SyscallEvent) JsonString(stack_str string) string {
+    if this.EventId == SYSCALL_ENTER {
+        v := config.SyscallFmt{}
+        v.Ts = this.Ts
+        v.Event = "sys_enter"
+        v.HostTid = this.HostTid
+        v.HostPid = this.HostPid
+        v.Tid = this.Tid
+        v.Pid = this.Pid
+        v.Uid = this.Uid
+        v.Comm = util.B2STrim(this.Comm[:])
+        v.Argnum = this.Argnum
+        v.Stack = stack_str
+        v.NR = this.nr_point.PointName
+        v.LR = fmt.Sprintf("0x%x", this.lr.Address)
+        v.SP = fmt.Sprintf("0x%x", this.sp.Address)
+        v.PC = fmt.Sprintf("0x%x", this.pc.Address)
+        v.Arg_str = this.arg_str
+        data, err := json.Marshal(v)
+        if err != nil {
+            panic(err)
+        }
+        return string(data)
+    } else {
+        v := config.SyscallExitFmt{}
+        v.Ts = this.Ts
+        v.Event = "sys_exit"
+        v.HostTid = this.HostTid
+        v.HostPid = this.HostPid
+        v.Tid = this.Tid
+        v.Pid = this.Pid
+        v.Uid = this.Uid
+        v.Comm = util.B2STrim(this.Comm[:])
+        v.Argnum = this.Argnum
+        v.Stack = stack_str
+        v.NR = this.nr_point.PointName
+        v.Arg_str = this.arg_str
+        data, err := json.Marshal(v)
+        if err != nil {
+            panic(err)
+        }
+        return string(data)
+    }
+}
+
 func (this *SyscallEvent) String() string {
+    stack_str := ""
+    if this.EventId == SYSCALL_ENTER {
+        stack_str = this.GetStackTrace(stack_str)
+    }
+    if this.mconf.FmtJson {
+        return this.JsonString(stack_str)
+    }
     var base_str string
     base_str = fmt.Sprintf("[%s] nr:%s%s", this.GetUUID(), this.nr_point.PointName, this.arg_str)
     if this.EventId == SYSCALL_ENTER {
@@ -161,10 +213,8 @@ func (this *SyscallEvent) String() string {
         }
         base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.sp.Address)
     }
-    if this.EventId == SYSCALL_ENTER {
-        base_str = this.GetStackTrace(base_str)
-    }
-    return base_str
+
+    return base_str + stack_str
 }
 
 func (this *SyscallEvent) Clone() IEventStruct {

@@ -473,6 +473,7 @@ type ModuleConfig struct {
     BrkType      uint32
     BrkKernel    bool
     Color        bool
+    FmtJson      bool
     DumpHex      bool
     ShowTime     bool
     ShowUid      bool

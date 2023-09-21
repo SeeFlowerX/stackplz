@@ -13,6 +13,7 @@ type GlobalConfig struct {
     NoTName      string
     ArgFilter    []string
     Color        bool
+    FmtJson      bool
     UnwindStack  bool
     ManualStack  bool
     StackSize    uint32

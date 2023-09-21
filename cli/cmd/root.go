@@ -268,6 +268,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Debug = gconfig.Debug
     mconfig.Is32Bit = false
     mconfig.Color = gconfig.Color
+    mconfig.FmtJson = gconfig.FmtJson
     mconfig.RegName = gconfig.RegName
     mconfig.DumpHex = gconfig.DumpHex
     mconfig.ShowTime = gconfig.ShowTime
@@ -582,6 +583,7 @@ func init() {
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Debug, "debug", "d", false, "enable debug logging")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Quiet, "quiet", "q", false, "wont logging to terminal when used")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Color, "color", "c", false, "enable color for log file")
+    rootCmd.PersistentFlags().BoolVarP(&gconfig.FmtJson, "json", "j", false, "log event as json format")
     rootCmd.PersistentFlags().StringVarP(&gconfig.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
     // 常规ELF库hook设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.Library, "lib", "l", "libc.so", "lib name or lib full path, default is libc.so")

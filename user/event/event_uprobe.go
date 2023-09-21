@@ -2,6 +2,7 @@ package event
 
 import (
     "encoding/binary"
+    "encoding/json"
     "fmt"
     "stackplz/user/config"
     "stackplz/user/util"
@@ -77,8 +78,34 @@ func (this *UprobeEvent) GetUUID() string {
     return s
 }
 
-func (this *UprobeEvent) String() string {
+func (this *UprobeEvent) JsonString(stack_str string) string {
+    v := config.UprobeFmt{}
+    v.Ts = this.Ts
+    v.Event = fmt.Sprintf("uprobe_%d", this.probe_index.Index)
+    v.HostTid = this.HostTid
+    v.HostPid = this.HostPid
+    v.Tid = this.Tid
+    v.Pid = this.Pid
+    v.Uid = this.Uid
+    v.Comm = util.B2STrim(this.Comm[:])
+    v.Argnum = this.Argnum
+    v.Stack = stack_str
+    v.LR = fmt.Sprintf("0x%x", this.lr.Address)
+    v.SP = fmt.Sprintf("0x%x", this.sp.Address)
+    v.PC = fmt.Sprintf("0x%x", this.pc.Address)
+    v.Arg_str = this.arg_str
+    data, err := json.Marshal(v)
+    if err != nil {
+        panic(err)
+    }
+    return string(data)
+}
 
+func (this *UprobeEvent) String() string {
+    stack_str := this.GetStackTrace("")
+    if this.mconf.FmtJson {
+        return this.JsonString(stack_str)
+    }
     var lr_str string
     var pc_str string
     if this.mconf.GetOff {
@@ -91,7 +118,6 @@ func (this *UprobeEvent) String() string {
 
     var s string
     s = fmt.Sprintf("[%s] %s%s %s %s SP:0x%x", this.GetUUID(), this.uprobe_point.PointName, this.arg_str, lr_str, pc_str, this.sp.Address)
-    s = this.GetStackTrace(s)
 
-    return s
+    return s + stack_str
 }
