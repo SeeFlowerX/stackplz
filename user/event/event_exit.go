@@ -67,10 +67,9 @@ func (this *ExitEvent) ParseContext() (err error) {
     }
     if this.mconf.FmtJson {
         this.logger.Printf(this.JsonString(""))
+    } else if this.mconf.Debug {
+        s := fmt.Sprintf("[ExitEvent] pid=%d ppid=%d tid=%d ptid=%d time=%d", this.Pid, this.Ppid, this.Tid, this.Ptid, this.Time)
+        this.logger.Printf(s)
     }
-    // if this.mconf.Debug {
-    //     s := fmt.Sprintf("[ExitEvent] pid=%d ppid=%d tid=%d ptid=%d time=%d", this.Pid, this.Ppid, this.Tid, this.Ptid, this.Time)
-    //     this.logger.Printf(s)
-    // }
     return nil
 }

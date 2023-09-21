@@ -483,11 +483,10 @@ func (this *Mmap2Event) ParseContext() (err error) {
     this.Filename = util.B2STrim(tmp)
     if this.mconf.FmtJson {
         this.logger.Printf(this.JsonString(""))
+    } else if this.mconf.Debug {
+        s := fmt.Sprintf("[Mmap2Event] pid=%d tid=%d addr=0x%x len=0x%x pgoff=0x%x mag=%d min=%d ino=%d ino_generation=%d prot=0x%x flags=0x%x <%s>", this.Pid, this.Tid, this.Addr, this.Len, this.Pgoff, this.Maj, this.Min, this.Ino, this.Ino_generation, this.Prot, this.Flags, this.Filename)
+        this.logger.Printf(s)
     }
-    // if this.mconf.Debug {
-    //     s := fmt.Sprintf("[Mmap2Event] pid=%d tid=%d addr=0x%x len=0x%x pgoff=0x%x mag=%d min=%d ino=%d ino_generation=%d prot=0x%x flags=0x%x <%s>", this.Pid, this.Tid, this.Addr, this.Len, this.Pgoff, this.Maj, this.Min, this.Ino, this.Ino_generation, this.Prot, this.Flags, this.Filename)
-    //     this.logger.Printf(s)
-    // }
     maps_helper.UpdateMaps(this)
     return nil
 }

@@ -56,10 +56,9 @@ func (this *CommEvent) ParseContext() (err error) {
     this.Comm = util.B2STrim(tmp)
     if this.mconf.FmtJson {
         this.logger.Printf(this.JsonString(""))
+    } else if this.mconf.Debug {
+        s := fmt.Sprintf("[CommEvent] pid=%d tid=%d comm=<%s>", this.Pid, this.Tid, this.Comm)
+        this.logger.Printf(s)
     }
-    // if this.mconf.Debug {
-    //     s := fmt.Sprintf("[CommEvent] pid=%d tid=%d comm=<%s>", this.Pid, this.Tid, this.Comm)
-    //     this.logger.Printf(s)
-    // }
     return nil
 }
