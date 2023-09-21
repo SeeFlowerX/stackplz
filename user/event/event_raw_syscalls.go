@@ -11,7 +11,6 @@ import (
 type SyscallEvent struct {
     ContextEvent
     UUID         string
-    Stackinfo    string
     RegsBuffer   RegsBuf
     UnwindBuffer UnwindBuf
     nr_point     *config.SysCallArgs
