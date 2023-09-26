@@ -16,6 +16,23 @@ stackplz是一款基于eBPF的堆栈追踪工具，仅适用于Android平台（�
 
 - root权限，系统内核版本5.10+（可在设置中查看或执行`uname -r`查看）
 
+常有人问什么设备适合，推荐如下（偏贵的设备就不推荐了）：
+
+| 型号 | 代号 | 版本 | 说明 | 推荐度 |
+| :- | :- | :- | :- | :- |
+| Pixel 6 | oriole | 5.10 | 官方出品 | ** |
+| Redmi Note 11T Pro | xaga | 5.10 | 略过时 | ** |
+| Redmi Note 12R | sky | 5.10 | 性价比 | *** |
+| Redmi Note 12 | topaz | 5.15 | 4G海外版 | * |
+| Redmi Note 12 Turbo | marble | 5.10 | 略贵 | * |
+| Redmi Note 13 | gold | 5.10 | 新出不贵 | ** |
+
+其他环境方案：
+
+- arm开发板刷安卓，5.10+内核
+- arm开发板 + Docker + ReDroid，5.10+内核
+- M1/M2 + 安卓官方arm64模拟器，5.10+内核
+
 # 使用
 
 从Releases或者Github Action下载最新预编译好的二进制文件即可
@@ -317,7 +334,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 # 交流
 
-有关eBPF on Android系列可以[加群交流](./images/Snipaste_2023-09-16_19-19-23.png)
+有关eBPF on Android系列可以[加群交流](./images/Snipaste_2023-09-26_23-41-47.png)
 
 个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 
