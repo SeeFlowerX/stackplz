@@ -361,7 +361,6 @@ func (this *MStack) update_arg_filter() {
     // ./stackplz -n com.starbucks.cn -s openat:f0.f1.f2 -f w:/system -f w:/dev -f b:/system/lib64 -o tmp.log
     // ./stackplz -n com.starbucks.cn,iso -s execve,openat:f0 -f r:/system/bin/su:::/system/bin/zz -o tmp_s.log
     // ./stackplz -n com.starbucks.cn,iso -w popen[str.f0.f1] -f r:mount:::mounx -f "r:which su:::which zz" -o tmp_w.log
-    // ./stackplz -n com.starbucks.cn -w strstr[str:x1:f0] -f w:/data/local/tmp -o tmp.log
     // r/replace 文本替换逻辑会比较复杂 应该考虑分离
     for _, filter := range this.mconf.ArgFilterRule {
         filter_key := filter.Filter_index
