@@ -46,8 +46,8 @@ static __always_inline int save_bytes_to_buf(event_data_t *event, void *ptr, u32
 {
     // Data saved to submit buf: [index][size][ ... bytes ... ]
 
-    if (size == 0)
-        return 0;
+    // if (size == 0)
+    //     return 0;
 
     if (event->buf_off > ARGS_BUF_SIZE - 1)
         return 0;
@@ -67,10 +67,16 @@ static __always_inline int save_bytes_to_buf(event_data_t *event, void *ptr, u32
         return 0;
 
     // Read bytes into buffer
-    if (bpf_probe_read(&(event->args[event->buf_off + 1 + sizeof(int)]),
-                       size & (MAX_BYTES_ARR_SIZE - 1),
-                       ptr) == 0) {
-        // We update buf_off only if all writes were successful
+    if (size > 0) {
+        if (bpf_probe_read(&(event->args[event->buf_off + 1 + sizeof(int)]),
+                        size & (MAX_BYTES_ARR_SIZE - 1),
+                        ptr) == 0) {
+            // We update buf_off only if all writes were successful
+            event->buf_off += size + 1 + sizeof(int);
+            event->context.argnum++;
+            return 1;
+        }
+    } else {
         event->buf_off += size + 1 + sizeof(int);
         event->context.argnum++;
         return 1;
