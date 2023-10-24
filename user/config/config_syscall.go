@@ -209,6 +209,7 @@ var UINT32_ARR = ARRAY_T.NewArrayArgType(TYPE_ARRAY_UINT32, uint32(unsafe.Sizeof
 // 例如 pipe2 的 pipefd 参数 是一个 int[2]
 // 那么设定 read_count 为2
 var PIPEFD_T = INT32_ARR.NewReadCount(2)
+var SOCKET_SV = INT32_ARR.NewReadCount(2)
 
 // buffer数组
 // 单个元素长度都是 1
@@ -352,7 +353,7 @@ func init() {
 	Register(&SArgs{114, PA("clock_getres", []PArg{A("clockid", INT), B("res", TIMESPEC)})})
 	Register(&SArgs{115, PA("clock_nanosleep", []PArg{A("clockid", INT), A("flags", EXP_INT), A("request", TIMESPEC), B("remain", TIMESPEC)})})
 	Register(&SArgs{116, PA("syslog", []PArg{A("type", INT), A("bufp", STRING), A("len", INT)})})
-	Register(&SArgs{117, PA("ptrace", []PArg{A("request", INT), A("pid", INT), A("addr", POINTER), A("data", POINTER)})})
+	Register(&SArgs{117, PA("ptrace", []PArg{A("request", INT), A("pid", EXP_INT), A("addr", POINTER), A("data", POINTER)})})
 	Register(&SArgs{118, PA("sched_setparam", []PArg{A("pid", INT), A("param", POINTER)})})
 	Register(&SArgs{119, PA("sched_setscheduler", []PArg{A("pid", INT), A("policy", INT), A("param", POINTER)})})
 	Register(&SArgs{120, PA("sched_getscheduler", []PArg{A("pid", INT)})})
@@ -434,7 +435,7 @@ func init() {
 	Register(&SArgs{196, PA("shmat", []PArg{A("shmid", INT), A("shmaddr", POINTER), A("shmflg", INT)})})
 	Register(&SArgs{197, PA("shmdt", []PArg{A("shmaddr", POINTER)})})
 	Register(&SArgs{198, PAI("socket", []PArg{A("domain", EXP_INT), A("type", EXP_INT), A("protocol", EXP_INT)})})
-	Register(&SArgs{199, PAI("socketpair", []PArg{A("domain", EXP_INT), A("type", EXP_INT), A("protocol", EXP_INT), A("sv", POINTER)})})
+	Register(&SArgs{199, PAI("socketpair", []PArg{A("domain", EXP_INT), A("type", EXP_INT), A("protocol", EXP_INT), B("sv", SOCKET_SV)})})
 	Register(&SArgs{200, PAI("bind", []PArg{A("sockfd", EXP_INT), A("addr", SOCKADDR), A("addrlen", EXP_INT)})})
 	Register(&SArgs{201, PAI("listen", []PArg{A("sockfd", EXP_INT), A("backlog", INT)})})
 	Register(&SArgs{202, PAI("accept", []PArg{A("sockfd", EXP_INT), A("addr", SOCKADDR), A("addrlen", EXP_INT)})})
