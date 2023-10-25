@@ -48,6 +48,7 @@ func NewGlobalConfig() *GlobalConfig {
         "/system/lib64",
         "/apex/com.android.art/lib64",
         "/apex/com.android.conscrypt/lib64",
+        "/apex/com.android.runtime/bin",
         "/apex/com.android.runtime/lib64/bionic",
     }
     config.LibraryDirs = append(config.LibraryDirs, lib_search_path...)
