@@ -30,6 +30,8 @@ type SigInfo struct {
 	Si_signo int32
 	Si_errno int32
 	Si_code  int32
+	// 解决对齐的问题...
+	_ int32
 	// 这是个union字段 类型根据具体的signal决定
 	Sifields uint64
 }
@@ -124,10 +126,28 @@ type Arg_str struct {
 	Index uint8
 	Len   uint32
 }
+
+func (this *Arg_str) Format(payload []byte) string {
+	// hexdump := util.HexDumpPure(payload)
+	hexdump := util.PrettyByteSlice(payload)
+	return fmt.Sprintf("(%s)", hexdump)
+}
+
+func (this *Arg_str) HexFormat(payload []byte, color bool) string {
+	var hexdump string
+	if color {
+		hexdump = util.HexDumpGreen(payload)
+	} else {
+		hexdump = util.HexDumpPure(payload)
+	}
+	return fmt.Sprintf("(\n%s)", hexdump)
+}
+
 type Arg_str_arr struct {
 	Index uint8
 	Count uint8
 }
+
 type Arg_Timespec struct {
 	Index uint8
 	Len   uint32
@@ -160,20 +180,15 @@ type Arg_Pthread_attr_t struct {
 	Pthread_attr_t
 }
 
-func (this *Arg_str) Format(payload []byte) string {
-	// hexdump := util.HexDumpPure(payload)
-	hexdump := util.PrettyByteSlice(payload)
-	return fmt.Sprintf("(%s)", hexdump)
-}
-
-func (this *Arg_str) HexFormat(payload []byte, color bool) string {
-	var hexdump string
-	if color {
-		hexdump = util.HexDumpGreen(payload)
-	} else {
-		hexdump = util.HexDumpPure(payload)
-	}
-	return fmt.Sprintf("(\n%s)", hexdump)
+func (this *Arg_Pthread_attr_t) Format() string {
+	var fields []string
+	fields = append(fields, fmt.Sprintf("Flags=0x%x", this.Flags))
+	fields = append(fields, fmt.Sprintf("Stack_base=0x%x", this.Stack_base))
+	fields = append(fields, fmt.Sprintf("Stack_size=0x%x", this.Stack_size))
+	fields = append(fields, fmt.Sprintf("Guard_size=0x%x", this.Guard_size))
+	fields = append(fields, fmt.Sprintf("Sched_policy=0x%x", this.Sched_policy))
+	fields = append(fields, fmt.Sprintf("Sched_priority=0x%x", this.Sched_priority))
+	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 type Arg_Timeval struct {
@@ -194,6 +209,17 @@ type Arg_Sigaction struct {
 	Len   uint32
 	Sigaction
 }
+
+func (this *Arg_Sigaction) Format() string {
+	var fields []string
+	fields = append(fields, fmt.Sprintf("sa_handler=0x%x", this.Sa_handler))
+	fields = append(fields, fmt.Sprintf("sa_sigaction=0x%x", this.Sa_sigaction))
+	fields = append(fields, fmt.Sprintf("sa_mask=0x%x", this.Sa_mask))
+	fields = append(fields, fmt.Sprintf("sa_flags=0x%x", this.Sa_flags))
+	fields = append(fields, fmt.Sprintf("sa_restorer=0x%x", this.Sa_restorer))
+	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
 type Arg_Pollfd struct {
 	Index uint8
 	Len   uint32
@@ -208,11 +234,6 @@ type Arg_Stat_t struct {
 	Index uint8
 	Len   uint32
 	syscall.Stat_t
-}
-type Arg_Statfs_t struct {
-	Index uint8
-	Len   uint32
-	syscall.Statfs_t
 }
 
 // vscode 配置下面的部分 这样才有正确的代码提示
@@ -241,6 +262,13 @@ func (this *Arg_Stat_t) Format() string {
 	fields = append(fields, fmt.Sprintf("x__glibc_reserved=0x%x,0x%x", this.X__glibc_reserved[0], this.X__glibc_reserved[1]))
 	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
+
+type Arg_Statfs_t struct {
+	Index uint8
+	Len   uint32
+	syscall.Statfs_t
+}
+
 func (this *Arg_Statfs_t) Format() string {
 	var fields []string
 	fields = append(fields, fmt.Sprintf("type=%d", this.Type))
@@ -255,16 +283,6 @@ func (this *Arg_Statfs_t) Format() string {
 	fields = append(fields, fmt.Sprintf("frsize=%d", this.Frsize))
 	fields = append(fields, fmt.Sprintf("flags=%d", this.Flags))
 	fields = append(fields, fmt.Sprintf("spare=0x%x,0x%x,0x%x,0x%x", this.Spare[0], this.Spare[1], this.Spare[2], this.Spare[3]))
-	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
-}
-
-func (this *Arg_Sigaction) Format() string {
-	var fields []string
-	fields = append(fields, fmt.Sprintf("sa_handler=0x%x", this.Sa_handler))
-	fields = append(fields, fmt.Sprintf("sa_sigaction=0x%x", this.Sa_sigaction))
-	fields = append(fields, fmt.Sprintf("sa_mask=0x%x", this.Sa_mask))
-	fields = append(fields, fmt.Sprintf("sa_flags=0x%x", this.Sa_flags))
-	fields = append(fields, fmt.Sprintf("sa_restorer=0x%x", this.Sa_restorer))
 	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
