@@ -20,6 +20,8 @@ type GlobalConfig struct {
     ShowRegs     bool
     GetOff       bool
     UprobeSignal string
+    Rpc          bool
+    RpcPath      string
     Debug        bool
     Quiet        bool
     Buffer       uint32

@@ -168,6 +168,11 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         os.Exit(0)
     }
 
+    if gconfig.Rpc {
+        fmt.Printf("rpc mode, listen path:%s\n", gconfig.RpcPath)
+        return nil
+    }
+
     mconfig.Parse_Idlist("UidWhitelist", gconfig.Uid)
     mconfig.Parse_Idlist("UidBlacklist", gconfig.NoUid)
     mconfig.Parse_Idlist("PidWhitelist", gconfig.Pid)
@@ -372,7 +377,10 @@ func runFunc(command *cobra.Command, args []string) {
     stopper := make(chan os.Signal, 1)
     signal.Notify(stopper, os.Interrupt, syscall.SIGTERM)
     ctx, cancelFun := context.WithCancel(context.TODO())
-
+    if gconfig.Rpc {
+        util.StartRpcServer(stopper, gconfig.RpcPath)
+        os.Exit(0)
+    }
     var runMods uint8
     var runModules = make(map[string]module.IModule)
     var wg sync.WaitGroup
@@ -568,6 +576,8 @@ func init() {
     rootCmd.PersistentFlags().StringArrayVarP(&gconfig.ArgFilter, "filter", "f", []string{}, "arg filter rule")
 
     rootCmd.PersistentFlags().StringVar(&gconfig.UprobeSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.Rpc, "rpc", false, "enable rpc")
+    rootCmd.PersistentFlags().StringVar(&gconfig.RpcPath, "rpc-path", "/dev/socket/stackplz_server", "rpc path")
     // 硬件断点设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.BrkAddr, "brk", "", "", "set hardware breakpoint address")
     rootCmd.PersistentFlags().StringVarP(&gconfig.BrkLib, "brk-lib", "", "", "as library base address")
