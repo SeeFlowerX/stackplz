@@ -344,6 +344,8 @@ func (this *SyscallConfig) Parse_SysWhitelist(text string) {
             syscall_items = append(syscall_items, []string{"rt_sigtimedwait", "rt_sigqueueinfo", "rt_sigreturn", "rt_tgsigqueueinfo"}...)
         case "%kill":
             syscall_items = append(syscall_items, []string{"kill", "tkill", "tgkill"}...)
+        case "%exit":
+            syscall_items = append(syscall_items, []string{"exit", "exit_group"}...)
         case "%dup":
             syscall_items = append(syscall_items, []string{"dup", "dup3"}...)
         case "%epoll":

@@ -206,6 +206,8 @@ pid + 偏移 + 库文件
     - rt_sigtimedwait,rt_sigqueueinfo,rt_sigreturn,rt_tgsigqueueinfo
 - %kill
     - kill,tkill,tgkill
+- %exit
+    - exit,exit_group
 - %dup
     - dup,dup3
 - %epoll
@@ -334,7 +336,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 # 交流
 
-有关eBPF on Android系列可以[加群交流](./images/Snipaste_2023-10-23_20-32-14.png)
+[stackplz交流群](./images/Snipaste_2023-11-07_20-02-20.png)
 
 个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 
