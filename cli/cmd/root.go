@@ -18,6 +18,7 @@ import (
     "stackplz/user/config"
     "stackplz/user/event"
     "stackplz/user/module"
+    "stackplz/user/rpc"
     "stackplz/user/util"
     "strconv"
     "strings"
@@ -323,6 +324,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             return errors.New(fmt.Sprintf("BrkLen %d invaild, support [1, 8]", gconfig.BrkLen))
         }
         mconfig.BrkLen = gconfig.BrkLen
+        mconfig.BrkPid = gconfig.BrkPid
         infos := strings.Split(gconfig.BrkAddr, ":")
         if len(infos) > 2 {
             return errors.New(fmt.Sprintf("parse for %s failed, format invaild", gconfig.BrkAddr))
@@ -382,7 +384,8 @@ func runFunc(command *cobra.Command, args []string) {
     signal.Notify(stopper, os.Interrupt, syscall.SIGTERM)
     ctx, cancelFun := context.WithCancel(context.TODO())
     if gconfig.Rpc {
-        util.StartRpcServer(stopper, gconfig.RpcPath)
+        rpc.SetupRpc(ctx, Logger, gconfig)
+        rpc.StartRpcServer(stopper, gconfig.RpcPath)
         os.Exit(0)
     }
     var runMods uint8
@@ -581,9 +584,10 @@ func init() {
 
     rootCmd.PersistentFlags().StringVar(&gconfig.UprobeSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
     rootCmd.PersistentFlags().BoolVar(&gconfig.Rpc, "rpc", false, "enable rpc")
-    rootCmd.PersistentFlags().StringVar(&gconfig.RpcPath, "rpc-path", "/dev/socket/stackplz_server", "rpc path")
+    rootCmd.PersistentFlags().StringVar(&gconfig.RpcPath, "rpc-path", "127.0.0.1:41718", "rpc path, default 127.0.0.1:41718")
     // 硬件断点设定
     rootCmd.PersistentFlags().StringVar(&gconfig.BrkAddr, "brk", "", "set hardware breakpoint address")
+    rootCmd.PersistentFlags().IntVar(&gconfig.BrkPid, "brk-pid", -1, "set hardware breakpoint pid")
     rootCmd.PersistentFlags().StringVar(&gconfig.BrkLib, "brk-lib", "", "as library base address")
     rootCmd.PersistentFlags().Uint64Var(&gconfig.BrkLen, "brk-len", 4, "hardware breakpoint length, default 4, support [1, 8]")
     // 缓冲区大小设定 单位M

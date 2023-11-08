@@ -19,6 +19,7 @@ const (
     SYSCALL_ENTER uint32 = iota + 456
     SYSCALL_EXIT
     UPROBE_ENTER
+    HW_BREAKPOINT
 )
 
 type IEventStruct interface {
@@ -148,11 +149,8 @@ func (this *CommonEvent) NewUprobeEvent(event IEventStruct) IEventStruct {
     return p.NewUprobeEvent()
 }
 
-func (this *CommonEvent) NewBrkEvent(event IEventStruct) IEventStruct {
-    p, ok := (event).(*ContextEvent)
-    if !ok {
-        panic("CommonEvent.NewBrkEvent() cast to ContextEvent failed")
-    }
+func (this *CommonEvent) NewBrkEvent() IEventStruct {
+    p := &ContextEvent{CommonEvent: *this}
     return p.NewBrkEvent()
 }
 
@@ -169,7 +167,6 @@ func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
     // 另外也要注意 PERF_RECORD_MMAP2 事件和 syscall 等事件的区别
     // 前者无法预先设置过滤 后者可以
 
-    var err error
     var event IEventStruct
     switch this.rec.RecordType {
     case unix.PERF_RECORD_COMM:
@@ -190,11 +187,12 @@ func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
         }
     case unix.PERF_RECORD_SAMPLE:
         {
+            if this.mconf.BrkAddr != 0 {
+                event = this.NewBrkEvent()
+                break
+            }
             // 先把需要的基础信息解析出来
             event = this.NewContextEvent()
-            if err != nil {
-                return nil, err
-            }
             EventId := event.GetEventId()
             // 最后具体的 eventid 转换到具体的 event
             switch EventId {
@@ -208,14 +206,10 @@ func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
                 }
             default:
                 {
-                    if this.mconf.BrkAddr != 0 {
-                        event = this.NewBrkEvent(event)
-                    } else {
-                        event = this
-                        this.logger.Printf("CommonEvent.ParseEvent() unsupported EventId:%d\n", EventId)
-                        this.logger.Printf("CommonEvent.ParseEvent() PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
-                        return nil, errors.New(fmt.Sprintf("PERF_RECORD_SAMPLE EventId is %d", EventId))
-                    }
+                    event = this
+                    this.logger.Printf("CommonEvent.ParseEvent() unsupported EventId:%d\n", EventId)
+                    this.logger.Printf("CommonEvent.ParseEvent() PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
+                    return nil, errors.New(fmt.Sprintf("PERF_RECORD_SAMPLE EventId is %d", EventId))
                 }
             }
         }
@@ -224,7 +218,7 @@ func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
             return nil, errors.New(fmt.Sprintf("unsupported RecordType:%d", this.rec.RecordType))
         }
     }
-    return event, err
+    return event, nil
 }
 
 func (this *CommonEvent) SetRecord(rec perf.Record) {

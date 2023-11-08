@@ -512,6 +512,12 @@ func FindLibInMaps(pid uint32, brk_lib string) (LibInfo, error) {
     return info, err
 }
 
+func CacheMaps(pid uint32) {
+    maps_lock.Lock()
+    defer maps_lock.Unlock()
+    maps_helper.ParseMaps(pid, true)
+}
+
 // func init() {
 //     ddd := maps_helper.GetOffset(13117, 0x78cb40e658)
 //     fmt.Println(ddd)

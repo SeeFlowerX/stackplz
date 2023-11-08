@@ -202,6 +202,7 @@ func (this *Module) getExtraOptions(em *ebpf.Map) perf.ExtraPerfOptions {
         UnwindStack:       this.mconf.UnwindStack,
         ShowRegs:          ShowRegs,
         PerfMmap:          IsMmapEvent,
+        BrkPid:            this.mconf.BrkPid,
         BrkAddr:           this.mconf.BrkAddr,
         BrkLen:            this.mconf.BrkLen,
         BrkType:           this.mconf.BrkType,

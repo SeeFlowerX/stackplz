@@ -43,6 +43,7 @@ func (this *BrkEvent) Check() bool {
 }
 
 func (this *BrkEvent) ParseContext() (err error) {
+    this.EventId = HW_BREAKPOINT
     this.buf = bytes.NewBuffer(this.rec.RawSample)
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
         return err
@@ -63,6 +64,13 @@ func (this *BrkEvent) Clone() IEventStruct {
     return event
 }
 
+func (this *BrkEvent) GetPid() uint32 {
+    if len(this.mconf.PidWhitelist) == 1 {
+        return this.mconf.PidWhitelist[0]
+    }
+    return uint32(this.mconf.BrkPid)
+}
+
 func (this *BrkEvent) ParseContextStack() {
     this.Stackinfo = ""
     if this.rec.ExtraOptions.UnwindStack {
@@ -74,12 +82,12 @@ func (this *BrkEvent) ParseContextStack() {
         }
         // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
-        content, err := util.ReadMapsByPid(this.mconf.PidWhitelist[0])
-        if err != nil {
+        content, err := util.ReadMapsByPid(this.GetPid())
+        if err != nil || this.mconf.ManualStack {
             // 直接读取 maps 失败 那么从 mmap2 事件中获取
             // 根据测试结果 有这样的情况 -> 即 fork 产生的子进程 那么应该查找其父进程 mmap2 事件
             maps_helper.SetLogger(this.logger)
-            info, err := maps_helper.GetStack(this.mconf.PidWhitelist[0], this.UnwindBuffer)
+            info, err := maps_helper.GetStack(this.GetPid(), this.UnwindBuffer)
             if err != nil {
                 this.logger.Printf("Error when GetStack:%v", err)
             } else {

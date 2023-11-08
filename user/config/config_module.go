@@ -471,6 +471,7 @@ type ModuleConfig struct {
     ExternalBTF  string
     Is32Bit      bool
     Buffer       uint32
+    BrkPid       int
     BrkAddr      uint64
     BrkLen       uint64
     BrkType      uint32

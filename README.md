@@ -234,6 +234,13 @@ ebpf中`bpf_probe_write_user`需要预先指定写入数据大小，本项目暂
 
 替换功能仅做演示，用于展示ebpf操作数据的能力，如果要改为较为灵活的方式，会涉及常量编辑等功能，暂不实现
 
+3.11 支持远程硬件断点，frida联动
+
+- server 监听命令 ./stackplz --rpc --stack
+- client frida脚本参考 [frida_hw_brk.js](./frida_hw_brk.js)
+- 端口可以通过`--rpc-path`修改，默认`127.0.0.1:41718`
+- 用其他发socket也可以，自行实现
+
 ---
 
 使用提示：
