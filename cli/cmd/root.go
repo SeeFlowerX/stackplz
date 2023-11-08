@@ -319,6 +319,10 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
 
     if gconfig.BrkAddr != "" && strings.HasPrefix(gconfig.BrkAddr, "0x") {
+        if gconfig.BrkLen <= 0 && gconfig.BrkLen > 8 {
+            return errors.New(fmt.Sprintf("BrkLen %d invaild, support [1, 8]", gconfig.BrkLen))
+        }
+        mconfig.BrkLen = gconfig.BrkLen
         infos := strings.Split(gconfig.BrkAddr, ":")
         if len(infos) > 2 {
             return errors.New(fmt.Sprintf("parse for %s failed, format invaild", gconfig.BrkAddr))
@@ -579,8 +583,9 @@ func init() {
     rootCmd.PersistentFlags().BoolVar(&gconfig.Rpc, "rpc", false, "enable rpc")
     rootCmd.PersistentFlags().StringVar(&gconfig.RpcPath, "rpc-path", "/dev/socket/stackplz_server", "rpc path")
     // 硬件断点设定
-    rootCmd.PersistentFlags().StringVarP(&gconfig.BrkAddr, "brk", "", "", "set hardware breakpoint address")
-    rootCmd.PersistentFlags().StringVarP(&gconfig.BrkLib, "brk-lib", "", "", "as library base address")
+    rootCmd.PersistentFlags().StringVar(&gconfig.BrkAddr, "brk", "", "set hardware breakpoint address")
+    rootCmd.PersistentFlags().StringVar(&gconfig.BrkLib, "brk-lib", "", "as library base address")
+    rootCmd.PersistentFlags().Uint64Var(&gconfig.BrkLen, "brk-len", 4, "hardware breakpoint length, default 4, support [1, 8]")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     // 堆栈输出设定

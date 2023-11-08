@@ -27,6 +27,7 @@ type GlobalConfig struct {
     Buffer       uint32
     BrkAddr      string
     BrkLib       string
+    BrkLen       uint64
     LogFile      string
     DataDir      string
     LibraryDirs  []string

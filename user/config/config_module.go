@@ -472,6 +472,7 @@ type ModuleConfig struct {
     Is32Bit      bool
     Buffer       uint32
     BrkAddr      uint64
+    BrkLen       uint64
     BrkType      uint32
     BrkKernel    bool
     Color        bool
