@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 // 结合其他项目构想一种新的方案 便于后续增补各类结构体的数据解析
@@ -78,7 +79,7 @@ func (this *PointArg) Format(p IWatchPoint, value uint64) string {
 	switch this.ArgType {
 	case UMODE_T:
 		value_fixed := int32(uint16(value))
-		this.ArgValue = fmt.Sprintf("%s=0x%x%s", this.ArgName, value_fixed, p.ParseMode(value_fixed))
+		this.ArgValue = fmt.Sprintf("%s=0o%03s", this.ArgName, strconv.FormatInt(int64(value_fixed), 8))
 		return this.ArgValue
 	}
 	switch this.AliasType {
