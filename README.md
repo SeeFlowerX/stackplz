@@ -75,7 +75,7 @@ cd /data/local/tmp && ./stackplz --prepare
 3.3 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook，并打印堆栈
 
 ```bash
-./stackplz -p 37919 --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
+./stackplz --brk-pid `pidof com.sfx.ebpf` --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
 ```
 
 ![](./images/Snipaste_2023-09-08_17-08-42.png)
@@ -100,13 +100,24 @@ kill -SIGCONT 4326
 pid + 绝对地址
 
 ```bash
-./stackplz -p 9613 --brk 0x70ddfd63f0:x --stack
+./stackplz --brk-pid `pidof com.sfx.ebpf` --brk 0x70ddfd63f0:x --stack
 ```
 
 pid + 偏移 + 库文件
 
 ```bash
-./stackplz -p 3102 --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
+./stackplz --brk-pid `pidof com.sfx.ebpf` --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
+```
+
+对内核中的函数下硬件断点：
+
+**！！！注意，内核函数通常触发非常频繁，该操作可能导致设备重启，请谨慎使用，原因不明**
+
+```bash
+echo 1 > /proc/sys/kernel/kptr_restrict
+cat /proc/kallsyms  | grep "T sys_"
+./stackplz --brk 0xffffff93c5beb634:x --brk-pid `pidof com.sfx.ebpf` --stack
+./stackplz --brk 0xffffffc0003654dc:x --brk-pid `pidof com.sfx.ebpf` --regs
 ```
 
 3.6 以寄存器的值作为大小读取数据、或者指定大小

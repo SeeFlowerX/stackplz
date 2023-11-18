@@ -129,7 +129,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         return err
     }
     if !has_bpf_probe_read_user {
-        logger.Fatalf("not support for this machine, has no bpf_probe_read_user")
+        logger.Printf("!!! may not support for this machine, has no bpf_probe_read_user")
     }
 
     // 第一步先释放用于获取堆栈信息的外部库
@@ -305,14 +305,10 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 3. watch breakpoint
     var brk_base uint64 = 0x0
     if gconfig.BrkLib != "" {
-        if gconfig.Pid == "" {
-            return errors.New("plz set pid when use breakpoint")
+        if gconfig.BrkPid <= 0 {
+            return errors.New("must set --brk-pid when use --brk-lib option")
         }
-        value, err := strconv.ParseUint(gconfig.Pid, 10, 32)
-        if err != nil {
-            return err
-        }
-        lib_info, err := event.FindLibInMaps(uint32(value), gconfig.BrkLib)
+        lib_info, err := event.FindLibInMaps(uint32(gconfig.BrkPid), gconfig.BrkLib)
         if err != nil {
             return err
         }
@@ -371,7 +367,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         } else {
             mconfig.BrkKernel = false
         }
-        logger.Printf("set breakpoint addr:0x%x", mconfig.BrkAddr)
+        logger.Printf("set breakpoint at kernel:%t, addr:0x%x", mconfig.BrkKernel, mconfig.BrkAddr)
     }
     if !enable_hook {
         logger.Fatal("hook nothing, plz set -w/--point or -s/--syscall or --brk")

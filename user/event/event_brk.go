@@ -30,6 +30,10 @@ func (this *BrkEvent) Check() bool {
     if this.Pid == this.mconf.SelfPid {
         return false
     }
+    // 必须是来自给定 pid 的事件
+    if this.Pid != this.GetPid() {
+        return false
+    }
     // 排除内核
     // if this.Pid == 0 {
     //     return false
@@ -47,6 +51,9 @@ func (this *BrkEvent) ParseContext() (err error) {
     this.buf = bytes.NewBuffer(this.rec.RawSample)
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
         return err
+    }
+    if this.Pid != this.GetPid() {
+        return nil
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
         return err
