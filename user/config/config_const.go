@@ -1,6 +1,6 @@
 package config
 
-const MAX_COUNT = 20
+const MAX_COUNT = 1024
 const MAX_FILTER_COUNT = 6
 
 const (
