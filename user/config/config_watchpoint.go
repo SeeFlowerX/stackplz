@@ -11,6 +11,7 @@ import (
 
 const MAX_IOV_COUNT = 6
 const MAX_POINT_ARG_COUNT = 10
+const MAX_OP_COUNT = 256
 
 const FILTER_INDEX_NONE uint32 = 0x0
 const FILTER_INDEX_SKIP uint32 = 0x1234

@@ -73,6 +73,19 @@ enum event_id_e
     UPROBE_ENTER
 };
 
+enum op_code_e
+{
+    OP_LOAD_REG_INDEX = 233,
+    OP_LOAD_READ_LEN,
+    OP_LOAD_READ_COUNT,
+    OP_ADD_OFFSET,
+    OP_READ_REG,
+    OP_RESET_CTX,
+    OP_READ_POINTER,
+    OP_READ_STRUCT,
+    OP_READ_STRING
+};
+
 enum arm64_reg_e
 {
     REG_ARM64_X0 = 0,
@@ -163,6 +176,18 @@ enum point_flag_e
 	SYS_EXIT,
 	UPROBE_ENTER_READ
 };
+
+typedef struct op_ctx {
+    u8 save_index;
+    u8 reg_index;
+    u64 read_addr;
+    u32 read_len;
+} op_ctx_t;
+
+typedef struct op_config {
+    u32 code;
+    u64 value;
+} op_config_t;
 
 typedef struct event_context {
     u64 ts;
