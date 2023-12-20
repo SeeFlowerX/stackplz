@@ -352,9 +352,7 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 
 ![](./images/Snipaste_2022-11-13_14-19-38.png)
 
-# 交流
-
-[stackplz交流群](./images/Snipaste_2023-11-07_20-02-20.png)
+# 文章
 
 个人碎碎念太多，有关stackplz文章就不同步到本项目了，请移步博客查看：
 
