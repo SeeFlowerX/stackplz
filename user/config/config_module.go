@@ -282,6 +282,7 @@ type SyscallConfig struct {
     Enable           bool
     TraceMode        uint32
     SyscallPointArgs []*SyscallPointArgs_T
+    NextPointArgs    []*SyscallPointArgs_T
     SysWhitelist     []uint32
     SysBlacklist     []uint32
 }

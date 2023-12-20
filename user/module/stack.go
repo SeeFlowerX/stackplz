@@ -408,6 +408,29 @@ func (this *MStack) update_syscall_point_args() {
 
 }
 
+func (this *MStack) update_next_point_args() {
+    map_name := "next_point_args_map"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
+        panic("TraceMode TRACE_ALL not implemented yet")
+    } else {
+        for _, point_args := range this.mconf.SysCallConf.SyscallPointArgs {
+            err := bpf_map.Update(unsafe.Pointer(&point_args.NR), unsafe.Pointer(point_args), ebpf.UpdateAny)
+            if err != nil {
+                panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+            }
+        }
+    }
+
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+
+}
+
 func (this *MStack) update_syscall_config() {
     if !this.mconf.SysCallConf.IsEnable() {
         return

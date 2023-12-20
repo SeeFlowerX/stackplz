@@ -75,9 +75,10 @@ enum event_id_e
 
 enum op_code_e
 {
-    OP_LOAD_REG_INDEX = 233,
-    OP_LOAD_READ_LEN,
-    OP_LOAD_READ_COUNT,
+    OP_SKIP = 233,
+    OP_SET_REG_INDEX,
+    OP_SET_READ_LEN,
+    OP_SET_READ_COUNT,
     OP_ADD_OFFSET,
     OP_READ_REG,
     OP_RESET_CTX,

@@ -234,14 +234,16 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         if (unlikely(op == NULL)) return 0;
 
         switch (op->code) {
-            case OP_LOAD_REG_INDEX:
+            case OP_SKIP:
+                break;
+            case OP_SET_REG_INDEX:
                 op_ctx->reg_index = op->value;
                 break;
-            case OP_LOAD_READ_LEN:
+            case OP_SET_READ_LEN:
                 // read_len = 8;
                 op_ctx->read_len = op->value;
                 break;
-            case OP_LOAD_READ_COUNT:
+            case OP_SET_READ_COUNT:
                 op_ctx->read_len *= op->value;
                 break;
             case OP_ADD_OFFSET:
