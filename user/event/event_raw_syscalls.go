@@ -27,83 +27,90 @@ type SyscallEvent struct {
 type Arg_bytes = config.Arg_str
 
 func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
-    if this.mconf.Next {
-        this.logger.Printf("ParseContextSysEnterNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
-    }
-    this.logger.Printf("nr:%s", this.nr.Format())
+    // 输出json会更方便分析 next
+    // if this.mconf.Next {
+    //     this.logger.Printf("ParseContextSysEnterNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
+    // }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
         panic(err)
     }
-    this.logger.Printf("lr:%s", this.lr.Format())
     if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
         panic(err)
     }
-    this.logger.Printf("pc:%s", this.pc.Format())
     if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
         panic(err)
     }
-    this.logger.Printf("sp:%s", this.sp.Format())
     // 根据调用号解析剩余参数
     this.nr_point_next = config.GetSyscallPointByNR(this.nr.Value)
     if this.nr_point_next.Name != "sendmsg" {
         panic("only sendmsg now")
     }
     var results []string
-    for arg_index, point_arg := range this.nr_point_next.Args {
+    for _, point_arg := range this.nr_point_next.Args {
         var ptr config.Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(err)
         }
-        this.logger.Printf("arg_index:%d ptr:%s", arg_index, ptr.Format())
         switch point_arg.AliasType {
         case config.TYPE_MSGHDR:
             var arg_msghdr config.Arg_Msghdr
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_msghdr.Index); err != nil {
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg_msghdr); err != nil {
                 panic(err)
             }
-            this.logger.Printf("index=%d", arg_msghdr.Index)
-            results = append(results, fmt.Sprintf("index=%d", arg_msghdr.Index))
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_msghdr.Len); err != nil {
+            var control_buf config.Arg_str
+            if err = binary.Read(this.buf, binary.LittleEndian, &control_buf); err != nil {
                 panic(err)
             }
-            this.logger.Printf("len=%d", arg_msghdr.Len)
-            results = append(results, fmt.Sprintf("len=%d", arg_msghdr.Len))
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_msghdr.Msghdr); err != nil {
-                panic(err)
+            control_payload := []byte{}
+            if control_buf.Len > 0 {
+                control_payload = make([]byte, control_buf.Len)
+                if err = binary.Read(this.buf, binary.LittleEndian, &control_payload); err != nil {
+                    panic(err)
+                }
             }
-            this.logger.Printf("msghdr={%s}", arg_msghdr.Format())
-            results = append(results, arg_msghdr.Format())
+
+            // this.logger.Printf("control_buf=%s", control_buf.Format(control_payload))
+
             iov_len := arg_msghdr.Iovlen
             if iov_len > 6 {
                 iov_len = 6
             }
-            this.logger.Printf("iov_len={%d}", iov_len)
-            for i := 0; i < int(iov_len); i++ {
-                this.logger.Printf("iov_index=%d", i)
-
-                var iov_ptr config.Arg_reg
-                if err = binary.Read(this.buf, binary.LittleEndian, &iov_ptr); err != nil {
+            var iov_results []string
+            for iov_index := 0; iov_index < int(iov_len); iov_index++ {
+                var iov_value config.Arg_reg
+                if err = binary.Read(this.buf, binary.LittleEndian, &iov_value); err != nil {
                     panic(err)
                 }
-                this.logger.Printf("iov_ptr:%s", iov_ptr.Format())
+                // this.logger.Printf("iov_value:%s", iov_value.Format())
 
                 var arg_iovec config.Arg_Iovec_Fix_t
                 if err = binary.Read(this.buf, binary.LittleEndian, &arg_iovec.Arg_Iovec_Fix); err != nil {
                     panic(err)
                 }
-                this.logger.Printf("index:%d iovec={%s}", arg_iovec.Index, arg_iovec.Format())
+                // this.logger.Printf("index:%d iovec={%s}", arg_iovec.Index, arg_iovec.Format())
+
                 var iov_buf config.Arg_str
                 if err = binary.Read(this.buf, binary.LittleEndian, &iov_buf); err != nil {
                     panic(err)
                 }
-                payload := make([]byte, iov_buf.Len)
-                if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-                    panic(err)
+                // this.logger.Printf("index:%d iov_buf.Len={%d}", iov_buf.Index, iov_buf.Len)
+                payload := []byte{}
+                if iov_buf.Len > 0 {
+                    payload = make([]byte, iov_buf.Len)
+                    if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+                        panic(err)
+                    }
                 }
                 arg_iovec.Payload = payload
-                this.logger.Printf("payload={%s}", arg_iovec.Format())
-                results = append(results, arg_iovec.Format())
+                // this.logger.Printf("payload={%s}", arg_iovec.Format())
+                iov_results = append(iov_results, fmt.Sprintf("iov_%d=%s", iov_index, arg_iovec.Format()))
             }
+            iov_results_str := "[\n\t" + strings.Join(iov_results, ", \n\t") + "\n]"
+            results = append(results, fmt.Sprintf("%s=%s", point_arg.ArgName, arg_msghdr.FormatFull(iov_results_str, control_buf.Format(control_payload))))
+        case config.TYPE_INT32:
+            results = append(results, fmt.Sprintf("%s=%d", point_arg.ArgName, int32(ptr.Address)))
+        default:
+            results = append(results, fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address))
         }
     }
     this.arg_str = "(" + strings.Join(results, ", ") + ")"
@@ -280,7 +287,19 @@ func (this *SyscallEvent) JsonString(stack_str string) string {
     }
 }
 
+func (this *SyscallEvent) NextString() string {
+    var base_str string
+    base_str = fmt.Sprintf("[%s] nr:%s%s", this.GetUUID(), this.nr_point_next.Name, this.arg_str)
+    lr_str := fmt.Sprintf("LR:0x%x", this.lr.Address)
+    pc_str := fmt.Sprintf("PC:0x%x", this.pc.Address)
+    base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.sp.Address)
+    return base_str
+}
+
 func (this *SyscallEvent) String() string {
+    if this.mconf.Next {
+        return this.NextString()
+    }
     stack_str := ""
     if this.EventId == SYSCALL_ENTER {
         stack_str = this.GetStackTrace(stack_str)

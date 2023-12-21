@@ -390,12 +390,11 @@ type Arg_Iovec_Fix_t struct {
 
 func (this *Arg_Iovec_Fix_t) Format() string {
 	var fields []string
-	fields = append(fields, fmt.Sprintf("index=%d", this.Index))
-	fields = append(fields, fmt.Sprintf("len=%d", this.Len))
-	fields = append(fields, fmt.Sprintf("base=0x%x", this.Base))
-	fields = append(fields, fmt.Sprintf("len=0x%x", this.BufLen))
-	fields = append(fields, fmt.Sprintf("buf=(%s)", util.PrettyByteSlice(this.Payload)))
-	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+	// fields = append(fields, fmt.Sprintf("index=%d", this.Index))
+	// fields = append(fields, fmt.Sprintf("len=%d", this.Len))
+	fields = append(fields, fmt.Sprintf("base=0x%x(%s)", this.Base, util.PrettyByteSlice(this.Payload)))
+	fields = append(fields, fmt.Sprintf("buflen=0x%x", this.BufLen))
+	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
 }
 
 type Arg_Iovec_t struct {
@@ -502,12 +501,24 @@ func (this *Arg_Msghdr) Format() string {
 	var fields []string
 	fields = append(fields, fmt.Sprintf("name=0x%x", this.Name))
 	fields = append(fields, fmt.Sprintf("namelen=0x%x", this.Namelen))
-	fields = append(fields, fmt.Sprintf("iov=0x%x", this.Iov))
+	fields = append(fields, fmt.Sprintf("*iov=0x%x", this.Iov))
 	fields = append(fields, fmt.Sprintf("iovlen=0x%x", this.Iovlen))
-	fields = append(fields, fmt.Sprintf("control=0x%x", this.Control))
+	fields = append(fields, fmt.Sprintf("*control=0x%x", this.Control))
 	fields = append(fields, fmt.Sprintf("controllen=0x%x", this.Controllen))
 	fields = append(fields, fmt.Sprintf("flags=0x%x", this.Flags))
-	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
+}
+
+func (this *Arg_Msghdr) FormatFull(iov_fmt, control_fmt string) string {
+	var fields []string
+	fields = append(fields, fmt.Sprintf("name=0x%x", this.Name))
+	fields = append(fields, fmt.Sprintf("namelen=0x%x", this.Namelen))
+	fields = append(fields, fmt.Sprintf("*iov=0x%x%s", this.Iov, iov_fmt))
+	fields = append(fields, fmt.Sprintf("iovlen=0x%x", this.Iovlen))
+	fields = append(fields, fmt.Sprintf("*control=0x%x%s", this.Control, control_fmt))
+	fields = append(fields, fmt.Sprintf("controllen=0x%x", this.Controllen))
+	fields = append(fields, fmt.Sprintf("flags=0x%x", this.Flags))
+	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
 }
 
 type Arg_ItTmerspec struct {

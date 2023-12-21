@@ -228,12 +228,12 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
     for (int i = 0; i < op_count; i++) {
         u32 op_key = point_args->op_key_list[i];
-        bpf_printk("[stackplz] index:%d op_key:%d\n", i, op_key);
+        // bpf_printk("[stackplz] index:%d op_key:%d\n", i, op_key);
         op_config_t* op = bpf_map_lookup_elem(&op_list, &op_key);
         // make ebpf verifier happy
         if (unlikely(op == NULL)) return 0;
 
-        bpf_printk("[stackplz] op_key:%d code:%d value:%ld\n", op_key, op->code, op->value);
+        // bpf_printk("[stackplz] op_key:%d code:%d value:%ld\n", op_key, op->code, op->value);
 
         // 一旦 break_flag 置 1 那么跳过所有操作直到出现 OP_RESET_BREAK
         if (op_ctx->break_flag == 1) {
@@ -266,6 +266,7 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                     op_ctx->read_len = op_ctx->reg_value;
                 }
             case OP_SET_READ_LEN_POINTER_VALUE:
+                // bpf_printk("[stackplz] OP_SET_READ_LEN_POINTER_VALUE old_len:%d new_len:%d\n", op_ctx->read_len, op_ctx->pointer_value);
                 if (op_ctx->read_len > op_ctx->pointer_value) {
                     op_ctx->read_len = op_ctx->pointer_value;
                 }
@@ -274,9 +275,11 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                 op_ctx->read_len *= op->value;
                 break;
             case OP_ADD_OFFSET:
+                // bpf_printk("[stackplz] OP_ADD_OFFSET ptr:0x%lx add:%d\n", op_ctx->read_addr, op->value);
                 op_ctx->read_addr += op->value;
                 break;
             case OP_SUB_OFFSET:
+                // bpf_printk("[stackplz] OP_SUB_OFFSET ptr:0x%lx sub:%d\n", op_ctx->read_addr, op->value);
                 op_ctx->read_addr -= op->value;
                 break;
             case OP_MOVE_REG_VALUE:
@@ -295,7 +298,13 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                 op_ctx->break_count = op_ctx->reg_value;
                 break;
             case OP_SET_BREAK_COUNT_POINTER_VALUE:
+                // bpf_printk("[stackplz] OP_SET_BREAK_COUNT_POINTER_VALUE count:%d\n", op_ctx->pointer_value);
                 op_ctx->break_count = op_ctx->pointer_value;
+                break;
+            case OP_SAVE_ADDR:
+                // bpf_printk("[stackplz] OP_SAVE_ADDR val:0x%lx idx:%d\n", op_ctx->read_addr, op_ctx->save_index);
+                save_to_submit_buf(p.event, (void *)&op_ctx->read_addr, sizeof(op_ctx->read_addr), op_ctx->save_index);
+                op_ctx->save_index += 1;
                 break;
             case OP_READ_REG:
                 // make ebpf verifier happy
@@ -305,14 +314,16 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                 op_ctx->reg_value = READ_KERN(regs->regs[op_ctx->reg_index]);
                 break;
             case OP_SAVE_REG:
-                save_to_submit_buf(p.event, (void *)&op_ctx->reg_value, sizeof(op_ctx->reg_value), (u8)op_ctx->save_index);
+                save_to_submit_buf(p.event, (void *)&op_ctx->reg_value, sizeof(op_ctx->reg_value), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 break;
             case OP_READ_POINTER:
                 bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)op_ctx->read_addr);
+                // bpf_printk("[stackplz] OP_READ_POINTER ptr:0x%lx val:0x%lx\n", op_ctx->read_addr, op_ctx->pointer_value);
                 break;
             case OP_SAVE_POINTER:
-                save_to_submit_buf(p.event, (void *) &op_ctx->pointer_value, sizeof(op_ctx->pointer_value), op_ctx->save_index);
+                // bpf_printk("[stackplz] OP_SAVE_POINTER val:0x%lx idx:%d\n", op_ctx->pointer_value, op_ctx->save_index);
+                save_to_submit_buf(p.event, (void *)&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 break;
             case OP_READ_STRUCT:
@@ -323,6 +334,7 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                 if (op_ctx->read_len > MAX_BYTES_ARR_SIZE) {
                     op_ctx->read_len = MAX_BYTES_ARR_SIZE;
                 }
+                // bpf_printk("[stackplz] OP_SAVE_STRUCT ptr:0x%lx len:%d\n", op_ctx->read_addr, op_ctx->read_len);
                 int status = save_bytes_to_buf(p.event, (void *)(op_ctx->read_addr), op_ctx->read_len, op_ctx->save_index);
                 if (status == 0) {
                     // 保存失败的情况 比如是一个非法的地址 那么就填一个空的 buf
