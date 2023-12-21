@@ -279,6 +279,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.DumpHex = gconfig.DumpHex
     mconfig.ShowTime = gconfig.ShowTime
     mconfig.ShowUid = gconfig.ShowUid
+    mconfig.Next = gconfig.Next
 
     // 1. hook uprobe
     mconfig.InitStackUprobeConfig()
@@ -613,4 +614,6 @@ func init() {
     // syscall hook
     rootCmd.PersistentFlags().StringVarP(&gconfig.SysCall, "syscall", "s", "", "filter syscalls")
     rootCmd.PersistentFlags().StringVar(&gconfig.NoSysCall, "no-syscall", "", "syscall black list, max 20")
+    // 新的数据读取方案
+    rootCmd.PersistentFlags().BoolVar(&gconfig.Next, "next", false, "next version")
 }

@@ -282,7 +282,7 @@ type SyscallConfig struct {
     Enable           bool
     TraceMode        uint32
     SyscallPointArgs []*SyscallPointArgs_T
-    NextPointArgs    []*SyscallPointArgs_T
+    NextPointArgs    []*PointArgsConfig
     SysWhitelist     []uint32
     SysBlacklist     []uint32
 }
@@ -387,6 +387,7 @@ func (this *SyscallConfig) Parse_SysWhitelist(text string) {
         if !ok {
             panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", syscall_name))
         }
+
         point_args := nr_point.GetConfig()
         for i := 0; i < len(point_args.ArgTypes); i++ {
             t := &point_args.ArgTypes[i]
@@ -398,6 +399,7 @@ func (this *SyscallConfig) Parse_SysWhitelist(text string) {
                 }
             }
         }
+        this.NextPointArgs = append(this.NextPointArgs, GetSyscallPointByName(syscall_name))
         this.SyscallPointArgs = append(this.SyscallPointArgs, point_args)
         this.SysWhitelist = append(this.SysWhitelist, uint32(nr_point.NR))
     }
@@ -482,6 +484,7 @@ type ModuleConfig struct {
     DumpHex      bool
     ShowTime     bool
     ShowUid      bool
+    Next         bool
 
     Name            string
     StackUprobeConf *StackUprobeConfig

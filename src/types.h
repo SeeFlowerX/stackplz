@@ -76,15 +76,30 @@ enum event_id_e
 enum op_code_e
 {
     OP_SKIP = 233,
+    OP_RESET_CTX,
     OP_SET_REG_INDEX,
     OP_SET_READ_LEN,
+    OP_SET_READ_LEN_REG_VALUE,
+    OP_SET_READ_LEN_POINTER_VALUE,
     OP_SET_READ_COUNT,
     OP_ADD_OFFSET,
+    OP_SUB_OFFSET,
+    OP_MOVE_REG_VALUE,
+    OP_MOVE_POINTER_VALUE,
+    OP_MOVE_TMP_VALUE,
+    OP_SET_TMP_VALUE,
+    OP_SET_BREAK_COUNT_REG_VALUE,
+    OP_SET_BREAK_COUNT_POINTER_VALUE,
     OP_READ_REG,
-    OP_RESET_CTX,
+    OP_SAVE_REG,
     OP_READ_POINTER,
+    OP_SAVE_POINTER,
     OP_READ_STRUCT,
-    OP_READ_STRING
+    OP_SAVE_STRUCT,
+    OP_READ_STRING,
+    OP_SAVE_STRING,
+    OP_FOR_BREAK,
+    OP_RESET_BREAK
 };
 
 enum arm64_reg_e
@@ -181,8 +196,14 @@ enum point_flag_e
 typedef struct op_ctx {
     u8 save_index;
     u8 reg_index;
+    u8 break_flag;
+    u8 break_count;
     u64 read_addr;
     u32 read_len;
+    u64 reg_value;
+    u64 pointer_value;
+    u64 tmp_value;
+    // u64 stack_list[6];
 } op_ctx_t;
 
 typedef struct op_config {

@@ -103,6 +103,13 @@ type Arg_nr struct {
 	Index uint8
 	Value uint32
 }
+
+func (this *Arg_nr) Format() string {
+	var fields []string
+	fields = append(fields, fmt.Sprintf("[debug index:%d nr:%d]", this.Index, this.Value))
+	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
 type Arg_iovcnt struct {
 	Index uint8
 	Value uint32
@@ -368,6 +375,27 @@ type Arg_Iovec struct {
 	Index  uint8
 	Base   uint64
 	BufLen uint64
+}
+
+type Arg_Iovec_Fix struct {
+	Index  uint8
+	Len    uint32
+	Base   uint64
+	BufLen uint64
+}
+type Arg_Iovec_Fix_t struct {
+	Arg_Iovec_Fix
+	Payload []byte
+}
+
+func (this *Arg_Iovec_Fix_t) Format() string {
+	var fields []string
+	fields = append(fields, fmt.Sprintf("index=%d", this.Index))
+	fields = append(fields, fmt.Sprintf("len=%d", this.Len))
+	fields = append(fields, fmt.Sprintf("base=0x%x", this.Base))
+	fields = append(fields, fmt.Sprintf("len=0x%x", this.BufLen))
+	fields = append(fields, fmt.Sprintf("buf=(%s)", util.PrettyByteSlice(this.Payload)))
+	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 type Arg_Iovec_t struct {

@@ -95,9 +95,17 @@ func (this *MStack) setupManager() error {
 
     if this.mconf.SysCallConf.IsEnable() {
         // syscall hook 配置
-        sys_enter_probe := &manager.Probe{
-            Section:      "raw_tracepoint/sys_enter",
-            EbpfFuncName: "raw_syscalls_sys_enter",
+        var sys_enter_probe *manager.Probe
+        if this.mconf.Next {
+            sys_enter_probe = &manager.Probe{
+                Section:      "raw_tracepoint/sys_enter",
+                EbpfFuncName: "next_raw_syscalls_sys_enter",
+            }
+        } else {
+            sys_enter_probe = &manager.Probe{
+                Section:      "raw_tracepoint/sys_enter",
+                EbpfFuncName: "raw_syscalls_sys_enter",
+            }
         }
         sys_exit_probe := &manager.Probe{
             Section:      "raw_tracepoint/sys_exit",
@@ -417,18 +425,34 @@ func (this *MStack) update_next_point_args() {
     if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
         panic("TraceMode TRACE_ALL not implemented yet")
     } else {
-        for _, point_args := range this.mconf.SysCallConf.SyscallPointArgs {
-            err := bpf_map.Update(unsafe.Pointer(&point_args.NR), unsafe.Pointer(point_args), ebpf.UpdateAny)
+        for _, point_config := range this.mconf.SysCallConf.NextPointArgs {
+            err := bpf_map.Update(unsafe.Pointer(&point_config.Nr), unsafe.Pointer(&point_config.ArgsSysEnter), ebpf.UpdateAny)
             if err != nil {
                 panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
             }
+        }
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
+func (this *MStack) update_op_list() {
+    map_name := "op_list"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    for op_key, op_config := range *config.GetOpList() {
+        err := bpf_map.Update(unsafe.Pointer(&op_key), unsafe.Pointer(&op_config), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
         }
     }
 
     if this.mconf.Debug {
         this.logger.Printf("update %s success", map_name)
     }
-
 }
 
 func (this *MStack) update_syscall_config() {
@@ -436,6 +460,19 @@ func (this *MStack) update_syscall_config() {
         return
     }
     this.update_syscall_point_args()
+    this.update_common_list(this.mconf.SysCallConf.SysWhitelist, util.SYS_WHITELIST_START)
+    this.update_common_list(this.mconf.SysCallConf.SysBlacklist, util.SYS_BLACKLIST_START)
+    if this.mconf.Debug {
+        this.logger.Printf("SysCallConf:%s", this.mconf.SysCallConf.Info())
+    }
+}
+
+func (this *MStack) update_next_syscall_config() {
+    if !this.mconf.SysCallConf.IsEnable() {
+        return
+    }
+    this.update_next_point_args()
+    this.update_op_list()
     this.update_common_list(this.mconf.SysCallConf.SysWhitelist, util.SYS_WHITELIST_START)
     this.update_common_list(this.mconf.SysCallConf.SysBlacklist, util.SYS_BLACKLIST_START)
     if this.mconf.Debug {
@@ -472,7 +509,11 @@ func (this *MStack) updateFilter() (err error) {
     this.update_thread_filter()
     this.update_arg_filter()
     this.update_stack_config()
-    this.update_syscall_config()
+    if this.mconf.Next {
+        this.update_next_syscall_config()
+    } else {
+        this.update_syscall_config()
+    }
     return nil
 }
 

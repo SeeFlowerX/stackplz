@@ -87,7 +87,7 @@ int tracepoint__sched__sched_process_fork(struct bpf_raw_tracepoint_args *ctx)
 }
 
 SEC("raw_tracepoint/sys_enter")
-int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
+int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
     // 除了实现对指定进程的系统调用跟踪 也要将其产生的子进程 加入追踪范围
     // 为了实现这个目的 fork 系统调用结束之后 应当检查其 父进程是否归属于当前被追踪的进程
@@ -227,53 +227,97 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     op_ctx->save_index = 4;
 
     for (int i = 0; i < op_count; i++) {
-
         u32 op_key = point_args->op_key_list[i];
+        bpf_printk("[stackplz] index:%d op_key:%d\n", i, op_key);
         op_config_t* op = bpf_map_lookup_elem(&op_list, &op_key);
         // make ebpf verifier happy
         if (unlikely(op == NULL)) return 0;
 
+        bpf_printk("[stackplz] op_key:%d code:%d value:%ld\n", op_key, op->code, op->value);
+
+        // 一旦 break_flag 置 1 那么跳过所有操作直到出现 OP_RESET_BREAK
+        if (op_ctx->break_flag == 1) {
+            if (op->code == OP_RESET_BREAK) {
+                op_ctx->break_flag = 0;
+            }
+            continue;
+        }
+
         switch (op->code) {
             case OP_SKIP:
+                break;
+            case OP_RESET_CTX:
+                op_ctx->break_flag = 0;
+                op_ctx->break_count = 0;
+                op_ctx->reg_index = 0;
+                op_ctx->read_addr = 0;
+                op_ctx->read_len = 0;
+                op_ctx->reg_value = 0;
+                op_ctx->pointer_value = 0;
                 break;
             case OP_SET_REG_INDEX:
                 op_ctx->reg_index = op->value;
                 break;
             case OP_SET_READ_LEN:
-                // read_len = 8;
                 op_ctx->read_len = op->value;
+                break;
+            case OP_SET_READ_LEN_REG_VALUE:
+                if (op_ctx->read_len > op_ctx->reg_value) {
+                    op_ctx->read_len = op_ctx->reg_value;
+                }
+            case OP_SET_READ_LEN_POINTER_VALUE:
+                if (op_ctx->read_len > op_ctx->pointer_value) {
+                    op_ctx->read_len = op_ctx->pointer_value;
+                }
                 break;
             case OP_SET_READ_COUNT:
                 op_ctx->read_len *= op->value;
                 break;
             case OP_ADD_OFFSET:
-                // OP_ADD_OFFSET 必须在 OP_READ_REG 之前 这样方便保存读取的地址
                 op_ctx->read_addr += op->value;
+                break;
+            case OP_SUB_OFFSET:
+                op_ctx->read_addr -= op->value;
+                break;
+            case OP_MOVE_REG_VALUE:
+                op_ctx->read_addr = op_ctx->reg_value;
+                break;
+            case OP_MOVE_POINTER_VALUE:
+                op_ctx->read_addr = op_ctx->pointer_value;
+                break;
+            case OP_MOVE_TMP_VALUE:
+                op_ctx->read_addr = op_ctx->tmp_value;
+                break;
+            case OP_SET_TMP_VALUE:
+                op_ctx->tmp_value = op_ctx->read_addr;
+                break;
+            case OP_SET_BREAK_COUNT_REG_VALUE:
+                op_ctx->break_count = op_ctx->reg_value;
+                break;
+            case OP_SET_BREAK_COUNT_POINTER_VALUE:
+                op_ctx->break_count = op_ctx->pointer_value;
                 break;
             case OP_READ_REG:
                 // make ebpf verifier happy
                 if (op_ctx->reg_index >= REG_ARM64_MAX) {
                     return 0;
                 }
-                op_ctx->read_addr = READ_KERN(regs->regs[op_ctx->reg_index]);
-                save_to_submit_buf(p.event, (void *)&op_ctx->read_addr, sizeof(u64), (u8)op_ctx->save_index);
+                op_ctx->reg_value = READ_KERN(regs->regs[op_ctx->reg_index]);
+                break;
+            case OP_SAVE_REG:
+                save_to_submit_buf(p.event, (void *)&op_ctx->reg_value, sizeof(op_ctx->reg_value), (u8)op_ctx->save_index);
                 op_ctx->save_index += 1;
                 break;
-            case OP_RESET_CTX:
-                op_ctx->reg_index = 0;
-                op_ctx->read_addr = 0;
-                op_ctx->read_len = 0;
-                break;
             case OP_READ_POINTER:
-                // switch case 里面如果要进行定义 必须加上 {}
-                {
-                    u64 addr = 0;
-                    bpf_probe_read_user(&addr, sizeof(addr), (void*) op_ctx->read_addr);
-                    save_to_submit_buf(p.event, (void *) &addr, sizeof(u64), op_ctx->save_index);
-                    op_ctx->save_index += 1;
-                    break;
-                }
+                bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)op_ctx->read_addr);
+                break;
+            case OP_SAVE_POINTER:
+                save_to_submit_buf(p.event, (void *) &op_ctx->pointer_value, sizeof(op_ctx->pointer_value), op_ctx->save_index);
+                op_ctx->save_index += 1;
+                break;
             case OP_READ_STRUCT:
+                break;
+            case OP_SAVE_STRUCT:
                 // fix memory tag
                 op_ctx->read_addr = op_ctx->read_addr & 0xffffffffff;
                 if (op_ctx->read_len > MAX_BYTES_ARR_SIZE) {
@@ -289,10 +333,20 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                 op_ctx->save_index += 1;
                 break;
             case OP_READ_STRING:
+                break;
+            case OP_SAVE_STRING:
                 // fix memory tag
                 op_ctx->read_addr = op_ctx->read_addr & 0xffffffffff;
                 save_str_to_buf(p.event, (void*) op_ctx->read_addr, op_ctx->save_index);
                 op_ctx->save_index += 1;
+                break;
+            case OP_FOR_BREAK:
+                if (op_ctx->break_count > 0 && op->value >= op_ctx->break_count) {
+                    op_ctx->break_flag = 1;
+                }
+                break;
+            case OP_RESET_BREAK:
+                op_ctx->break_flag = 0;
                 break;
             default:
                 // bpf_printk("[stackplz] unknown op code:%d\n", op->code);
@@ -305,121 +359,122 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     }
     return 0;
 }
-// SEC("raw_tracepoint/sys_enter")
-// int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
-//     // 除了实现对指定进程的系统调用跟踪 也要将其产生的子进程 加入追踪范围
-//     // 为了实现这个目的 fork 系统调用结束之后 应当检查其 父进程是否归属于当前被追踪的进程
+SEC("raw_tracepoint/sys_enter")
+int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
-//     program_data_t p = {};
-//     if (!init_program_data(&p, ctx))
-//         return 0;
+    // 除了实现对指定进程的系统调用跟踪 也要将其产生的子进程 加入追踪范围
+    // 为了实现这个目的 fork 系统调用结束之后 应当检查其 父进程是否归属于当前被追踪的进程
 
-//     if (!should_trace(&p))
-//         return 0;
+    program_data_t p = {};
+    if (!init_program_data(&p, ctx))
+        return 0;
 
-//     struct pt_regs *regs = (struct pt_regs *)(ctx->args[0]);
-//     u64 syscallno = READ_KERN(regs->syscallno);
-//     u32 sysno = (u32)syscallno;
-//     // 先根据调用号确定有没有对应的参数获取方案 没有直接结束
-//     struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &sysno);
-//     if (syscall_point_args == NULL) {
-//         // bpf_printk("[syscall] unsupport nr:%d\n", sysno);
-//         return 0;
-//     }
+    if (!should_trace(&p))
+        return 0;
 
-//     u32 filter_key = 0;
-//     common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
-//     if (filter == NULL) {
-//         return 0;
-//     }
+    struct pt_regs *regs = (struct pt_regs *)(ctx->args[0]);
+    u64 syscallno = READ_KERN(regs->syscallno);
+    u32 sysno = (u32)syscallno;
+    // 先根据调用号确定有没有对应的参数获取方案 没有直接结束
+    struct syscall_point_args_t* syscall_point_args = bpf_map_lookup_elem(&syscall_point_args_map, &sysno);
+    if (syscall_point_args == NULL) {
+        // bpf_printk("[syscall] unsupport nr:%d\n", sysno);
+        return 0;
+    }
 
-//     if (filter->trace_mode == TRACE_COMMON) {
-//         // 非 追踪全部syscall模式
-//         u32 sysno_whitelist_key = sysno + SYS_WHITELIST_START;
-//         u32 *sysno_whitelist_value = bpf_map_lookup_elem(&common_list, &sysno_whitelist_key);
-//         if (sysno_whitelist_value == NULL) {
-//             return 0;
-//         }
-//     }
+    u32 filter_key = 0;
+    common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
+    if (filter == NULL) {
+        return 0;
+    }
 
-//     // 黑名单同样对 追踪全部syscall模式 有效
-//     u32 sysno_blacklist_key = sysno + SYS_BLACKLIST_START;
-//     u32 *sysno_blacklist_value = bpf_map_lookup_elem(&common_list, &sysno_blacklist_key);
-//     if (sysno_blacklist_value != NULL) {
-//         return 0;
-//     }
+    if (filter->trace_mode == TRACE_COMMON) {
+        // 非 追踪全部syscall模式
+        u32 sysno_whitelist_key = sysno + SYS_WHITELIST_START;
+        u32 *sysno_whitelist_value = bpf_map_lookup_elem(&common_list, &sysno_whitelist_key);
+        if (sysno_whitelist_value == NULL) {
+            return 0;
+        }
+    }
 
-//     // 保存寄存器应该放到所有过滤完成之后
-//     args_t args = {};
-//     args.args[0] = READ_KERN(regs->regs[0]);
-//     args.args[1] = READ_KERN(regs->regs[1]);
-//     args.args[2] = READ_KERN(regs->regs[2]);
-//     args.args[3] = READ_KERN(regs->regs[3]);
-//     args.args[4] = READ_KERN(regs->regs[4]);
-//     args.args[5] = READ_KERN(regs->regs[5]);
-//     save_args(&args, SYSCALL_ENTER);
+    // 黑名单同样对 追踪全部syscall模式 有效
+    u32 sysno_blacklist_key = sysno + SYS_BLACKLIST_START;
+    u32 *sysno_blacklist_value = bpf_map_lookup_elem(&common_list, &sysno_blacklist_key);
+    if (sysno_blacklist_value != NULL) {
+        return 0;
+    }
 
-//     // event->context 已经有进程的信息了
-//     save_to_submit_buf(p.event, (void *) &sysno, sizeof(u32), 0);
+    // 保存寄存器应该放到所有过滤完成之后
+    args_t args = {};
+    args.args[0] = READ_KERN(regs->regs[0]);
+    args.args[1] = READ_KERN(regs->regs[1]);
+    args.args[2] = READ_KERN(regs->regs[2]);
+    args.args[3] = READ_KERN(regs->regs[3]);
+    args.args[4] = READ_KERN(regs->regs[4]);
+    args.args[5] = READ_KERN(regs->regs[5]);
+    save_args(&args, SYSCALL_ENTER);
 
-//     // 先获取 lr sp pc 并发送 这样可以尽早计算调用来源情况
-//     // READ_KERN 好像有问题
-//     u64 lr = 0;
-//     if(filter->is_32bit) {
-//         bpf_probe_read_kernel(&lr, sizeof(lr), &regs->regs[14]);
-//         save_to_submit_buf(p.event, (void *) &lr, sizeof(u64), 1);
-//     }
-//     else {
-//         bpf_probe_read_kernel(&lr, sizeof(lr), &regs->regs[30]);
-//         save_to_submit_buf(p.event, (void *) &lr, sizeof(u64), 1);
-//     }
-//     u64 pc = 0;
-//     u64 sp = 0;
-//     bpf_probe_read_kernel(&pc, sizeof(pc), &regs->pc);
-//     bpf_probe_read_kernel(&sp, sizeof(sp), &regs->sp);
-//     save_to_submit_buf(p.event, (void *) &pc, sizeof(u64), 2);
-//     save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 3);
+    // event->context 已经有进程的信息了
+    save_to_submit_buf(p.event, (void *) &sysno, sizeof(u32), 0);
 
-//     u32 point_arg_count = MAX_POINT_ARG_COUNT;
-//     if (syscall_point_args->count <= point_arg_count) {
-//         point_arg_count = syscall_point_args->count;
-//     }
+    // 先获取 lr sp pc 并发送 这样可以尽早计算调用来源情况
+    // READ_KERN 好像有问题
+    u64 lr = 0;
+    if(filter->is_32bit) {
+        bpf_probe_read_kernel(&lr, sizeof(lr), &regs->regs[14]);
+        save_to_submit_buf(p.event, (void *) &lr, sizeof(u64), 1);
+    }
+    else {
+        bpf_probe_read_kernel(&lr, sizeof(lr), &regs->regs[30]);
+        save_to_submit_buf(p.event, (void *) &lr, sizeof(u64), 1);
+    }
+    u64 pc = 0;
+    u64 sp = 0;
+    bpf_probe_read_kernel(&pc, sizeof(pc), &regs->pc);
+    bpf_probe_read_kernel(&sp, sizeof(sp), &regs->sp);
+    save_to_submit_buf(p.event, (void *) &pc, sizeof(u64), 2);
+    save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 3);
 
-//     u32 next_arg_index = 4;
-//     u64 reg_0 = READ_KERN(regs->regs[0]);
-//     for (int i = 0; i < point_arg_count; i++) {
-//         struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_args[i];
-//         if (point_arg->read_index == REG_ARM64_MAX) {
-//             continue;
-//         }
-//         u64 arg_ptr = get_arg_ptr(regs, point_arg, i, reg_0);
+    u32 point_arg_count = MAX_POINT_ARG_COUNT;
+    if (syscall_point_args->count <= point_arg_count) {
+        point_arg_count = syscall_point_args->count;
+    }
 
-//         // 先保存参数值本身
-//         save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), (u8)next_arg_index);
-//         next_arg_index += 1;
+    u32 next_arg_index = 4;
+    u64 reg_0 = READ_KERN(regs->regs[0]);
+    for (int i = 0; i < point_arg_count; i++) {
+        struct point_arg_t* point_arg = (struct point_arg_t*) &syscall_point_args->point_args[i];
+        if (point_arg->read_index == REG_ARM64_MAX) {
+            continue;
+        }
+        u64 arg_ptr = get_arg_ptr(regs, point_arg, i, reg_0);
 
-//         if (point_arg->point_flag != SYS_ENTER) {
-//             continue;
-//         }
-//         if (arg_ptr == 0) {
-//             continue;
-//         }
-//         u32 read_count = get_read_count(regs, point_arg);
-//         next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
-//         if (point_arg->tmp_index == FILTER_INDEX_SKIP) {
-//             point_arg->tmp_index = 0;
-//             args.flag = 1;
-//             save_args(&args, SYSCALL_ENTER);
-//             return 0;
-//         }
-//     }
-//     events_perf_submit(&p, SYSCALL_ENTER);
-//     if (filter->signal > 0) {
-//         bpf_send_signal(filter->signal);
-//     }
-//     return 0;
-// }
+        // 先保存参数值本身
+        save_to_submit_buf(p.event, (void *)&arg_ptr, sizeof(u64), (u8)next_arg_index);
+        next_arg_index += 1;
+
+        if (point_arg->point_flag != SYS_ENTER) {
+            continue;
+        }
+        if (arg_ptr == 0) {
+            continue;
+        }
+        u32 read_count = get_read_count(regs, point_arg);
+        next_arg_index = read_arg(p, point_arg, arg_ptr, read_count, next_arg_index);
+        if (point_arg->tmp_index == FILTER_INDEX_SKIP) {
+            point_arg->tmp_index = 0;
+            args.flag = 1;
+            save_args(&args, SYSCALL_ENTER);
+            return 0;
+        }
+    }
+    events_perf_submit(&p, SYSCALL_ENTER);
+    if (filter->signal > 0) {
+        bpf_send_signal(filter->signal);
+    }
+    return 0;
+}
 
 SEC("raw_tracepoint/sys_exit")
 int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {

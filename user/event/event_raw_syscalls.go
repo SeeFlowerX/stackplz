@@ -11,19 +11,104 @@ import (
 
 type SyscallEvent struct {
     ContextEvent
-    UUID         string
-    RegsBuffer   RegsBuf
-    UnwindBuffer UnwindBuf
-    nr_point     *config.SysCallArgs
-    nr           config.Arg_nr
-    lr           config.Arg_reg
-    sp           config.Arg_reg
-    pc           config.Arg_reg
-    ret          uint64
-    arg_str      string
+    UUID          string
+    RegsBuffer    RegsBuf
+    UnwindBuffer  UnwindBuf
+    nr_point      *config.SysCallArgs
+    nr_point_next *config.PointArgsConfig
+    nr            config.Arg_nr
+    lr            config.Arg_reg
+    sp            config.Arg_reg
+    pc            config.Arg_reg
+    ret           uint64
+    arg_str       string
 }
 
 type Arg_bytes = config.Arg_str
+
+func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
+    if this.mconf.Next {
+        this.logger.Printf("ParseContextSysEnterNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
+    }
+    this.logger.Printf("nr:%s", this.nr.Format())
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
+        panic(err)
+    }
+    this.logger.Printf("lr:%s", this.lr.Format())
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
+        panic(err)
+    }
+    this.logger.Printf("pc:%s", this.pc.Format())
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
+        panic(err)
+    }
+    this.logger.Printf("sp:%s", this.sp.Format())
+    // 根据调用号解析剩余参数
+    this.nr_point_next = config.GetSyscallPointByNR(this.nr.Value)
+    if this.nr_point_next.Name != "sendmsg" {
+        panic("only sendmsg now")
+    }
+    var results []string
+    for arg_index, point_arg := range this.nr_point_next.Args {
+        var ptr config.Arg_reg
+        if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
+            panic(err)
+        }
+        this.logger.Printf("arg_index:%d ptr:%s", arg_index, ptr.Format())
+        switch point_arg.AliasType {
+        case config.TYPE_MSGHDR:
+            var arg_msghdr config.Arg_Msghdr
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg_msghdr.Index); err != nil {
+                panic(err)
+            }
+            this.logger.Printf("index=%d", arg_msghdr.Index)
+            results = append(results, fmt.Sprintf("index=%d", arg_msghdr.Index))
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg_msghdr.Len); err != nil {
+                panic(err)
+            }
+            this.logger.Printf("len=%d", arg_msghdr.Len)
+            results = append(results, fmt.Sprintf("len=%d", arg_msghdr.Len))
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg_msghdr.Msghdr); err != nil {
+                panic(err)
+            }
+            this.logger.Printf("msghdr={%s}", arg_msghdr.Format())
+            results = append(results, arg_msghdr.Format())
+            iov_len := arg_msghdr.Iovlen
+            if iov_len > 6 {
+                iov_len = 6
+            }
+            this.logger.Printf("iov_len={%d}", iov_len)
+            for i := 0; i < int(iov_len); i++ {
+                this.logger.Printf("iov_index=%d", i)
+
+                var iov_ptr config.Arg_reg
+                if err = binary.Read(this.buf, binary.LittleEndian, &iov_ptr); err != nil {
+                    panic(err)
+                }
+                this.logger.Printf("iov_ptr:%s", iov_ptr.Format())
+
+                var arg_iovec config.Arg_Iovec_Fix_t
+                if err = binary.Read(this.buf, binary.LittleEndian, &arg_iovec.Arg_Iovec_Fix); err != nil {
+                    panic(err)
+                }
+                this.logger.Printf("index:%d iovec={%s}", arg_iovec.Index, arg_iovec.Format())
+                var iov_buf config.Arg_str
+                if err = binary.Read(this.buf, binary.LittleEndian, &iov_buf); err != nil {
+                    panic(err)
+                }
+                payload := make([]byte, iov_buf.Len)
+                if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+                    panic(err)
+                }
+                arg_iovec.Payload = payload
+                this.logger.Printf("payload={%s}", arg_iovec.Format())
+                results = append(results, arg_iovec.Format())
+            }
+        }
+    }
+    this.arg_str = "(" + strings.Join(results, ", ") + ")"
+    return nil
+}
 
 func (this *SyscallEvent) ParseContextSysEnter() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
@@ -121,7 +206,11 @@ func (this *SyscallEvent) ParseContext() (err error) {
     if this.EventId == SYSCALL_ENTER {
         // 是否有不执行 sys_exit 的情况 ?
         // 有的调用耗时 也有可能 暂时还是把执行结果分开输出吧
-        this.ParseContextSysEnter()
+        if this.mconf.Next {
+            this.ParseContextSysEnterNext()
+        } else {
+            this.ParseContextSysEnter()
+        }
     } else if this.EventId == SYSCALL_EXIT {
         this.ParseContextSysExit()
     } else {
