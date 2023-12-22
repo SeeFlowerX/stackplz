@@ -106,7 +106,7 @@ func (this *SyscallPoints) GetPointByNR(nr uint32) *PointArgsConfig {
 			return &point
 		}
 	}
-	panic(fmt.Sprintf("GetPointByNR failed for nr %s", nr))
+	panic(fmt.Sprintf("GetPointByNR failed for nr:%d", nr))
 }
 
 func GetSyscallPointByName(name string) *PointArgsConfig {
@@ -115,31 +115,6 @@ func GetSyscallPointByName(name string) *PointArgsConfig {
 
 func GetSyscallPointByNR(nr uint32) *PointArgsConfig {
 	return aarch64_syscall_points.GetPointByNR(nr)
-}
-
-// 基础类型配置
-type OpArgType struct {
-	Alias_type uint32
-	Type_size  uint32
-	Ops        []uint32
-}
-
-func (this *OpArgType) AddOp(opc OpConfig, value uint64) {
-	new_op_key := op_key_helper.get_op_key(opc.NewValue(value))
-	this.Ops = append(this.Ops, new_op_key)
-}
-
-func (this *OpArgType) AddOpC(op_code uint32) {
-	// add one op with default value
-	default_op_key := op_key_helper.get_default_op_key(op_code)
-	this.Ops = append(this.Ops, default_op_key)
-}
-
-func (this *OpArgType) AddOpA(arg_type OpArgType) {
-	// add one arg op_keys
-	for _, arg_op_key := range arg_type.Ops {
-		this.Ops = append(this.Ops, arg_op_key)
-	}
 }
 
 // operation code enum
@@ -215,6 +190,15 @@ type OpKeyHelper struct {
 	reg_index_op_key_map map[int]uint32
 }
 
+func (this *OpKeyHelper) get_op_config(op_key uint32) OpConfig {
+	for k, v := range this.op_list {
+		if k == op_key {
+			return v
+		}
+	}
+	panic(fmt.Sprintf("get_op_config for key:%d not exists", op_key))
+}
+
 func (this *OpKeyHelper) get_default_op_key(op_code uint32) uint32 {
 	for k, v := range this.op_list {
 		if v.Code == op_code && v.Value == 0 {
@@ -269,7 +253,7 @@ func RTO(alias_type, type_size uint32, ops ...OpConfig) OpArgType {
 	return oat
 }
 
-func X(arg_name string, arg_type OpArgType) *ArgOpConfig {
+func X(arg_name string, arg_type *OpArgType) *ArgOpConfig {
 	config := ArgOpConfig{}
 	config.ArgName = arg_name
 	config.AliasType = arg_type.Alias_type
@@ -398,5 +382,11 @@ func init() {
 	}
 	OPA_MSGHDR.AddOpC(OP_RESET_BREAK)
 
-	R(211, "sendmsg", X("sockfd", OPA_INT32), X("*msg", OPA_MSGHDR), X("flags", OPA_INT32))
+	// 以指定寄存器为数据作为读取长度
+	AT_BUFFER_X2 := AT_BUFFER.NewReadLenRegValue(REG_ARM64_X2)
+
+	R(56, "openat", X("dirfd", AT_INT32), X("pathname", AT_STRING), X("flags", AT_INT32), X("mode", AT_INT16))
+	R(206, "sendto", X("sockfd", AT_INT32), X("*buf", AT_BUFFER_X2), X("len", AT_INT32), X("flags", AT_INT32))
+
+	// R(211, "sendmsg", X("sockfd", OPA_INT32), X("*msg", OPA_MSGHDR), X("flags", OPA_INT32))
 }

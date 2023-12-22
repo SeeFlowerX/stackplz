@@ -265,6 +265,7 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                 if (op_ctx->read_len > op_ctx->reg_value) {
                     op_ctx->read_len = op_ctx->reg_value;
                 }
+                break;
             case OP_SET_READ_LEN_POINTER_VALUE:
                 // bpf_printk("[stackplz] OP_SET_READ_LEN_POINTER_VALUE old_len:%d new_len:%d\n", op_ctx->read_len, op_ctx->pointer_value);
                 if (op_ctx->read_len > op_ctx->pointer_value) {

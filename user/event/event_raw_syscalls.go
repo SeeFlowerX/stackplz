@@ -28,9 +28,9 @@ type Arg_bytes = config.Arg_str
 
 func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
     // 输出json会更方便分析 next
-    // if this.mconf.Next {
-    //     this.logger.Printf("ParseContextSysEnterNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
-    // }
+    if this.mconf.Next {
+        this.logger.Printf("ParseContextSysEnterNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
+    }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
         panic(err)
     }
@@ -42,9 +42,10 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
     }
     // 根据调用号解析剩余参数
     this.nr_point_next = config.GetSyscallPointByNR(this.nr.Value)
-    if this.nr_point_next.Name != "sendmsg" {
-        panic("only sendmsg now")
-    }
+    // // if this.nr_point_next.Name != "sendmsg" {
+    // if this.nr_point_next.Name != "sendto" {
+    //     panic("only sendmsg now")
+    // }
     var results []string
     for _, point_arg := range this.nr_point_next.Args {
         var ptr config.Arg_reg
@@ -109,6 +110,22 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
             results = append(results, fmt.Sprintf("%s=%s", point_arg.ArgName, arg_msghdr.FormatFull(iov_results_str, control_buf.Format(control_payload))))
         case config.TYPE_INT32:
             results = append(results, fmt.Sprintf("%s=%d", point_arg.ArgName, int32(ptr.Address)))
+        case config.TYPE_BUFFER:
+            var arg config.Arg_str
+            if err := binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+                panic(err)
+            }
+            payload := make([]byte, arg.Len)
+            if err := binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+                panic(err)
+            }
+            var payload_dump string
+            if this.mconf.DumpHex {
+                payload_dump = arg.HexFormat(payload, this.mconf.Color)
+            } else {
+                payload_dump = arg.Format(payload)
+            }
+            results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, payload_dump))
         default:
             results = append(results, fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address))
         }
