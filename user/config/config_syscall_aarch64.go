@@ -30,6 +30,23 @@ type OpKeyConfig struct {
 	OpKeyList [MAX_OP_COUNT]uint32
 }
 
+func NewOpKeyConfig() OpKeyConfig {
+	v := OpKeyConfig{}
+	for i := 0; i < len(v.OpKeyList); i++ {
+		v.OpKeyList[i] = op_key_helper.get_op_key(OPC_SKIP)
+	}
+	return v
+}
+
+func (this *OpKeyConfig) AddOpK(op_key uint32) {
+	if int(this.OpCount) < len(this.OpKeyList) {
+		this.OpKeyList[this.OpCount] = op_key
+		this.OpCount++
+	} else {
+		panic(fmt.Sprintf("add op_key[%d] failed, max op count %d", op_key, len(this.OpKeyList)))
+	}
+}
+
 type ArgOpConfig struct {
 	ArgName   string
 	AliasType uint32
@@ -147,6 +164,44 @@ const (
 	OP_RESET_BREAK
 )
 
+var OpMap map[uint32]string = map[uint32]string{
+	OP_SKIP:                          "OP_SKIP",
+	OP_RESET_CTX:                     "OP_RESET_CTX",
+	OP_SET_REG_INDEX:                 "OP_SET_REG_INDEX",
+	OP_SET_READ_LEN:                  "OP_SET_READ_LEN",
+	OP_SET_READ_LEN_REG_VALUE:        "OP_SET_READ_LEN_REG_VALUE",
+	OP_SET_READ_LEN_POINTER_VALUE:    "OP_SET_READ_LEN_POINTER_VALUE",
+	OP_SET_READ_COUNT:                "OP_SET_READ_COUNT",
+	OP_ADD_OFFSET:                    "OP_ADD_OFFSET",
+	OP_SUB_OFFSET:                    "OP_SUB_OFFSET",
+	OP_MOVE_REG_VALUE:                "OP_MOVE_REG_VALUE",
+	OP_MOVE_POINTER_VALUE:            "OP_MOVE_POINTER_VALUE",
+	OP_MOVE_TMP_VALUE:                "OP_MOVE_TMP_VALUE",
+	OP_SET_TMP_VALUE:                 "OP_SET_TMP_VALUE",
+	OP_SET_BREAK_COUNT_REG_VALUE:     "OP_SET_BREAK_COUNT_REG_VALUE",
+	OP_SET_BREAK_COUNT_POINTER_VALUE: "OP_SET_BREAK_COUNT_POINTER_VALUE",
+	OP_SAVE_ADDR:                     "OP_SAVE_ADDR",
+	OP_READ_REG:                      "OP_READ_REG",
+	OP_SAVE_REG:                      "OP_SAVE_REG",
+	OP_READ_POINTER:                  "OP_READ_POINTER",
+	OP_SAVE_POINTER:                  "OP_SAVE_POINTER",
+	OP_READ_STRUCT:                   "OP_READ_STRUCT",
+	OP_SAVE_STRUCT:                   "OP_SAVE_STRUCT",
+	OP_READ_STRING:                   "OP_READ_STRING",
+	OP_SAVE_STRING:                   "OP_SAVE_STRING",
+	OP_FOR_BREAK:                     "OP_FOR_BREAK",
+	OP_RESET_BREAK:                   "OP_RESET_BREAK",
+}
+
+func GetOpName(op_code uint32) string {
+	value, ok := OpMap[op_code]
+	if ok {
+		return value
+	} else {
+		panic(fmt.Sprintf("op_code:%d not exists", op_code))
+	}
+}
+
 func ROPC(op_code uint32) OpConfig {
 	opc := OpConfig{op_code, 0}
 	op_key_helper.get_op_key(opc)
@@ -190,6 +245,23 @@ type OpKeyHelper struct {
 	reg_index_op_key_map map[int]uint32
 }
 
+func (this *OpKeyHelper) show_all_op() {
+	fmt.Printf("------------show_all_op(%d)------------\n", len(this.op_list))
+	for k, v := range this.op_list {
+		fmt.Printf("idx:%d, code:%d value:%4d %s\n", k, v.Code, v.Value, GetOpName(v.Code))
+	}
+	for check_index, check_v := range this.op_list {
+		for index, v := range this.op_list {
+			if index == check_index {
+				continue
+			}
+			if v.Code == check_v.Code && v.Value == check_v.Value {
+				fmt.Printf("[DUPLICATED] idx:%d, code:%d value:%4d %s\n", index, v.Code, v.Value, GetOpName(v.Code))
+			}
+		}
+	}
+}
+
 func (this *OpKeyHelper) get_op_config(op_key uint32) OpConfig {
 	for k, v := range this.op_list {
 		if k == op_key {
@@ -227,6 +299,12 @@ func (this *OpKeyHelper) get_reg_index_op_key(reg_index int) uint32 {
 	return this.reg_index_op_key_map[reg_index]
 }
 
+func (this *OpKeyHelper) GetOpList() map[uint32]OpConfig {
+	// 取出会被用到的 op
+	// 根据 op_key 去重即可
+	return this.op_list
+}
+
 func NewOpKeyHelper() *OpKeyHelper {
 	helper := OpKeyHelper{}
 	helper.op_list = make(map[uint32]OpConfig)
@@ -236,8 +314,8 @@ func NewOpKeyHelper() *OpKeyHelper {
 
 var op_key_helper = NewOpKeyHelper()
 
-func GetOpList() *map[uint32]OpConfig {
-	return &op_key_helper.op_list
+func GetOpList() map[uint32]OpConfig {
+	return op_key_helper.GetOpList()
 }
 
 func RTO(alias_type, type_size uint32, ops ...OpConfig) OpArgType {
@@ -268,37 +346,19 @@ func R(nr uint32, name string, configs ...*ArgOpConfig) {
 	if aarch64_syscall_points.IsDup(nr, name) {
 		panic(fmt.Sprintf("register duplicate for nr:%d name:%s", nr, name))
 	}
+	op_key_config := NewOpKeyConfig()
 	// 合并多个参数的操作数
-	var ops []uint32
 	for reg_index, config := range configs {
-		// 第一个操作是 OP_SET_REG_INDEX
-		// 这里直接计算对应的 op_key
-		ops = append(ops, op_key_helper.get_reg_index_op_key(reg_index))
-		ops = append(ops, op_key_helper.get_op_key(OPC_READ_REG))
-		ops = append(ops, op_key_helper.get_op_key(OPC_SAVE_REG))
-		ops = append(ops, op_key_helper.get_op_key(OPC_MOVE_REG_VALUE))
+		op_key_config.AddOpK(op_key_helper.get_reg_index_op_key(reg_index))
+		op_key_config.AddOpK(op_key_helper.get_op_key(OPC_READ_REG))
+		op_key_config.AddOpK(op_key_helper.get_op_key(OPC_SAVE_REG))
+		op_key_config.AddOpK(op_key_helper.get_op_key(OPC_MOVE_REG_VALUE))
 		for _, op_key := range config.OpKeyList {
-			ops = append(ops, op_key)
-		}
-	}
-	// fmt.Println("len(ops)", len(ops))
-	// 检查操作数上限
-	op_key_config := OpKeyConfig{}
-	if len(ops) > len(op_key_config.OpKeyList) {
-		panic(fmt.Sprintf("ops count %d large than %d", len(ops), len(op_key_config.OpKeyList)))
-	}
-	// 复制操作数
-	for i := 0; i < len(op_key_config.OpKeyList); i++ {
-		if i < len(ops) {
-			op_key_config.OpKeyList[i] = ops[i]
-			op_key_config.OpCount++
-		} else {
-			// 这里不设置也可以 因为有 op_count 决定循环次数
-			op_key_config.OpKeyList[i] = op_key_helper.get_op_key(OPC_SKIP)
+			op_key_config.AddOpK(op_key)
 		}
 	}
 	// 关联到syscall
-	aarch64_syscall_points.Add(nr, name, configs, OpKeyConfig{}, op_key_config)
+	aarch64_syscall_points.Add(nr, name, configs, NewOpKeyConfig(), op_key_config)
 }
 
 var OPA_INT32 = RTO(TYPE_INT32, uint32(unsafe.Sizeof(int32(0))))
@@ -385,8 +445,15 @@ func init() {
 	// 以指定寄存器为数据作为读取长度
 	AT_BUFFER_X2 := AT_BUFFER.NewReadLenRegValue(REG_ARM64_X2)
 
+	// 以指定寄存器为数据作为读取次数
+	AT_IOVEC_X2 := AT_IOVEC.RepeatReadRegValue(REG_ARM64_X2)
+
 	R(56, "openat", X("dirfd", AT_INT32), X("pathname", AT_STRING), X("flags", AT_INT32), X("mode", AT_INT16))
+	R(66, "writev", X("fd", AT_INT32), X("iov", AT_IOVEC_X2), X("iovcnt", AT_INT32))
 	R(206, "sendto", X("sockfd", AT_INT32), X("*buf", AT_BUFFER_X2), X("len", AT_INT32), X("flags", AT_INT32))
+
+	// 测试时用
+	// op_key_helper.show_all_op()
 
 	// R(211, "sendmsg", X("sockfd", OPA_INT32), X("*msg", OPA_MSGHDR), X("flags", OPA_INT32))
 }

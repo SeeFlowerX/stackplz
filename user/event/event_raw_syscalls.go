@@ -136,6 +136,34 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
                 panic(err)
             }
             results = append(results, fmt.Sprintf("%s=0x%x(%s)", point_arg.ArgName, ptr.Address, util.B2STrim(payload)))
+        case config.TYPE_IOVEC:
+            var iovcnt config.Arg_reg
+            if err = binary.Read(this.buf, binary.LittleEndian, &iovcnt); err != nil {
+                panic(err)
+            }
+            var iov_read_count int = config.MAX_IOV_COUNT
+            if int(iovcnt.Address) < iov_read_count {
+                iov_read_count = int(iovcnt.Address)
+            }
+            var result []string
+            for i := 0; i < iov_read_count; i++ {
+                var arg config.Arg_Iovec_Fix_t
+                if err = binary.Read(this.buf, binary.LittleEndian, &arg.Arg_Iovec_Fix); err != nil {
+                    panic(err)
+                }
+                var iov_buf config.Arg_str
+                if err = binary.Read(this.buf, binary.LittleEndian, &iov_buf); err != nil {
+                    panic(err)
+                }
+                payload := make([]byte, iov_buf.Len)
+                if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+                    panic(err)
+                }
+                arg.Payload = payload
+                result = append(result, arg.Format())
+            }
+            iov_dump := "\n\t" + strings.Join(result, "\n\t") + "\n"
+            results = append(results, fmt.Sprintf("%s=0x%x(%s)", point_arg.ArgName, ptr.Address, iov_dump))
         default:
             results = append(results, fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address))
         }

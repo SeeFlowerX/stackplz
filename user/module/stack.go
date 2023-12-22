@@ -443,7 +443,7 @@ func (this *MStack) update_op_list() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
-    for op_key, op_config := range *config.GetOpList() {
+    for op_key, op_config := range config.GetOpList() {
         err := bpf_map.Update(unsafe.Pointer(&op_key), unsafe.Pointer(&op_config), ebpf.UpdateAny)
         if err != nil {
             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))

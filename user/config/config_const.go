@@ -13,6 +13,7 @@ const (
 	// TRACE_STAT
 )
 
+const MAX_LOOP_COUNT = 6
 const MAX_BUF_READ_SIZE uint32 = 4096
 
 const (

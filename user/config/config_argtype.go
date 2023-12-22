@@ -63,6 +63,28 @@ func (this *OpArgType) NewReadLenRegValue(reg_index uint32) *OpArgType {
 	}
 	return &at
 }
+func (this *OpArgType) RepeatReadRegValue(reg_index uint32) *OpArgType {
+	if this.Alias_type != TYPE_IOVEC {
+		panic(fmt.Sprintf("ArgType is %d, not TYPE_IOVEC", this.Alias_type))
+	}
+	at := this.Clone()
+	at.Ops = []uint32{}
+	// 这里可以简化为一个操作 对应改动c即可
+	at.AddOp(OPC_SET_REG_INDEX, uint64(reg_index))
+	at.AddOpC(OP_READ_REG)
+	at.AddOpC(OP_SAVE_REG)
+	at.AddOpC(OP_SET_BREAK_COUNT_REG_VALUE)
+	for i := 0; i < MAX_LOOP_COUNT; i++ {
+		at.AddOp(OPC_FOR_BREAK, uint64(i))
+		// at.AddOpC(OP_SAVE_ADDR)
+		at.AddOpC(OP_SET_TMP_VALUE)
+		at.AddOpA(*this)
+		at.AddOpC(OP_MOVE_TMP_VALUE)
+		at.AddOp(OPC_ADD_OFFSET, 16)
+	}
+	at.AddOpC(OP_RESET_BREAK)
+	return &at
+}
 
 func RAT(alias_type, type_size uint32) *OpArgType {
 	// register OpArgType
@@ -104,6 +126,18 @@ func init() {
 
 	// TYPE_STRING
 	AT_STRING.AddOpC(OP_SAVE_STRING)
+
+	// TYPE_IOVEC
+	AT_IOVEC.AddOp(OPC_SET_READ_LEN, uint64(AT_IOVEC.Type_size))
+	AT_IOVEC.AddOpC(OP_SAVE_STRUCT)
+	AT_IOVEC.AddOp(OPC_ADD_OFFSET, 8)
+	AT_IOVEC.AddOpC(OP_READ_POINTER)
+	AT_IOVEC.AddOp(OPC_SET_READ_LEN, uint64(MAX_BUF_READ_SIZE))
+	AT_IOVEC.AddOpC(OP_SET_READ_LEN_POINTER_VALUE)
+	AT_IOVEC.AddOp(OPC_SUB_OFFSET, 8)
+	AT_IOVEC.AddOpC(OP_READ_POINTER)
+	AT_IOVEC.AddOpC(OP_MOVE_POINTER_VALUE)
+	AT_IOVEC.AddOpC(OP_SAVE_STRUCT)
 
 	// Register(&SArgs{206, PAI("sendto", []PArg{A("sockfd", EXP_INT), A("buf", READ_BUFFER_T), A("len", INT), A("flags", EXP_INT), A("dest_addr", SOCKADDR), A("addrlen", EXP_INT)})})
 }
