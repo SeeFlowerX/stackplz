@@ -126,6 +126,16 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
                 payload_dump = arg.Format(payload)
             }
             results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, payload_dump))
+        case config.TYPE_STRING:
+            var arg config.Arg_str
+            if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
+                panic(err)
+            }
+            payload := make([]byte, arg.Len)
+            if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
+                panic(err)
+            }
+            results = append(results, fmt.Sprintf("%s=0x%x(%s)", point_arg.ArgName, ptr.Address, util.B2STrim(payload)))
         default:
             results = append(results, fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address))
         }

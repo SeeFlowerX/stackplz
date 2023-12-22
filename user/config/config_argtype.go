@@ -103,7 +103,7 @@ func init() {
 	AT_BUFFER.AddOpC(OP_SAVE_STRUCT)
 
 	// TYPE_STRING
-	AT_BUFFER.AddOpC(OP_SAVE_STRING)
+	AT_STRING.AddOpC(OP_SAVE_STRING)
 
 	// Register(&SArgs{206, PAI("sendto", []PArg{A("sockfd", EXP_INT), A("buf", READ_BUFFER_T), A("len", INT), A("flags", EXP_INT), A("dest_addr", SOCKADDR), A("addrlen", EXP_INT)})})
 }
