@@ -180,6 +180,10 @@ func X(arg_name string, arg_type *OpArgType) *ArgOpConfig {
 	return &config
 }
 
+func Y(arg_name string, arg_type *OpArgType) *ArgOpConfig {
+	return X(arg_name, arg_type)
+}
+
 var aarch64_syscall_points = SyscallPoints{}
 
 func R(nr uint32, name string, configs ...*ArgOpConfig) {
@@ -211,9 +215,13 @@ func init() {
 	// 以指定寄存器作为数据读取次数
 	AT_IOVEC_X2 := BuildIovecRegIndex(REG_ARM64_X2)
 
-	R(56, "openat", X("dirfd", AT_INT32), X("pathname", AT_STRING), X("flags", AT_INT32), X("mode", AT_INT16))
-	R(66, "writev", X("fd", AT_INT32), X("*iov", AT_IOVEC_X2), X("iovcnt", AT_INT32))
-	R(203, "connect", X("sockfd", AT_INT32), X("addr", AT_SOCKADDR), X("addrlen", AT_INT32))
-	R(206, "sendto", X("sockfd", AT_INT32), X("*buf", AT_BUFFER_X2), X("len", AT_INT32), X("flags", AT_INT32), X("addr", AT_INT32), X("addrlen", AT_INT32))
-	R(211, "sendmsg", X("sockfd", AT_INT32), X("*msg", AT_MSGHDR), X("flags", AT_INT32))
+	R(56, "openat", X("dirfd", AT_INT), X("pathname", AT_STRING), X("flags", AT_INT), X("mode", AT_INT16))
+	R(66, "writev", X("fd", AT_INT), X("*iov", AT_IOVEC_X2), X("iovcnt", AT_INT))
+	// 需要修正 syscall执行后读取
+	R(78, "readlinkat", X("dirfd", AT_INT), X("pathname", AT_STRING), Y("buf", AT_STRING), X("bufsiz", AT_INT))
+	R(79, "newfstatat", X("dirfd", AT_INT), X("pathname", AT_STRING), Y("statbuf", AT_STAT), X("flags", AT_INT))
+	R(203, "connect", X("sockfd", AT_INT), X("addr", AT_SOCKADDR), X("addrlen", AT_INT))
+	R(206, "sendto", X("sockfd", AT_INT), X("*buf", AT_BUFFER_X2), X("len", AT_INT), X("flags", AT_INT), X("addr", AT_SOCKADDR), X("addrlen", AT_INT))
+	R(211, "sendmsg", X("sockfd", AT_INT), X("*msg", AT_MSGHDR), X("flags", AT_INT))
+
 }

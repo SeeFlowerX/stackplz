@@ -255,6 +255,8 @@ var AT_INT16 = RAT(TYPE_INT16, uint32(unsafe.Sizeof(int16(0))))
 var AT_INT32 = RAT(TYPE_INT32, uint32(unsafe.Sizeof(int32(0))))
 var AT_INT64 = RAT(TYPE_INT64, uint32(unsafe.Sizeof(int64(0))))
 
+var AT_INT = AT_INT32
+
 var AT_UINT8 = RAT(TYPE_UINT8, uint32(unsafe.Sizeof(uint8(0))))
 var AT_UINT16 = RAT(TYPE_UINT16, uint32(unsafe.Sizeof(uint16(0))))
 var AT_UINT32 = RAT(TYPE_UINT32, uint32(unsafe.Sizeof(uint32(0))))
@@ -265,6 +267,7 @@ var AT_BUFFER = RAT(TYPE_BUFFER, MAX_BUF_READ_SIZE)
 var AT_STRING = RAT(TYPE_STRING, MAX_BUF_READ_SIZE)
 
 // 复杂类型
+var AT_STAT = RSAT(TYPE_STAT, uint32(unsafe.Sizeof(syscall.Stat_t{})))
 var AT_SOCKADDR = RSAT(TYPE_SOCKADDR, uint32(unsafe.Sizeof(syscall.RawSockaddrUnix{})))
 var AT_IOVEC = RSAT(TYPE_IOVEC, uint32(unsafe.Sizeof(syscall.Iovec{})))
 var AT_MSGHDR = RSAT(TYPE_MSGHDR, uint32(unsafe.Sizeof(Msghdr{})))
