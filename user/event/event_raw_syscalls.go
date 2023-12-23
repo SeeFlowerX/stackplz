@@ -70,20 +70,13 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
                 }
             }
 
-            // this.logger.Printf("control_buf=%s", control_buf.Format(control_payload))
-
-            iov_len := arg_msghdr.Iovlen
-            if iov_len > 6 {
-                iov_len = 6
+            var iov_read_count int = config.MAX_IOV_COUNT
+            if int(arg_msghdr.Iovlen) < iov_read_count {
+                iov_read_count = int(arg_msghdr.Iovlen)
             }
-            var iov_results []string
-            for iov_index := 0; iov_index < int(iov_len); iov_index++ {
-                var iov_value config.Arg_reg
-                if err = binary.Read(this.buf, binary.LittleEndian, &iov_value); err != nil {
-                    panic(err)
-                }
-                // this.logger.Printf("iov_value:%s", iov_value.Format())
 
+            var iov_results []string
+            for i := 0; i < iov_read_count; i++ {
                 var arg_iovec config.Arg_Iovec_Fix_t
                 if err = binary.Read(this.buf, binary.LittleEndian, &arg_iovec.Arg_Iovec_Fix); err != nil {
                     panic(err)
@@ -103,10 +96,9 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
                     }
                 }
                 arg_iovec.Payload = payload
-                // this.logger.Printf("payload={%s}", arg_iovec.Format())
-                iov_results = append(iov_results, fmt.Sprintf("iov_%d=%s", iov_index, arg_iovec.Format()))
+                iov_results = append(iov_results, fmt.Sprintf("iov_%d=%s", i, arg_iovec.Format()))
             }
-            iov_results_str := "[\n\t" + strings.Join(iov_results, ", \n\t") + "\n]"
+            iov_results_str := "(\n\t" + strings.Join(iov_results, ", \n\t") + "\n)"
             results = append(results, fmt.Sprintf("%s=%s", point_arg.ArgName, arg_msghdr.FormatFull(iov_results_str, control_buf.Format(control_payload))))
         case config.TYPE_INT32:
             results = append(results, fmt.Sprintf("%s=%d", point_arg.ArgName, int32(ptr.Address)))
@@ -147,8 +139,8 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
             }
             var result []string
             for i := 0; i < iov_read_count; i++ {
-                var arg config.Arg_Iovec_Fix_t
-                if err = binary.Read(this.buf, binary.LittleEndian, &arg.Arg_Iovec_Fix); err != nil {
+                var arg_iovec config.Arg_Iovec_Fix_t
+                if err = binary.Read(this.buf, binary.LittleEndian, &arg_iovec.Arg_Iovec_Fix); err != nil {
                     panic(err)
                 }
                 var iov_buf config.Arg_str
@@ -159,11 +151,15 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
                 if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
                     panic(err)
                 }
-                arg.Payload = payload
-                result = append(result, arg.Format())
+                arg_iovec.Payload = payload
+                // result = append(result, arg.Format())
+                result = append(result, fmt.Sprintf("iov_%d=%s", i, arg_iovec.Format()))
             }
             iov_dump := "\n\t" + strings.Join(result, "\n\t") + "\n"
             results = append(results, fmt.Sprintf("%s=0x%x(%s)", point_arg.ArgName, ptr.Address, iov_dump))
+        case config.TYPE_SOCKADDR:
+            sock_addr := this.ParseArgStruct(this.buf, &config.Arg_RawSockaddrUnix{})
+            results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, sock_addr))
         default:
             results = append(results, fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address))
         }

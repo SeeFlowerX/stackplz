@@ -182,32 +182,22 @@ func (this *OpArgType) Clone() OpArgType {
 }
 
 func (this *OpArgType) AddOp(op *OpConfig) {
-	this.OpList = append(this.OpList, op)
+	this.OpList = append(this.OpList, OPM.AddOp(op))
 }
 
-func Add_READ_BUFFER_REG(reg_index uint32) *OpArgType {
+func BuildBufferRegIndex(reg_index uint32) *OpArgType {
 	at := AT_BUFFER.Clone()
 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.Type_size)))
-	op := &OpConfig{}
-	op.Name = fmt.Sprintf("%s_%d", "READ_BUFFER_REG", reg_index)
-	op.Code = OP_READ_REG
-	op.PreCode = OP_SET_REG_INDEX
-	op.PostCode = OP_SET_READ_LEN_REG_VALUE
-	op.Value = uint64(reg_index)
-	at.AddOp(OPM.AddOp(op))
+	at.AddOp(BuildReadRegLen(uint64(reg_index)))
 	at.AddOp(OPC_SAVE_STRUCT)
 	return &at
 }
 
-func Add_REPEAT_READ_REG_VALUE(reg_index uint32) *OpArgType {
+func BuildIovecRegIndex(reg_index uint32) *OpArgType {
 	at := AT_IOVEC.Clone()
-	op := &OpConfig{}
-	op.Name = fmt.Sprintf("%s_%d", "BREAK_COUNT_REG", reg_index)
-	op.Code = OP_READ_REG
-	op.PreCode = OP_SET_REG_INDEX
-	op.PostCode = OP_SET_BREAK_COUNT_REG_VALUE
-	op.Value = uint64(reg_index)
-	var for_op []*OpConfig = []*OpConfig{OPM.AddOp(op), OPC_SAVE_REG, OPC_FOR_BREAK, OPC_SET_TMP_VALUE}
+	op := BuildReadRegBreakCount(uint64(reg_index))
+	op = OPM.AddOp(op)
+	var for_op []*OpConfig = []*OpConfig{op, OPC_SAVE_REG, OPC_FOR_BREAK, OPC_SET_TMP_VALUE}
 	at.OpList = append(for_op, at.OpList...)
 	at.AddOp(OPC_MOVE_TMP_VALUE)
 	at.AddOp(OPC_ADD_OFFSET.NewValue(16))
@@ -275,8 +265,80 @@ var AT_BUFFER = RAT(TYPE_BUFFER, MAX_BUF_READ_SIZE)
 var AT_STRING = RAT(TYPE_STRING, MAX_BUF_READ_SIZE)
 
 // 复杂类型
+var AT_SOCKADDR = RSAT(TYPE_SOCKADDR, uint32(unsafe.Sizeof(syscall.RawSockaddrUnix{})))
 var AT_IOVEC = RSAT(TYPE_IOVEC, uint32(unsafe.Sizeof(syscall.Iovec{})))
 var AT_MSGHDR = RSAT(TYPE_MSGHDR, uint32(unsafe.Sizeof(Msghdr{})))
+
+func BuildReadRegBreakCount(reg_index uint64) *OpConfig {
+	op := OpConfig{}
+	op.Name = fmt.Sprintf("%s_%d", "READ_REG_AS_BREAK_COUNT", reg_index)
+	op.Code = OP_READ_REG
+	op.PreCode = OP_SET_REG_INDEX
+	op.PostCode = OP_SET_BREAK_COUNT_REG_VALUE
+	op.Value = reg_index
+	return &op
+}
+
+func BuildReadPtrBreakCount(offset uint64) *OpConfig {
+	op := OpConfig{}
+	op.Name = fmt.Sprintf("%s_%d", "READ_PTR_AS_BREAK_COUNT", offset)
+	op.Code = OP_READ_POINTER
+	op.PreCode = OP_ADD_OFFSET
+	op.PostCode = OP_SET_BREAK_COUNT_POINTER_VALUE
+	op.Value = offset
+	return &op
+}
+
+func BuildReadRegLen(reg_index uint64) *OpConfig {
+	op := OpConfig{}
+	op.Name = fmt.Sprintf("%s_%d", "READ_REG_AS_READ_LEN", reg_index)
+	op.Code = OP_READ_REG
+	op.PreCode = OP_SET_REG_INDEX
+	op.PostCode = OP_SET_READ_LEN_REG_VALUE
+	op.Value = reg_index
+	return &op
+}
+
+func BuildReadPtrLen(offset uint64) *OpConfig {
+	op := OpConfig{}
+	op.Name = fmt.Sprintf("%s_%d", "READ_PTR_AS_READ_LEN", offset)
+	op.Code = OP_READ_POINTER
+	op.PreCode = OP_ADD_OFFSET
+	op.PostCode = OP_SET_READ_LEN_POINTER_VALUE
+	op.Value = offset
+	return &op
+}
+
+func BuildReadPtrAddr(offset uint64) *OpConfig {
+	op := OpConfig{}
+	op.Name = fmt.Sprintf("%s_%d", "READ_PTR_AS_ADDR", offset)
+	op.Code = OP_READ_POINTER
+	op.PreCode = OP_ADD_OFFSET
+	op.PostCode = OP_MOVE_POINTER_VALUE
+	op.Value = offset
+	return &op
+}
+
+func BuildMsghdr() {
+	t := Msghdr{}
+	AT_MSGHDR.AddOp(OPC_SET_TMP_VALUE)
+	AT_MSGHDR.AddOp(OPC_SET_READ_LEN.NewValue(uint64(MAX_BUF_READ_SIZE)))
+	AT_MSGHDR.AddOp(BuildReadPtrLen(uint64(unsafe.Offsetof(t.Controllen))))
+	AT_MSGHDR.AddOp(BuildReadPtrAddr(uint64(unsafe.Offsetof(t.Control))))
+	AT_MSGHDR.AddOp(OPC_SAVE_STRUCT)
+	AT_MSGHDR.AddOp(OPC_MOVE_TMP_VALUE)
+	AT_MSGHDR.AddOp(BuildReadPtrBreakCount(uint64(unsafe.Offsetof(t.Iovlen))))
+	// 由于结构体直接可以取到长度 这里就不再保存一次了
+	// AT_MSGHDR.AddOp(OPC_SAVE_POINTER)
+	AT_MSGHDR.AddOp(BuildReadPtrAddr(uint64(unsafe.Offsetof(t.Iov))))
+	AT_MSGHDR.AddOp(OPC_SET_TMP_VALUE)
+	AT_MSGHDR.AddOp(OPC_FOR_BREAK)
+	AT_MSGHDR.OpList = append(AT_MSGHDR.OpList, AT_IOVEC.OpList...)
+	AT_MSGHDR.AddOp(OPC_MOVE_TMP_VALUE)
+	AT_MSGHDR.AddOp(OPC_ADD_OFFSET.NewValue(uint64(AT_IOVEC.Type_size)))
+	AT_MSGHDR.AddOp(OPC_FOR_BREAK)
+
+}
 
 func init() {
 	// 在这里完成各种类型的操作集合初始化
@@ -286,35 +348,13 @@ func init() {
 
 	// TYPE_IOVEC
 	AT_IOVEC.AddOp(OPC_SET_READ_LEN.NewValue(uint64(MAX_BUF_READ_SIZE)))
-	op := &OpConfig{}
-	op.Name = "READ_IOVEC_LEN"
-	op.Code = OP_READ_POINTER
-	op.PreCode = OP_ADD_OFFSET
-	op.PostCode = OP_SET_READ_LEN_POINTER_VALUE
-	op.Value = 8
-	AT_IOVEC.AddOp(OPM.AddOp(op))
+	AT_IOVEC.AddOp(BuildReadPtrLen(8))
 	AT_IOVEC.AddOp(OPC_READ_POINTER)
 	AT_IOVEC.AddOp(OPC_MOVE_POINTER_VALUE)
 	AT_IOVEC.AddOp(OPC_SAVE_STRUCT)
 
-	// // TYPE_MSGHDR
-	// AT_MSGHDR.AddOpC(OP_SET_TMP_VALUE)
-	// AT_MSGHDR.AddOp(OPC_ADD_OFFSET, 8+4+4+8+8+8)
-	// AT_MSGHDR.AddOpC(OP_READ_POINTER)
-	// AT_MSGHDR.AddOp(OPC_SET_READ_LEN, uint64(MAX_BUF_READ_SIZE))
-	// AT_MSGHDR.AddOpC(OP_SET_READ_LEN_POINTER_VALUE)
-	// AT_MSGHDR.AddOp(OPC_SUB_OFFSET, 8)
-	// AT_MSGHDR.AddOpC(OP_READ_POINTER)
-	// AT_MSGHDR.AddOpC(OP_MOVE_POINTER_VALUE)
-	// AT_MSGHDR.AddOpC(OP_SAVE_STRUCT)
-	// AT_MSGHDR.AddOpC(OP_MOVE_TMP_VALUE)
-
-	// AT_MSGHDR.AddOp(OPC_ADD_OFFSET, 8+4+4+8)
-	// AT_MSGHDR.AddOpC(OP_READ_POINTER)
-	// AT_MSGHDR.AddOpC(OP_SET_BREAK_COUNT_POINTER_VALUE)
-	// AT_MSGHDR.AddOp(OPC_SUB_OFFSET, 8)
-	// AT_MSGHDR.AddOpC(OP_READ_POINTER)
-	// AT_MSGHDR.AddOpC(OP_MOVE_POINTER_VALUE)
+	// TYPE_MSGHDR
+	BuildMsghdr()
 
 	// Register(&SArgs{206, PAI("sendto", []PArg{A("sockfd", EXP_INT), A("buf", READ_BUFFER_T), A("len", INT), A("flags", EXP_INT), A("dest_addr", SOCKADDR), A("addrlen", EXP_INT)})})
 }

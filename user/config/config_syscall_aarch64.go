@@ -205,82 +205,15 @@ func init() {
 
 	// 对一些复杂结构体的读取配置进行补充
 
-	// 读取 iov 注意 OPA_IOV 第一步会执行 OPC_SAVE_STRUCT
-	// 将 op_ctx->read_addr 指向 iovec->iov_len
-	// OPA_IOV.AddOp(OPC_ADD_OFFSET, 8)
-	// // 读取 iovec->iov_len
-	// OPA_IOV.AddOpC(OP_READ_POINTER)
-	// // 设置 op_ctx->read_len 为默认的单次最大读取长度
-	// OPA_IOV.AddOp(OPC_SET_READ_LEN, uint64(MAX_BUF_READ_SIZE))
-	// // 修正 op_ctx->read_len
-	// OPA_IOV.AddOpC(OP_SET_READ_LEN_POINTER_VALUE)
-	// // 将 op_ctx->read_addr 重新指向 iovec 起始处
-	// OPA_IOV.AddOp(OPC_SUB_OFFSET, 8)
-	// // 读取 iovec->iov_base
-	// OPA_IOV.AddOpC(OP_READ_POINTER)
-	// // 转移 iovec->iov_base 到 op_ctx->read_addr
-	// OPA_IOV.AddOpC(OP_MOVE_POINTER_VALUE)
-	// // 读取 op_ctx->read_addr 处 op_ctx->read_len 长度的数据
-	// OPA_IOV.AddOpC(OP_SAVE_STRUCT)
-
-	// // 将 op_ctx->read_addr 保存到 op_ctx->tmp_value 也就是 msghdr 的地址
-	// OPA_MSGHDR.AddOpC(OP_SET_TMP_VALUE)
-	// // 将 op_ctx->read_addr 指向 msghdr->controllen
-	// OPA_MSGHDR.AddOp(OPC_ADD_OFFSET, 8+4+4+8+8+8)
-	// // 读取 msghdr->controllen
-	// OPA_MSGHDR.AddOpC(OP_READ_POINTER)
-	// // 设置 op_ctx->read_len 为默认的单次最大读取长度
-	// OPA_MSGHDR.AddOp(OPC_SET_READ_LEN, uint64(MAX_BUF_READ_SIZE))
-	// // 修正 op_ctx->read_len
-	// OPA_MSGHDR.AddOpC(OP_SET_READ_LEN_POINTER_VALUE)
-	// // 将 op_ctx->read_addr 指向 msghdr->control 起始处
-	// OPA_MSGHDR.AddOp(OPC_SUB_OFFSET, 8)
-	// // 读取 msghdr->control
-	// OPA_MSGHDR.AddOpC(OP_READ_POINTER)
-	// // 转移 msghdr->control 到 op_ctx->read_addr
-	// OPA_MSGHDR.AddOpC(OP_MOVE_POINTER_VALUE)
-	// // 读取 op_ctx->read_addr 处 op_ctx->read_len 长度的数据
-	// OPA_MSGHDR.AddOpC(OP_SAVE_STRUCT)
-	// // 恢复 op_ctx->tmp_value 也就是 op_ctx->read_addr 重新指向 msghdr
-	// OPA_MSGHDR.AddOpC(OP_MOVE_TMP_VALUE)
-
-	// // 将 op_ctx->read_addr 指向 msghdr->iovlen
-	// OPA_MSGHDR.AddOp(OPC_ADD_OFFSET, 8+4+4+8)
-	// // 读取 msghdr->iovlen
-	// OPA_MSGHDR.AddOpC(OP_READ_POINTER)
-	// // 将 iovlen 设置为循环次数上限
-	// OPA_MSGHDR.AddOpC(OP_SET_BREAK_COUNT_POINTER_VALUE)
-	// // 将读取地址指向 msghdr->iov
-	// OPA_MSGHDR.AddOp(OPC_SUB_OFFSET, 8)
-	// // 读取 msghdr->iov 指针
-	// OPA_MSGHDR.AddOpC(OP_READ_POINTER)
-	// // 将 op_ctx->read_addr 指向 msghdr->iov 指针
-	// OPA_MSGHDR.AddOpC(OP_MOVE_POINTER_VALUE)
-	// // 读取 msghdr->iov 最多读取 6 次 最少 msghdr->iovlen 次
-	// for i := 0; i < 6; i++ {
-	// 	OPA_MSGHDR.AddOp(OPC_FOR_BREAK, uint64(i))
-	// 	// 保存 iov 指针
-	// 	OPA_MSGHDR.AddOpC(OP_SAVE_ADDR)
-	// 	// 将读取地址放一份到临时变量中
-	// 	OPA_MSGHDR.AddOpC(OP_SET_TMP_VALUE)
-	// 	// 读取 iov 数据
-	// 	OPA_MSGHDR.AddOpA(OPA_IOV)
-	// 	// 恢复临时变量结果到 读取地址
-	// 	OPA_MSGHDR.AddOpC(OP_MOVE_TMP_VALUE)
-	// 	// 将 读取地址 偏移到下一个 iov 指针处
-	// 	OPA_MSGHDR.AddOp(OPC_ADD_OFFSET, 16)
-	// }
-	// OPA_MSGHDR.AddOpC(OP_RESET_BREAK)
-
 	// 以指定寄存器作为数据读取长度
-	AT_BUFFER_X2 := Add_READ_BUFFER_REG(REG_ARM64_X2)
+	AT_BUFFER_X2 := BuildBufferRegIndex(REG_ARM64_X2)
 
 	// 以指定寄存器作为数据读取次数
-	AT_IOVEC_X2 := Add_REPEAT_READ_REG_VALUE(REG_ARM64_X2)
+	AT_IOVEC_X2 := BuildIovecRegIndex(REG_ARM64_X2)
 
 	R(56, "openat", X("dirfd", AT_INT32), X("pathname", AT_STRING), X("flags", AT_INT32), X("mode", AT_INT16))
 	R(66, "writev", X("fd", AT_INT32), X("*iov", AT_IOVEC_X2), X("iovcnt", AT_INT32))
-	R(206, "sendto", X("sockfd", AT_INT32), X("*buf", AT_BUFFER_X2), X("len", AT_INT32), X("flags", AT_INT32))
-
-	// R(211, "sendmsg", X("sockfd", OPA_INT32), X("*msg", OPA_MSGHDR), X("flags", OPA_INT32))
+	R(203, "connect", X("sockfd", AT_INT32), X("addr", AT_SOCKADDR), X("addrlen", AT_INT32))
+	R(206, "sendto", X("sockfd", AT_INT32), X("*buf", AT_BUFFER_X2), X("len", AT_INT32), X("flags", AT_INT32), X("addr", AT_INT32), X("addrlen", AT_INT32))
+	R(211, "sendmsg", X("sockfd", AT_INT32), X("*msg", AT_MSGHDR), X("flags", AT_INT32))
 }

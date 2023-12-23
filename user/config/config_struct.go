@@ -326,7 +326,7 @@ func (this *Arg_RawSockaddrUnix) Format() string {
 		sockaddr := (*syscall.RawSockaddrInet4)(unsafe.Pointer(&this.RawSockaddrUnix))
 		fields = append(fields, fmt.Sprintf("port=%d", sockaddr.Port))
 		fields = append(fields, fmt.Sprintf("addr=%s", net.IP(sockaddr.Addr[:]).String()))
-		fields = append(fields, fmt.Sprintf("zero=%x", sockaddr.Zero))
+		// fields = append(fields, fmt.Sprintf("zero=%x", sockaddr.Zero))
 	} else if this.Family == syscall.AF_INET6 {
 		fields = append(fields, "family=AF_INET6")
 		buf := &bytes.Buffer{}
@@ -368,7 +368,7 @@ func (this *Arg_RawSockaddrUnix) Format() string {
 		fields = append(fields, fmt.Sprintf("family=0x%x", this.Family))
 		fields = append(fields, fmt.Sprintf("path=\n%s", util.HexDump(util.I2B(this.Path[:]), util.COLORGREEN)))
 	}
-	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
 }
 
 type Arg_Iovec struct {
