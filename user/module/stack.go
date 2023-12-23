@@ -426,7 +426,8 @@ func (this *MStack) update_next_point_args() {
         panic("TraceMode TRACE_ALL not implemented yet")
     } else {
         for _, point_config := range this.mconf.SysCallConf.NextPointArgs {
-            err := bpf_map.Update(unsafe.Pointer(&point_config.Nr), unsafe.Pointer(&point_config.ArgsSysEnter), ebpf.UpdateAny)
+            point := point_config.GetConfig()
+            err := bpf_map.Update(unsafe.Pointer(&point_config.Nr), unsafe.Pointer(&point), ebpf.UpdateAny)
             if err != nil {
                 panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
             }

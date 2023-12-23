@@ -6,6 +6,7 @@
 #define MAX_FILTER_COUNT 6
 #define MAX_PATH_COMPONENTS   48
 #define MAX_OP_COUNT 256
+#define MAX_LOOP_COUNT 6
 
 // clang-format off
 #define MAX_PERCPU_BUFSIZE (1 << 15)  // set by the kernel as an upper bound

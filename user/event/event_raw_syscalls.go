@@ -28,9 +28,9 @@ type Arg_bytes = config.Arg_str
 
 func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
     // 输出json会更方便分析 next
-    if this.mconf.Next {
-        this.logger.Printf("ParseContextSysEnterNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
-    }
+    // if this.mconf.Next {
+    //     this.logger.Printf("ParseContextSysEnterNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
+    // }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
         panic(err)
     }
@@ -52,7 +52,7 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(err)
         }
-        switch point_arg.AliasType {
+        switch point_arg.ArgType.Alias_type {
         case config.TYPE_MSGHDR:
             var arg_msghdr config.Arg_Msghdr
             if err = binary.Read(this.buf, binary.LittleEndian, &arg_msghdr); err != nil {

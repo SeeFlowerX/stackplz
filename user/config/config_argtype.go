@@ -6,12 +6,170 @@ import (
 	"unsafe"
 )
 
+// operation code enum
+const (
+	OP_SKIP uint32 = iota + 233
+	OP_RESET_CTX
+	OP_SET_REG_INDEX
+	OP_SET_READ_LEN
+	OP_SET_READ_LEN_REG_VALUE
+	OP_SET_READ_LEN_POINTER_VALUE
+	OP_SET_READ_COUNT
+	OP_ADD_OFFSET
+	OP_SUB_OFFSET
+	OP_MOVE_REG_VALUE
+	OP_MOVE_POINTER_VALUE
+	OP_MOVE_TMP_VALUE
+	OP_SET_TMP_VALUE
+	OP_FOR_BREAK
+	OP_SET_BREAK_COUNT_REG_VALUE
+	OP_SET_BREAK_COUNT_POINTER_VALUE
+	OP_SAVE_ADDR
+	OP_READ_REG
+	OP_SAVE_REG
+	OP_READ_POINTER
+	OP_SAVE_POINTER
+	OP_SAVE_STRUCT
+	OP_SAVE_STRING
+)
+
+func NewOpManager() *OpManager {
+	opm := OpManager{}
+	return &opm
+}
+
+func GetOpList() map[uint32]OpConfig_C {
+	return OPM.GetOpList()
+}
+
+func ROP(name string, code uint32) *OpConfig {
+	// 注册基础的操作 直接添加
+	op := &OpConfig{}
+	op.Name = name
+	op.Code = code
+	op.PreCode = OP_SKIP
+	op.PostCode = OP_SKIP
+	return OPM.AddOp(op)
+}
+
+func Add_READ_SAVE_REG(value uint64) *OpConfig {
+	// 三合一
+	op := &OpConfig{}
+	op.Name = fmt.Sprintf("%s_%d", "READ_SAVE_REG", value)
+	op.Code = OP_READ_REG
+	op.PreCode = OP_SET_REG_INDEX
+	op.PostCode = OP_SAVE_REG
+	op.Value = value
+	return OPM.AddOp(op)
+}
+
+type OpManager struct {
+	OpList []*OpConfig
+}
+
+func (this *OpManager) Count() uint32 {
+	return uint32(len(this.OpList))
+}
+
+func (this *OpManager) AddOp(op *OpConfig) *OpConfig {
+	for _, v := range this.OpList {
+		if v.SameAs(op) {
+			return v
+		}
+	}
+	op.Index = this.Count()
+	this.OpList = append(this.OpList, op)
+	return op
+}
+
+func (this *OpManager) GetOpList() map[uint32]OpConfig_C {
+	var c_op_list = make(map[uint32]OpConfig_C)
+	for _, v := range this.OpList {
+		c_op_list[v.Index] = v.ToEbpfValue()
+		// fmt.Println("..", i, v.Index, c_op_list[v.Index], v.Name)
+	}
+	return c_op_list
+}
+
+type OpConfig_C struct {
+	Code     uint32
+	PreCode  uint32
+	PostCode uint32
+	Value    uint64
+}
+
+type OpConfig struct {
+	Name  string
+	Index uint32
+	OpConfig_C
+}
+
+func (this *OpConfig) ToEbpfValue() OpConfig_C {
+	v := OpConfig_C{}
+	v.Code = this.Code
+	v.PreCode = this.PreCode
+	v.PostCode = this.PostCode
+	v.Value = this.Value
+	return v
+}
+
+func (this *OpConfig) SameAs(op *OpConfig) bool {
+	if this.Name != op.Name {
+		return false
+	}
+	if this.Code != op.Code {
+		return false
+	}
+	// if this.Index != op.Index {
+	// 	return false
+	// }
+	if this.PreCode != op.PreCode {
+		return false
+	}
+	if this.PostCode != op.PostCode {
+		return false
+	}
+	if this.Value != op.Value {
+		return false
+	}
+	return true
+}
+
+func (this *OpConfig) Clone() *OpConfig {
+	op := &OpConfig{}
+	op.Name = this.Name
+	op.Index = this.Index
+	op.Code = this.Code
+	op.PreCode = this.PreCode
+	op.PostCode = this.PostCode
+	op.Value = this.Value
+	return op
+}
+
+func (this *OpConfig) NewValue(value uint64) *OpConfig {
+	op := this.Clone()
+	op.Value = value
+	return OPM.AddOp(op)
+}
+
+func (this *OpConfig) NewPreCode(pre_code uint32) *OpConfig {
+	op := this.Clone()
+	op.PreCode = pre_code
+	return OPM.AddOp(op)
+}
+
+func (this *OpConfig) NewPostCode(post_code uint32) *OpConfig {
+	op := this.Clone()
+	op.PostCode = post_code
+	return OPM.AddOp(op)
+}
+
 // 定义 arg_type 即定义读取一个 arg 所需要的操作集合
 
 type OpArgType struct {
 	Alias_type uint32
 	Type_size  uint32
-	Ops        []uint32
+	OpList     []*OpConfig
 }
 
 func (this *OpArgType) Clone() OpArgType {
@@ -19,80 +177,87 @@ func (this *OpArgType) Clone() OpArgType {
 	oat.Alias_type = this.Alias_type
 	oat.Type_size = this.Type_size
 	// 不能直接 copy 因为被赋值的一方长度为0
-	oat.Ops = append(oat.Ops, this.Ops...)
+	oat.OpList = append(oat.OpList, this.OpList...)
 	return oat
 }
 
-func (this *OpArgType) AddOp(opc OpConfig, value uint64) {
-	new_op_key := op_key_helper.get_op_key(opc.NewValue(value))
-	this.Ops = append(this.Ops, new_op_key)
+func (this *OpArgType) AddOp(op *OpConfig) {
+	this.OpList = append(this.OpList, op)
 }
 
-func (this *OpArgType) AddOpC(op_code uint32) {
-	// add one op with default value
-	default_op_key := op_key_helper.get_default_op_key(op_code)
-	this.Ops = append(this.Ops, default_op_key)
-}
-
-func (this *OpArgType) AddOpA(arg_type OpArgType) {
-	// add one arg op_keys
-	for _, arg_op_key := range arg_type.Ops {
-		this.Ops = append(this.Ops, arg_op_key)
-	}
-}
-func (this *OpArgType) AddOpK(op_key uint32) {
-	// add one op_key
-	this.Ops = append(this.Ops, op_key)
-}
-
-func (this *OpArgType) NewReadLenRegValue(reg_index uint32) *OpArgType {
-	if this.Alias_type != TYPE_BUFFER {
-		panic(fmt.Sprintf("ArgType is %d, not TYPE_BUFFER", this.Alias_type))
-	}
-	at := this.Clone()
-	at.Ops = []uint32{}
-	for _, op_key := range this.Ops {
-		at.AddOpK(op_key)
-		op_config := op_key_helper.get_op_config(op_key)
-		if op_config.Code == OP_SET_READ_LEN {
-			// 以指定寄存器的值作为读取长度 需要插入以下操作
-			at.AddOp(OPC_SET_REG_INDEX, uint64(reg_index))
-			at.AddOpC(OP_READ_REG)
-			at.AddOp(OPC_SET_READ_LEN_REG_VALUE, uint64(reg_index))
-		}
-	}
+func Add_READ_BUFFER_REG(reg_index uint32) *OpArgType {
+	at := AT_BUFFER.Clone()
+	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.Type_size)))
+	op := &OpConfig{}
+	op.Name = fmt.Sprintf("%s_%d", "READ_BUFFER_REG", reg_index)
+	op.Code = OP_READ_REG
+	op.PreCode = OP_SET_REG_INDEX
+	op.PostCode = OP_SET_READ_LEN_REG_VALUE
+	op.Value = uint64(reg_index)
+	at.AddOp(OPM.AddOp(op))
+	at.AddOp(OPC_SAVE_STRUCT)
 	return &at
 }
-func (this *OpArgType) RepeatReadRegValue(reg_index uint32) *OpArgType {
-	if this.Alias_type != TYPE_IOVEC {
-		panic(fmt.Sprintf("ArgType is %d, not TYPE_IOVEC", this.Alias_type))
-	}
-	at := this.Clone()
-	at.Ops = []uint32{}
-	// 这里可以简化为一个操作 对应改动c即可
-	at.AddOp(OPC_SET_REG_INDEX, uint64(reg_index))
-	at.AddOpC(OP_READ_REG)
-	at.AddOpC(OP_SAVE_REG)
-	at.AddOpC(OP_SET_BREAK_COUNT_REG_VALUE)
-	for i := 0; i < MAX_LOOP_COUNT; i++ {
-		at.AddOp(OPC_FOR_BREAK, uint64(i))
-		// at.AddOpC(OP_SAVE_ADDR)
-		at.AddOpC(OP_SET_TMP_VALUE)
-		at.AddOpA(*this)
-		at.AddOpC(OP_MOVE_TMP_VALUE)
-		at.AddOp(OPC_ADD_OFFSET, 16)
-	}
-	at.AddOpC(OP_RESET_BREAK)
+
+func Add_REPEAT_READ_REG_VALUE(reg_index uint32) *OpArgType {
+	at := AT_IOVEC.Clone()
+	op := &OpConfig{}
+	op.Name = fmt.Sprintf("%s_%d", "BREAK_COUNT_REG", reg_index)
+	op.Code = OP_READ_REG
+	op.PreCode = OP_SET_REG_INDEX
+	op.PostCode = OP_SET_BREAK_COUNT_REG_VALUE
+	op.Value = uint64(reg_index)
+	var for_op []*OpConfig = []*OpConfig{OPM.AddOp(op), OPC_SAVE_REG, OPC_FOR_BREAK, OPC_SET_TMP_VALUE}
+	at.OpList = append(for_op, at.OpList...)
+	at.AddOp(OPC_MOVE_TMP_VALUE)
+	at.AddOp(OPC_ADD_OFFSET.NewValue(16))
+	at.AddOp(OPC_FOR_BREAK)
 	return &at
 }
 
 func RAT(alias_type, type_size uint32) *OpArgType {
-	// register OpArgType
+	// register common OpArgType
 	oat := OpArgType{}
 	oat.Alias_type = alias_type
 	oat.Type_size = type_size
 	return &oat
 }
+
+func RSAT(alias_type, type_size uint32) *OpArgType {
+	// register struct OpArgType
+	oat := &OpArgType{}
+	oat.Alias_type = alias_type
+	oat.Type_size = type_size
+	op := OPC_SET_READ_LEN.NewValue(uint64(type_size))
+	oat.AddOp(op.NewPostCode(OP_SAVE_STRUCT))
+	return oat
+}
+
+var OPM = NewOpManager()
+
+var OPC_SKIP = ROP("SKIP", OP_SKIP)
+var OPC_RESET_CTX = ROP("RESET_CTX", OP_RESET_CTX)
+var OPC_SET_REG_INDEX = ROP("SET_REG_INDEX", OP_SET_REG_INDEX)
+var OPC_SET_READ_LEN = ROP("SET_READ_LEN", OP_SET_READ_LEN)
+var OPC_SET_READ_LEN_REG_VALUE = ROP("SET_READ_LEN_REG_VALUE", OP_SET_READ_LEN_REG_VALUE)
+var OPC_SET_READ_LEN_POINTER_VALUE = ROP("SET_READ_LEN_POINTER_VALUE", OP_SET_READ_LEN_POINTER_VALUE)
+var OPC_SET_READ_COUNT = ROP("SET_READ_COUNT", OP_SET_READ_COUNT)
+var OPC_ADD_OFFSET = ROP("ADD_OFFSET", OP_ADD_OFFSET)
+var OPC_SUB_OFFSET = ROP("SUB_OFFSET", OP_SUB_OFFSET)
+var OPC_MOVE_REG_VALUE = ROP("MOVE_REG_VALUE", OP_MOVE_REG_VALUE)
+var OPC_MOVE_POINTER_VALUE = ROP("MOVE_POINTER_VALUE", OP_MOVE_POINTER_VALUE)
+var OPC_MOVE_TMP_VALUE = ROP("MOVE_TMP_VALUE", OP_MOVE_TMP_VALUE)
+var OPC_SET_TMP_VALUE = ROP("SET_TMP_VALUE", OP_SET_TMP_VALUE)
+var OPC_FOR_BREAK = ROP("FOR_BREAK", OP_FOR_BREAK)
+var OPC_SET_BREAK_COUNT_REG_VALUE = ROP("SET_BREAK_COUNT_REG_VALUE", OP_SET_BREAK_COUNT_REG_VALUE)
+var OPC_SET_BREAK_COUNT_POINTER_VALUE = ROP("SET_BREAK_COUNT_POINTER_VALUE", OP_SET_BREAK_COUNT_POINTER_VALUE)
+var OPC_SAVE_ADDR = ROP("SAVE_ADDR", OP_SAVE_ADDR)
+var OPC_READ_REG = ROP("READ_REG", OP_READ_REG)
+var OPC_SAVE_REG = ROP("SAVE_REG", OP_SAVE_REG)
+var OPC_READ_POINTER = ROP("READ_POINTER", OP_READ_POINTER)
+var OPC_SAVE_POINTER = ROP("SAVE_POINTER", OP_SAVE_POINTER)
+var OPC_SAVE_STRUCT = ROP("SAVE_STRUCT", OP_SAVE_STRUCT)
+var OPC_SAVE_STRING = ROP("SAVE_STRING", OP_SAVE_STRING)
 
 // 基础类型
 var AT_INT8 = RAT(TYPE_INT8, uint32(unsafe.Sizeof(int8(0))))
@@ -110,34 +275,46 @@ var AT_BUFFER = RAT(TYPE_BUFFER, MAX_BUF_READ_SIZE)
 var AT_STRING = RAT(TYPE_STRING, MAX_BUF_READ_SIZE)
 
 // 复杂类型
-var AT_MSGHDR = RAT(TYPE_MSGHDR, uint32(unsafe.Sizeof(Msghdr{})))
-var AT_IOVEC = RAT(TYPE_IOVEC, uint32(unsafe.Sizeof(syscall.Iovec{})))
+var AT_IOVEC = RSAT(TYPE_IOVEC, uint32(unsafe.Sizeof(syscall.Iovec{})))
+var AT_MSGHDR = RSAT(TYPE_MSGHDR, uint32(unsafe.Sizeof(Msghdr{})))
 
 func init() {
 	// 在这里完成各种类型的操作集合初始化
 
-	// TYPE_BUFFER
-	// 通常按照结构体的方式读取即可 即读取指定地址指定大小的数据即可
-	// 然而数据大小有时候会通过其他参数指定
-	// 所以在读取之前 比较预设的默认读取大小和指定大小 取小的那个
-	// 这里先预设了读取长度 在实际使用时编排操作顺序
-	AT_BUFFER.AddOp(OPC_SET_READ_LEN, uint64(MAX_BUF_READ_SIZE))
-	AT_BUFFER.AddOpC(OP_SAVE_STRUCT)
-
 	// TYPE_STRING
-	AT_STRING.AddOpC(OP_SAVE_STRING)
+	AT_STRING.AddOp(OPC_SAVE_STRING)
 
 	// TYPE_IOVEC
-	AT_IOVEC.AddOp(OPC_SET_READ_LEN, uint64(AT_IOVEC.Type_size))
-	AT_IOVEC.AddOpC(OP_SAVE_STRUCT)
-	AT_IOVEC.AddOp(OPC_ADD_OFFSET, 8)
-	AT_IOVEC.AddOpC(OP_READ_POINTER)
-	AT_IOVEC.AddOp(OPC_SET_READ_LEN, uint64(MAX_BUF_READ_SIZE))
-	AT_IOVEC.AddOpC(OP_SET_READ_LEN_POINTER_VALUE)
-	AT_IOVEC.AddOp(OPC_SUB_OFFSET, 8)
-	AT_IOVEC.AddOpC(OP_READ_POINTER)
-	AT_IOVEC.AddOpC(OP_MOVE_POINTER_VALUE)
-	AT_IOVEC.AddOpC(OP_SAVE_STRUCT)
+	AT_IOVEC.AddOp(OPC_SET_READ_LEN.NewValue(uint64(MAX_BUF_READ_SIZE)))
+	op := &OpConfig{}
+	op.Name = "READ_IOVEC_LEN"
+	op.Code = OP_READ_POINTER
+	op.PreCode = OP_ADD_OFFSET
+	op.PostCode = OP_SET_READ_LEN_POINTER_VALUE
+	op.Value = 8
+	AT_IOVEC.AddOp(OPM.AddOp(op))
+	AT_IOVEC.AddOp(OPC_READ_POINTER)
+	AT_IOVEC.AddOp(OPC_MOVE_POINTER_VALUE)
+	AT_IOVEC.AddOp(OPC_SAVE_STRUCT)
+
+	// // TYPE_MSGHDR
+	// AT_MSGHDR.AddOpC(OP_SET_TMP_VALUE)
+	// AT_MSGHDR.AddOp(OPC_ADD_OFFSET, 8+4+4+8+8+8)
+	// AT_MSGHDR.AddOpC(OP_READ_POINTER)
+	// AT_MSGHDR.AddOp(OPC_SET_READ_LEN, uint64(MAX_BUF_READ_SIZE))
+	// AT_MSGHDR.AddOpC(OP_SET_READ_LEN_POINTER_VALUE)
+	// AT_MSGHDR.AddOp(OPC_SUB_OFFSET, 8)
+	// AT_MSGHDR.AddOpC(OP_READ_POINTER)
+	// AT_MSGHDR.AddOpC(OP_MOVE_POINTER_VALUE)
+	// AT_MSGHDR.AddOpC(OP_SAVE_STRUCT)
+	// AT_MSGHDR.AddOpC(OP_MOVE_TMP_VALUE)
+
+	// AT_MSGHDR.AddOp(OPC_ADD_OFFSET, 8+4+4+8)
+	// AT_MSGHDR.AddOpC(OP_READ_POINTER)
+	// AT_MSGHDR.AddOpC(OP_SET_BREAK_COUNT_POINTER_VALUE)
+	// AT_MSGHDR.AddOp(OPC_SUB_OFFSET, 8)
+	// AT_MSGHDR.AddOpC(OP_READ_POINTER)
+	// AT_MSGHDR.AddOpC(OP_MOVE_POINTER_VALUE)
 
 	// Register(&SArgs{206, PAI("sendto", []PArg{A("sockfd", EXP_INT), A("buf", READ_BUFFER_T), A("len", INT), A("flags", EXP_INT), A("dest_addr", SOCKADDR), A("addrlen", EXP_INT)})})
 }

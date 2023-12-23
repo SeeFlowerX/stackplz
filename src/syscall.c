@@ -162,92 +162,36 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     save_to_submit_buf(p.event, (void *) &pc, sizeof(u64), 2);
     save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 3);
 
-
-    // 为了能更深度读取各种类型的数据 重新设计处理逻辑
-    // 当前的处理逻辑是先设置好要读取数据的配置 然后ebpf中取出配置
-    // 这里的操作是针对每一个要读取的参数做的 有一层for
-    // 但是读取的参数结束之后 如果还想要根据配置再进一步读取
-    // 那么还得套一层for 一旦套了多层for 那么整个ebpf程序就会变得复杂
-    // 加载的时候很容易触发检查不过
-    // 新的思路是 将要获取数据的这个过程 全部转换为一个操作列表
-    // 不管要读取哪些内容 先将整个过程变成一个列表 这样深层次读取都会变成单个循环
-    // 单个循环的处理上限也会好很多 有点vm的意思
-    // op_list = [OP_SYSNO, OP_LR, OP_PC, OP_SP, OP_INT, ...]
-    // 对于 msghdr 这样的结构体 按照之前的思路 直接读取结构体大小的数据
-    // 但是现在改成 依次读取 ptr
-
-    // OP_MSGHDR 读取 Msghdr 结构体大小
-    // OP_IOV 读取 IOVEC 结构体大小
-    // OP_IOV_BASE 读取 IOVEC->BASE 处 IOVEC->LEN 大小
-    // 重复上面的操作 6 次 每次重复都与 Msghdr->Iovlen 比较
-    // 这个过程还要处理一些问题 比如某个操作要读取的地址 要读取的长度 从哪里来...
-    // 这个必须设计成通用的
-    // {op_struct: {op_read_addr, op_read_len}}
-    // {op_msghdr: {op_max_iovlen}}
-    // {op_msghdr: {op_max_iovlen}}
-    // type Msghdr struct {
-    //     Name       uint64
-    //     Namelen    uint32
-    //     Pad_cgo_0  [4]byte
-    //     Iov        uint64
-    //     Iovlen     uint64
-    //     Control    uint64
-    //     Controllen uint64
-    //     Flags      int32
-    //     Pad_cgo_1  [4]byte
-    // }
-    // type Iovec struct {
-    //     Base *byte
-    //     Len  uint64
-    // }
-    // struct msghdr {
-    //     void* msg_name;
-    //     socklen_t msg_namelen;
-    //     struct iovec* msg_iov;
-    //     size_t msg_iovlen;
-    //     void* msg_control;
-    //     size_t msg_controllen;
-    //     int msg_flags;
-    // };
-    // struct iovec {
-    //     void *iov_base;
-    //     __kernel_size_t iov_len;
-    // };
-
-    u32 op_count = MAX_OP_COUNT;
-    if (point_args->op_count <= op_count) {
-        op_count = point_args->op_count;
-    }
-
     int zero = 0;
     op_ctx_t* op_ctx = bpf_map_lookup_elem(&op_ctx_map, &zero);
     // make ebpf verifier happy
     if (unlikely(op_ctx == NULL)) return 0;
 
     op_ctx->save_index = 4;
+    op_ctx->op_key_index = 0;
 
-    for (int i = 0; i < op_count; i++) {
-        u32 op_key = point_args->op_key_list[i];
-        // bpf_printk("[stackplz] index:%d op_key:%d\n", i, op_key);
-        op_config_t* op = bpf_map_lookup_elem(&op_list, &op_key);
-        // make ebpf verifier happy
-        if (unlikely(op == NULL)) return 0;
-
-        // bpf_printk("[stackplz] op_key:%d code:%d value:%ld\n", op_key, op->code, op->value);
-
-        // 一旦 break_flag 置 1 那么跳过所有操作直到出现 OP_RESET_BREAK
-        if (op_ctx->break_flag == 1) {
-            if (op->code == OP_RESET_BREAK) {
-                op_ctx->break_flag = 0;
-            }
-            continue;
+    // op_config_t* op = NULL;
+    op_config_t* op = bpf_map_lookup_elem(&op_list, &zero);
+    for (int i = 0; i < MAX_OP_COUNT; i++) {
+        if (op != NULL && op_ctx->post_code != OP_SKIP) {
+            op_ctx->op_code = op_ctx->post_code;
+            op_ctx->post_code = OP_SKIP;
+        } else {
+            if (op_ctx->op_key_index >= MAX_OP_COUNT) return 0;
+            u32 op_key = point_args->op_key_list[op_ctx->op_key_index];
+            // bpf_printk("[stackplz] op_key:%d\n", op_key);
+            op = bpf_map_lookup_elem(&op_list, &op_key);
+            if (unlikely(op == NULL)) return 0;
+            op_ctx->op_code = op->code;
+            op_ctx->post_code = op->post_code;
+            op_ctx->op_key_index += 1;
         }
-
-        switch (op->code) {
-            case OP_SKIP:
-                break;
+        // bpf_printk("[stackplz] index:%d value:%ld\n", op_ctx->op_key_index, op->value);
+        // bpf_printk("[stackplz] code:%d pre_code:%d post_code:%d\n", op->code, op->pre_code, op->post_code);
+        // bpf_printk("[stackplz] %d op_code:%d\n", i, op_ctx->op_code);
+        if (op_ctx->op_code == OP_SKIP) break;
+        switch (op_ctx->op_code) {
             case OP_RESET_CTX:
-                op_ctx->break_flag = 0;
                 op_ctx->break_count = 0;
                 op_ctx->reg_index = 0;
                 op_ctx->read_addr = 0;
@@ -295,12 +239,30 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
             case OP_SET_TMP_VALUE:
                 op_ctx->tmp_value = op_ctx->read_addr;
                 break;
+            case OP_FOR_BREAK:
+                if (op_ctx->loop_count == 0) {
+                    op_ctx->loop_index = op_ctx->op_key_index;
+                }
+                if (op_ctx->loop_count >= op_ctx->break_count) {
+                    op_ctx->loop_count = 0;
+                    op_ctx->break_count = 0;
+                    op_ctx->loop_index = 0;
+                } else {
+                    op_ctx->loop_count += 1;
+                    op_ctx->op_key_index = op_ctx->loop_index;
+                }
+                break;
             case OP_SET_BREAK_COUNT_REG_VALUE:
-                op_ctx->break_count = op_ctx->reg_value;
+                op_ctx->break_count = MAX_LOOP_COUNT;
+                if (op_ctx->break_count > op_ctx->reg_value) {
+                    op_ctx->break_count = op_ctx->reg_value;
+                }
                 break;
             case OP_SET_BREAK_COUNT_POINTER_VALUE:
-                // bpf_printk("[stackplz] OP_SET_BREAK_COUNT_POINTER_VALUE count:%d\n", op_ctx->pointer_value);
-                op_ctx->break_count = op_ctx->pointer_value;
+                op_ctx->break_count = MAX_LOOP_COUNT;
+                if (op_ctx->break_count > op_ctx->pointer_value) {
+                    op_ctx->break_count = op_ctx->pointer_value;
+                }
                 break;
             case OP_SAVE_ADDR:
                 // bpf_printk("[stackplz] OP_SAVE_ADDR val:0x%lx idx:%d\n", op_ctx->read_addr, op_ctx->save_index);
@@ -308,6 +270,9 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                 op_ctx->save_index += 1;
                 break;
             case OP_READ_REG:
+                if (op->pre_code == OP_SET_REG_INDEX) {
+                    op_ctx->reg_index = op->value;
+                }
                 // make ebpf verifier happy
                 if (op_ctx->reg_index >= REG_ARM64_MAX) {
                     return 0;
@@ -319,19 +284,24 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                 op_ctx->save_index += 1;
                 break;
             case OP_READ_POINTER:
-                bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)op_ctx->read_addr);
-                // bpf_printk("[stackplz] OP_READ_POINTER ptr:0x%lx val:0x%lx\n", op_ctx->read_addr, op_ctx->pointer_value);
+                if (op->pre_code == OP_ADD_OFFSET) {
+                    bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)(op_ctx->read_addr + op->value));
+                } else if (op->pre_code == OP_SUB_OFFSET) {
+                    bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)(op_ctx->read_addr - op->value));
+                } else {
+                    bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)op_ctx->read_addr);
+                }
                 break;
             case OP_SAVE_POINTER:
-                // bpf_printk("[stackplz] OP_SAVE_POINTER val:0x%lx idx:%d\n", op_ctx->pointer_value, op_ctx->save_index);
                 save_to_submit_buf(p.event, (void *)&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), op_ctx->save_index);
                 op_ctx->save_index += 1;
-                break;
-            case OP_READ_STRUCT:
                 break;
             case OP_SAVE_STRUCT:
                 // fix memory tag
                 op_ctx->read_addr = op_ctx->read_addr & 0xffffffffff;
+                if (op->pre_code == OP_SET_READ_COUNT) {
+                    op_ctx->read_len *= op->value;
+                }
                 if (op_ctx->read_len > MAX_BYTES_ARR_SIZE) {
                     op_ctx->read_len = MAX_BYTES_ARR_SIZE;
                 }
@@ -345,8 +315,6 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                 }
                 op_ctx->save_index += 1;
                 break;
-            case OP_READ_STRING:
-                break;
             case OP_SAVE_STRING:
                 // fix memory tag
                 op_ctx->read_addr = op_ctx->read_addr & 0xffffffffff;
@@ -356,14 +324,6 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
                     save_bytes_to_buf(p.event, 0, 0, op_ctx->save_index);
                 }
                 op_ctx->save_index += 1;
-                break;
-            case OP_FOR_BREAK:
-                if (op_ctx->break_count > 0 && op->value >= op_ctx->break_count) {
-                    op_ctx->break_flag = 1;
-                }
-                break;
-            case OP_RESET_BREAK:
-                op_ctx->break_flag = 0;
                 break;
             default:
                 // bpf_printk("[stackplz] unknown op code:%d\n", op->code);
