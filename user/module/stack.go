@@ -11,6 +11,7 @@ import (
     "stackplz/assets"
     "stackplz/user/config"
     "stackplz/user/event"
+    "stackplz/user/next"
     "stackplz/user/util"
     "strings"
     "unsafe"
@@ -425,9 +426,9 @@ func (this *MStack) update_next_point_args() {
     if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
         panic("TraceMode TRACE_ALL not implemented yet")
     } else {
-        for _, point_config := range this.mconf.SysCallConf.NextPointArgs {
-            point := point_config.GetConfig()
-            err := bpf_map.Update(unsafe.Pointer(&point_config.Nr), unsafe.Pointer(&point), ebpf.UpdateAny)
+        for _, syscall_point := range this.mconf.SysCallConf.NextPointArgs {
+            point_config := syscall_point.GetConfig()
+            err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
             if err != nil {
                 panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
             }
@@ -444,7 +445,7 @@ func (this *MStack) update_op_list() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
-    for op_key, op_config := range config.GetOpList() {
+    for op_key, op_config := range next.GetOpList() {
         err := bpf_map.Update(unsafe.Pointer(&op_key), unsafe.Pointer(&op_config), ebpf.UpdateAny)
         if err != nil {
             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))

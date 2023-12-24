@@ -6,6 +6,7 @@ import (
     "log"
     "os"
     "regexp"
+    "stackplz/user/next"
     "stackplz/user/util"
     "strconv"
     "strings"
@@ -282,7 +283,7 @@ type SyscallConfig struct {
     Enable           bool
     TraceMode        uint32
     SyscallPointArgs []*SyscallPointArgs_T
-    NextPointArgs    []*PointArgsConfig
+    NextPointArgs    []*next.SyscallPoint
     SysWhitelist     []uint32
     SysBlacklist     []uint32
 }
@@ -299,14 +300,14 @@ func (this *SyscallConfig) SetArgFilterRule(arg_filter *[]ArgFilter) {
     this.arg_filter = arg_filter
 }
 
-func (this *SyscallConfig) Parse_SysWhitelist(text string) {
-    if text == "" {
+func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
+    if gconfig.SysCall == "" {
         this.Enable = false
         return
     }
     this.Enable = true
     this.TraceMode = TRACE_COMMON
-    items := strings.Split(text, ",")
+    items := strings.Split(gconfig.SysCall, ",")
     var syscall_items []string
     for _, v := range items {
         switch v {
@@ -399,7 +400,9 @@ func (this *SyscallConfig) Parse_SysWhitelist(text string) {
                 }
             }
         }
-        this.NextPointArgs = append(this.NextPointArgs, GetSyscallPointByName(syscall_name))
+        if gconfig.Next {
+            this.NextPointArgs = append(this.NextPointArgs, next.GetSyscallPointByName(syscall_name))
+        }
         this.SyscallPointArgs = append(this.SyscallPointArgs, point_args)
         this.SysWhitelist = append(this.SysWhitelist, uint32(nr_point.NR))
     }

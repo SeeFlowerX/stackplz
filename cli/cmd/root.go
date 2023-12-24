@@ -300,7 +300,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
 
     // 2. hook syscall
     mconfig.InitSyscallConfig()
-    mconfig.SysCallConf.Parse_SysWhitelist(gconfig.SysCall)
+    mconfig.SysCallConf.Parse_SysWhitelist(gconfig)
     mconfig.SysCallConf.Parse_SysBlacklist(gconfig.NoSysCall)
 
     // 3. watch breakpoint

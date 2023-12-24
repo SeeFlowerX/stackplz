@@ -5,6 +5,7 @@ import (
     "encoding/json"
     "fmt"
     "stackplz/user/config"
+    "stackplz/user/next"
     "stackplz/user/util"
     "strings"
 )
@@ -15,7 +16,7 @@ type SyscallEvent struct {
     RegsBuffer    RegsBuf
     UnwindBuffer  UnwindBuf
     nr_point      *config.SysCallArgs
-    nr_point_next *config.PointArgsConfig
+    nr_point_next *next.SyscallPoint
     nr            config.Arg_nr
     lr            config.Arg_reg
     sp            config.Arg_reg
@@ -41,128 +42,48 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
         panic(err)
     }
     // 根据调用号解析剩余参数
-    this.nr_point_next = config.GetSyscallPointByNR(this.nr.Value)
+    this.nr_point_next = next.GetSyscallPointByNR(this.nr.Value)
     // // if this.nr_point_next.Name != "sendmsg" {
     // if this.nr_point_next.Name != "sendto" {
     //     panic("only sendmsg now")
     // }
     var results []string
-    for _, point_arg := range this.nr_point_next.Args {
+    for _, point_arg := range this.nr_point_next.PointArgs {
         var ptr config.Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(err)
         }
-        switch point_arg.ArgType.Alias_type {
-        case config.TYPE_MSGHDR:
-            var arg_msghdr config.Arg_Msghdr
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg_msghdr); err != nil {
-                panic(err)
-            }
-            var control_buf config.Arg_str
-            if err = binary.Read(this.buf, binary.LittleEndian, &control_buf); err != nil {
-                panic(err)
-            }
-            control_payload := []byte{}
-            if control_buf.Len > 0 {
-                control_payload = make([]byte, control_buf.Len)
-                if err = binary.Read(this.buf, binary.LittleEndian, &control_payload); err != nil {
-                    panic(err)
-                }
-            }
-
-            var iov_read_count int = config.MAX_IOV_COUNT
-            if int(arg_msghdr.Iovlen) < iov_read_count {
-                iov_read_count = int(arg_msghdr.Iovlen)
-            }
-
-            var iov_results []string
-            for i := 0; i < iov_read_count; i++ {
-                var arg_iovec config.Arg_Iovec_Fix_t
-                if err = binary.Read(this.buf, binary.LittleEndian, &arg_iovec.Arg_Iovec_Fix); err != nil {
-                    panic(err)
-                }
-                // this.logger.Printf("index:%d iovec={%s}", arg_iovec.Index, arg_iovec.Format())
-
-                var iov_buf config.Arg_str
-                if err = binary.Read(this.buf, binary.LittleEndian, &iov_buf); err != nil {
-                    panic(err)
-                }
-                // this.logger.Printf("index:%d iov_buf.Len={%d}", iov_buf.Index, iov_buf.Len)
-                payload := []byte{}
-                if iov_buf.Len > 0 {
-                    payload = make([]byte, iov_buf.Len)
-                    if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-                        panic(err)
-                    }
-                }
-                arg_iovec.Payload = payload
-                iov_results = append(iov_results, fmt.Sprintf("iov_%d=%s", i, arg_iovec.Format()))
-            }
-            iov_results_str := "(\n\t" + strings.Join(iov_results, ", \n\t") + "\n)"
-            results = append(results, fmt.Sprintf("%s=%s", point_arg.ArgName, arg_msghdr.FormatFull(iov_results_str, control_buf.Format(control_payload))))
-        case config.TYPE_INT32:
-            results = append(results, fmt.Sprintf("%s=%d", point_arg.ArgName, int32(ptr.Address)))
-        case config.TYPE_BUFFER:
-            var arg config.Arg_str
-            if err := binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
-                panic(err)
-            }
-            payload := make([]byte, arg.Len)
-            if err := binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-                panic(err)
-            }
-            var payload_dump string
-            if this.mconf.DumpHex {
-                payload_dump = arg.HexFormat(payload, this.mconf.Color)
-            } else {
-                payload_dump = arg.Format(payload)
-            }
-            results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, payload_dump))
-        case config.TYPE_STRING:
-            var arg config.Arg_str
-            if err = binary.Read(this.buf, binary.LittleEndian, &arg); err != nil {
-                panic(err)
-            }
-            payload := make([]byte, arg.Len)
-            if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-                panic(err)
-            }
-            results = append(results, fmt.Sprintf("%s=0x%x(%s)", point_arg.ArgName, ptr.Address, util.B2STrim(payload)))
-        case config.TYPE_IOVEC:
-            var iovcnt config.Arg_reg
-            if err = binary.Read(this.buf, binary.LittleEndian, &iovcnt); err != nil {
-                panic(err)
-            }
-            var iov_read_count int = config.MAX_IOV_COUNT
-            if int(iovcnt.Address) < iov_read_count {
-                iov_read_count = int(iovcnt.Address)
-            }
-            var result []string
-            for i := 0; i < iov_read_count; i++ {
-                var arg_iovec config.Arg_Iovec_Fix_t
-                if err = binary.Read(this.buf, binary.LittleEndian, &arg_iovec.Arg_Iovec_Fix); err != nil {
-                    panic(err)
-                }
-                var iov_buf config.Arg_str
-                if err = binary.Read(this.buf, binary.LittleEndian, &iov_buf); err != nil {
-                    panic(err)
-                }
-                payload := make([]byte, iov_buf.Len)
-                if err = binary.Read(this.buf, binary.LittleEndian, &payload); err != nil {
-                    panic(err)
-                }
-                arg_iovec.Payload = payload
-                // result = append(result, arg.Format())
-                result = append(result, fmt.Sprintf("iov_%d=%s", i, arg_iovec.Format()))
-            }
-            iov_dump := "\n\t" + strings.Join(result, "\n\t") + "\n"
-            results = append(results, fmt.Sprintf("%s=0x%x(%s)", point_arg.ArgName, ptr.Address, iov_dump))
-        case config.TYPE_SOCKADDR:
-            sock_addr := this.ParseArgStruct(this.buf, &config.Arg_RawSockaddrUnix{})
-            results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, sock_addr))
-        default:
-            results = append(results, fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address))
-        }
+        results = append(results, fmt.Sprintf("%s=%s", point_arg.Name, point_arg.Type.Parse(ptr.Address, this.buf)))
+        // switch point_arg.ArgType.Alias_type {
+        // case config.TYPE_SOCKADDR:
+        //     sock_addr := this.ParseArgStruct(this.buf, &config.Arg_RawSockaddrUnix{})
+        //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, sock_addr))
+        // case config.TYPE_SIGINFO:
+        //     info := this.ParseArgStruct(this.buf, &config.Arg_SigInfo{})
+        //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, info))
+        // case config.TYPE_SIGACTION:
+        //     info := this.ParseArgStruct(this.buf, &config.Arg_Sigaction{})
+        //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, info))
+        // case config.TYPE_TIMESPEC:
+        //     info := this.ParseArgStruct(this.buf, &config.Arg_ItTmerspec{})
+        //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, info))
+        // // case config.TYPE_STACK_T:
+        // //     info := this.ParseArgStruct(this.buf, &config.Arg_Stack_t{})
+        // //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, info))
+        // case config.TYPE_SIGSET:
+        //     var sigs [8]uint32
+        //     if err = binary.Read(this.buf, binary.LittleEndian, &sigs); err != nil {
+        //         panic(err)
+        //     }
+        //     var fmt_sigs []string
+        //     for i := 0; i < len(sigs); i++ {
+        //         fmt_sigs = append(fmt_sigs, fmt.Sprintf("0x%x", sigs[i]))
+        //     }
+        //     info := fmt.Sprintf("(sigs=[%s])", strings.Join(fmt_sigs, ","))
+        //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, info))
+        // default:
+        //     results = append(results, fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address))
+        // }
     }
     this.arg_str = "(" + strings.Join(results, ", ") + ")"
     return nil
