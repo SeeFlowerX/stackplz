@@ -43,10 +43,6 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
     }
     // 根据调用号解析剩余参数
     this.nr_point_next = next.GetSyscallPointByNR(this.nr.Value)
-    // // if this.nr_point_next.Name != "sendmsg" {
-    // if this.nr_point_next.Name != "sendto" {
-    //     panic("only sendmsg now")
-    // }
     var results []string
     for _, point_arg := range this.nr_point_next.EnterPointArgs {
         var ptr config.Arg_reg
@@ -54,37 +50,10 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
             panic(err)
         }
         parse_more := point_arg.PointType == next.EBPF_SYS_ENTER
+        if !parse_more {
+            parse_more = point_arg.PointType == next.EBPF_SYS_ALL
+        }
         results = append(results, fmt.Sprintf("%s=%s", point_arg.Name, point_arg.Type.Parse(ptr.Address, this.buf, parse_more)))
-        // switch point_arg.ArgType.Alias_type {
-        // case config.TYPE_SOCKADDR:
-        //     sock_addr := this.ParseArgStruct(this.buf, &config.Arg_RawSockaddrUnix{})
-        //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, sock_addr))
-        // case config.TYPE_SIGINFO:
-        //     info := this.ParseArgStruct(this.buf, &config.Arg_SigInfo{})
-        //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, info))
-        // case config.TYPE_SIGACTION:
-        //     info := this.ParseArgStruct(this.buf, &config.Arg_Sigaction{})
-        //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, info))
-        // case config.TYPE_TIMESPEC:
-        //     info := this.ParseArgStruct(this.buf, &config.Arg_ItTmerspec{})
-        //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, info))
-        // // case config.TYPE_STACK_T:
-        // //     info := this.ParseArgStruct(this.buf, &config.Arg_Stack_t{})
-        // //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, info))
-        // case config.TYPE_SIGSET:
-        //     var sigs [8]uint32
-        //     if err = binary.Read(this.buf, binary.LittleEndian, &sigs); err != nil {
-        //         panic(err)
-        //     }
-        //     var fmt_sigs []string
-        //     for i := 0; i < len(sigs); i++ {
-        //         fmt_sigs = append(fmt_sigs, fmt.Sprintf("0x%x", sigs[i]))
-        //     }
-        //     info := fmt.Sprintf("(sigs=[%s])", strings.Join(fmt_sigs, ","))
-        //     results = append(results, fmt.Sprintf("%s=0x%x%s", point_arg.ArgName, ptr.Address, info))
-        // default:
-        //     results = append(results, fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address))
-        // }
     }
     this.arg_str = "(" + strings.Join(results, ", ") + ")"
     return nil
@@ -92,7 +61,7 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
 
 func (this *SyscallEvent) ParseContextSysExitNext() (err error) {
     // if this.mconf.Next {
-    //     this.logger.Printf("ParseContextSysEnterNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
+    //     this.logger.Printf("ParseContextSysExitNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
     // }
     this.nr_point_next = next.GetSyscallPointByNR(this.nr.Value)
     var results []string
@@ -102,6 +71,9 @@ func (this *SyscallEvent) ParseContextSysExitNext() (err error) {
             panic(err)
         }
         parse_more := point_arg.PointType == next.EBPF_SYS_EXIT
+        if !parse_more {
+            parse_more = point_arg.PointType == next.EBPF_SYS_ALL
+        }
         results = append(results, fmt.Sprintf("%s=%s", point_arg.Name, point_arg.Type.Parse(ptr.Address, this.buf, parse_more)))
     }
 

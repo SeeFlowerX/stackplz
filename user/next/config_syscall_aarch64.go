@@ -215,11 +215,11 @@ func R(nr uint32, name string, point_args ...*PointArg) {
 	for reg_index, point_arg := range point_args {
 		a_p := point_arg.Clone()
 		a_p.SetRegIndex(uint32(reg_index))
-		a_p.BuildOpList(point_arg.PointType == EBPF_SYS_ENTER)
+		a_p.BuildOpList(point_arg.PointType == EBPF_SYS_ENTER || point_arg.PointType == EBPF_SYS_ALL)
 		a_point_args = append(a_point_args, a_p)
 		b_p := point_arg.Clone()
 		b_p.SetRegIndex(uint32(reg_index))
-		b_p.BuildOpList(point_arg.PointType == EBPF_SYS_EXIT)
+		b_p.BuildOpList(point_arg.PointType == EBPF_SYS_EXIT || point_arg.PointType == EBPF_SYS_ALL)
 		b_point_args = append(b_point_args, b_p)
 	}
 	// SetRegIndex + BuildOpList 读取寄存器才会产生
@@ -237,11 +237,15 @@ func B(arg_name string, arg_type IArgType) *PointArg {
 	return NewPointArg(arg_name, arg_type, EBPF_SYS_EXIT)
 }
 
+func C(arg_name string, arg_type IArgType) *PointArg {
+	return NewPointArg(arg_name, arg_type, EBPF_SYS_ALL)
+}
+
 func init() {
 
 	var PTR = GetArgType("ptr")
 	var INT = GetArgType("int")
-	// var UINT = GetArgType("uint")
+	var UINT = GetArgType("uint")
 	// var INT8 = GetArgType("int8")
 	var INT16 = GetArgType("int16")
 	// var INT32 = GetArgType("int32")
@@ -260,7 +264,12 @@ func init() {
 	var SIZE_T = GetArgType("size_t")
 	// var SSIZE_T = GetArgType("ssize_t")
 	var SOCKADDR = GetArgType("sockaddr")
-	// var TIMESPEC = GetArgType("timespec")
+	var TIMESPEC = GetArgType("timespec")
+	var STAT = GetArgType("stat")
+	var POLLFD = GetArgType("pollfd")
+	var SIGACTION = GetArgType("sigaction")
+	var SIGINFO = GetArgType("siginfo")
+	var STACK_T = GetArgType("stack_t")
 	// // 对一些复杂结构体的读取配置进行补充
 
 	// // 以指定寄存器作为数据读取长度
@@ -293,6 +302,16 @@ func init() {
 
 	// R(240, "rt_tgsigqueueinfo", X("tgid", AT_INT), X("tid", AT_INT), X("sig", AT_INT), X("siginfo", AT_SIGINFO))
 
+	INT_ARRAY_2 := ReadAsArray(INT, 2)
+	// 64 位下这个是 unsigned long sig[_NSIG_WORDS]
+	// #define _NSIG       64
+	// #define _NSIG_BPW   __BITS_PER_LONG -> 64 或者 32
+	// #define _NSIG_WORDS (_NSIG / _NSIG_BPW)
+	// unsigned long -> 4
+	UINT_ARRAY_1 := ReadAsArray(NewNumFormat(UINT, FORMAT_HEX), 1)
+	SIGSET_PTR := SetupPtrType(UINT_ARRAY_1, false)
+	UINT_PTR := SetupPtrType(UINT, true)
+
 	// BUFFER_256 := ValueAsBufferReadLen(BUFFER, 256)
 	BUFFER_X2 := RegAsBufferReadLen(BUFFER, REG_ARM64_X2)
 	IOVEC_X2 := RegAsIovecLoopCount(IOVEC, REG_ARM64_X2)
@@ -304,9 +323,54 @@ func init() {
 	// MSGHDR.DumpOpList()
 
 	R(56, "openat", A("dirfd", INT), A("*pathname", STRING), A("flags", INT_FILE_FLAGS), A("mode", INT16_PERM_FLAGS))
+
+	R(57, "close", A("fd", INT))
+	R(58, "vhangup")
+	R(59, "pipe2", B("pipefd", INT_ARRAY_2), A("flags", INT))
+	R(60, "quotactl", A("cmd", INT), A("special", STRING), A("id", INT), A("addr", INT))
+	// R(61, "getdents64", A("fd", INT), B("dirp", POINTER), A("count", INT))
+	R(62, "lseek", A("fd", INT), A("offset", INT), A("whence", INT))
+	R(63, "read", A("fd", INT), B("buf", BUFFER_X2), A("count", INT))
+	R(64, "write", A("fd", INT), A("buf", BUFFER_X2), A("count", INT))
+	R(65, "readv", A("fd", INT), B("iov", IOVEC_X2), A("iovcnt", INT))
 	R(66, "writev", A("fd", INT), A("*iov", IOVEC_X2), A("iovcnt", INT))
+	R(67, "pread64", A("fd", INT), B("buf", BUFFER_X2), A("count", INT), A("offset", INT))
+	R(68, "pwrite64", A("fd", INT), A("buf", BUFFER_X2), A("count", INT), A("offset", INT))
+	R(69, "preadv", A("fd", INT), B("iov", IOVEC_X2), A("iovcnt", INT), A("offset", INT))
+	R(70, "pwritev", A("fd", INT), A("iov", IOVEC_X2), A("iovcnt", INT), A("offset", INT))
+	R(71, "sendfile", A("out_fd", INT), A("in_fd", INT), A("offset", INT), A("count", INT))
+	// R(72, "pselect6", A("n", INT), A("inp", POINTER), A("outp", POINTER), A("exp", POINTER), A("tsp", TIMESPEC), A("sig", POINTER))
+	R(73, "ppoll", A("fds", POLLFD), A("nfds", INT), A("tmo_p", TIMESPEC), A("sigmask", INT))
+	// R(74, "signalfd4", A("ufd", INT), A("user_mask", POINTER), A("sizemask", INT), A("flags", INT))
+	R(75, "vmsplice", A("fd", INT), A("uiov", IOVEC_X2), A("nr_segs", INT), A("flags", INT))
+	R(76, "splice", A("fd_in", INT), A("off_in", INT), A("fd_out", INT), A("off_out", INT), A("len", INT), A("flags", INT))
+	R(77, "tee", A("fdin", INT), A("fdout", INT), A("len", INT), A("flags", INT))
+	R(78, "readlinkat", A("dirfd", INT), A("pathname", STRING), B("buf", STRING), A("bufsiz", INT))
+	R(79, "newfstatat", A("dirfd", INT), A("pathname", STRING), B("statbuf", STAT), A("flags", INT))
+	R(80, "fstat", A("fd", INT), B("statbuf", STAT))
+
+	R(97, "unshare", A("unshare_flags", INT))
+	R(98, "futex", A("uaddr", UINT_PTR), A("op", INT), A("val", INT), C("timeout", TIMESPEC), A("uaddr2", UINT_PTR), A("val3", UINT))
+	R(99, "set_robust_list", A("head", PTR), A("len", INT))
+	R(100, "get_robust_list", A("pid", INT), A("head_ptr", PTR), A("len_ptr", INT))
+	R(101, "nanosleep", A("req", TIMESPEC), A("rem", TIMESPEC))
+
+	R(129, "kill", A("pid", INT), A("sig", INT))
+	R(130, "tkill", A("tid", INT), A("sig", INT))
+	R(131, "tgkill", A("tgid", INT), A("tid", INT), A("sig", INT))
+	R(132, "sigaltstack", A("ss", STACK_T), A("old_ss", STACK_T))
+	R(133, "rt_sigsuspend", A("mask", SIGSET_PTR))
+	R(134, "rt_sigaction", A("signum", INT), A("act", SIGACTION), A("oldact", SIGACTION))
+	R(135, "rt_sigprocmask", A("how", INT), A("set", SIGSET_PTR), A("oldset", SIGSET_PTR), A("sigsetsize", SIZE_T))
+	R(136, "rt_sigpending", A("uset", SIGSET_PTR), A("sigsetsize", INT))
+	R(137, "rt_sigtimedwait", A("uthese", SIGSET_PTR), A("uinfo", SIGINFO), A("uts", TIMESPEC), A("sigsetsize", SIZE_T))
+	R(138, "rt_sigqueueinfo", A("pid", INT), A("sig", INT), A("uinfo", SIGINFO))
+	R(139, "rt_sigreturn", A("mask", INT))
+	R(140, "setpriority", A("which", INT), A("who", INT), A("prio", INT))
+	R(141, "getpriority", A("which", INT), A("who", INT))
+
 	R(198, "socket", A("domain", INT), A("type", INT_SOCKET_FLAGS), A("protocol", INT))
-	// R(199, "socketpair", A("domain", INT), A("type", INT), A("protocol", INT), B("sv", SOCKET_SV))
+	R(199, "socketpair", A("domain", INT), A("type", INT), A("protocol", INT), B("sv", INT_ARRAY_2))
 	R(200, "bind", A("sockfd", INT), A("addr", SOCKADDR), A("addrlen", SOCKLEN_T))
 	R(201, "listen", A("sockfd", INT), A("backlog", INT))
 	R(202, "accept", A("sockfd", INT), A("addr", SOCKADDR), A("addrlen", SOCKLEN_T))

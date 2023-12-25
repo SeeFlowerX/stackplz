@@ -165,7 +165,7 @@ func (this *Arg_Timespec) Format() string {
 	var fields []string
 	fields = append(fields, fmt.Sprintf("sec=%d", this.Sec))
 	fields = append(fields, fmt.Sprintf("nsec=%d", this.Nsec))
-	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
 }
 
 type Arg_TimeZone_t struct {
@@ -234,7 +234,7 @@ type Arg_Pollfd struct {
 }
 
 func (this *Arg_Pollfd) Format() string {
-	return fmt.Sprintf("{fd=%d, events=%d, revents=%d}", this.Fd, this.Events, this.Revents)
+	return fmt.Sprintf("(fd=%d, events=%d, revents=%d)", this.Fd, this.Events, this.Revents)
 }
 
 type Arg_Stat_t struct {
@@ -258,15 +258,15 @@ func (this *Arg_Stat_t) Format() string {
 	fields = append(fields, fmt.Sprintf("uid=%d", this.Uid))
 	fields = append(fields, fmt.Sprintf("gid=%d", this.Gid))
 	fields = append(fields, fmt.Sprintf("rdev=%d", this.Rdev))
-	fields = append(fields, fmt.Sprintf("x__pad1=%d", this.X__pad1))
+	// fields = append(fields, fmt.Sprintf("x__pad1=%d", this.X__pad1))
 	fields = append(fields, fmt.Sprintf("size=%d", this.Size))
 	fields = append(fields, fmt.Sprintf("blksize=%d", this.Blksize))
-	fields = append(fields, fmt.Sprintf("x__pad2=%d", this.X__pad2))
+	// fields = append(fields, fmt.Sprintf("x__pad2=%d", this.X__pad2))
 	fields = append(fields, fmt.Sprintf("blocks=%d", this.Blocks))
 	fields = append(fields, fmt.Sprintf("atim={tv_sec=%d, tv_nsec=%d}", this.Atim.Sec, this.Atim.Nsec))
 	fields = append(fields, fmt.Sprintf("mtim={tv_sec=%d, tv_nsec=%d}", this.Mtim.Sec, this.Mtim.Nsec))
 	fields = append(fields, fmt.Sprintf("ctim={tv_sec=%d, tv_nsec=%d}", this.Ctim.Sec, this.Ctim.Nsec))
-	fields = append(fields, fmt.Sprintf("x__glibc_reserved=0x%x,0x%x", this.X__glibc_reserved[0], this.X__glibc_reserved[1]))
+	// fields = append(fields, fmt.Sprintf("x__glibc_reserved=0x%x,0x%x", this.X__glibc_reserved[0], this.X__glibc_reserved[1]))
 	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 

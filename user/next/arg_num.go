@@ -2,6 +2,7 @@ package next
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"unsafe"
@@ -32,7 +33,40 @@ func AttachFlagsParser(p IArgType, flags_parser *FlagsParser) IArgType {
 	at.FormatType = at.FlagsParser.FormatType
 	switch p.(type) {
 	case *ARG_PTR:
-		return &ARG_PTR{at}
+		return &ARG_PTR{at, nil, false}
+	case *ARG_INT:
+		return &ARG_INT{at}
+	case *ARG_UINT:
+		return &ARG_UINT{at}
+	case *ARG_INT8:
+		return &ARG_INT8{at}
+	case *ARG_INT16:
+		return &ARG_INT16{at}
+	case *ARG_INT32:
+		return &ARG_INT32{at}
+	case *ARG_INT64:
+		return &ARG_INT64{at}
+	case *ARG_UINT8:
+		return &ARG_UINT8{at}
+	case *ARG_UINT16:
+		return &ARG_UINT16{at}
+	case *ARG_UINT32:
+		return &ARG_UINT32{at}
+	case *ARG_UINT64:
+		return &ARG_UINT64{at}
+	}
+	return &at
+}
+
+func NewNumFormat(p IArgType, format_type uint32) IArgType {
+	at := ARG_NUM{}
+	at.Name = p.GetName()
+	at.Alias = p.GetAlias()
+	at.Size = p.GetSize()
+	at.FormatType = format_type
+	switch p.(type) {
+	case *ARG_PTR:
+		return &ARG_PTR{at, nil, false}
 	case *ARG_INT:
 		return &ARG_INT{at}
 	case *ARG_UINT:
@@ -59,6 +93,8 @@ func AttachFlagsParser(p IArgType, flags_parser *FlagsParser) IArgType {
 
 type ARG_PTR struct {
 	ARG_NUM
+	PtrArgType IArgType
+	IsNum      bool
 }
 
 type ARG_INT struct {
@@ -102,55 +138,110 @@ type ARG_UINT64 struct {
 }
 
 func (this *ARG_PTR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+	if !parse_more {
+		return fmt.Sprintf("0x%x", ptr)
+	}
+	if this.PtrArgType != nil {
+		if this.IsNum {
+			var arg Arg_str
+			if err := binary.Read(buf, binary.LittleEndian, &arg); err != nil {
+				panic(err)
+			}
+			var value uint64 = 0
+			if arg.Len == 8 {
+				if err := binary.Read(buf, binary.LittleEndian, &value); err != nil {
+					panic(err)
+				}
+			}
+			return fmt.Sprintf("0x%x(%s)", ptr, this.PtrArgType.Parse(value, buf, parse_more))
+		}
+		return this.PtrArgType.Parse(ptr, buf, parse_more)
+	}
 	return fmt.Sprintf("0x%x", ptr)
 }
+
+func (this *ARG_PTR) SetupPtrType(p IArgType, is_num bool) IArgType {
+	at := ARG_PTR{}
+	at.Name = fmt.Sprintf("%s_%s", this.Name, p.GetName())
+	at.Alias = this.Alias
+	at.Size = p.GetSize()
+	at.PtrArgType = p
+	at.IsNum = is_num
+	// 对于数字类型是需要的
+	if at.IsNum {
+		// 默认保存一个指针大小
+		at.AddOp(SaveStruct(8))
+	}
+	at.AddOpList(p)
+	switch p.(type) {
+	case *ARG_INT:
+	case *ARG_INT32:
+		break
+		// case *ARG_IOVEC:
+		// 	// 对于复杂的类型 这里合并其操作
+		// 	at, ok := (p).(*ARG_IOVEC)
+		// 	if !ok {
+		// 		panic("...")
+		// 	}
+		// 	this.AddOpList(at)
+		// 	break
+	}
+	return &at
+}
+
+func SetupPtrType(p IArgType, is_num bool) IArgType {
+	at, ok := (GetArgType("ptr")).(*ARG_PTR)
+	if !ok {
+		panic("...")
+	}
+	return at.SetupPtrType(p, is_num)
+}
+
 func (this *ARG_INT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int32(ptr)
-	value_fmt := fmt.Sprintf("%d", value_fix)
+	flags_fmt := ""
 	if this.FlagsParser != nil {
-		flags_fmt := this.FlagsParser.Parse(int32(value_fix))
-		switch this.FormatType {
-		case FORMAT_NUM:
-			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
-		case FORMAT_HEX_PURE:
-			return fmt.Sprintf("%x%s", value_fix, flags_fmt)
-		case FORMAT_HEX:
-			return fmt.Sprintf("0x%x%s", value_fix, flags_fmt)
-		case FORMAT_DEC:
-			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
-		case FORMAT_OCT:
-			return fmt.Sprintf("0o%03s%s", strconv.FormatInt(int64(value_fix), 8), flags_fmt)
-		case FORMAT_BIN:
-			return fmt.Sprintf("0b%s%s", strconv.FormatInt(int64(value_fix), 2), flags_fmt)
-		default:
-			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
-		}
+		flags_fmt = this.FlagsParser.Parse(int32(value_fix))
 	}
-	return value_fmt
+	switch this.FormatType {
+	case FORMAT_NUM:
+		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
+	case FORMAT_HEX_PURE:
+		return fmt.Sprintf("%x%s", value_fix, flags_fmt)
+	case FORMAT_HEX:
+		return fmt.Sprintf("0x%x%s", value_fix, flags_fmt)
+	case FORMAT_DEC:
+		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
+	case FORMAT_OCT:
+		return fmt.Sprintf("0o%03s%s", strconv.FormatInt(int64(value_fix), 8), flags_fmt)
+	case FORMAT_BIN:
+		return fmt.Sprintf("0b%s%s", strconv.FormatInt(int64(value_fix), 2), flags_fmt)
+	default:
+		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
+	}
 }
 func (this *ARG_UINT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint32(ptr)
-	value_fmt := fmt.Sprintf("%d", value_fix)
+	flags_fmt := ""
 	if this.FlagsParser != nil {
-		flags_fmt := this.FlagsParser.Parse(int32(value_fix))
-		switch this.FormatType {
-		case FORMAT_NUM:
-			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
-		case FORMAT_HEX_PURE:
-			return fmt.Sprintf("%x%s", value_fix, flags_fmt)
-		case FORMAT_HEX:
-			return fmt.Sprintf("0x%x%s", value_fix, flags_fmt)
-		case FORMAT_DEC:
-			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
-		case FORMAT_OCT:
-			return fmt.Sprintf("0o%03s%s", strconv.FormatInt(int64(value_fix), 8), flags_fmt)
-		case FORMAT_BIN:
-			return fmt.Sprintf("0b%s%s", strconv.FormatInt(int64(value_fix), 2), flags_fmt)
-		default:
-			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
-		}
+		flags_fmt = this.FlagsParser.Parse(int32(value_fix))
 	}
-	return value_fmt
+	switch this.FormatType {
+	case FORMAT_NUM:
+		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
+	case FORMAT_HEX_PURE:
+		return fmt.Sprintf("%x%s", value_fix, flags_fmt)
+	case FORMAT_HEX:
+		return fmt.Sprintf("0x%x%s", value_fix, flags_fmt)
+	case FORMAT_DEC:
+		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
+	case FORMAT_OCT:
+		return fmt.Sprintf("0o%03s%s", strconv.FormatInt(int64(value_fix), 8), flags_fmt)
+	case FORMAT_BIN:
+		return fmt.Sprintf("0b%s%s", strconv.FormatInt(int64(value_fix), 2), flags_fmt)
+	default:
+		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
+	}
 }
 func (this *ARG_INT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int8(ptr)

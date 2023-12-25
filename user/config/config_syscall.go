@@ -227,10 +227,10 @@ var IOVEC_T = IOVEC.NewCountIndex(2)
 
 // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
 // #define _NSIG       64
-// #define _NSIG_BPW   __BITS_PER_LONG
+// #define _NSIG_BPW   __BITS_PER_LONG -> 64 或者 32
 // #define _NSIG_WORDS (_NSIG / _NSIG_BPW)
 // unsigned long -> 4
-var SIGSET = AT(TYPE_SIGSET, TYPE_STRUCT, 4*8)
+var SIGSET = AT(TYPE_SIGSET, TYPE_STRUCT, 4*1)
 var POLLFD = AT(TYPE_POLLFD, TYPE_STRUCT, uint32(unsafe.Sizeof(Pollfd{})))
 
 func init() {

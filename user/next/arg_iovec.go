@@ -10,7 +10,7 @@ import (
 )
 
 type ARG_IOVEC struct {
-	ArgType
+	ARG_STRUCT
 }
 
 func (this *ARG_IOVEC) SetupRegAsLoopCount(reg_index uint32) IArgType {
@@ -33,7 +33,7 @@ func (this *ARG_IOVEC) SetupRegAsLoopCount(reg_index uint32) IArgType {
 
 func (this *ARG_IOVEC) Setup() {
 	t := syscall.Iovec{}
-	this.SetupSaveStruct()
+	this.ARG_STRUCT.Setup()
 	this.AddOp(OPC_SET_READ_LEN.NewValue(uint64(MAX_BUF_READ_SIZE)))
 	this.AddOp(BuildReadPtrLen(uint64(unsafe.Offsetof(t.Len))))
 	this.AddOp(OPC_READ_POINTER)

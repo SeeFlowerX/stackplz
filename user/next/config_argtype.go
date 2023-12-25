@@ -61,6 +61,16 @@ func Add_READ_SAVE_REG(value uint64) *OpConfig {
 	return OPM.AddOp(op)
 }
 
+func SaveStruct(value uint64) *OpConfig {
+	op := &OpConfig{}
+	op.Name = fmt.Sprintf("%s_%d", "SAVE_STRUCT", value)
+	op.Code = OP_SET_READ_LEN
+	op.PreCode = OP_SKIP
+	op.PostCode = OP_SAVE_STRUCT
+	op.Value = value
+	return OPM.AddOp(op)
+}
+
 type OpManager struct {
 	OpList []*OpConfig
 }

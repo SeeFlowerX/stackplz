@@ -7,7 +7,7 @@ import (
 )
 
 type ARG_BUFFER struct {
-	ArgType
+	ARG_STRUCT
 }
 
 func (this *ARG_BUFFER) SetupValueAsReadLen(value uint32) *ARG_BUFFER {
@@ -32,7 +32,7 @@ func (this *ARG_BUFFER) SetupRegAsReadLen(reg_index uint32) *ARG_BUFFER {
 }
 
 func (this *ARG_BUFFER) Setup() {
-	this.SetupSaveStruct()
+	this.ARG_STRUCT.Setup()
 }
 
 func (this *ARG_BUFFER) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
@@ -57,6 +57,7 @@ func RegAsBufferReadLen(p IArgType, reg_index uint32) IArgType {
 	}
 	return at.SetupRegAsReadLen(reg_index)
 }
+
 func ValueAsBufferReadLen(p IArgType, value uint32) IArgType {
 	at, ok := (p).(*ARG_BUFFER)
 	if !ok {

@@ -4,23 +4,22 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"syscall"
 	"unsafe"
 )
 
-type ARG_SOCKADDR struct {
+type ARG_POLLFD struct {
 	ARG_STRUCT
 }
 
-func (this *ARG_SOCKADDR) Setup() {
+func (this *ARG_POLLFD) Setup() {
 	this.ARG_STRUCT.Setup()
 }
 
-func (this *ARG_SOCKADDR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+func (this *ARG_POLLFD) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	if !parse_more {
 		return fmt.Sprintf("0x%x", ptr)
 	}
-	var arg Arg_RawSockaddrUnix
+	var arg Arg_Pollfd
 	if err := binary.Read(buf, binary.LittleEndian, &arg.Index); err != nil {
 		panic(err)
 	}
@@ -28,7 +27,7 @@ func (this *ARG_SOCKADDR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) 
 		panic(err)
 	}
 	if arg.Len > 0 {
-		if err := binary.Read(buf, binary.LittleEndian, &arg.RawSockaddrUnix); err != nil {
+		if err := binary.Read(buf, binary.LittleEndian, &arg.Pollfd); err != nil {
 			panic(err)
 		}
 		return fmt.Sprintf("0x%x%s", ptr, arg.Format())
@@ -37,5 +36,5 @@ func (this *ARG_SOCKADDR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) 
 }
 
 func init() {
-	Register(&ARG_SOCKADDR{}, "sockaddr", TYPE_SOCKADDR, uint32(unsafe.Sizeof(syscall.RawSockaddrUnix{})))
+	Register(&ARG_POLLFD{}, "pollfd", TYPE_POLLFD, uint32(unsafe.Sizeof(Pollfd{})))
 }
