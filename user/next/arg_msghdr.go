@@ -28,7 +28,7 @@ func (this *ARG_MSGHDR) Setup() {
 	this.AddOp(BuildReadPtrAddr(uint64(unsafe.Offsetof(t.Iov))))
 	this.AddOp(OPC_SET_TMP_VALUE)
 	this.AddOp(OPC_FOR_BREAK)
-	iovec := GetArgType(TYPE_IOVEC)
+	iovec := GetArgType("iovec")
 	this.OpList = append(this.OpList, iovec.GetOpList()...)
 	this.AddOp(OPC_MOVE_TMP_VALUE)
 	this.AddOp(OPC_ADD_OFFSET.NewValue(uint64(iovec.GetSize())))

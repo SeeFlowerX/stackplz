@@ -24,7 +24,7 @@ func (this *ARG_STRING) Parse(ptr uint64, buf *bytes.Buffer) string {
 	if err := binary.Read(buf, binary.LittleEndian, &payload); err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("0x%x%s", ptr, util.B2STrim(payload))
+	return fmt.Sprintf("0x%x(%s)", ptr, util.B2STrim(payload))
 }
 
 func init() {

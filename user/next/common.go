@@ -9,6 +9,8 @@ import (
 
 type IArgType interface {
 	Init(string, uint32, uint32)
+	AddAlias(string)
+	HasAliasName(string) bool
 	DumpOpList()
 	Setup()
 	Parse(uint64, *bytes.Buffer) string
@@ -32,16 +34,31 @@ type OpConfig struct {
 }
 
 type ArgType struct {
-	Name   string
-	Alias  uint32
-	Size   uint32
-	OpList []uint32
+	Name        string
+	Alias       uint32
+	Size        uint32
+	OpList      []uint32
+	AliaNames   []string
+	FlagsParser *FlagsParser
 }
 
 func (this *ArgType) Init(name string, alias, size uint32) {
 	this.Name = name
 	this.Alias = alias
 	this.Size = size
+}
+
+func (this *ArgType) AddAlias(alias_name string) {
+	this.AliaNames = append(this.AliaNames, alias_name)
+}
+
+func (this *ArgType) HasAliasName(name string) bool {
+	for _, alias_name := range this.AliaNames {
+		if alias_name == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (this *ArgType) DumpOpList() {
@@ -64,7 +81,7 @@ func (this *ArgType) SetupSaveStruct() {
 	this.AddOp(op.NewPostCode(OP_SAVE_STRUCT))
 }
 
-func (this *ArgType) Parse() {
+func (this *ArgType) Parse(uint64, *bytes.Buffer) string {
 	panic(fmt.Sprintf("ArgType.Parse() not implemented yet, name=%s index=%d", this.Name, this.Alias))
 }
 
@@ -125,12 +142,16 @@ func NewPointArg(arg_name string, arg_type IArgType) *PointArg {
 
 var arg_types = make(map[uint32]IArgType)
 
-func GetArgType(alias uint32) IArgType {
-	v, ok := arg_types[alias]
-	if ok {
-		return v
+func GetArgType(name string) IArgType {
+	for _, arg_type := range arg_types {
+		if arg_type.GetName() == name {
+			return arg_type
+		}
+		if arg_type.HasAliasName(name) {
+			return arg_type
+		}
 	}
-	panic(fmt.Sprintf("GetArgType failed, index=%d not exists", alias))
+	panic(fmt.Sprintf("GetArgType failed, name=%s not exists", name))
 }
 
 func Register(p IArgType, name string, alias, size uint32) {
@@ -144,4 +165,8 @@ func Register(p IArgType, name string, alias, size uint32) {
 	}
 	p.Setup()
 	arg_types[type_index] = p
+}
+
+func RegisterAlias(alias_name, name string) {
+	GetArgType(name).AddAlias(alias_name)
 }
