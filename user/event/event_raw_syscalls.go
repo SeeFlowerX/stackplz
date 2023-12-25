@@ -48,12 +48,13 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
     //     panic("only sendmsg now")
     // }
     var results []string
-    for _, point_arg := range this.nr_point_next.PointArgs {
+    for _, point_arg := range this.nr_point_next.EnterPointArgs {
         var ptr config.Arg_reg
         if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(err)
         }
-        results = append(results, fmt.Sprintf("%s=%s", point_arg.Name, point_arg.Type.Parse(ptr.Address, this.buf)))
+        parse_more := point_arg.PointType == next.EBPF_SYS_ENTER
+        results = append(results, fmt.Sprintf("%s=%s", point_arg.Name, point_arg.Type.Parse(ptr.Address, this.buf, parse_more)))
         // switch point_arg.ArgType.Alias_type {
         // case config.TYPE_SOCKADDR:
         //     sock_addr := this.ParseArgStruct(this.buf, &config.Arg_RawSockaddrUnix{})
@@ -85,6 +86,25 @@ func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
         //     results = append(results, fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address))
         // }
     }
+    this.arg_str = "(" + strings.Join(results, ", ") + ")"
+    return nil
+}
+
+func (this *SyscallEvent) ParseContextSysExitNext() (err error) {
+    // if this.mconf.Next {
+    //     this.logger.Printf("ParseContextSysEnterNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
+    // }
+    this.nr_point_next = next.GetSyscallPointByNR(this.nr.Value)
+    var results []string
+    for _, point_arg := range this.nr_point_next.ExitPointArgs {
+        var ptr config.Arg_reg
+        if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
+            panic(err)
+        }
+        parse_more := point_arg.PointType == next.EBPF_SYS_EXIT
+        results = append(results, fmt.Sprintf("%s=%s", point_arg.Name, point_arg.Type.Parse(ptr.Address, this.buf, parse_more)))
+    }
+
     this.arg_str = "(" + strings.Join(results, ", ") + ")"
     return nil
 }
@@ -182,6 +202,7 @@ func (this *SyscallEvent) ParseContext() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &this.nr); err != nil {
         panic(err)
     }
+
     if this.EventId == SYSCALL_ENTER {
         // 是否有不执行 sys_exit 的情况 ?
         // 有的调用耗时 也有可能 暂时还是把执行结果分开输出吧
@@ -191,7 +212,11 @@ func (this *SyscallEvent) ParseContext() (err error) {
             this.ParseContextSysEnter()
         }
     } else if this.EventId == SYSCALL_EXIT {
-        this.ParseContextSysExit()
+        if this.mconf.Next {
+            this.ParseContextSysExitNext()
+        } else {
+            this.ParseContextSysExit()
+        }
     } else {
         panic(fmt.Sprintf("SyscallEvent.ParseContext() failed, EventId:%d", this.EventId))
     }
@@ -262,9 +287,11 @@ func (this *SyscallEvent) JsonString(stack_str string) string {
 func (this *SyscallEvent) NextString() string {
     var base_str string
     base_str = fmt.Sprintf("[%s] nr:%s%s", this.GetUUID(), this.nr_point_next.Name, this.arg_str)
-    lr_str := fmt.Sprintf("LR:0x%x", this.lr.Address)
-    pc_str := fmt.Sprintf("PC:0x%x", this.pc.Address)
-    base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.sp.Address)
+    if this.EventId == SYSCALL_ENTER {
+        lr_str := fmt.Sprintf("LR:0x%x", this.lr.Address)
+        pc_str := fmt.Sprintf("PC:0x%x", this.pc.Address)
+        base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.sp.Address)
+    }
     return base_str
 }
 

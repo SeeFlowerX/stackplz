@@ -72,6 +72,11 @@ const (
 )
 
 const (
+	EBPF_PROG_NONE uint32 = iota
+	EBPF_SYS_ENTER
+	EBPF_SYS_EXIT
+)
+const (
 	FORMAT_NUM uint32 = iota
 	FORMAT_HEX_PURE
 	FORMAT_HEX

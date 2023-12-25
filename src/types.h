@@ -207,6 +207,9 @@ typedef struct op_ctx {
     u64 reg_value;
     u64 pointer_value;
     u64 tmp_value;
+    // 函数执行后会覆盖第一个寄存器
+    // 在函数退出时有可能还要用到
+    u64 reg_0;
 } op_ctx_t;
 
 typedef struct op_config {
@@ -215,6 +218,11 @@ typedef struct op_config {
     u32 post_code;
     u64 value;
 } op_config_t;
+
+typedef struct point_args {
+    u32 op_count;
+    u32 op_key_list[MAX_OP_COUNT];
+} point_args_t;
 
 typedef struct event_context {
     u64 ts;

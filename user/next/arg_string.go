@@ -15,7 +15,10 @@ func (this *ARG_STRING) Setup() {
 	this.AddOp(OPC_SAVE_STRING)
 }
 
-func (this *ARG_STRING) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_STRING) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+	if !parse_more {
+		return fmt.Sprintf("0x%x", ptr)
+	}
 	var arg Arg_str
 	if err := binary.Read(buf, binary.LittleEndian, &arg); err != nil {
 		panic(err)

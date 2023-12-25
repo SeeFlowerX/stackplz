@@ -101,10 +101,10 @@ type ARG_UINT64 struct {
 	ARG_NUM
 }
 
-func (this *ARG_PTR) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_PTR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	return fmt.Sprintf("0x%x", ptr)
 }
-func (this *ARG_INT) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_INT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int32(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
 	if this.FlagsParser != nil {
@@ -128,7 +128,7 @@ func (this *ARG_INT) Parse(ptr uint64, buf *bytes.Buffer) string {
 	}
 	return value_fmt
 }
-func (this *ARG_UINT) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_UINT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint32(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
 	if this.FlagsParser != nil {
@@ -152,7 +152,7 @@ func (this *ARG_UINT) Parse(ptr uint64, buf *bytes.Buffer) string {
 	}
 	return value_fmt
 }
-func (this *ARG_INT8) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_INT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int8(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
 	if this.FlagsParser != nil {
@@ -176,7 +176,7 @@ func (this *ARG_INT8) Parse(ptr uint64, buf *bytes.Buffer) string {
 	}
 	return value_fmt
 }
-func (this *ARG_INT16) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_INT16) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int16(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
 	if this.FlagsParser != nil {
@@ -200,7 +200,7 @@ func (this *ARG_INT16) Parse(ptr uint64, buf *bytes.Buffer) string {
 	}
 	return value_fmt
 }
-func (this *ARG_INT32) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_INT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int32(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
 	if this.FlagsParser != nil {
@@ -224,7 +224,7 @@ func (this *ARG_INT32) Parse(ptr uint64, buf *bytes.Buffer) string {
 	}
 	return value_fmt
 }
-func (this *ARG_INT64) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_INT64) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int64(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
 	if this.FlagsParser != nil {
@@ -248,7 +248,7 @@ func (this *ARG_INT64) Parse(ptr uint64, buf *bytes.Buffer) string {
 	}
 	return value_fmt
 }
-func (this *ARG_UINT8) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_UINT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint8(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
 	if this.FlagsParser != nil {
@@ -272,7 +272,7 @@ func (this *ARG_UINT8) Parse(ptr uint64, buf *bytes.Buffer) string {
 	}
 	return value_fmt
 }
-func (this *ARG_UINT16) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_UINT16) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint16(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
 	if this.FlagsParser != nil {
@@ -296,7 +296,7 @@ func (this *ARG_UINT16) Parse(ptr uint64, buf *bytes.Buffer) string {
 	}
 	return value_fmt
 }
-func (this *ARG_UINT32) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_UINT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint32(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
 	if this.FlagsParser != nil {
@@ -320,7 +320,7 @@ func (this *ARG_UINT32) Parse(ptr uint64, buf *bytes.Buffer) string {
 	}
 	return value_fmt
 }
-func (this *ARG_UINT64) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_UINT64) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint64(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
 	if this.FlagsParser != nil {

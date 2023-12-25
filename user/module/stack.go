@@ -97,20 +97,25 @@ func (this *MStack) setupManager() error {
     if this.mconf.SysCallConf.IsEnable() {
         // syscall hook 配置
         var sys_enter_probe *manager.Probe
+        var sys_exit_probe *manager.Probe
         if this.mconf.Next {
             sys_enter_probe = &manager.Probe{
                 Section:      "raw_tracepoint/sys_enter",
                 EbpfFuncName: "next_raw_syscalls_sys_enter",
+            }
+            sys_exit_probe = &manager.Probe{
+                Section:      "raw_tracepoint/sys_exit",
+                EbpfFuncName: "next_raw_syscalls_sys_exit",
             }
         } else {
             sys_enter_probe = &manager.Probe{
                 Section:      "raw_tracepoint/sys_enter",
                 EbpfFuncName: "raw_syscalls_sys_enter",
             }
-        }
-        sys_exit_probe := &manager.Probe{
-            Section:      "raw_tracepoint/sys_exit",
-            EbpfFuncName: "raw_syscalls_sys_exit",
+            sys_exit_probe = &manager.Probe{
+                Section:      "raw_tracepoint/sys_exit",
+                EbpfFuncName: "raw_syscalls_sys_exit",
+            }
         }
         probes = append(probes, sys_enter_probe)
         probes = append(probes, sys_exit_probe)
@@ -417,8 +422,8 @@ func (this *MStack) update_syscall_point_args() {
 
 }
 
-func (this *MStack) update_next_point_args() {
-    map_name := "next_point_args_map"
+func (this *MStack) update_sysenter_point_args() {
+    map_name := "sysenter_point_args"
     bpf_map, err := this.FindMap(map_name)
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
@@ -427,7 +432,29 @@ func (this *MStack) update_next_point_args() {
         panic("TraceMode TRACE_ALL not implemented yet")
     } else {
         for _, syscall_point := range this.mconf.SysCallConf.NextPointArgs {
-            point_config := syscall_point.GetConfig()
+            point_config := syscall_point.GetEnterConfig()
+            err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
+            if err != nil {
+                panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+            }
+        }
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
+func (this *MStack) update_sysexit_point_args() {
+    map_name := "sysexit_point_args"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
+        panic("TraceMode TRACE_ALL not implemented yet")
+    } else {
+        for _, syscall_point := range this.mconf.SysCallConf.NextPointArgs {
+            point_config := syscall_point.GetExitConfig()
             err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
             if err != nil {
                 panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
@@ -473,7 +500,8 @@ func (this *MStack) update_next_syscall_config() {
     if !this.mconf.SysCallConf.IsEnable() {
         return
     }
-    this.update_next_point_args()
+    this.update_sysenter_point_args()
+    this.update_sysexit_point_args()
     this.update_op_list()
     this.update_common_list(this.mconf.SysCallConf.SysWhitelist, util.SYS_WHITELIST_START)
     this.update_common_list(this.mconf.SysCallConf.SysBlacklist, util.SYS_BLACKLIST_START)

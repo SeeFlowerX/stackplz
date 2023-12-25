@@ -16,7 +16,10 @@ func (this *ARG_SOCKADDR) Setup() {
 	this.SetupSaveStruct()
 }
 
-func (this *ARG_SOCKADDR) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_SOCKADDR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+	if !parse_more {
+		return fmt.Sprintf("0x%x", ptr)
+	}
 	var arg Arg_str
 	if err := binary.Read(buf, binary.LittleEndian, &arg); err != nil {
 		panic(err)

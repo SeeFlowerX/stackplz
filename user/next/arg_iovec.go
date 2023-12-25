@@ -41,7 +41,10 @@ func (this *ARG_IOVEC) Setup() {
 	this.AddOp(OPC_SAVE_STRUCT)
 }
 
-func (this *ARG_IOVEC) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_IOVEC) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+	if !parse_more {
+		return fmt.Sprintf("0x%x", ptr)
+	}
 	var iovcnt Arg_reg
 	if err := binary.Read(buf, binary.LittleEndian, &iovcnt); err != nil {
 		panic(err)

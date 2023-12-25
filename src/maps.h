@@ -48,6 +48,8 @@ BPF_LRU_HASH(match_ctx_map, u64, match_ctx_t, 1024);
 BPF_PERCPU_ARRAY(event_data_map, event_data_t, 1);
 BPF_PERCPU_ARRAY(op_ctx_map, op_ctx_t, 1);
 BPF_HASH(op_list, u32, op_config_t, 256);
+BPF_HASH(sysenter_point_args, u32, point_args_t, 512);
+BPF_HASH(sysexit_point_args, u32, point_args_t, 512);
 BPF_ARRAY(base_config, config_entry_t, 1);
 
 #endif /* __MAPS_H__ */

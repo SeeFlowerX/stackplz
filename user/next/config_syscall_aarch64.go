@@ -64,14 +64,23 @@ func (this *PointOpKeyConfig) AddPointArg(point_arg *PointArg) {
 // }
 
 type SyscallPoint struct {
-	Nr        uint32
-	Name      string
-	PointArgs []*PointArg
+	Nr             uint32
+	Name           string
+	EnterPointArgs []*PointArg
+	ExitPointArgs  []*PointArg
 }
 
-func (this *SyscallPoint) GetConfig() PointOpKeyConfig {
+func (this *SyscallPoint) GetEnterConfig() PointOpKeyConfig {
 	config := PointOpKeyConfig{}
-	for _, point_arg := range this.PointArgs {
+	for _, point_arg := range this.EnterPointArgs {
+		config.AddPointArg(point_arg)
+	}
+	return config
+}
+
+func (this *SyscallPoint) GetExitConfig() PointOpKeyConfig {
+	config := PointOpKeyConfig{}
+	for _, point_arg := range this.ExitPointArgs {
 		config.AddPointArg(point_arg)
 	}
 	return config
@@ -195,68 +204,42 @@ func (this *OpKeyHelper) GetOpList() map[uint32]OpConfig {
 	return this.op_list
 }
 
-// func X(arg_name string, arg_type *OpArgType) *ArgOpConfig {
-// 	config := ArgOpConfig{}
-// 	config.ArgName = arg_name
-// 	config.ArgType = arg_type
-// 	return &config
-// }
-
-// func Y(arg_name string, arg_type *OpArgType) *ArgOpConfig {
-// 	return X(arg_name, arg_type)
-// }
-
 var aarch64_syscall_points = SyscallPoints{}
-
-// func R(nr uint32, name string, configs ...*ArgOpConfig) {
-// 	// 不可重复
-// 	if aarch64_syscall_points.Dup(nr, name) {
-// 		panic(fmt.Sprintf("register duplicate for nr:%d name:%s", nr, name))
-// 	}
-// 	op_key_config := NewOpKeyConfig()
-// 	// 合并多个参数的操作数
-// 	for reg_index, config := range configs {
-
-// 		op_key_config.AddOp(Add_READ_SAVE_REG(uint64(reg_index)))
-// 		op_key_config.AddOp(OPC_MOVE_REG_VALUE)
-// 		for _, op := range config.ArgType.OpList {
-// 			op_key_config.AddOp(op)
-// 		}
-// 	}
-// 	// 关联到syscall
-// 	aarch64_syscall_points.Add(nr, name, configs, NewOpKeyConfig(), op_key_config)
-// }
 
 func R(nr uint32, name string, point_args ...*PointArg) {
 	if aarch64_syscall_points.Dup(nr, name) {
 		panic(fmt.Sprintf("register duplicate for nr:%d name:%s", nr, name))
 	}
+	var a_point_args []*PointArg
+	var b_point_args []*PointArg
 	for reg_index, point_arg := range point_args {
-		point_arg.SetRegIndex(uint32(reg_index))
-		point_arg.BuildOpList()
+		a_p := point_arg.Clone()
+		a_p.SetRegIndex(uint32(reg_index))
+		a_p.BuildOpList(point_arg.PointType == EBPF_SYS_ENTER)
+		a_point_args = append(a_point_args, a_p)
+		b_p := point_arg.Clone()
+		b_p.SetRegIndex(uint32(reg_index))
+		b_p.BuildOpList(point_arg.PointType == EBPF_SYS_EXIT)
+		b_point_args = append(b_point_args, b_p)
 	}
-	point := &SyscallPoint{nr, name, point_args}
+	// SetRegIndex + BuildOpList 读取寄存器才会产生
+	// 直接添加 ARG_INT 刚好不影响读取数据 并且能正常进行解析
+	b_point_args = append(b_point_args, B("ret", GetArgType("int")))
+	point := &SyscallPoint{nr, name, a_point_args, b_point_args}
 	aarch64_syscall_points.Add(point)
 }
 
-// func R(nr uint32, name string, point_args ...*PointArg) {
-// 	if aarch64_syscall_points.Dup(nr, name) {
-// 		panic(fmt.Sprintf("register duplicate for nr:%d name:%s", nr, name))
-// 	}
-// 	for reg_index, point_arg := range point_args {
-// 		point_arg.SetRegIndex(uint32(reg_index))
-// 		point_arg.BuildOpList()
-// 	}
-// 	point := &SyscallPoint{nr, name, point_args}
-// 	aarch64_syscall_points.Add(point)
-// }
-
 func A(arg_name string, arg_type IArgType) *PointArg {
-	return NewPointArg(arg_name, arg_type)
+	return NewPointArg(arg_name, arg_type, EBPF_SYS_ENTER)
+}
+
+func B(arg_name string, arg_type IArgType) *PointArg {
+	return NewPointArg(arg_name, arg_type, EBPF_SYS_EXIT)
 }
 
 func init() {
 
+	var PTR = GetArgType("ptr")
 	var INT = GetArgType("int")
 	// var UINT = GetArgType("uint")
 	// var INT8 = GetArgType("int8")
@@ -310,6 +293,7 @@ func init() {
 
 	// R(240, "rt_tgsigqueueinfo", X("tgid", AT_INT), X("tid", AT_INT), X("sig", AT_INT), X("siginfo", AT_SIGINFO))
 
+	// BUFFER_256 := ValueAsBufferReadLen(BUFFER, 256)
 	BUFFER_X2 := RegAsBufferReadLen(BUFFER, REG_ARM64_X2)
 	IOVEC_X2 := RegAsIovecLoopCount(IOVEC, REG_ARM64_X2)
 
@@ -327,12 +311,13 @@ func init() {
 	R(201, "listen", A("sockfd", INT), A("backlog", INT))
 	R(202, "accept", A("sockfd", INT), A("addr", SOCKADDR), A("addrlen", SOCKLEN_T))
 	R(203, "connect", A("sockfd", INT), A("addr", SOCKADDR), A("addrlen", SOCKLEN_T))
-	// R(204, "getsockname", A("sockfd", INT), B("addr", SOCKADDR), A("addrlen", SOCKLEN_T))
-	// R(205, "getpeername", A("sockfd", INT), B("addr", SOCKADDR), A("addrlen", SOCKLEN_T))
+	R(204, "getsockname", A("sockfd", INT), B("addr", SOCKADDR), A("addrlen", SOCKLEN_T))
+	R(205, "getpeername", A("sockfd", INT), B("addr", SOCKADDR), A("addrlen", SOCKLEN_T))
 	R(206, "sendto", A("sockfd", INT), A("*buf", BUFFER_X2), A("len", SIZE_T), A("flags", INT), A("addr", SOCKADDR), A("addrlen", SOCKLEN_T))
-	// R(207, "recvfrom", A("sockfd", INT), B("buf", BUFFER_X2), A("len", INT), A("flags", INT))
-	R(208, "setsockopt", A("sockfd", INT), A("level", INT), A("optname", INT), A("optval", INT), A("optlen", SOCKLEN_T))
-	// R(209, "getsockopt", A("sockfd", INT), A("level", INT), A("optname", INT), B("optval", INT), A("optlen", SOCKLEN_T))
+	R(207, "recvfrom", A("sockfd", INT), B("*buf", BUFFER_X2), A("len", SIZE_T), A("flags", INT))
+	R(208, "setsockopt", A("sockfd", INT), A("level", INT), A("optname", INT), A("optval", PTR), A("optlen", SOCKLEN_T))
+	R(209, "getsockopt", A("sockfd", INT), A("level", INT), A("optname", INT), B("optval", PTR), A("optlen", PTR))
+	R(210, "shutdown", A("sockfd", INT), A("how", INT))
 	R(211, "sendmsg", A("sockfd", INT), A("*msg", MSGHDR), A("flags", INT))
 
 }

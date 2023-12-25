@@ -35,7 +35,10 @@ func (this *ARG_MSGHDR) Setup() {
 	this.AddOp(OPC_FOR_BREAK)
 }
 
-func (this *ARG_MSGHDR) Parse(ptr uint64, buf *bytes.Buffer) string {
+func (this *ARG_MSGHDR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+	if !parse_more {
+		return fmt.Sprintf("0x%x", ptr)
+	}
 	var arg_msghdr Arg_Msghdr
 	if err := binary.Read(buf, binary.LittleEndian, &arg_msghdr); err != nil {
 		panic(err)
