@@ -84,7 +84,7 @@ func (this *ARG_MSGHDR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) st
 		iov_results = append(iov_results, fmt.Sprintf("iov_%d=%s", i, arg_iovec.Format()))
 	}
 	fmt_str := "(\n\t" + strings.Join(iov_results, ", \n\t") + "\n)"
-	return fmt.Sprintf("0x%x(%s)", ptr, fmt_str)
+	return fmt.Sprintf("0x%x%s", ptr, fmt_str)
 }
 
 func init() {
