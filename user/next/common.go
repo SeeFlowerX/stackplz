@@ -107,11 +107,6 @@ func (this *ArgType) Setup() {
 	panic(fmt.Sprintf("ArgType.Setup() not implemented yet, name=%s index=%d", this.Name, this.Alias))
 }
 
-// func (this *ArgType) SetupSaveStruct() {
-// 	op := OPC_SET_READ_LEN.NewValue(uint64(this.Size))
-// 	this.AddOp(op.NewPostCode(OP_SAVE_STRUCT))
-// }
-
 func (this *ArgType) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	panic(fmt.Sprintf("ArgType.Parse() not implemented yet, name=%s index=%d", this.Name, this.Alias))
 }

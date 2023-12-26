@@ -122,23 +122,9 @@ func (this *OpManager) GetOpList() map[uint32]BaseOpConfig {
 	var op_list = make(map[uint32]BaseOpConfig)
 	for _, v := range this.OpList {
 		op_list[v.Index] = v.ToEbpfValue()
-		// fmt.Println("..", i, v.Index, op_list[v.Index], v.Name)
 	}
 	return op_list
 }
-
-// type OpConfig_C struct {
-// 	Code     uint32
-// 	PreCode  uint32
-// 	PostCode uint32
-// 	Value    uint64
-// }
-
-// type OpConfig struct {
-// 	Name  string
-// 	Index uint32
-// 	OpConfig_C
-// }
 
 func (this *OpConfig) ToEbpfValue() BaseOpConfig {
 	// 不知道直接返回是否存在结构体对齐的问题 有待验证
@@ -223,26 +209,6 @@ func (this *OpArgType) AddOp(op *OpConfig) {
 	this.OpList = append(this.OpList, OPM.AddOp(op))
 }
 
-// func BuildBufferRegIndex(reg_index uint32) *OpArgType {
-// 	at := AT_BUFFER.Clone()
-// 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.Type_size)))
-// 	at.AddOp(BuildReadRegLen(uint64(reg_index)))
-// 	at.AddOp(OPC_SAVE_STRUCT)
-// 	return &at
-// }
-
-// func BuildIovecRegIndex(reg_index uint32) *OpArgType {
-// 	at := AT_IOVEC.Clone()
-// 	op := BuildReadRegBreakCount(uint64(reg_index))
-// 	op = OPM.AddOp(op)
-// 	var for_op []*OpConfig = []*OpConfig{op, OPC_SAVE_REG, OPC_FOR_BREAK, OPC_SET_TMP_VALUE}
-// 	at.OpList = append(for_op, at.OpList...)
-// 	at.AddOp(OPC_MOVE_TMP_VALUE)
-// 	at.AddOp(OPC_ADD_OFFSET.NewValue(16))
-// 	at.AddOp(OPC_FOR_BREAK)
-// 	return &at
-// }
-
 func RAT(alias_type, type_size uint32) *OpArgType {
 	// register common OpArgType
 	oat := OpArgType{}
@@ -288,34 +254,6 @@ var OPC_SAVE_POINTER = ROP("SAVE_POINTER", OP_SAVE_POINTER)
 var OPC_SAVE_STRUCT = ROP("SAVE_STRUCT", OP_SAVE_STRUCT)
 var OPC_SAVE_STRING = ROP("SAVE_STRING", OP_SAVE_STRING)
 var OPC_SAVE_PTR_STRING = ROP("SAVE_PTR_STRING", OP_SAVE_PTR_STRING)
-
-// // 基础类型
-// var AT_INT8 = RAT(TYPE_INT8, uint32(unsafe.Sizeof(int8(0))))
-// var AT_INT16 = RAT(TYPE_INT16, uint32(unsafe.Sizeof(int16(0))))
-// var AT_INT32 = RAT(TYPE_INT32, uint32(unsafe.Sizeof(int32(0))))
-// var AT_INT64 = RAT(TYPE_INT64, uint32(unsafe.Sizeof(int64(0))))
-
-// var AT_INT = AT_INT32
-
-// var AT_UINT8 = RAT(TYPE_UINT8, uint32(unsafe.Sizeof(uint8(0))))
-// var AT_UINT16 = RAT(TYPE_UINT16, uint32(unsafe.Sizeof(uint16(0))))
-// var AT_UINT32 = RAT(TYPE_UINT32, uint32(unsafe.Sizeof(uint32(0))))
-// var AT_UINT64 = RAT(TYPE_UINT64, uint32(unsafe.Sizeof(uint64(0))))
-
-// // 常用类型
-// var AT_BUFFER = RAT(TYPE_BUFFER, MAX_BUF_READ_SIZE)
-// var AT_STRING = RAT(TYPE_STRING, MAX_BUF_READ_SIZE)
-
-// // 复杂类型
-// var AT_SIGSET = RSAT(TYPE_SIGSET, 4*8)
-// var AT_SIGINFO = RSAT(TYPE_SIGINFO, uint32(unsafe.Sizeof(SigInfo{})))
-// var AT_SIGACTION = RSAT(TYPE_SIGACTION, uint32(unsafe.Sizeof(Sigaction{})))
-// var AT_TIMESPEC = RSAT(TYPE_TIMESPEC, uint32(unsafe.Sizeof(syscall.Timespec{})))
-// var AT_STACK = RSAT(TYPE_STACK_T, uint32(unsafe.Sizeof(Stack_t{})))
-// var AT_STAT = RSAT(TYPE_STAT, uint32(unsafe.Sizeof(syscall.Stat_t{})))
-// var AT_SOCKADDR = RSAT(TYPE_SOCKADDR, uint32(unsafe.Sizeof(syscall.RawSockaddrUnix{})))
-// var AT_IOVEC = RSAT(TYPE_IOVEC, uint32(unsafe.Sizeof(syscall.Iovec{})))
-// var AT_MSGHDR = RSAT(TYPE_MSGHDR, uint32(unsafe.Sizeof(Msghdr{})))
 
 func BuildReadRegBreakCount(reg_index uint64) *OpConfig {
 	op := OpConfig{}
@@ -365,44 +303,4 @@ func BuildReadPtrAddr(offset uint64) *OpConfig {
 	op.PostCode = OP_MOVE_POINTER_VALUE
 	op.Value = offset
 	return &op
-}
-
-// func BuildMsghdr() {
-// 	t := Msghdr{}
-// 	AT_MSGHDR.AddOp(OPC_SET_TMP_VALUE)
-// 	AT_MSGHDR.AddOp(OPC_SET_READ_LEN.NewValue(uint64(MAX_BUF_READ_SIZE)))
-// 	AT_MSGHDR.AddOp(BuildReadPtrLen(uint64(unsafe.Offsetof(t.Controllen))))
-// 	AT_MSGHDR.AddOp(BuildReadPtrAddr(uint64(unsafe.Offsetof(t.Control))))
-// 	AT_MSGHDR.AddOp(OPC_SAVE_STRUCT)
-// 	AT_MSGHDR.AddOp(OPC_MOVE_TMP_VALUE)
-// 	AT_MSGHDR.AddOp(BuildReadPtrBreakCount(uint64(unsafe.Offsetof(t.Iovlen))))
-// 	// 由于结构体直接可以取到长度 这里就不再保存一次了
-// 	// AT_MSGHDR.AddOp(OPC_SAVE_POINTER)
-// 	AT_MSGHDR.AddOp(BuildReadPtrAddr(uint64(unsafe.Offsetof(t.Iov))))
-// 	AT_MSGHDR.AddOp(OPC_SET_TMP_VALUE)
-// 	AT_MSGHDR.AddOp(OPC_FOR_BREAK)
-// 	AT_MSGHDR.OpList = append(AT_MSGHDR.OpList, AT_IOVEC.OpList...)
-// 	AT_MSGHDR.AddOp(OPC_MOVE_TMP_VALUE)
-// 	AT_MSGHDR.AddOp(OPC_ADD_OFFSET.NewValue(uint64(AT_IOVEC.Type_size)))
-// 	AT_MSGHDR.AddOp(OPC_FOR_BREAK)
-
-// }
-
-func init() {
-	// 在这里完成各种类型的操作集合初始化
-
-	// TYPE_STRING
-	// AT_STRING.AddOp(OPC_SAVE_STRING)
-
-	// TYPE_IOVEC
-	// AT_IOVEC.AddOp(OPC_SET_READ_LEN.NewValue(uint64(MAX_BUF_READ_SIZE)))
-	// AT_IOVEC.AddOp(BuildReadPtrLen(8))
-	// AT_IOVEC.AddOp(OPC_READ_POINTER)
-	// AT_IOVEC.AddOp(OPC_MOVE_POINTER_VALUE)
-	// AT_IOVEC.AddOp(OPC_SAVE_STRUCT)
-
-	// TYPE_MSGHDR
-	// BuildMsghdr()
-
-	// Register(&SArgs{206, PAI("sendto", []PArg{A("sockfd", EXP_INT), A("buf", READ_BUFFER_T), A("len", INT), A("flags", EXP_INT), A("dest_addr", SOCKADDR), A("addrlen", EXP_INT)})})
 }

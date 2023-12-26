@@ -19,50 +19,6 @@ func (this *PointOpKeyConfig) AddPointArg(point_arg *PointArg) {
 	}
 }
 
-// type OpKeyConfig struct {
-// 	OpList []*OpConfig
-// }
-
-// func NewOpKeyConfig() *OpKeyConfig {
-// 	v := &OpKeyConfig{}
-// 	return v
-// }
-
-// func (this *OpKeyConfig) AddOp(op *OpConfig) {
-// 	this.OpList = append(this.OpList, op)
-// }
-
-// type ArgOpConfig struct {
-// 	ArgName string
-// 	ArgType *OpArgType
-// }
-
-// func (this *ArgOpConfig) IsPtr() bool {
-// 	// 是否配置为指针类型
-// 	return strings.HasPrefix(this.ArgName, "*")
-// }
-
-// type PointArgsConfig struct {
-// 	Nr           uint32
-// 	Name         string
-// 	Args         []*ArgOpConfig
-// 	ArgsSysExit  *OpKeyConfig
-// 	ArgsSysEnter *OpKeyConfig
-// }
-
-// func (this *PointArgsConfig) GetConfig() PointConfig_C {
-// 	point := PointConfig_C{}
-// 	point.OpCount = uint32(len(this.ArgsSysEnter.OpList))
-// 	if int(point.OpCount) > len(point.OpIndexList) {
-// 		panic(fmt.Sprintf("too many op for %s", this.Name))
-// 	}
-// 	for i, op := range this.ArgsSysEnter.OpList {
-// 		point.OpIndexList[i] = op.Index
-// 	}
-// 	// fmt.Println("[GetConfig]", this.Name, point)
-// 	return point
-// }
-
 type SyscallPoint struct {
 	Nr             uint32
 	Name           string
@@ -108,24 +64,6 @@ func (this *SyscallPoints) Add(point *SyscallPoint) {
 	this.points = append(this.points, point)
 }
 
-// func (this *SyscallPoints) GetPointConfigByNR(nr uint32) *OpKeyConfig {
-// 	for _, point := range this.points {
-// 		if point.Nr == nr {
-// 			return point.ArgsSysEnter
-// 		}
-// 	}
-// 	panic(fmt.Sprintf("GetPointConfigByNR failed for nr %d", nr))
-// }
-
-// func (this *SyscallPoints) GetPointConfigByName(name string) *OpKeyConfig {
-// 	for _, point := range this.points {
-// 		if point.Name == name {
-// 			return point.ArgsSysEnter
-// 		}
-// 	}
-// 	panic(fmt.Sprintf("GetPointConfigByName failed for name %s", name))
-// }
-
 func (this *SyscallPoints) GetPointByName(name string) *SyscallPoint {
 	for _, point := range this.points {
 		if point.Name == name {
@@ -150,58 +88,6 @@ func GetSyscallPointByName(name string) *SyscallPoint {
 
 func GetSyscallPointByNR(nr uint32) *SyscallPoint {
 	return aarch64_syscall_points.GetPointByNR(nr)
-}
-
-const (
-	OP_LIST_COMMON_START uint32 = 0x400
-)
-
-type OpKeyHelper struct {
-	op_list              map[uint32]OpConfig
-	reg_index_op_key_map map[int]uint32
-}
-
-func (this *OpKeyHelper) get_op_config(op_key uint32) OpConfig {
-	for k, v := range this.op_list {
-		if k == op_key {
-			return v
-		}
-	}
-	panic(fmt.Sprintf("get_op_config for key:%d not exists", op_key))
-}
-
-func (this *OpKeyHelper) get_default_op_key(op_code uint32) uint32 {
-	for k, v := range this.op_list {
-		if v.Code == op_code && v.Value == 0 {
-			return k
-		}
-	}
-	panic(fmt.Sprintf("default_op_key for code:%d not exists", op_code))
-}
-
-func (this *OpKeyHelper) get_op_key(opc OpConfig) uint32 {
-	for k, v := range this.op_list {
-		if v.Code == opc.Code && v.Value == opc.Value {
-			return k
-		}
-	}
-	next_op_key := OP_LIST_COMMON_START + uint32(len(this.op_list))
-	this.op_list[next_op_key] = opc
-	return next_op_key
-}
-
-func (this *OpKeyHelper) add_reg_index_op_config(reg_index int, op_key uint32) {
-	this.reg_index_op_key_map[reg_index] = op_key
-}
-
-func (this *OpKeyHelper) get_reg_index_op_key(reg_index int) uint32 {
-	return this.reg_index_op_key_map[reg_index]
-}
-
-func (this *OpKeyHelper) GetOpList() map[uint32]OpConfig {
-	// 取出会被用到的 op
-	// 根据 op_key 去重即可
-	return this.op_list
 }
 
 var aarch64_syscall_points = SyscallPoints{}
@@ -242,21 +128,13 @@ func C(arg_name string, arg_type IArgType) *PointArg {
 }
 
 func init() {
-
 	var POINTER = GetArgType("ptr")
 	var INT = GetArgType("int")
 	var UINT = GetArgType("uint")
-	// var INT8 = GetArgType("int8")
 	var INT16 = GetArgType("int16")
-	// var INT32 = GetArgType("int32")
-	// var INT64 = GetArgType("int64")
-	// var UINT8 = GetArgType("uint8")
-	// var UINT16 = GetArgType("uint16")
-	// var UINT32 = GetArgType("uint32")
 	var UINT64 = GetArgType("uint64")
 	var STRING = GetArgType("string")
 	var BUFFER = GetArgType("buffer")
-	// var STRUCT = GetArgType("struct")
 	var IOVEC = GetArgType("iovec")
 	var MSGHDR = GetArgType("msghdr")
 	var SOCKLEN_T = GetArgType("socklen_t")
@@ -296,7 +174,6 @@ func init() {
 	INT_PTR := SetupPtrType(INT, true)
 	UINT_PTR := SetupPtrType(UINT, true)
 
-	// BUFFER_256 := ValueAsBufferReadLen(BUFFER, 256)
 	BUFFER_X2 := RegAsBufferReadLen(BUFFER, REG_ARM64_X2)
 	IOVEC_X2 := RegAsIovecLoopCount(IOVEC, REG_ARM64_X2)
 

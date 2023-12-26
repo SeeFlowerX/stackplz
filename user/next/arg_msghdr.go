@@ -66,13 +66,11 @@ func (this *ARG_MSGHDR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) st
 		if err := binary.Read(buf, binary.LittleEndian, &arg_iovec.Arg_Iovec_Fix); err != nil {
 			panic(err)
 		}
-		// this.logger.Printf("index:%d iovec={%s}", arg_iovec.Index, arg_iovec.Format())
 
 		var iov_buf Arg_str
 		if err := binary.Read(buf, binary.LittleEndian, &iov_buf); err != nil {
 			panic(err)
 		}
-		// this.logger.Printf("index:%d iov_buf.Len={%d}", iov_buf.Index, iov_buf.Len)
 		payload := []byte{}
 		if iov_buf.Len > 0 {
 			payload = make([]byte, iov_buf.Len)

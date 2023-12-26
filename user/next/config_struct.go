@@ -253,12 +253,6 @@ type Arg_Stat_t struct {
 	syscall.Stat_t
 }
 
-// vscode 配置下面的部分 这样才有正确的代码提示
-// "go.toolsEnvVars": {
-//     "GOOS": "android",
-//     "GOARCH": "arm64"
-// }
-
 func (this *Arg_Stat_t) Format() string {
 	var fields []string
 	fields = append(fields, fmt.Sprintf("dev=%d", this.Dev))
