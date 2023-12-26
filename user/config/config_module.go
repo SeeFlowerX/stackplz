@@ -348,6 +348,11 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
             syscall_items = append(syscall_items, []string{"kill", "tkill", "tgkill"}...)
         case "%exit":
             syscall_items = append(syscall_items, []string{"exit", "exit_group"}...)
+        case "%sched":
+            syscall_items = append(syscall_items, []string{"sched_setparam", "sched_setscheduler", "sched_getscheduler"}...)
+            syscall_items = append(syscall_items, []string{"sched_getparam", "sched_setaffinity", "sched_getaffinity"}...)
+            syscall_items = append(syscall_items, []string{"sched_yield", "sched_get_priority_max", "sched_get_priority_min"}...)
+            syscall_items = append(syscall_items, []string{"sched_rr_get_interval", "sched_setattr", "sched_getattr"}...)
         case "%dup":
             syscall_items = append(syscall_items, []string{"dup", "dup3"}...)
         case "%epoll":

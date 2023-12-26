@@ -99,7 +99,7 @@ enum op_code_e
     OP_SAVE_POINTER,
     OP_SAVE_STRUCT,
     OP_SAVE_STRING,
-    OP_SAVE_STRING_ARR
+    OP_SAVE_PTR_STRING
 };
 
 enum arm64_reg_e

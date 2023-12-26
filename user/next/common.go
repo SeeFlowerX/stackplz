@@ -12,6 +12,11 @@ type IArgType interface {
 	AddAlias(string)
 	HasAliasName(string) bool
 	DumpOpList()
+	CleanOpList()
+	SetSize(uint32)
+	Clone() IArgType
+	AddOp(*OpConfig)
+	SetParseCB(ParseFN)
 	Setup()
 	Parse(uint64, *bytes.Buffer, bool) string
 	GetName() string
@@ -33,6 +38,8 @@ type OpConfig struct {
 	BaseOpConfig
 }
 
+type ParseFN func(IArgType, uint64, *bytes.Buffer, bool) string
+
 type ArgType struct {
 	Name        string
 	Alias       uint32
@@ -40,12 +47,24 @@ type ArgType struct {
 	OpList      []uint32
 	AliaNames   []string
 	FlagsParser *FlagsParser
+	ParseCB     ParseFN
 }
 
 func (this *ArgType) Init(name string, alias, size uint32) {
 	this.Name = name
 	this.Alias = alias
 	this.Size = size
+}
+
+func (this *ArgType) Clone() IArgType {
+	at := ArgType{}
+	at.Name = this.Name
+	at.Alias = this.Alias
+	at.Size = this.Size
+	at.OpList = append(at.OpList, this.OpList...)
+	at.AliaNames = append(at.AliaNames, this.AliaNames...)
+	at.FlagsParser = this.FlagsParser
+	return &at
 }
 
 func (this *ArgType) AddAlias(alias_name string) {
@@ -72,8 +91,16 @@ func (this *ArgType) AddOp(op *OpConfig) {
 	this.OpList = append(this.OpList, OPM.AddOp(op).Index)
 }
 
+func (this *ArgType) SetParseCB(fn ParseFN) {
+	this.ParseCB = fn
+}
+
 func (this *ArgType) AddOpList(p IArgType) {
 	this.OpList = append(this.OpList, p.GetOpList()...)
+}
+
+func (this *ArgType) CleanOpList() {
+	this.OpList = []uint32{}
 }
 
 func (this *ArgType) Setup() {
@@ -95,6 +122,10 @@ func (this *ArgType) ParseArgStruct(buf *bytes.Buffer, arg ArgFormatter) string 
 		panic(err)
 	}
 	return arg.Format()
+}
+
+func (this *ArgType) SetSize(size uint32) {
+	this.Size = size
 }
 
 func (this *ArgType) GetName() string {

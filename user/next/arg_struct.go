@@ -15,7 +15,22 @@ func (this *ARG_STRUCT) Setup() {
 	this.AddOp(SaveStruct(uint64(this.Size)))
 }
 
+func (this *ARG_STRUCT) Clone() IArgType {
+	p, ok := (this.ArgType.Clone()).(*ArgType)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_STRUCT{*p}
+}
+
 func (this *ARG_STRUCT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+	if !parse_more {
+		return fmt.Sprintf("0x%x", ptr)
+	}
+	if this.ParseCB != nil {
+		return this.ParseCB(this, ptr, buf, parse_more)
+	}
+
 	// 不同结构体需要分别实现解析
 	panic("....")
 }

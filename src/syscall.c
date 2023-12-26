@@ -190,6 +190,22 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                 }
                 op_ctx->save_index += 1;
                 break;
+            case OP_SAVE_PTR_STRING:
+            {
+                u64 ptr = op_ctx->read_addr & 0xffffffffff;
+                bpf_probe_read_user(&ptr, sizeof(ptr), (void*) ptr);
+                save_to_submit_buf(p.event, (void *)&ptr, sizeof(ptr), op_ctx->save_index);
+                // 每次取出后使用前都要 fix 很坑
+                ptr = ptr & 0xffffffffff;
+                int status = save_str_to_buf(p.event, (void*) ptr, op_ctx->save_index);
+                if (status == 0) {
+                    save_bytes_to_buf(p.event, 0, 0, op_ctx->save_index);
+                    // 为读取字符串数组设计的
+                    op_ctx->loop_count = op_ctx->break_count;
+                }
+                op_ctx->save_index += 1;
+                break;
+            }
             default:
                 // bpf_printk("[stackplz] unknown op code:%d\n", op->code);
                 break;

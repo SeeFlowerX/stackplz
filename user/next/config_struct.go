@@ -295,7 +295,7 @@ func (this *Arg_Statfs_t) Format() string {
 	fields = append(fields, fmt.Sprintf("bavail=%d", this.Bavail))
 	fields = append(fields, fmt.Sprintf("files=%d", this.Files))
 	fields = append(fields, fmt.Sprintf("ffree=%d", this.Ffree))
-	fields = append(fields, fmt.Sprintf("fsid=0x%x,0x%x", this.Fsid.X__val[0], this.Fsid.X__val[1]))
+	fields = append(fields, fmt.Sprintf("fsid=%d,%d", this.Fsid.X__val[0], this.Fsid.X__val[1]))
 	fields = append(fields, fmt.Sprintf("namelen=%d", this.Namelen))
 	fields = append(fields, fmt.Sprintf("frsize=%d", this.Frsize))
 	fields = append(fields, fmt.Sprintf("flags=%d", this.Flags))

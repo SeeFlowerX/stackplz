@@ -173,19 +173,6 @@ func (this *ARG_PTR) SetupPtrType(p IArgType, is_num bool) IArgType {
 		at.AddOp(SaveStruct(8))
 	}
 	at.AddOpList(p)
-	switch p.(type) {
-	case *ARG_INT:
-	case *ARG_INT32:
-		break
-		// case *ARG_IOVEC:
-		// 	// 对于复杂的类型 这里合并其操作
-		// 	at, ok := (p).(*ARG_IOVEC)
-		// 	if !ok {
-		// 		panic("...")
-		// 	}
-		// 	this.AddOpList(at)
-		// 	break
-	}
 	return &at
 }
 
