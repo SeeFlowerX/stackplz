@@ -11,7 +11,7 @@ import (
     "stackplz/assets"
     "stackplz/user/config"
     "stackplz/user/event"
-    "stackplz/user/next"
+    "stackplz/user/next/argtype"
     "stackplz/user/util"
     "strings"
     "unsafe"
@@ -472,7 +472,7 @@ func (this *MStack) update_op_list() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
-    for op_key, op_config := range next.GetOpList() {
+    for op_key, op_config := range argtype.GetOpList() {
         err := bpf_map.Update(unsafe.Pointer(&op_key), unsafe.Pointer(&op_config), ebpf.UpdateAny)
         if err != nil {
             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))

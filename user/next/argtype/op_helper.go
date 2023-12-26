@@ -1,4 +1,4 @@
-package next
+package argtype
 
 import (
 	"fmt"
@@ -32,6 +32,19 @@ const (
 	OP_SAVE_STRING
 	OP_SAVE_PTR_STRING
 )
+
+type BaseOpConfig struct {
+	Code     uint32
+	PreCode  uint32
+	PostCode uint32
+	Value    uint64
+}
+
+type OpConfig struct {
+	Name  string
+	Index uint32
+	BaseOpConfig
+}
 
 func NewOpManager() *OpManager {
 	opm := OpManager{}
