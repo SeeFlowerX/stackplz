@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"stackplz/user/util"
 )
 
 type ARG_STRUCT struct {
@@ -17,6 +18,15 @@ func (this *ARG_STRUCT) Setup() {
 func (this *ARG_STRUCT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	// 不同结构体需要分别实现解析
 	panic("....")
+}
+
+func (this *ARG_STRUCT) DumpBuffer(buf *bytes.Buffer) string {
+	// 调试使用 直接 hexdump
+	payload := make([]byte, this.Size)
+	if err := binary.Read(buf, binary.LittleEndian, &payload); err != nil {
+		panic(err)
+	}
+	return util.HexDumpGreen(payload)
 }
 
 func (this *ARG_STRUCT) GetStructLen(buf *bytes.Buffer) uint32 {

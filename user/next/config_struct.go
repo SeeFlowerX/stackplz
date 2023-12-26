@@ -217,6 +217,16 @@ type Arg_Sigaction struct {
 	Sigaction
 }
 
+type Dirent struct {
+	Ino    uint64
+	Off    int64
+	Reclen uint16
+	Type   uint8
+	// 这个部分是在 readdir 的操作之后才有内容
+	Name      [256]byte
+	Pad_cgo_0 [5]byte
+}
+
 func (this *Arg_Sigaction) Format() string {
 	var fields []string
 	fields = append(fields, fmt.Sprintf("sa_handler=0x%x", this.Sa_handler))

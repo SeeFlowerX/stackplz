@@ -253,9 +253,10 @@ func init() {
 	// var UINT8 = GetArgType("uint8")
 	// var UINT16 = GetArgType("uint16")
 	// var UINT32 = GetArgType("uint32")
-	// var UINT64 = GetArgType("uint64")
+	var UINT64 = GetArgType("uint64")
 	// var POINTER = GetArgType("pointer")
 	var STRING = GetArgType("string")
+	// var STRING_ARR = GetArgType("strings")
 	var BUFFER = GetArgType("buffer")
 	// var STRUCT = GetArgType("struct")
 	var IOVEC = GetArgType("iovec")
@@ -270,39 +271,15 @@ func init() {
 	var SIGACTION = GetArgType("sigaction")
 	var SIGINFO = GetArgType("siginfo")
 	var STACK_T = GetArgType("stack_t")
-	// // 对一些复杂结构体的读取配置进行补充
-
-	// // 以指定寄存器作为数据读取长度
-	// AT_BUFFER_X2 := BuildBufferRegIndex(REG_ARM64_X2)
-
-	// // 以指定寄存器作为数据读取次数
-	// AT_IOVEC_X2 := BuildIovecRegIndex(REG_ARM64_X2)
-
-	// R(56, "openat", X("dirfd", AT_INT), X("pathname", AT_STRING), X("flags", AT_INT), X("mode", AT_INT16))
-	// R(66, "writev", X("fd", AT_INT), X("*iov", AT_IOVEC_X2), X("iovcnt", AT_INT))
-	// // 需要修正 syscall执行后读取
-	// R(78, "readlinkat", X("dirfd", AT_INT), X("pathname", AT_STRING), Y("buf", AT_STRING), X("bufsiz", AT_INT))
-	// R(79, "newfstatat", X("dirfd", AT_INT), X("pathname", AT_STRING), Y("statbuf", AT_STAT), X("flags", AT_INT))
-
-	// R(129, "kill", X("pid", AT_INT), X("sig", AT_INT))
-	// R(130, "tkill", X("tid", AT_INT), X("sig", AT_INT))
-	// R(131, "tgkill", X("tgid", AT_INT), X("tid", AT_INT), X("sig", AT_INT))
-	// R(132, "sigaltstack", X("ss", AT_STACK), X("old_ss", AT_STACK))
-	// R(133, "rt_sigsuspend", X("mask", AT_SIGSET))
-	// R(134, "rt_sigaction", X("signum", AT_INT), X("act", AT_SIGACTION), X("oldact", AT_SIGACTION))
-	// R(135, "rt_sigprocmask", X("how", AT_INT), X("set", AT_UINT64), X("oldset", AT_UINT64), X("sigsetsize", AT_INT))
-	// R(136, "rt_sigpending", X("uset", AT_SIGSET), X("sigsetsize", AT_INT))
-	// R(137, "rt_sigtimedwait", X("uthese", AT_SIGSET), X("uinfo", AT_SIGINFO), X("uts", AT_TIMESPEC), X("sigsetsize", AT_INT))
-	// R(138, "rt_sigqueueinfo", X("pid", AT_INT), X("sig", AT_INT), X("uinfo", AT_SIGINFO))
-	// R(139, "rt_sigreturn", X("mask", AT_INT))
-
-	// R(203, "connect", X("sockfd", AT_INT), X("addr", AT_SOCKADDR), X("addrlen", AT_INT))
-	// R(206, "sendto", X("sockfd", AT_INT), X("*buf", AT_BUFFER_X2), X("len", AT_INT), X("flags", AT_INT), X("addr", AT_SOCKADDR), X("addrlen", AT_INT))
-	// R(211, "sendmsg", X("sockfd", AT_INT), X("*msg", AT_MSGHDR), X("flags", AT_INT))
-
-	// R(240, "rt_tgsigqueueinfo", X("tgid", AT_INT), X("tid", AT_INT), X("sig", AT_INT), X("siginfo", AT_SIGINFO))
-
+	var LINUX_DIRENT64 = GetArgType("dirent")
+	// 对一些复杂结构体的读取配置进行补充
+	STRING_ARRAY_6 := ReadAsArray(STRING, MAX_LOOP_COUNT)
 	INT_ARRAY_2 := ReadAsArray(INT, 2)
+	// #define SI_MAX_SIZE 128
+	// int _si_pad[SI_MAX_SIZE / sizeof(int)];
+	// 实测基本上就只有第一个是有效的信号
+	// SIGINFO_V2 := ReadAsArray(INT, 32)
+	SIGINFO_V2 := ReadAsArray(INT, 1)
 	// 64 位下这个是 unsigned long sig[_NSIG_WORDS]
 	// #define _NSIG       64
 	// #define _NSIG_BPW   __BITS_PER_LONG -> 64 或者 32
@@ -323,12 +300,11 @@ func init() {
 	// MSGHDR.DumpOpList()
 
 	R(56, "openat", A("dirfd", INT), A("*pathname", STRING), A("flags", INT_FILE_FLAGS), A("mode", INT16_PERM_FLAGS))
-
 	R(57, "close", A("fd", INT))
 	R(58, "vhangup")
 	R(59, "pipe2", B("pipefd", INT_ARRAY_2), A("flags", INT))
 	R(60, "quotactl", A("cmd", INT), A("special", STRING), A("id", INT), A("addr", INT))
-	// R(61, "getdents64", A("fd", INT), B("dirp", POINTER), A("count", INT))
+	R(61, "getdents64", A("fd", INT), B("dirp", LINUX_DIRENT64), A("count", INT))
 	R(62, "lseek", A("fd", INT), A("offset", INT), A("whence", INT))
 	R(63, "read", A("fd", INT), B("buf", BUFFER_X2), A("count", INT))
 	R(64, "write", A("fd", INT), A("buf", BUFFER_X2), A("count", INT))
@@ -383,5 +359,61 @@ func init() {
 	R(209, "getsockopt", A("sockfd", INT), A("level", INT), A("optname", INT), B("optval", PTR), A("optlen", PTR))
 	R(210, "shutdown", A("sockfd", INT), A("how", INT))
 	R(211, "sendmsg", A("sockfd", INT), A("*msg", MSGHDR), A("flags", INT))
+	R(221, "execve", A("pathname", STRING), A("argv", STRING_ARRAY_6), A("envp", STRING_ARRAY_6))
+	R(240, "rt_tgsigqueueinfo", A("tgid", INT), A("tid", INT), A("sig", INT), A("siginfo", SIGINFO_V2))
+
+	// 虽然处于内核 但是实测无法跨进程读取数据 所以对于这两个系统调用 只能获取 local_iov 的内容
+	// R(270, "process_vm_readv", A("pid", INT), B("local_iov", IOVEC), A("liovcnt", INT), A("remote_iov", PTR), A("riovcnt", INT), A("flags", INT))
+	// R(271, "process_vm_writev", A("pid", INT), A("local_iov", IOVEC), A("liovcnt", INT), B("remote_iov", PTR), A("riovcnt", INT), A("flags", INT))
+	R(272, "kcmp", A("pid1", INT), A("pid2", INT), A("type", INT), A("idx1", INT), A("idx2", INT))
+	R(273, "finit_module", A("fd", INT), A("uargs", STRING), A("flags", INT))
+	R(274, "sched_setattr", A("pid", INT), A("uattr", PTR), A("flags", INT))
+	R(275, "sched_getattr", A("pid", INT), A("uattr", PTR), A("usize", INT), A("flags", INT))
+	R(276, "renameat2", A("olddirfd", INT), A("oldpath", STRING), A("newdirfd", INT), A("newpath", STRING), A("flags", INT))
+	R(277, "seccomp", A("operation", INT), A("flags", INT), A("args", PTR))
+	R(278, "getrandom", B("buf", PTR), A("buflen", INT), A("flags", INT))
+	R(279, "memfd_create", A("name", STRING), A("flags", INT))
+	R(280, "bpf", A("cmd", INT), A("attr", PTR), A("size", INT))
+	R(281, "execveat", A("dirfd", INT), A("pathname", STRING), A("argv", STRING_ARRAY_6), A("envp", STRING_ARRAY_6), A("flags", INT))
+	R(282, "userfaultfd", A("flags", INT))
+	R(283, "membarrier", A("cmd", INT), A("flags", PTR), A("cpu_id", INT))
+	R(284, "mlock2", A("start", INT), A("len", INT), A("flags", INT))
+	R(285, "copy_file_range", A("fd_in", INT), A("off_in", INT), A("fd_out", INT), A("off_out", INT), A("len", INT), A("flags", INT))
+	R(286, "preadv2", A("fd", INT), A("vec", PTR), A("vlen", INT), A("pos_l", INT), A("pos_h", INT), A("flags", INT))
+	R(287, "pwritev2", A("fd", INT), A("vec", PTR), A("vlen", INT), A("pos_l", INT), A("pos_h", INT), A("flags", INT))
+	R(288, "pkey_mprotect", B("addr", PTR), A("length", INT), A("prot", INT), A("pkey", INT))
+	R(289, "pkey_alloc", A("flags", INT), A("init_val", INT))
+	R(290, "pkey_free", A("pkey", INT))
+	R(291, "statx", A("dfd", INT), A("filename", STRING), A("flags", INT), A("mask", INT), A("buffer", PTR))
+	R(292, "io_pgetevents", A("ctx_id", PTR), A("min_nr", UINT64), A("nr", UINT64), A("events", PTR), A("timeout", TIMESPEC), A("usig", PTR))
+	R(293, "rseq", A("rseq", PTR), A("rseq_len", INT), A("flags", INT), A("sig", INT))
+	R(294, "kexec_file_load", A("kernel_fd", INT), A("initrd_fd", INT), A("cmdline_len", INT), A("cmdline_ptr", STRING), A("flags", INT))
+	R(424, "pidfd_send_signal", A("pidfd", INT), A("sig", INT), A("info", SIGINFO), A("flags", INT))
+	R(425, "io_uring_setup", A("entries", INT), A("params", PTR))
+	R(426, "io_uring_enter", A("fd", INT), A("to_submit", INT), A("min_complete", INT), A("flags", INT), A("argp", PTR), A("argsz", INT))
+	R(427, "io_uring_register", A("fd", INT), A("opcode", INT), A("arg", PTR), A("nr_args", INT))
+	R(428, "open_tree", A("dfd", INT), A("filename", STRING), A("flags", INT))
+	R(429, "move_mount", A("from_dfd", INT), A("from_pathname", STRING), A("to_dfd", INT), A("to_pathname", STRING), A("flags", INT))
+	R(430, "fsopen", A("_fs_name", STRING), A("flags", INT))
+	R(431, "fsconfig", A("fd", INT), A("cmd", INT), A("_key", STRING), A("_value", PTR), A("aux", INT))
+	R(432, "fsmount", A("fs_fd", INT), A("flags", INT), A("attr_flags", INT))
+	R(433, "fspick", A("dfd", INT), A("path", STRING), A("flags", INT))
+	R(434, "pidfd_open", A("pid", INT), A("flags", INT))
+	R(435, "clone3", A("uargs", PTR), A("size", INT))
+	R(436, "close_range", A("fd", INT), A("max_fd", INT), A("flags", INT))
+	R(437, "openat2", A("dfd", INT), A("filename", STRING), A("how", PTR), A("usize", INT))
+	R(438, "pidfd_getfd", A("pidfd", INT), A("fd", INT), A("flags", INT))
+	R(439, "faccessat2", A("dirfd", INT), A("pathname", STRING), A("flags", INT), A("mode", INT))
+	R(440, "process_madvise", A("pidfd", INT), A("vec", PTR), A("vlen", INT), A("behavior", INT), A("flags", INT))
+	R(441, "epoll_pwait2", A("epfd", INT), A("events", PTR), A("maxevents", INT), A("timeout", TIMESPEC), A("sigmask", PTR), A("sigsetsize", INT))
+	R(442, "mount_setattr", A("dfd", INT), A("path", STRING), A("flags", INT), A("uattr", PTR), A("usize", INT))
+	R(443, "quotactl_fd", A("fd", INT), A("cmd", INT), A("id", INT), A("addr", PTR))
+	R(444, "landlock_create_ruleset", A("attr", PTR), A("size", INT), A("flags", INT))
+	R(445, "landlock_add_rule", A("ruleset_fd", INT), A("rule_type", INT), A("rule_attr", PTR), A("flags", INT))
+	R(446, "landlock_restrict_self", A("ruleset_fd", INT), A("flags", INT))
+	R(447, "memfd_secret", A("flags", INT))
+	R(448, "process_mrelease", A("pidfd", INT), A("flags", INT))
+	R(449, "futex_waitv", A("waiters", PTR), A("nr_futexes", INT), A("flags", INT), A("timeout", TIMESPEC), A("clockid", INT))
+	R(450, "set_mempolicy_home_node", A("start", INT), A("len", INT), A("home_node", INT), A("flags", INT))
 
 }

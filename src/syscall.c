@@ -107,6 +107,12 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                     op_ctx->op_key_index = op_ctx->loop_index;
                 }
                 break;
+            case OP_SET_BREAK_COUNT:
+                op_ctx->break_count = MAX_LOOP_COUNT;
+                if (op_ctx->break_count > op->value) {
+                    op_ctx->break_count = op->value;
+                }
+                break;
             case OP_SET_BREAK_COUNT_REG_VALUE:
                 op_ctx->break_count = MAX_LOOP_COUNT;
                 if (op_ctx->break_count > op_ctx->reg_value) {
