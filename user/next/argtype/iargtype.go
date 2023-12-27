@@ -46,8 +46,7 @@ type ArgType struct {
 	OpList []uint32
 	// 可选的别名
 	AliaNames []string
-	// FlagsParser *FlagsParser
-	ParseCB ParseFN
+	ParseCB   ParseFN
 }
 
 func (this *ArgType) Init(name string, base_type, type_index, size uint32) {
@@ -62,10 +61,12 @@ func (this *ArgType) Clone() IArgType {
 	at.Name = this.Name
 	at.BaseType = this.BaseType
 	at.TypeIndex = this.TypeIndex
+	// ?
+	at.ParentIndex = this.ParentIndex
 	at.Size = this.Size
 	at.OpList = append(at.OpList, this.OpList...)
 	at.AliaNames = append(at.AliaNames, this.AliaNames...)
-	// at.FlagsParser = this.FlagsParser
+	at.ParseCB = this.ParseCB
 	return &at
 }
 
@@ -177,6 +178,20 @@ func LazyRegister(type_index uint32) IArgType {
 	// 所谓 lazy 也就是用到的时候再注册
 	// 当然这是对复杂类型来说的 基础类型会提前准备好
 	switch type_index {
+	case STRING:
+		return r_STRING()
+	case STRING_ARRAY:
+		return r_STRING_ARRAY()
+	case BUFFER:
+		return r_BUFFER()
+	case MSGHDR:
+		return r_MSGHDR()
+	case IOVEC:
+		return r_IOVEC()
+	case IOVEC_X2:
+		return r_IOVEC_X2()
+	case SOCKADDR:
+		return r_SOCKADDR()
 	case BUFFER_X2:
 		return r_BUFFER_X2()
 	default:
@@ -222,4 +237,13 @@ func UpdateArgType(p IArgType) {
 
 func RegisterAlias(alias_name, name string) {
 	GetArgTypeByName(name).AddAlias(alias_name)
+}
+
+func RegisterAliasType(type_index, alias_type_index uint32) IArgType {
+	if at, dup := arg_types[type_index]; dup {
+		panic(fmt.Sprintf("duplicate register for ArgType name=%s index=%d", at.GetName(), at.GetTypeIndex()))
+	}
+	p := GetArgType(alias_type_index)
+	arg_types[type_index] = p
+	return p
 }

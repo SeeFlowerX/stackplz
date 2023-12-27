@@ -31,11 +31,22 @@ type SyscallPoint struct {
 	ExitPointArgs  []*PointArg
 }
 
+func (this *SyscallPoint) DumpOpList(tag string, op_list []uint32) {
+	fmt.Printf("[DumpOpList] %s Name:%s Count:%d\n", tag, this.Name, len(op_list))
+	for index, op_index := range op_list {
+		if op_index == 0 {
+			continue
+		}
+		fmt.Printf("idx:%3d op_key:%3d %s\n", index, op_index, argtype.OPM.GetOpInfo(op_index))
+	}
+}
+
 func (this *SyscallPoint) GetEnterConfig() PointOpKeyConfig {
 	config := PointOpKeyConfig{}
 	for _, point_arg := range this.EnterPointArgs {
 		config.AddPointArg(point_arg)
 	}
+	// this.DumpOpList("enter", config.OpKeyList[:])
 	return config
 }
 
@@ -44,6 +55,7 @@ func (this *SyscallPoint) GetExitConfig() PointOpKeyConfig {
 	for _, point_arg := range this.ExitPointArgs {
 		config.AddPointArg(point_arg)
 	}
+	// this.DumpOpList("exit", config.OpKeyList[:])
 	return config
 }
 
@@ -133,77 +145,20 @@ func R(nr uint32, name string, point_args ...*PointArg) {
 		a_p := point_arg.Clone()
 		a_p.SetRegIndex(uint32(reg_index))
 		a_p.SetGroupType(EBPF_SYS_ENTER)
-		// a_p.BuildOpList(point_arg.PointType == EBPF_SYS_ENTER || point_arg.PointType == EBPF_SYS_ALL)
 		a_point_args = append(a_point_args, a_p)
 		b_p := point_arg.Clone()
 		b_p.SetRegIndex(uint32(reg_index))
 		b_p.SetGroupType(EBPF_SYS_EXIT)
-		// b_p.BuildOpList(point_arg.PointType == EBPF_SYS_EXIT || point_arg.PointType == EBPF_SYS_ALL)
 		b_point_args = append(b_point_args, b_p)
 	}
-	// SetRegIndex + BuildOpList 读取寄存器才会产生
-	// 直接添加 ARG_INT 刚好不影响读取数据 并且能正常进行解析
+	// 后面取出 op list 的时候需要特殊处理
 	b_point_args = append(b_point_args, B("ret", INT))
 	point := &SyscallPoint{nr, name, a_point_args, b_point_args}
 	aarch64_syscall_points.Add(point)
 }
 
 func init() {
-	// var POINTER = GetArgType("ptr")
-	// var INT = GetArgType("int")
-	// var UINT = GetArgType("uint")
-	// var INT16 = GetArgType("int16")
-	// var UINT64 = GetArgType("uint64")
-	// var STRING = GetArgType("string")
-	// var BUFFER = GetArgType("buffer")
-	// var IOVEC = GetArgType("iovec")
-	// var MSGHDR = GetArgType("msghdr")
-	// var SOCKLEN_T = GetArgType("socklen_t")
-	// var SIZE_T = GetArgType("size_t")
-	// // var SSIZE_T = GetArgType("ssize_t")
-	// var SOCKADDR = GetArgType("sockaddr")
-	// var TIMESPEC = GetArgType("timespec")
-	// var STAT = GetArgType("stat")
-	// var POLLFD = GetArgType("pollfd")
-	// var SIGACTION = GetArgType("sigaction")
-	// var SIGINFO = GetArgType("siginfo")
-	// var STACK_T = GetArgType("stack_t")
-	// var LINUX_DIRENT64 = GetArgType("dirent")
-	// // 对一些复杂结构体的读取配置进行补充
-	// STRING_ARRAY := GetStrArr()
-	// ITTMERSPEC := GetItTmerspec()
-	// RUSAGE := GetRusage()
-	// UTSNAME := GetUtsname()
-	// TIMEVAL := GetTimeval()
-	// TIMEZONE := GetTimeZone()
-	// SYSINFO := GetSysinfo()
-	// STATFS := GetStatfs()
-	// EPOLLEVENT := GetEpollEvent()
-	// INT_ARRAY_2 := ReadAsArray(INT, 2)
-	// // #define SI_MAX_SIZE 128
-	// // int _si_pad[SI_MAX_SIZE / sizeof(int)];
-	// // 实测基本上就只有第一个是有效的信号
-	// // SIGINFO_V2 := ReadAsArray(INT, 32)
-	// SIGINFO_V2 := ReadAsArray(INT, 1)
-	// // 64 位下这个是 unsigned long sig[_NSIG_WORDS]
-	// // #define _NSIG       64
-	// // #define _NSIG_BPW   __BITS_PER_LONG -> 64 或者 32
-	// // #define _NSIG_WORDS (_NSIG / _NSIG_BPW)
-	// // unsigned long -> 4
-	// UINT_ARRAY_1 := ReadAsArray(NewNumFormat(UINT, FORMAT_HEX), 1)
-	// SIGSET_PTR := SetupPtrType(UINT_ARRAY_1, false)
-	// INT_PTR := SetupPtrType(INT, true)
-	// UINT_PTR := SetupPtrType(UINT, true)
-
-	// BUFFER_X2 := RegAsBufferReadLen(BUFFER, REG_ARM64_X2)
-	// IOVEC_X2 := RegAsIovecLoopCount(IOVEC, REG_ARM64_X2)
-
-	// INT_SOCKET_FLAGS := AttachFlagsParser(INT, SocketFlagsParser)
-	// INT_FILE_FLAGS := AttachFlagsParser(INT, FileFlagsParser)
-	// INT16_PERM_FLAGS := AttachFlagsParser(INT16, PermissionFlagsParser)
-
-	// // MSGHDR.DumpOpList()
-
+	// 这么多放 init 实在是影响启动速度 后续优化
 	R(0, "io_setup", A("nr_events", UINT), A("ctx_idp", POINTER))
 	R(1, "io_destroy", A("ctx", POINTER))
 	R(2, "io_submit", A("ctx_id", POINTER), A("nr", UINT64), A("iocbpp", POINTER))

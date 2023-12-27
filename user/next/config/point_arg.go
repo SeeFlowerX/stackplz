@@ -31,17 +31,11 @@ func (this *PointArg) Parse(ptr uint64, buf *bytes.Buffer, point_type uint32) st
 	return argtype.GetArgType(this.TypeIndex).Parse(ptr, buf, parse_more)
 }
 
-// func (this *PointArg) BuildOpList(read_full bool) {
-// 	// this.OpList = append(this.OpList, Add_READ_SAVE_REG(uint64(this.RegIndex)).Index)
-// 	// this.OpList = append(this.OpList, OPC_MOVE_REG_VALUE.Index)
-// 	if read_full {
-// 		for _, op_key := range this.Type.GetOpList() {
-// 			this.OpList = append(this.OpList, op_key)
-// 		}
-// 	}
-// }
-
 func (this *PointArg) GetOpList() []uint32 {
+	// sys exit 取出的返回值要特殊处理 这里没用实际的操作
+	if this.RegIndex == REG_ARM64_MAX {
+		return this.OpList
+	}
 	this.OpList = append(this.OpList, argtype.Add_READ_SAVE_REG(uint64(this.RegIndex)).Index)
 	this.OpList = append(this.OpList, argtype.OPC_MOVE_REG_VALUE.Index)
 	if this.PointType == EBPF_SYS_ALL || this.PointType == this.GroupType {

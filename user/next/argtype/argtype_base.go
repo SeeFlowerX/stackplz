@@ -12,10 +12,32 @@ import (
 
 // 基础类型
 
+type IArgTypeNum interface {
+	SetFlagsConfig(flags_config *FlagsConfig)
+	SetFormatType(format_type uint32)
+}
+
 type ARG_NUM struct {
 	ArgType
 	FlagsConfig *FlagsConfig
 	FormatType  uint32
+}
+
+func (this *ARG_NUM) SetFlagsConfig(flags_config *FlagsConfig) {
+	this.FlagsConfig = flags_config
+	this.SetFormatType(flags_config.FormatType)
+}
+
+func (this *ARG_NUM) SetFormatType(format_type uint32) {
+	this.FormatType = format_type
+}
+
+func (this *ARG_NUM) Clone() IArgType {
+	p, ok := (this.ArgType.Clone()).(*ArgType)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_NUM{*p, this.FlagsConfig, this.FormatType}
 }
 
 // func AttachFlagsParser(p IArgType, flags_parser *FlagsConfig) IArgType {
@@ -91,44 +113,132 @@ type ARG_PTR struct {
 	IsNum      bool
 }
 
+func (this *ARG_PTR) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_PTR{*p, this.PtrArgType, this.IsNum}
+}
+
 type ARG_INT struct {
 	ARG_NUM
+}
+
+func (this *ARG_INT) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_INT{*p}
 }
 
 type ARG_UINT struct {
 	ARG_NUM
 }
 
+func (this *ARG_UINT) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_UINT{*p}
+}
+
 type ARG_INT8 struct {
 	ARG_NUM
+}
+
+func (this *ARG_INT8) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_INT8{*p}
 }
 
 type ARG_INT16 struct {
 	ARG_NUM
 }
 
+func (this *ARG_INT16) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_INT16{*p}
+}
+
 type ARG_INT32 struct {
 	ARG_NUM
+}
+
+func (this *ARG_INT32) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_INT32{*p}
 }
 
 type ARG_INT64 struct {
 	ARG_NUM
 }
 
+func (this *ARG_INT64) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_INT64{*p}
+}
+
 type ARG_UINT8 struct {
 	ARG_NUM
+}
+
+func (this *ARG_UINT8) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_UINT8{*p}
 }
 
 type ARG_UINT16 struct {
 	ARG_NUM
 }
 
+func (this *ARG_UINT16) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_UINT16{*p}
+}
+
 type ARG_UINT32 struct {
 	ARG_NUM
 }
 
+func (this *ARG_UINT32) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_UINT32{*p}
+}
+
 type ARG_UINT64 struct {
 	ARG_NUM
+}
+
+func (this *ARG_UINT64) Clone() IArgType {
+	p, ok := (this.ARG_NUM.Clone()).(*ARG_NUM)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_UINT64{*p}
 }
 
 func (this *ARG_PTR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
@@ -423,22 +533,26 @@ type ARG_STRUCT struct {
 	ArgType
 }
 
-type ARG_ARRAY struct {
-	ARG_STRUCT
-	ArrayLen     uint32
-	ArrayArgType IArgType
-}
-
-// func (this *ARG_STRUCT) Setup() {
-// 	this.AddOp(SaveStruct(uint64(this.Size)))
-// }
-
 func (this *ARG_STRUCT) Clone() IArgType {
 	p, ok := (this.ArgType.Clone()).(*ArgType)
 	if !ok {
 		panic("...")
 	}
 	return &ARG_STRUCT{*p}
+}
+
+type ARG_ARRAY struct {
+	ARG_STRUCT
+	ArrayLen     uint32
+	ArrayArgType IArgType
+}
+
+func (this *ARG_ARRAY) Clone() IArgType {
+	p, ok := (this.ARG_STRUCT.Clone()).(*ARG_STRUCT)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_ARRAY{*p, this.ArrayLen, this.ArrayArgType}
 }
 
 func (this *ARG_STRUCT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
@@ -470,7 +584,7 @@ func (this *ARG_STRUCT) GetStructLen(buf *bytes.Buffer) uint32 {
 		panic(err)
 	}
 	if arg.Len > 0 && arg.Len != this.Size {
-		panic(fmt.Sprintf("check %s", this.Name))
+		panic(fmt.Sprintf("check %s size:%d index:%d len:%d", this.Name, this.Size, arg.Index, arg.Len))
 	}
 	return arg.Len
 }
@@ -487,13 +601,16 @@ func init() {
 	Register(&ARG_UINT16{}, "uint16", TYPE_UINT16, UINT16, uint32(unsafe.Sizeof(uint16(0))))
 	Register(&ARG_UINT32{}, "uint32", TYPE_UINT32, UINT32, uint32(unsafe.Sizeof(uint32(0))))
 	Register(&ARG_UINT64{}, "uint64", TYPE_UINT64, UINT64, uint32(unsafe.Sizeof(uint64(0))))
-	// 一些实际上是数字的类型 后续注意要区分架构
-	// socklen_t aarch64 下是 uint32 aarch32 下是 int32
-	RegisterAlias("socklen_t", "uint32")
-	// size_t aarch64 下是 uint64 aarch32 下是 uint32
-	RegisterAlias("size_t", "uint64")
-	// ssize_t aarch64 下是 int64 aarch32 下是 int32
-	RegisterAlias("ssize_t", "int64")
+	// // 一些实际上是数字的类型 后续注意要区分架构
+	// // socklen_t aarch64 下是 uint32 aarch32 下是 int32
+	// RegisterAlias("socklen_t", "uint32")
+	// // size_t aarch64 下是 uint64 aarch32 下是 uint32
+	// RegisterAlias("size_t", "uint64")
+	// // ssize_t aarch64 下是 int64 aarch32 下是 int32
+	// RegisterAlias("ssize_t", "int64")
+	RegisterAliasType(SOCKLEN_T, UINT32)
+	RegisterAliasType(SIZE_T, UINT64)
+	RegisterAliasType(SSIZE_T, INT64)
 
 	Register(&ARG_STRUCT{}, "struct", TYPE_STRUCT, STRUCT, 0)
 }

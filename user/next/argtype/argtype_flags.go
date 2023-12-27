@@ -41,16 +41,6 @@ func (this *FlagsConfig) Parse(value int32) string {
 
 }
 
-// var flags_parsers = make(map[uint32]*FlagsParser)
-
-// func RegisterFlagsParser(parser_type, format_type uint32, flags []*FlagOp) *FlagsParser {
-// 	if flags_parser, dup := flags_parsers[parser_type]; dup {
-// 		panic(fmt.Sprintf("Register called twice for FlagsParser type=%d", flags_parser.ParserType))
-// 	}
-// 	flags_parsers[parser_type] = &FlagsParser{parser_type, format_type, flags}
-// 	return flags_parsers[parser_type]
-// }
-
 var PermissionFlags []*FlagOp = []*FlagOp{
 	{"S_IFMT", int32(00170000)},
 	{"S_IFSOCK", int32(0140000)},
@@ -152,15 +142,6 @@ var SocketFlags []*FlagOp = []*FlagOp{
 	{"SOCK_NONBLOCK", int32(00004000)},
 }
 
-// func GetFlagsParser(parser_type uint32) *FlagsParser {
-// 	for _, flags_parser := range flags_parsers {
-// 		if flags_parser.ParserType == parser_type {
-// 			return flags_parser
-// 		}
-// 	}
-// 	panic(fmt.Sprintf("GetFlagsParser failed, parser_type=%d not exists", parser_type))
-// }
-
 var MapFlagsConfig = &FlagsConfig{"map", FORMAT_HEX, MapFlags}
 var FileFlagsConfig = &FlagsConfig{"file", FORMAT_HEX, FileFlags}
 var ProtFlagsConfig = &FlagsConfig{"prot", FORMAT_HEX, ProtFlags}
@@ -192,12 +173,24 @@ var PermissionFlagsConfig = &FlagsConfig{"permission", FORMAT_OCT, PermissionFla
 func RegisterFlagsConfig(type_index, parent_index uint32, flags_config *FlagsConfig) IArgType {
 	p := GetArgType(parent_index)
 	new_name := fmt.Sprintf("%s_flags_%s", p.GetName(), flags_config.Name)
-	return RegisterPre(new_name, type_index, p.GetTypeIndex())
+	new_p := RegisterPre(new_name, type_index, p.GetTypeIndex())
+	new_i, ok := (new_p).(IArgTypeNum)
+	if !ok {
+		panic("...")
+	}
+	new_i.SetFlagsConfig(flags_config)
+	return new_p
 }
 
 func NewNumFormat(p IArgType, format_type uint32) IArgType {
 	new_name := fmt.Sprintf("%s_fmt_%d", p.GetName(), format_type)
-	return RegisterNew(new_name, p.GetTypeIndex())
+	new_p := RegisterNew(new_name, p.GetTypeIndex())
+	new_i, ok := (new_p).(IArgTypeNum)
+	if !ok {
+		panic("...")
+	}
+	new_i.SetFormatType(format_type)
+	return new_p
 }
 
 func init() {

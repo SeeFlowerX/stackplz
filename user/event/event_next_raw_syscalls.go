@@ -45,7 +45,7 @@ func (this *NextSyscallEvent) ParseContext() (err error) {
     }
     this.nr_point_next = next_config.GetSyscallPointByNR(this.nr.Value)
 
-    // this.logger.Printf("ParseContext EventId:%d RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
+    // this.logger.Printf("ParseContext EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
 
     if this.EventId == SYSCALL_ENTER {
         if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {

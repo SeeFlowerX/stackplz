@@ -41,7 +41,7 @@ func parse_STRING_ARRAY(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more 
 		return fmt.Sprintf("0x%x", ptr)
 	}
 	var results []string
-	for i := 0; i < int(ctx.GetSize()); i++ {
+	for i := 0; i < int(MAX_LOOP_COUNT); i++ {
 		var str_addr Arg_reg
 		if err := binary.Read(buf, binary.LittleEndian, &str_addr); err != nil {
 			panic(err)
@@ -329,6 +329,8 @@ func r_BUFFER() IArgType {
 
 func r_BUFFER_X2() IArgType {
 	at := RegisterNew("buffer_x2", BUFFER)
+	at.CleanOpList()
+	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(MAX_BUF_READ_SIZE)))
 	at.AddOp(BuildReadRegLen(uint64(REG_ARM64_X2)))
 	at.AddOp(OPC_SAVE_STRUCT)
 	return at
@@ -450,7 +452,7 @@ func parse_SOCKADDR(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool
 
 func r_SOCKADDR() IArgType {
 	at := RegisterNew("sockaddr", STRUCT)
-	at.SetSize(uint32(unsafe.Sizeof(Stack_t{})))
+	at.SetSize(uint32(unsafe.Sizeof(syscall.RawSockaddrUnix{})))
 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.GetSize())))
 	at.AddOp(OPC_SAVE_STRUCT)
 	at.SetParseCB(parse_SOCKADDR)
