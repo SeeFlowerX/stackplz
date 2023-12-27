@@ -137,7 +137,7 @@ func R(nr uint32, name string, point_args ...*PointArg) {
 		a_point_args = append(a_point_args, a_p)
 		b_p := point_arg.Clone()
 		b_p.SetRegIndex(uint32(reg_index))
-		a_p.SetGroupType(EBPF_SYS_EXIT)
+		b_p.SetGroupType(EBPF_SYS_EXIT)
 		// b_p.BuildOpList(point_arg.PointType == EBPF_SYS_EXIT || point_arg.PointType == EBPF_SYS_ALL)
 		b_point_args = append(b_point_args, b_p)
 	}
