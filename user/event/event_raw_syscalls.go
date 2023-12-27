@@ -5,7 +5,7 @@ import (
     "encoding/json"
     "fmt"
     "stackplz/user/config"
-    "stackplz/user/next"
+    next_config "stackplz/user/next/config"
     "stackplz/user/util"
     "strings"
 )
@@ -16,69 +16,13 @@ type SyscallEvent struct {
     RegsBuffer    RegsBuf
     UnwindBuffer  UnwindBuf
     nr_point      *config.SysCallArgs
-    nr_point_next *next.SyscallPoint
+    nr_point_next *next_config.SyscallPoint
     nr            config.Arg_nr
     lr            config.Arg_reg
     sp            config.Arg_reg
     pc            config.Arg_reg
     ret           uint64
     arg_str       string
-}
-
-type Arg_bytes = config.Arg_str
-
-func (this *SyscallEvent) ParseContextSysEnterNext() (err error) {
-    // 输出json会更方便分析 next
-    // if this.mconf.Next {
-    //     this.logger.Printf("ParseContextSysEnterNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
-    // }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
-        panic(err)
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
-        panic(err)
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
-        panic(err)
-    }
-    // 根据调用号解析剩余参数
-    this.nr_point_next = next.GetSyscallPointByNR(this.nr.Value)
-    var results []string
-    for _, point_arg := range this.nr_point_next.EnterPointArgs {
-        var ptr config.Arg_reg
-        if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-            panic(err)
-        }
-        parse_more := point_arg.PointType == next.EBPF_SYS_ENTER
-        if !parse_more {
-            parse_more = point_arg.PointType == next.EBPF_SYS_ALL
-        }
-        results = append(results, fmt.Sprintf("%s=%s", point_arg.Name, point_arg.Type.Parse(ptr.Address, this.buf, parse_more)))
-    }
-    this.arg_str = "(" + strings.Join(results, ", ") + ")"
-    return nil
-}
-
-func (this *SyscallEvent) ParseContextSysExitNext() (err error) {
-    // if this.mconf.Next {
-    //     this.logger.Printf("ParseContextSysExitNext RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
-    // }
-    this.nr_point_next = next.GetSyscallPointByNR(this.nr.Value)
-    var results []string
-    for _, point_arg := range this.nr_point_next.ExitPointArgs {
-        var ptr config.Arg_reg
-        if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
-            panic(err)
-        }
-        parse_more := point_arg.PointType == next.EBPF_SYS_EXIT
-        if !parse_more {
-            parse_more = point_arg.PointType == next.EBPF_SYS_ALL
-        }
-        results = append(results, fmt.Sprintf("%s=%s", point_arg.Name, point_arg.Type.Parse(ptr.Address, this.buf, parse_more)))
-    }
-
-    this.arg_str = "(" + strings.Join(results, ", ") + ")"
-    return nil
 }
 
 func (this *SyscallEvent) ParseContextSysEnter() (err error) {
@@ -178,17 +122,9 @@ func (this *SyscallEvent) ParseContext() (err error) {
     if this.EventId == SYSCALL_ENTER {
         // 是否有不执行 sys_exit 的情况 ?
         // 有的调用耗时 也有可能 暂时还是把执行结果分开输出吧
-        if this.mconf.Next {
-            this.ParseContextSysEnterNext()
-        } else {
-            this.ParseContextSysEnter()
-        }
+        this.ParseContextSysEnter()
     } else if this.EventId == SYSCALL_EXIT {
-        if this.mconf.Next {
-            this.ParseContextSysExitNext()
-        } else {
-            this.ParseContextSysExit()
-        }
+        this.ParseContextSysExit()
     } else {
         panic(fmt.Sprintf("SyscallEvent.ParseContext() failed, EventId:%d", this.EventId))
     }

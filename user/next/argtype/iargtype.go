@@ -3,7 +3,7 @@ package argtype
 import (
 	"bytes"
 	"fmt"
-	"stackplz/user/next/config"
+	. "stackplz/user/next/common"
 )
 
 type IArgType interface {
@@ -23,6 +23,7 @@ type IArgType interface {
 	SetTypeIndex(uint32)
 	GetTypeIndex() uint32
 	SetParentIndex(uint32)
+	GetParentIndex() uint32
 	GetSize() uint32
 	AddOpList(p IArgType)
 	GetOpList() []uint32
@@ -136,12 +137,16 @@ func (this *ArgType) SetParentIndex(index uint32) {
 	this.ParentIndex = index
 }
 
+func (this *ArgType) GetParentIndex() uint32 {
+	return this.ParentIndex
+}
+
 func (this *ArgType) GetOpList() []uint32 {
 	return this.OpList
 }
 
 var arg_types = make(map[uint32]IArgType)
-var next_type_index = config.CONST_ARGTYPE_END
+var next_type_index = CONST_ARGTYPE_END
 
 func NextTypeIndex() uint32 {
 	next_type_index += 1
@@ -172,7 +177,7 @@ func LazyRegister(type_index uint32) IArgType {
 	// 所谓 lazy 也就是用到的时候再注册
 	// 当然这是对复杂类型来说的 基础类型会提前准备好
 	switch type_index {
-	case config.BUFFER_X2:
+	case BUFFER_X2:
 		return r_BUFFER_X2()
 	default:
 		panic(fmt.Sprintf("LazyRegister for type_index:%d failed", type_index))

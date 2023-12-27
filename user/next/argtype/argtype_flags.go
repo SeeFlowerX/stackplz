@@ -2,30 +2,31 @@ package argtype
 
 import (
 	"fmt"
+	. "stackplz/user/next/common"
 	"strings"
 )
 
-const (
-	MAP_MODE_PARSER uint32 = iota
-	FILE_MODE_PARSER
-	PROT_PARSER
-	MREAP_PARSER
-	SOCKET_TYPE_PARSER
-	PERMISSION_PARSER
-)
+// const (
+// 	MAP_MODE_PARSER uint32 = iota
+// 	FILE_MODE_PARSER
+// 	PROT_PARSER
+// 	MREAP_PARSER
+// 	SOCKET_TYPE_PARSER
+// 	PERMISSION_PARSER
+// )
 
 type FlagOp struct {
 	Name  string
 	Value int32
 }
 
-type FlagsParser struct {
-	ParserType uint32
+type FlagsConfig struct {
+	Name       string
 	FormatType uint32
 	Flags      []*FlagOp
 }
 
-func (this *FlagsParser) Parse(value int32) string {
+func (this *FlagsConfig) Parse(value int32) string {
 	var info []string
 	for _, op := range this.Flags {
 		if value&op.Value == op.Value {
@@ -40,15 +41,15 @@ func (this *FlagsParser) Parse(value int32) string {
 
 }
 
-var flags_parsers = make(map[uint32]*FlagsParser)
+// var flags_parsers = make(map[uint32]*FlagsParser)
 
-func RegisterFlagsParser(parser_type, format_type uint32, flags []*FlagOp) *FlagsParser {
-	if flags_parser, dup := flags_parsers[parser_type]; dup {
-		panic(fmt.Sprintf("Register called twice for FlagsParser type=%d", flags_parser.ParserType))
-	}
-	flags_parsers[parser_type] = &FlagsParser{parser_type, format_type, flags}
-	return flags_parsers[parser_type]
-}
+// func RegisterFlagsParser(parser_type, format_type uint32, flags []*FlagOp) *FlagsParser {
+// 	if flags_parser, dup := flags_parsers[parser_type]; dup {
+// 		panic(fmt.Sprintf("Register called twice for FlagsParser type=%d", flags_parser.ParserType))
+// 	}
+// 	flags_parsers[parser_type] = &FlagsParser{parser_type, format_type, flags}
+// 	return flags_parsers[parser_type]
+// }
 
 var PermissionFlags []*FlagOp = []*FlagOp{
 	{"S_IFMT", int32(00170000)},
@@ -151,14 +152,21 @@ var SocketFlags []*FlagOp = []*FlagOp{
 	{"SOCK_NONBLOCK", int32(00004000)},
 }
 
-func GetFlagsParser(parser_type uint32) *FlagsParser {
-	for _, flags_parser := range flags_parsers {
-		if flags_parser.ParserType == parser_type {
-			return flags_parser
-		}
-	}
-	panic(fmt.Sprintf("GetFlagsParser failed, parser_type=%d not exists", parser_type))
-}
+// func GetFlagsParser(parser_type uint32) *FlagsParser {
+// 	for _, flags_parser := range flags_parsers {
+// 		if flags_parser.ParserType == parser_type {
+// 			return flags_parser
+// 		}
+// 	}
+// 	panic(fmt.Sprintf("GetFlagsParser failed, parser_type=%d not exists", parser_type))
+// }
+
+var MapFlagsConfig = &FlagsConfig{"map", FORMAT_HEX, MapFlags}
+var FileFlagsConfig = &FlagsConfig{"file", FORMAT_HEX, FileFlags}
+var ProtFlagsConfig = &FlagsConfig{"prot", FORMAT_HEX, ProtFlags}
+var MreapFlagsConfig = &FlagsConfig{"mreap", FORMAT_HEX, MreapFlags}
+var SocketFlagsConfig = &FlagsConfig{"socket", FORMAT_HEX, SocketFlags}
+var PermissionFlagsConfig = &FlagsConfig{"permission", FORMAT_OCT, PermissionFlags}
 
 // var MapFlagsParser = RegisterFlagsParser(MAP_MODE_PARSER, FORMAT_HEX, MapFlags)
 // var FileFlagsParser = RegisterFlagsParser(FILE_MODE_PARSER, FORMAT_HEX, FileFlags)
@@ -166,3 +174,34 @@ func GetFlagsParser(parser_type uint32) *FlagsParser {
 // var MreapFlagsParser = RegisterFlagsParser(MREAP_PARSER, FORMAT_HEX, MreapFlags)
 // var SocketFlagsParser = RegisterFlagsParser(SOCKET_TYPE_PARSER, FORMAT_HEX, SocketFlags)
 // var PermissionFlagsParser = RegisterFlagsParser(PERMISSION_PARSER, FORMAT_OCT, PermissionFlags)
+
+// func parse_RUSAGE(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+// 	if !parse_more {
+// 		return fmt.Sprintf("0x%x", ptr)
+// 	}
+// 	if (ctx).(*ARG_STRUCT).GetStructLen(buf) != 0 {
+// 		var arg Arg_Rusage
+// 		if err := binary.Read(buf, binary.LittleEndian, &arg.Rusage); err != nil {
+// 			panic(err)
+// 		}
+// 		return fmt.Sprintf("0x%x%s", ptr, arg.Format())
+// 	}
+// 	return fmt.Sprintf("0x%x", ptr)
+// }
+
+func RegisterFlagsConfig(type_index, parent_index uint32, flags_config *FlagsConfig) IArgType {
+	p := GetArgType(parent_index)
+	new_name := fmt.Sprintf("%s_flags_%s", p.GetName(), flags_config.Name)
+	return RegisterPre(new_name, type_index, p.GetParentIndex())
+}
+
+func NewNumFormat(p IArgType, format_type uint32) IArgType {
+	new_name := fmt.Sprintf("%s_fmt_%d", p.GetName(), format_type)
+	return RegisterNew(new_name, p.GetParentIndex())
+}
+
+func init() {
+	RegisterFlagsConfig(INT, INT_SOCKET_FLAGS, SocketFlagsConfig)
+	RegisterFlagsConfig(INT, INT_FILE_FLAGS, FileFlagsConfig)
+	RegisterFlagsConfig(INT16, INT16_PERM_FLAGS, PermissionFlagsConfig)
+}

@@ -1,4 +1,4 @@
-package config
+package common
 
 const MAX_IOV_COUNT = 6
 const MAX_LOOP_COUNT = 30
@@ -57,6 +57,7 @@ const (
 	UINT16
 	UINT32
 	UINT64
+	NUM
 	STRING
 	STRUCT
 	ARRAY

@@ -6,7 +6,7 @@ import (
     "log"
     "os"
     "regexp"
-    "stackplz/user/next"
+    next_config "stackplz/user/next/config"
     "stackplz/user/util"
     "strconv"
     "strings"
@@ -283,7 +283,7 @@ type SyscallConfig struct {
     Enable           bool
     TraceMode        uint32
     SyscallPointArgs []*SyscallPointArgs_T
-    NextPointArgs    []*next.SyscallPoint
+    NextPointArgs    []*next_config.SyscallPoint
     SysWhitelist     []uint32
     SysBlacklist     []uint32
 }
@@ -406,7 +406,7 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
             }
         }
         if gconfig.Next {
-            this.NextPointArgs = append(this.NextPointArgs, next.GetSyscallPointByName(syscall_name))
+            this.NextPointArgs = append(this.NextPointArgs, next_config.GetSyscallPointByName(syscall_name))
         }
         this.SyscallPointArgs = append(this.SyscallPointArgs, point_args)
         this.SysWhitelist = append(this.SysWhitelist, uint32(nr_point.NR))

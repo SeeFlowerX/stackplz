@@ -472,7 +472,7 @@ func (this *MStack) update_op_list() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
-    for op_key, op_config := range argtype.GetOpList() {
+    for op_key, op_config := range argtype.GetALLOpList() {
         err := bpf_map.Update(unsafe.Pointer(&op_key), unsafe.Pointer(&op_config), ebpf.UpdateAny)
         if err != nil {
             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
@@ -566,8 +566,13 @@ func (this *MStack) initDecodeFun() error {
     }
 
     if this.mconf.SysCallConf.IsEnable() {
-        syscallEvent := &event.SyscallEvent{}
-        this.eventFuncMaps[EventsMap] = syscallEvent
+        if this.mconf.Next {
+            syscallEvent := &event.NextSyscallEvent{}
+            this.eventFuncMaps[EventsMap] = syscallEvent
+        } else {
+            syscallEvent := &event.SyscallEvent{}
+            this.eventFuncMaps[EventsMap] = syscallEvent
+        }
     }
 
     return nil

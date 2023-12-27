@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"stackplz/user/next/config"
+	. "stackplz/user/next/common"
 	"stackplz/user/util"
 	"strconv"
 	"unsafe"
@@ -14,28 +14,17 @@ import (
 
 type ARG_NUM struct {
 	ArgType
-	FlagsParser *FlagsParser
+	FlagsConfig *FlagsConfig
 	FormatType  uint32
 }
 
-func (this *ARG_NUM) Setup() {
-
-}
-
-// func (this *ARG_NUM) ParseFlags(flags int32) string {
-// 	if this.FlagsParser != nil {
-// 		return this.FlagsParser.Parse(flags)
-// 	}
-// 	return ""
-// }
-
-// func AttachFlagsParser(p IArgType, flags_parser *FlagsParser) IArgType {
+// func AttachFlagsParser(p IArgType, flags_parser *FlagsConfig) IArgType {
 // 	at := ARG_NUM{}
 // 	at.Name = p.GetName()
 // 	at.Alias = p.GetAlias()
 // 	at.Size = p.GetSize()
-// 	at.FlagsParser = flags_parser
-// 	at.FormatType = at.FlagsParser.FormatType
+// 	at.FlagsConfig = flags_parser
+// 	at.FormatType = at.FlagsConfig.FormatType
 // 	switch p.(type) {
 // 	case *ARG_PTR:
 // 		return &ARG_PTR{at, nil, false}
@@ -193,8 +182,8 @@ func (this *ARG_PTR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) strin
 func (this *ARG_INT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int32(ptr)
 	flags_fmt := ""
-	if this.FlagsParser != nil {
-		flags_fmt = this.FlagsParser.Parse(int32(value_fix))
+	if this.FlagsConfig != nil {
+		flags_fmt = this.FlagsConfig.Parse(int32(value_fix))
 	}
 	switch this.FormatType {
 	case FORMAT_NUM:
@@ -216,8 +205,8 @@ func (this *ARG_INT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) strin
 func (this *ARG_UINT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint32(ptr)
 	flags_fmt := ""
-	if this.FlagsParser != nil {
-		flags_fmt = this.FlagsParser.Parse(int32(value_fix))
+	if this.FlagsConfig != nil {
+		flags_fmt = this.FlagsConfig.Parse(int32(value_fix))
 	}
 	switch this.FormatType {
 	case FORMAT_NUM:
@@ -239,8 +228,8 @@ func (this *ARG_UINT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) stri
 func (this *ARG_INT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int8(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
-	if this.FlagsParser != nil {
-		flags_fmt := this.FlagsParser.Parse(int32(value_fix))
+	if this.FlagsConfig != nil {
+		flags_fmt := this.FlagsConfig.Parse(int32(value_fix))
 		switch this.FormatType {
 		case FORMAT_NUM:
 			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
@@ -263,8 +252,8 @@ func (this *ARG_INT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) stri
 func (this *ARG_INT16) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int16(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
-	if this.FlagsParser != nil {
-		flags_fmt := this.FlagsParser.Parse(int32(value_fix))
+	if this.FlagsConfig != nil {
+		flags_fmt := this.FlagsConfig.Parse(int32(value_fix))
 		switch this.FormatType {
 		case FORMAT_NUM:
 			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
@@ -287,8 +276,8 @@ func (this *ARG_INT16) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) str
 func (this *ARG_INT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int32(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
-	if this.FlagsParser != nil {
-		flags_fmt := this.FlagsParser.Parse(int32(value_fix))
+	if this.FlagsConfig != nil {
+		flags_fmt := this.FlagsConfig.Parse(int32(value_fix))
 		switch this.FormatType {
 		case FORMAT_NUM:
 			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
@@ -311,8 +300,8 @@ func (this *ARG_INT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) str
 func (this *ARG_INT64) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int64(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
-	if this.FlagsParser != nil {
-		flags_fmt := this.FlagsParser.Parse(int32(value_fix))
+	if this.FlagsConfig != nil {
+		flags_fmt := this.FlagsConfig.Parse(int32(value_fix))
 		switch this.FormatType {
 		case FORMAT_NUM:
 			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
@@ -335,8 +324,8 @@ func (this *ARG_INT64) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) str
 func (this *ARG_UINT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint8(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
-	if this.FlagsParser != nil {
-		flags_fmt := this.FlagsParser.Parse(int32(value_fix))
+	if this.FlagsConfig != nil {
+		flags_fmt := this.FlagsConfig.Parse(int32(value_fix))
 		switch this.FormatType {
 		case FORMAT_NUM:
 			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
@@ -359,8 +348,8 @@ func (this *ARG_UINT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) str
 func (this *ARG_UINT16) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint16(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
-	if this.FlagsParser != nil {
-		flags_fmt := this.FlagsParser.Parse(int32(value_fix))
+	if this.FlagsConfig != nil {
+		flags_fmt := this.FlagsConfig.Parse(int32(value_fix))
 		switch this.FormatType {
 		case FORMAT_NUM:
 			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
@@ -383,8 +372,8 @@ func (this *ARG_UINT16) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) st
 func (this *ARG_UINT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint32(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
-	if this.FlagsParser != nil {
-		flags_fmt := this.FlagsParser.Parse(int32(value_fix))
+	if this.FlagsConfig != nil {
+		flags_fmt := this.FlagsConfig.Parse(int32(value_fix))
 		switch this.FormatType {
 		case FORMAT_NUM:
 			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
@@ -408,8 +397,8 @@ func (this *ARG_UINT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) st
 func (this *ARG_UINT64) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint64(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
-	if this.FlagsParser != nil {
-		flags_fmt := this.FlagsParser.Parse(int32(value_fix))
+	if this.FlagsConfig != nil {
+		flags_fmt := this.FlagsConfig.Parse(int32(value_fix))
 		switch this.FormatType {
 		case FORMAT_NUM:
 			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
@@ -487,17 +476,17 @@ func (this *ARG_STRUCT) GetStructLen(buf *bytes.Buffer) uint32 {
 }
 
 func init() {
-	Register(&ARG_PTR{}, "ptr", TYPE_POINTER, config.POINTER, uint32(unsafe.Sizeof(uint64(0))))
-	Register(&ARG_INT{}, "int", TYPE_INT, config.INT, uint32(unsafe.Sizeof(int32(0))))
-	Register(&ARG_UINT{}, "uint", TYPE_UINT, config.UINT, uint32(unsafe.Sizeof(uint32(0))))
-	Register(&ARG_INT8{}, "int8", TYPE_INT8, config.INT8, uint32(unsafe.Sizeof(int8(0))))
-	Register(&ARG_INT16{}, "int16", TYPE_INT16, config.INT16, uint32(unsafe.Sizeof(int16(0))))
-	Register(&ARG_INT32{}, "int32", TYPE_INT32, config.INT32, uint32(unsafe.Sizeof(int32(0))))
-	Register(&ARG_INT64{}, "int64", TYPE_INT64, config.INT64, uint32(unsafe.Sizeof(int64(0))))
-	Register(&ARG_UINT8{}, "uint8", TYPE_UINT8, config.UINT8, uint32(unsafe.Sizeof(uint8(0))))
-	Register(&ARG_UINT16{}, "uint16", TYPE_UINT16, config.UINT16, uint32(unsafe.Sizeof(uint16(0))))
-	Register(&ARG_UINT32{}, "uint32", TYPE_UINT32, config.UINT32, uint32(unsafe.Sizeof(uint32(0))))
-	Register(&ARG_UINT64{}, "uint64", TYPE_UINT64, config.UINT64, uint32(unsafe.Sizeof(uint64(0))))
+	Register(&ARG_PTR{}, "ptr", TYPE_POINTER, POINTER, uint32(unsafe.Sizeof(uint64(0))))
+	Register(&ARG_INT{}, "int", TYPE_INT, INT, uint32(unsafe.Sizeof(int32(0))))
+	Register(&ARG_UINT{}, "uint", TYPE_UINT, UINT, uint32(unsafe.Sizeof(uint32(0))))
+	Register(&ARG_INT8{}, "int8", TYPE_INT8, INT8, uint32(unsafe.Sizeof(int8(0))))
+	Register(&ARG_INT16{}, "int16", TYPE_INT16, INT16, uint32(unsafe.Sizeof(int16(0))))
+	Register(&ARG_INT32{}, "int32", TYPE_INT32, INT32, uint32(unsafe.Sizeof(int32(0))))
+	Register(&ARG_INT64{}, "int64", TYPE_INT64, INT64, uint32(unsafe.Sizeof(int64(0))))
+	Register(&ARG_UINT8{}, "uint8", TYPE_UINT8, UINT8, uint32(unsafe.Sizeof(uint8(0))))
+	Register(&ARG_UINT16{}, "uint16", TYPE_UINT16, UINT16, uint32(unsafe.Sizeof(uint16(0))))
+	Register(&ARG_UINT32{}, "uint32", TYPE_UINT32, UINT32, uint32(unsafe.Sizeof(uint32(0))))
+	Register(&ARG_UINT64{}, "uint64", TYPE_UINT64, UINT64, uint32(unsafe.Sizeof(uint64(0))))
 	// 一些实际上是数字的类型 后续注意要区分架构
 	// socklen_t aarch64 下是 uint32 aarch32 下是 int32
 	RegisterAlias("socklen_t", "uint32")
@@ -506,5 +495,5 @@ func init() {
 	// ssize_t aarch64 下是 int64 aarch32 下是 int32
 	RegisterAlias("ssize_t", "int64")
 
-	Register(&ARG_STRUCT{}, "struct", TYPE_STRUCT, config.STRUCT, 0)
+	Register(&ARG_STRUCT{}, "struct", TYPE_STRUCT, STRUCT, 0)
 }

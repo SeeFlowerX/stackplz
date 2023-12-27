@@ -198,7 +198,22 @@ func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
             switch EventId {
             case SYSCALL_ENTER, SYSCALL_EXIT:
                 {
-                    event = this.NewSyscallEvent(event)
+                    // event = this.NewSyscallEvent(event)
+                    switch (event).(type) {
+                    case *SyscallEvent:
+                        event = this.NewSyscallEvent(event)
+                        break
+                    case *NextSyscallEvent:
+                        // 不用转应该也行吧..
+                        event = (event).(*NextSyscallEvent)
+                        err := event.ParseContext()
+                        if err != nil {
+                            panic(fmt.Sprintf("NewSyscallEvent.ParseContext() err:%v", err))
+                        }
+                        break
+                    default:
+                        panic("..")
+                    }
                 }
             case UPROBE_ENTER:
                 {

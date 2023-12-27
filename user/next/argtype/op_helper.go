@@ -51,8 +51,12 @@ func NewOpManager() *OpManager {
 	return &opm
 }
 
-func GetOpList() map[uint32]BaseOpConfig {
+func GetALLOpList() map[uint32]BaseOpConfig {
 	return OPM.GetOpList()
+}
+
+func GetOpKeyList(type_index uint32) []uint32 {
+	return GetArgType(type_index).GetOpList()
 }
 
 func ROP(name string, code uint32) *OpConfig {

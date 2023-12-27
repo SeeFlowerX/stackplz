@@ -1,4 +1,4 @@
-package next
+package config
 
 const (
 	EBPF_PROG_NONE uint32 = iota
