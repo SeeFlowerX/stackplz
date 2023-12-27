@@ -28,7 +28,7 @@ func (this *PointArg) Parse(ptr uint64, buf *bytes.Buffer, point_type uint32) st
 	if this.PointType == EBPF_SYS_ALL || this.PointType == point_type {
 		parse_more = true
 	}
-	return argtype.GetArgType(this.RegIndex).Parse(ptr, buf, parse_more)
+	return argtype.GetArgType(this.TypeIndex).Parse(ptr, buf, parse_more)
 }
 
 // func (this *PointArg) BuildOpList(read_full bool) {
