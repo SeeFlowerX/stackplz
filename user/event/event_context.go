@@ -4,12 +4,15 @@ import (
     "bytes"
     "encoding/binary"
     "encoding/json"
+    "errors"
     "fmt"
     "stackplz/user/config"
     "stackplz/user/util"
     "strconv"
     "strings"
     "time"
+
+    "golang.org/x/sys/unix"
 )
 
 type LibArg struct {
@@ -138,36 +141,6 @@ func (this *ContextEvent) GetOffset(addr uint64) string {
     return maps_helper.GetOffset(this.Pid, addr)
 }
 
-func (this *ContextEvent) NewSyscallEvent() IEventStruct {
-    event := &SyscallEvent{ContextEvent: *this}
-    err := event.ParseContext()
-    if err != nil {
-        panic(fmt.Sprintf("NewSyscallEvent.ParseContext() err:%v", err))
-    }
-    return event
-}
-
-func (this *ContextEvent) NewUprobeEvent() IEventStruct {
-    event := &UprobeEvent{ContextEvent: *this}
-    err := event.ParseContext()
-    if err != nil {
-        panic(fmt.Sprintf("NewUprobeEvent.ParseContext() err:%v", err))
-    }
-    return event
-}
-
-func (this *ContextEvent) NewBrkEvent() IEventStruct {
-    event := &BrkEvent{ContextEvent: *this}
-    err := event.ParseContext()
-    if err != nil {
-        panic(fmt.Sprintf("NewUprobeEvent.ParseContext() err:%v", err))
-    }
-    if !event.Check() {
-        return nil
-    }
-    return event
-}
-
 func (this *ContextEvent) String() (s string) {
     s += fmt.Sprintf("event_id:%d ts:%d", this.EventId, this.Ts)
     s += fmt.Sprintf(", host_pid:%d, host_tid:%d", this.HostPid, this.HostTid)
@@ -196,6 +169,48 @@ func (this *ContextEvent) ParsePadding() (err error) {
         }
     }
     return nil
+}
+
+func (this *ContextEvent) NewBrkEvent() IEventStruct {
+    event := &BrkEvent{ContextEvent: *this}
+    err := event.ParseContext()
+    if err != nil {
+        panic(fmt.Sprintf("BrkEvent.ParseContext() err:%v", err))
+    }
+    if !event.Check() {
+        return nil
+    }
+    return event
+}
+
+func (this *ContextEvent) ParseEvent() (IEventStruct, error) {
+    switch this.rec.RecordType {
+    case unix.PERF_RECORD_SAMPLE:
+        if this.mconf.BrkAddr != 0 {
+            return this.NewBrkEvent(), nil
+        }
+
+        // 先把需要的基础信息解析出来
+        err := this.ParseContext()
+        if err != nil {
+            panic(fmt.Sprintf("ContextEvent.ParseContext() err:%v", err))
+        }
+
+        EventId := this.GetEventId()
+        switch EventId {
+        case SYSCALL_ENTER, SYSCALL_EXIT:
+            return nil, nil
+        case UPROBE_ENTER:
+            return nil, nil
+        default:
+            this.logger.Printf("ContextEvent.ParseEvent() unsupported EventId:%d\n", EventId)
+            this.logger.Printf("ContextEvent.ParseEvent() PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
+            return nil, errors.New(fmt.Sprintf("PERF_RECORD_SAMPLE EventId is %d", EventId))
+        }
+    default:
+        return this.CommonEvent.ParseEvent()
+    }
+
 }
 
 func (this *ContextEvent) ParseContext() (err error) {

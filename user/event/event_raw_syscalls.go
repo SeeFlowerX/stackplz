@@ -113,6 +113,20 @@ func (this *SyscallEvent) ParseContextSysExit() (err error) {
     return nil
 }
 
+func (this *SyscallEvent) ParseEvent() (IEventStruct, error) {
+    data_e, err := this.ContextEvent.ParseEvent()
+    if err != nil {
+        panic("...")
+    }
+    if data_e == nil {
+        if err := this.ParseContext(); err != nil {
+            panic(fmt.Sprintf("SyscallEvent.ParseContext() err:%v", err))
+        }
+        return this, nil
+    }
+    return data_e, nil
+}
+
 func (this *SyscallEvent) ParseContext() (err error) {
     // 处理参数 常规参数的构成 是 索引 + 值
     if err = binary.Read(this.buf, binary.LittleEndian, &this.nr); err != nil {

@@ -554,9 +554,12 @@ func (this *MStack) initDecodeFun() error {
         return err
     }
     this.eventMaps = append(this.eventMaps, EventsMap)
-    commonEvent := &event.CommonEvent{}
-    commonEvent.SetConf(this.mconf)
-    this.eventFuncMaps[EventsMap] = commonEvent
+    // 重新看了下这里的逻辑 发现这部分并没有起作用
+    // stack 这个模块 确实会收到许多不通类型的事件
+    // 但是处理数据的时候应该先进入绑定事件的处理函数 在处理函数内再调用父一级的处理函数
+    // commonEvent := &event.CommonEvent{}
+    // commonEvent.SetConf(this.mconf)
+    // this.eventFuncMaps[EventsMap] = commonEvent
 
     this.eventMaps = append(this.eventMaps, EventsMap)
     // 根据设置添加 map 不然即使不使用的map也会创建缓冲区

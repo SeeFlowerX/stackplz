@@ -20,6 +20,20 @@ type UprobeEvent struct {
     arg_str      string
 }
 
+func (this *UprobeEvent) ParseEvent() (IEventStruct, error) {
+    data_e, err := this.ContextEvent.ParseEvent()
+    if err != nil {
+        panic("...")
+    }
+    if data_e == nil {
+        if err := this.ParseContext(); err != nil {
+            panic(fmt.Sprintf("UprobeEvent.ParseContext() err:%v", err))
+        }
+        return this, nil
+    }
+    return data_e, nil
+}
+
 func (this *UprobeEvent) ParseContext() (err error) {
     if err = binary.Read(this.buf, binary.LittleEndian, &this.probe_index); err != nil {
         panic(err)

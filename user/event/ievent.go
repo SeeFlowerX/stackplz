@@ -125,115 +125,23 @@ func (this *CommonEvent) NewExitEvent() IEventStruct {
     return event
 }
 
-func (this *CommonEvent) NewContextEvent() IEventStruct {
-    event := &ContextEvent{CommonEvent: *this}
-    err := event.ParseContext()
-    if err != nil {
-        panic(fmt.Sprintf("NewContextEvent.ParseContext() err:%v", err))
-    }
-    return event
-}
-
-func (this *CommonEvent) NewSyscallEvent(event IEventStruct) IEventStruct {
-    p, ok := (event).(*ContextEvent)
-    if !ok {
-        panic("CommonEvent.NewSyscallEvent() cast to ContextEvent failed")
-    }
-    return p.NewSyscallEvent()
-}
-func (this *CommonEvent) NewUprobeEvent(event IEventStruct) IEventStruct {
-    p, ok := (event).(*ContextEvent)
-    if !ok {
-        panic("CommonEvent.NewUprobeEvent() cast to ContextEvent failed")
-    }
-    return p.NewUprobeEvent()
-}
-
-func (this *CommonEvent) NewBrkEvent() IEventStruct {
-    p := &ContextEvent{CommonEvent: *this}
-    return p.NewBrkEvent()
-}
-
 func (this *CommonEvent) RecordType() uint32 {
     return this.rec.RecordType
 }
 
 func (this *CommonEvent) ParseEvent() (IEventStruct, error) {
-
-    // 先根据 record 类型转为对应的 event
-    // 然后对数据进行解析 为什么不给到 worker 处理呢
-    // 这是因为当前的设计是基于 pid + tid 做了区分的
-    // 每一个 pid + tid 组合都是单独的一个 worker
-    // 另外也要注意 PERF_RECORD_MMAP2 事件和 syscall 等事件的区别
-    // 前者无法预先设置过滤 后者可以
-
-    var event IEventStruct
     switch this.rec.RecordType {
     case unix.PERF_RECORD_COMM:
-        {
-            event = this.NewCommEvent()
-        }
+        return this.NewCommEvent(), nil
     case unix.PERF_RECORD_MMAP2:
-        {
-            event = this.NewMmap2Event()
-        }
+        return this.NewMmap2Event(), nil
     case unix.PERF_RECORD_EXIT:
-        {
-            event = this.NewExitEvent()
-        }
+        return this.NewExitEvent(), nil
     case unix.PERF_RECORD_FORK:
-        {
-            event = this.NewForkEvent()
-        }
-    case unix.PERF_RECORD_SAMPLE:
-        {
-            if this.mconf.BrkAddr != 0 {
-                event = this.NewBrkEvent()
-                break
-            }
-            // 先把需要的基础信息解析出来
-            event = this.NewContextEvent()
-            EventId := event.GetEventId()
-            // 最后具体的 eventid 转换到具体的 event
-            switch EventId {
-            case SYSCALL_ENTER, SYSCALL_EXIT:
-                {
-                    // event = this.NewSyscallEvent(event)
-                    switch (event).(type) {
-                    case *SyscallEvent:
-                        event = this.NewSyscallEvent(event)
-                        break
-                    case *NextSyscallEvent:
-                        // 不用转应该也行吧..
-                        event = (event).(*NextSyscallEvent)
-                        err := event.ParseContext()
-                        if err != nil {
-                            panic(fmt.Sprintf("NewSyscallEvent.ParseContext() err:%v", err))
-                        }
-                        break
-                    default:
-                        panic("..")
-                    }
-                }
-            case UPROBE_ENTER:
-                {
-                    event = this.NewUprobeEvent(event)
-                }
-            default:
-                {
-                    event = this
-                    this.logger.Printf("CommonEvent.ParseEvent() unsupported EventId:%d\n", EventId)
-                    this.logger.Printf("CommonEvent.ParseEvent() PERF_RECORD_SAMPLE RawSample:\n" + util.HexDump(this.rec.RawSample, util.COLORRED))
-                    return nil, errors.New(fmt.Sprintf("PERF_RECORD_SAMPLE EventId is %d", EventId))
-                }
-            }
-        }
+        return this.NewForkEvent(), nil
     default:
-        {
-            return nil, errors.New(fmt.Sprintf("unsupported RecordType:%d", this.rec.RecordType))
-        }
+        return nil, errors.New(fmt.Sprintf("unsupported RecordType:%d", this.rec.RecordType))
     }
-    return event, nil
 }
 
 func (this *CommonEvent) SetRecord(rec perf.Record) {

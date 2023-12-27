@@ -43,29 +43,31 @@ func (this *EventProcessor) Serve() {
 	}
 }
 
-func (this *EventProcessor) dispatch(e event.IEventStruct) {
-
-	// 做初步解析之后 转换为更明确的 event
-	e, err := e.ParseEvent()
+func (this *EventProcessor) dispatch(map_e event.IEventStruct) {
+	// 在接收到数据之后就已经绑定了对应的事件 所以这里常规逻辑应该是直接开始解析
+	// 实际上绑定的是单一事件 由于perf event flag的设置不同 读取到的还有其他类型的数据
+	// 比如 fork exit 之类的 并非只有 sample
+	// 也就是这里需要根据数据类型的不同解析为不同的事件
+	data_e, err := map_e.ParseEvent()
 	if err != nil {
 		// 异常日志在 ParseEvent 进行输出
 		// 因为有的的 Record 需要跳过 并非错误
 		this.logger.Printf("ParseEvent faild, err:%v", err)
 		return
 	}
-	if e == nil {
+	if data_e == nil {
 		// 比如是自己的 mmap2 事件 直接忽略调
 		return
 	}
 	// 单就输出日志来说 下面这样做反而给人一种输出有延迟的感觉 如果没有必要就去掉这部分吧
-	var uuid string = e.GetUUID()
+	var uuid string = data_e.GetUUID()
 	found, eWorker := this.getWorkerByUUID(uuid)
 	if !found {
 		// ADD a new eventWorker into queue
-		eWorker = NewEventWorker(e.GetUUID(), this)
+		eWorker = NewEventWorker(data_e.GetUUID(), this)
 		this.addWorkerByUUID(eWorker)
 	}
-	err = eWorker.Write(e)
+	err = eWorker.Write(data_e)
 	if err != nil {
 		//...
 		this.GetLogger().Fatalf("write event failed , error:%v", err)
