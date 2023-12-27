@@ -192,16 +192,16 @@ var PermissionFlagsConfig = &FlagsConfig{"permission", FORMAT_OCT, PermissionFla
 func RegisterFlagsConfig(type_index, parent_index uint32, flags_config *FlagsConfig) IArgType {
 	p := GetArgType(parent_index)
 	new_name := fmt.Sprintf("%s_flags_%s", p.GetName(), flags_config.Name)
-	return RegisterPre(new_name, type_index, p.GetParentIndex())
+	return RegisterPre(new_name, type_index, p.GetTypeIndex())
 }
 
 func NewNumFormat(p IArgType, format_type uint32) IArgType {
 	new_name := fmt.Sprintf("%s_fmt_%d", p.GetName(), format_type)
-	return RegisterNew(new_name, p.GetParentIndex())
+	return RegisterNew(new_name, p.GetTypeIndex())
 }
 
 func init() {
-	RegisterFlagsConfig(INT, INT_SOCKET_FLAGS, SocketFlagsConfig)
-	RegisterFlagsConfig(INT, INT_FILE_FLAGS, FileFlagsConfig)
-	RegisterFlagsConfig(INT16, INT16_PERM_FLAGS, PermissionFlagsConfig)
+	RegisterFlagsConfig(INT_SOCKET_FLAGS, INT, SocketFlagsConfig)
+	RegisterFlagsConfig(INT_FILE_FLAGS, INT, FileFlagsConfig)
+	RegisterFlagsConfig(INT16_PERM_FLAGS, INT16, PermissionFlagsConfig)
 }
