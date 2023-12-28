@@ -200,7 +200,7 @@ func (this *MStack) start() error {
         return fmt.Errorf("%s\tcouldn't find asset %v .", this.Name(), err)
     }
 
-    // 初始化 bpfManager
+    // 初始化 bpfManager 这一步耗时超过 1.5s
     if err = this.bpfManager.InitWithOptions(bytes.NewReader(byteBuf), this.bpfManagerOptions); err != nil {
         return fmt.Errorf("couldn't init manager %v", err)
     }
