@@ -127,30 +127,16 @@ func (this *NextSyscallEvent) JsonString(stack_str string) string {
     }
 }
 
-func (this *NextSyscallEvent) NextString() string {
-    var base_str string
-    base_str = fmt.Sprintf("[%s] %s%s", this.GetUUID(), this.nr_point_next.Name, this.arg_str)
-    if this.EventId == SYSCALL_ENTER {
-        lr_str := fmt.Sprintf("LR:0x%x", this.lr.Address)
-        pc_str := fmt.Sprintf("PC:0x%x", this.pc.Address)
-        base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.sp.Address)
-    }
-    return base_str
-}
-
 func (this *NextSyscallEvent) String() string {
-    if this.mconf.Next {
-        return this.NextString()
-    }
     stack_str := ""
     if this.EventId == SYSCALL_ENTER {
         stack_str = this.GetStackTrace(stack_str)
     }
-    if this.mconf.FmtJson {
-        return this.JsonString(stack_str)
-    }
+    // if this.mconf.FmtJson {
+    //     return this.JsonString(stack_str)
+    // }
     var base_str string
-    base_str = fmt.Sprintf("[%s] %s%s", this.GetUUID(), this.nr_point.PointName, this.arg_str)
+    base_str = fmt.Sprintf("[%s] %s%s", this.GetUUID(), this.nr_point_next.Name, this.arg_str)
     if this.EventId == SYSCALL_ENTER {
         var lr_str string
         var pc_str string
@@ -163,7 +149,6 @@ func (this *NextSyscallEvent) String() string {
         }
         base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.sp.Address)
     }
-
     return base_str + stack_str
 }
 

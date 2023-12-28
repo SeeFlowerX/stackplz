@@ -503,9 +503,9 @@ func (this *ContextEvent) GetStackTrace(s string) string {
     }
     if this.Stackinfo != "" {
         if this.rec.ExtraOptions.ShowRegs {
-            s += fmt.Sprintf("\nStackinfo:\n%s", this.Stackinfo)
+            s += fmt.Sprintf("\nBacktrace:\n%s", this.Stackinfo)
         } else {
-            s += fmt.Sprintf(", Stackinfo:\n%s", this.Stackinfo)
+            s += fmt.Sprintf(", Backtrace:\n%s", this.Stackinfo)
         }
     }
     return s
