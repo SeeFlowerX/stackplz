@@ -212,7 +212,7 @@ typedef struct op_ctx {
     u32 op_code;
     u32 post_code;
     u32 str_start;
-    u32 str_size;
+    u32 str_len;
     u32 skip_flag;
     u32 read_len;
     u64 read_addr;

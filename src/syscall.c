@@ -189,19 +189,10 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                 op_ctx->save_index += 1;
                 break;
             case OP_FILTER_STRING: {
-                // // 在这里进行字符串比较和过滤动作
-                // // 实测 __is_str_prefix 这种比较还是不行
+                // // 这里会受到循环次数的限制
                 // next_arg_filter_t* filter = bpf_map_lookup_elem(&next_arg_filter, &op->value);
                 // if (unlikely(filter == NULL)) return 0;
-                // // 被用于比较的字符串长度作为最终的最大循环次数
-                // if (op_ctx->str_size > filter->str_len) {
-                //     op_ctx->str_size = filter->str_len;
-                // }
-                // // 这里是为了过验证器的
-                // if (op_ctx->str_size > MAX_STRCMP_SIZE) {
-                //     op_ctx->str_size = MAX_STRCMP_SIZE;
-                // }
-                // bool is_match = __is_str_prefix((const char *) &p.event->args[op_ctx->str_size], (const char *) &filter->str_val[0], op_ctx->str_size);
+                // bool is_match = next_strcmp_by_map(op_ctx, filter);
                 // if (filter->filter_type == WHITELIST_FILTER) {
                 //     if (!is_match) {
                 //         op_ctx->skip_flag = 1;
@@ -223,7 +214,7 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                     save_bytes_to_buf(p.event, 0, 0, op_ctx->save_index);
                 } else {
                    op_ctx->str_start = old_off + sizeof(int) + 1;
-                   op_ctx->str_size = p.event->buf_off - op_ctx->str_start;
+                   op_ctx->str_len = p.event->buf_off - op_ctx->str_start;
                 }
                 op_ctx->save_index += 1;
                 break;

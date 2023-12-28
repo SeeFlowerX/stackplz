@@ -217,7 +217,6 @@ static __always_inline str_buf_t *make_str_buf() {
 }
 
 static __always_inline u32 strcmp_by_map(arg_filter_t *filter_config, buf_t *string_p) {
-    u32 zero = 0;
     u32 str_len = 256;
     if (str_len > filter_config->oldstr_len) {
         str_len = filter_config->oldstr_len;
@@ -236,6 +235,34 @@ static __always_inline u32 strcmp_by_map(arg_filter_t *filter_config, buf_t *str
     u32* str_len_value = bpf_map_lookup_elem(&str_buf, str_value);
 
     if (str_len_value == NULL) {
+        return 0;
+    }
+    bpf_map_delete_elem(&str_buf, str_value);
+    return 1;
+}
+
+static __always_inline u32 next_strcmp_by_map(op_ctx_t* op_ctx, next_arg_filter_t *filter) {
+    // 读取的字符串长度小于过滤规则预设的字符串长度 那就没有比较的必要了
+    if (op_ctx->str_len < filter->str_len) {
+        return 0;
+    }
+    // 进入这里说明读取的字符串长度大于或者等于预设规则的字符串长度
+    // 那么只要从字符串的地址再次读取预设规则的长度即可
+    u32 read_str_len = filter->str_len;
+    // 过验证器用 更新预设规则的 map 前会确保长度小于 MAX_STRCMP_LEN
+    if (read_str_len > MAX_STRCMP_LEN) {
+        read_str_len = MAX_STRCMP_LEN;
+    }
+    str_buf_t* str_value = make_str_buf();
+    if (unlikely(str_value == NULL)) return 0;
+    __builtin_memset(str_value->str_val, 0, sizeof(str_value->str_val));
+    bpf_probe_read(str_value->str_val, read_str_len, (void*) op_ctx->read_addr);
+    // map的key最好是一个不变的内容 否则会引起一些奇怪的冲突
+    // 将预设规则的字符串更新到读取结果更新到 read_str_len 其实就是预设规则字符串长度
+    bpf_map_update_elem(&str_buf, &filter->str_val, &read_str_len, BPF_ANY);
+    // 将字符串读取结果作为 key 从 map 中取值
+    // 取到了那就是匹配了 没取到则不匹配
+    if (bpf_map_lookup_elem(&str_buf, str_value) == NULL) {
         return 0;
     }
     bpf_map_delete_elem(&str_buf, str_value);
