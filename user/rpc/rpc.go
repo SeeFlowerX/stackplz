@@ -53,7 +53,7 @@ func BrkIt(opts *BrkOptions) {
 	mod := module.GetModuleByName(module.MODULE_NAME_BRK)
 	var mconfig = config.NewModuleConfig()
 	mconfig.Debug = Gconfig.Debug
-	mconfig.ExternalBTF = findBTFAssets()
+	mconfig.ExternalBTF = Gconfig.ExternalBTF
 	mconfig.Buffer = Gconfig.Buffer
 	mconfig.ManualStack = Gconfig.ManualStack
 	mconfig.UnwindStack = Gconfig.UnwindStack
@@ -71,19 +71,6 @@ func BrkIt(opts *BrkOptions) {
 		Logger.Printf("%s\tmodule Run failed, [skip it]. error:%+v", mod.Name(), err)
 		os.Exit(1)
 	}
-}
-
-func findBTFAssets() string {
-	lines, err := util.RunCommand("uname", "-r")
-	if err != nil {
-		panic(fmt.Sprintf("findBTFAssets failed, can not exec uname -r, err:%v", err))
-	}
-	btf_file := "a12-5.10-arm64_min.btf"
-	if strings.Contains(lines, "rockchip") {
-		btf_file = "rock5b-5.10-arm64_min.btf"
-	}
-	Logger.Printf("findBTFAssets btf_file=%s", btf_file)
-	return btf_file
 }
 
 func ParseMsg(payload []byte) (*BrkOptions, error) {

@@ -41,6 +41,7 @@ type GlobalConfig struct {
     ShowUid      bool
     NoCheck      bool
     Btf          bool
+    ExternalBTF  string
     SysCall      string
     NoSysCall    string
     Next         bool

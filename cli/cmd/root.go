@@ -117,20 +117,22 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     } else {
         if !util.HasEnableBTF {
             // 检查平台 判断是不是开发板
-            mconfig.ExternalBTF = findBTFAssets()
+            gconfig.ExternalBTF = findBTFAssets()
+            mconfig.ExternalBTF = gconfig.ExternalBTF
         } else {
             mconfig.ExternalBTF = ""
         }
     }
+    // 这个操作有点耗时 内核版本符合要求的用不着检查 先不要这个操作
     // 检查符号情况 用于判断部分选项是否能启用
-    has_bpf_probe_read_user, err := findKallsymsSymbol("bpf_probe_read_user")
-    if err != nil {
-        logger.Printf("bpf_probe_read_user err:%v", err)
-        return err
-    }
-    if !has_bpf_probe_read_user {
-        logger.Printf("!!! may not support for this machine, has no bpf_probe_read_user")
-    }
+    // has_bpf_probe_read_user, err := findKallsymsSymbol("bpf_probe_read_user")
+    // if err != nil {
+    //     logger.Printf("bpf_probe_read_user err:%v", err)
+    //     return err
+    // }
+    // if !has_bpf_probe_read_user {
+    //     logger.Printf("!!! may not support for this machine, has no bpf_probe_read_user")
+    // }
 
     // 第一步先释放用于获取堆栈信息的外部库
     exec_path, err := os.Executable()
@@ -456,12 +458,14 @@ func addLibPath(name string) {
 }
 
 func findBTFAssets() string {
-    lines, err := util.RunCommand("uname", "-r")
+    var utsname syscall.Utsname
+    err := syscall.Uname(&utsname)
     if err != nil {
-        panic(fmt.Sprintf("findBTFAssets failed, can not exec uname -r, err:%v", err))
+        fmt.Println("Error:", err)
+        os.Exit(1)
     }
     btf_file := "a12-5.10-arm64_min.btf"
-    if strings.Contains(lines, "rockchip") {
+    if strings.Contains(util.B2S(utsname.Release[:]), "rockchip") {
         btf_file = "rock5b-5.10-arm64_min.btf"
     }
     Logger.Printf("findBTFAssets btf_file=%s", btf_file)
