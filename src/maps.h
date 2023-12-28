@@ -40,6 +40,7 @@ BPF_HASH(common_list, u32, u32, 1024);
 
 BPF_HASH(thread_filter, thread_name_t, u32, 40);
 BPF_HASH(arg_filter, u32, arg_filter_t, 40);
+BPF_HASH(next_arg_filter, u64, next_arg_filter_t, 40);
 BPF_HASH(str_buf, str_buf_t, u32, 256);
 BPF_ARRAY(str_buf_gen, str_buf_t, 1);
 BPF_LRU_HASH(str_buf_map, u64, str_buf_t, 1024);

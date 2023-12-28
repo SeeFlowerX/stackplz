@@ -23,6 +23,14 @@ struct {
     __uint(max_entries, 512);
 } syscall_point_args_map SEC(".maps");
 
+static __always_inline bool __is_str_prefix(const char *str, const char *prefix, int siz)
+{
+    for (int i = 0; i < siz && prefix[i]; i++)
+        if (str[i] != prefix[i])
+            return false;
+    return true;
+}
+
 static __always_inline u32 read_args(program_data_t p, point_args_t* point_args, op_ctx_t* op_ctx, struct pt_regs* regs) {
     int zero = 0;
     // op_config_t* op = NULL;
@@ -180,13 +188,42 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                 }
                 op_ctx->save_index += 1;
                 break;
+            case OP_FILTER_STRING: {
+                // 在这里进行字符串比较和过滤动作
+                // 实测 __is_str_prefix 这种比较还是不行
+                next_arg_filter_t* filter = bpf_map_lookup_elem(&next_arg_filter, &op->value);
+                if (unlikely(filter == NULL)) return 0;
+                // 被用于比较的字符串长度作为最终的最大循环次数
+                if (op_ctx->str_size > filter->str_len) {
+                    op_ctx->str_size = filter->str_len;
+                }
+                // 这里是为了过验证器的
+                if (op_ctx->str_size > MAX_STRCMP_SIZE) {
+                    op_ctx->str_size = MAX_STRCMP_SIZE;
+                }
+                bool is_match = __is_str_prefix((const char *) &p.event->args[op_ctx->str_size], (const char *) &filter->str_val[0], op_ctx->str_size);
+                if (filter->filter_type == WHITELIST_FILTER) {
+                    if (!is_match) {
+                        op_ctx->skip_flag = 1;
+                    }
+                } else if (filter->filter_type == BLACKLIST_FILTER) {
+                    if (is_match) {
+                        op_ctx->skip_flag = 1;
+                    }
+                }
+                break;
+            }
             case OP_SAVE_STRING:
                 // fix memory tag
                 op_ctx->read_addr = op_ctx->read_addr & 0xffffffffff;
+                u32 old_off = p.event->buf_off;
                 int save_string_status = save_str_to_buf(p.event, (void*) op_ctx->read_addr, op_ctx->save_index);
                 if (save_string_status == 0) {
                     // 失败的情况存一个空数据 暂时没有遇到 有待测试
                     save_bytes_to_buf(p.event, 0, 0, op_ctx->save_index);
+                } else {
+                   op_ctx->str_start = old_off + sizeof(int) + 1;
+                   op_ctx->str_size = p.event->buf_off - op_ctx->str_start;
                 }
                 op_ctx->save_index += 1;
                 break;
@@ -348,6 +385,13 @@ int next_raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     op_ctx->op_key_index = 0;
 
     read_args(p, point_args, op_ctx, regs);
+    
+    if (op_ctx->skip_flag) {
+        op_ctx->skip_flag = 0;
+        saved_regs.flag = 1;
+        save_args(&saved_regs, SYSCALL_ENTER);
+        return 0;
+    }
 
     events_perf_submit(&p, SYSCALL_ENTER);
     if (filter->signal > 0) {

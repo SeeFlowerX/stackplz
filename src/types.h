@@ -40,6 +40,12 @@ typedef struct str_buf {
     char str_val[256];
 } str_buf_t;
 
+typedef struct next_arg_filter {
+    u32 filter_type;
+    char str_val[256];
+    u32 str_len;
+} next_arg_filter_t;
+
 enum arg_filter_e
 {
     UNKNOWN_FILTER = 0,
@@ -98,6 +104,7 @@ enum op_code_e
     OP_READ_POINTER,
     OP_SAVE_POINTER,
     OP_SAVE_STRUCT,
+    OP_FILTER_STRING,
     OP_SAVE_STRING,
     OP_SAVE_PTR_STRING
 };
@@ -204,6 +211,9 @@ typedef struct op_ctx {
     u32 op_key_index;
     u32 op_code;
     u32 post_code;
+    u32 str_start;
+    u32 str_size;
+    u32 skip_flag;
     u32 read_len;
     u64 read_addr;
     u64 reg_value;
