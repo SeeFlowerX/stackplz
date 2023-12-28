@@ -142,33 +142,36 @@ var SocketFlags []*FlagOp = []*FlagOp{
 	{"SOCK_NONBLOCK", int32(00004000)},
 }
 
+var FcntlFlags []*FlagOp = []*FlagOp{
+	// {"AT_FDCWD", int32(-100)},
+	{"AT_SYMLINK_NOFOLLOW", int32(0x100)},
+	{"AT_EACCESS", int32(0x200)},
+	{"AT_SYMLINK_FOLLOW", int32(0x400)},
+	{"AT_NO_AUTOMOUNT", int32(0x800)},
+	{"AT_EMPTY_PATH", int32(0x1000)},
+}
+
+var UnlinkFlags []*FlagOp = []*FlagOp{
+	{"AT_REMOVEDIR", int32(0x200)},
+}
+
+var StatxFlags []*FlagOp = []*FlagOp{
+	{"AT_STATX_SYNC_TYPE", int32(0x6000)},
+	{"AT_STATX_SYNC_AS_STAT", int32(0x0000)},
+	{"AT_STATX_FORCE_SYNC", int32(0x2000)},
+	{"AT_STATX_DONT_SYNC", int32(0x4000)},
+	{"AT_RECURSIVE", int32(0x8000)},
+}
+
 var MapFlagsConfig = &FlagsConfig{"map", FORMAT_HEX, MapFlags}
 var FileFlagsConfig = &FlagsConfig{"file", FORMAT_HEX, FileFlags}
 var ProtFlagsConfig = &FlagsConfig{"prot", FORMAT_HEX, ProtFlags}
+var FcntlFlagsConfig = &FlagsConfig{"stat", FORMAT_HEX, FcntlFlags}
+var StatxFlagsConfig = &FlagsConfig{"statx", FORMAT_HEX, StatxFlags}
+var UnlinkFlagsConfig = &FlagsConfig{"unlink", FORMAT_HEX, UnlinkFlags}
 var MreapFlagsConfig = &FlagsConfig{"mreap", FORMAT_HEX, MreapFlags}
 var SocketFlagsConfig = &FlagsConfig{"socket", FORMAT_HEX, SocketFlags}
 var PermissionFlagsConfig = &FlagsConfig{"permission", FORMAT_OCT, PermissionFlags}
-
-// var MapFlagsParser = RegisterFlagsParser(MAP_MODE_PARSER, FORMAT_HEX, MapFlags)
-// var FileFlagsParser = RegisterFlagsParser(FILE_MODE_PARSER, FORMAT_HEX, FileFlags)
-// var ProtFlagsParser = RegisterFlagsParser(PROT_PARSER, FORMAT_HEX, ProtFlags)
-// var MreapFlagsParser = RegisterFlagsParser(MREAP_PARSER, FORMAT_HEX, MreapFlags)
-// var SocketFlagsParser = RegisterFlagsParser(SOCKET_TYPE_PARSER, FORMAT_HEX, SocketFlags)
-// var PermissionFlagsParser = RegisterFlagsParser(PERMISSION_PARSER, FORMAT_OCT, PermissionFlags)
-
-// func parse_RUSAGE(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {
-// 	if !parse_more {
-// 		return fmt.Sprintf("0x%x", ptr)
-// 	}
-// 	if (ctx).(*ARG_STRUCT).GetStructLen(buf) != 0 {
-// 		var arg Arg_Rusage
-// 		if err := binary.Read(buf, binary.LittleEndian, &arg.Rusage); err != nil {
-// 			panic(err)
-// 		}
-// 		return fmt.Sprintf("0x%x%s", ptr, arg.Format())
-// 	}
-// 	return fmt.Sprintf("0x%x", ptr)
-// }
 
 func RegisterFlagsConfig(type_index, parent_index uint32, flags_config *FlagsConfig) IArgType {
 	p := GetArgType(parent_index)
@@ -194,6 +197,9 @@ func NewNumFormat(p IArgType, format_type uint32) IArgType {
 }
 
 func init() {
+	RegisterFlagsConfig(INT_FCNTL_FLAGS, INT, FcntlFlagsConfig)
+	RegisterFlagsConfig(INT_STATX_FLAGS, INT, StatxFlagsConfig)
+	RegisterFlagsConfig(INT_UNLINK_FLAGS, INT, UnlinkFlagsConfig)
 	RegisterFlagsConfig(INT_SOCKET_FLAGS, INT, SocketFlagsConfig)
 	RegisterFlagsConfig(INT_FILE_FLAGS, INT, FileFlagsConfig)
 	RegisterFlagsConfig(INT16_PERM_FLAGS, INT16, PermissionFlagsConfig)
