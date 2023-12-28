@@ -529,6 +529,45 @@ func (this *ARG_UINT64) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) st
 	return value_fmt
 }
 
+type IArgTypeArray interface {
+	SetArrayLen(array_len uint32)
+	SetArrayArgType(p IArgType)
+}
+
+// 用 ARG_STRUCT 是因为可以直接调用 GetStructLen
+type ARG_ARRAY struct {
+	ARG_STRUCT
+	ArrayLen     uint32
+	ArrayArgType IArgType
+}
+
+func (this *ARG_ARRAY) SetArrayLen(array_len uint32) {
+	this.ArrayLen = array_len
+}
+
+func (this *ARG_ARRAY) SetArrayArgType(p IArgType) {
+	this.ArrayArgType = p
+	this.Size = p.GetSize() * this.ArrayLen
+}
+
+func (this *ARG_ARRAY) Clone() IArgType {
+	p, ok := (this.ARG_STRUCT.Clone()).(*ARG_STRUCT)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_ARRAY{*p, this.ArrayLen, this.ArrayArgType}
+}
+
+func (this *ARG_ARRAY) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+	if !parse_more {
+		return fmt.Sprintf("0x%x", ptr)
+	}
+	if this.ParseCB != nil {
+		return this.ParseCB(this, ptr, buf, parse_more)
+	}
+	panic("....")
+}
+
 type ARG_STRUCT struct {
 	ArgType
 }
@@ -539,20 +578,6 @@ func (this *ARG_STRUCT) Clone() IArgType {
 		panic("...")
 	}
 	return &ARG_STRUCT{*p}
-}
-
-type ARG_ARRAY struct {
-	ARG_STRUCT
-	ArrayLen     uint32
-	ArrayArgType IArgType
-}
-
-func (this *ARG_ARRAY) Clone() IArgType {
-	p, ok := (this.ARG_STRUCT.Clone()).(*ARG_STRUCT)
-	if !ok {
-		panic("...")
-	}
-	return &ARG_ARRAY{*p, this.ArrayLen, this.ArrayArgType}
 }
 
 func (this *ARG_STRUCT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
@@ -613,4 +638,5 @@ func init() {
 	RegisterAliasType(SSIZE_T, INT64)
 
 	Register(&ARG_STRUCT{}, "struct", TYPE_STRUCT, STRUCT, 0)
+	Register(&ARG_ARRAY{}, "array", TYPE_ARRAY, ARRAY, 0)
 }

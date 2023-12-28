@@ -178,6 +178,8 @@ func LazyRegister(type_index uint32) IArgType {
 	// 所谓 lazy 也就是用到的时候再注册
 	// 当然这是对复杂类型来说的 基础类型会提前准备好
 	switch type_index {
+	case INT_ARRAY_2:
+		return r_PRE_ARRAY(GetArgType(INT), INT_ARRAY_2, 2)
 	case STRING:
 		return r_STRING()
 	case STRING_ARRAY:

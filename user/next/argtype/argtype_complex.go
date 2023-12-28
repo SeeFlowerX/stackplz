@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"reflect"
 	. "stackplz/user/next/common"
 	"stackplz/user/util"
 	"strings"
@@ -79,7 +80,7 @@ func parse_ARRAY(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) s
 		return fmt.Sprintf("0x%x", ptr)
 	}
 	p := (ctx).(*ARG_ARRAY)
-	if p.GetStructLen(buf) != 0 {
+	if p.GetStructLen(buf) == 0 {
 		return fmt.Sprintf("0x%x[]", ptr)
 	}
 	var results []string
@@ -114,35 +115,43 @@ func parse_ARRAY(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) s
 			results = append(results, result)
 		}
 		break
+	default:
+		panic(fmt.Sprintf("parse method for %s array not impl", reflect.TypeOf(p.ArrayArgType)))
 	}
 	return fmt.Sprintf("0x%x[%s]", ptr, strings.Join(results, ", "))
 }
 
-func r_BASE_ARRAY(p IArgType, array_len uint32) IArgType {
-	// 这里直接混合了各种类型 所以没用直接
-	at := RegisterPre(fmt.Sprintf("array_%s_%d", p.GetName(), p.GetSize()), ARRAY, STRUCT)
-	base_p, ok := (at).(*ARG_STRUCT)
+func r_PRE_ARRAY(p IArgType, type_index, array_len uint32) IArgType {
+	// 这里用于生成内置定义了的 type_index 数组
+	array_name := fmt.Sprintf("array_%s_%d", p.GetName(), array_len)
+	new_p := RegisterPre(array_name, type_index, ARRAY)
+	new_i, ok := (new_p).(IArgTypeArray)
 	if !ok {
 		panic("...")
 	}
-	new_p := &ARG_ARRAY{}
-	new_p.ARG_STRUCT = *base_p
-	UpdateArgType(new_p)
-	return new_p
-}
-
-func r_ARRAY(p IArgType, array_len uint32) IArgType {
-	// 这里直接混合了各种类型 所以没用直接
-	at := RegisterNew(fmt.Sprintf("array_%s_%d", p.GetName(), p.GetSize()), ARRAY)
-	new_p, ok := (at).(*ARG_ARRAY)
-	if !ok {
-		panic("...")
-	}
+	new_i.SetArrayLen(array_len)
+	new_i.SetArrayArgType(p)
+	// 更新操作似乎是不需要的 需要实际测试
+	// UpdateArgType(new_p)
 	// 直接保存对应的数据 即 元素大小 * 元素个数
-	new_p.AddOp(SaveStruct(uint64(p.GetSize() * array_len)))
+	new_p.AddOp(SaveStruct(uint64(new_p.GetSize())))
 	new_p.SetParseCB(parse_ARRAY)
 	return new_p
 }
+
+// func r_ARRAY(p IArgType, array_len uint32) IArgType {
+// 	array_name := fmt.Sprintf("array_%s_%d", p.GetName(), array_len)
+// 	new_p := RegisterNew(array_name, ARRAY)
+// 	new_i, ok := (new_p).(IArgTypeArray)
+// 	if !ok {
+// 		panic("...")
+// 	}
+// 	new_i.SetArrayLen(array_len)
+// 	new_i.SetArrayArgType(p)
+// 	new_p.AddOp(SaveStruct(uint64(p.GetSize() * array_len)))
+// 	new_p.SetParseCB(parse_ARRAY)
+// 	return new_p
+// }
 
 func parse_ITTMERSPEC(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	if !parse_more {

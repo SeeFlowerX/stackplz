@@ -358,7 +358,7 @@ func init() {
 	R(196, "shmat", A("shmid", INT), A("shmaddr", POINTER), A("shmflg", INT))
 	R(197, "shmdt", A("shmaddr", POINTER))
 	R(198, "socket", A("domain", INT), A("type", INT_SOCKET_FLAGS), A("protocol", INT))
-	R(199, "socketpair", A("domain", INT), A("type", INT), A("protocol", INT), B("sv", INT_ARRAY_2))
+	R(199, "socketpair", A("domain", INT), A("type", INT_SOCKET_FLAGS), A("protocol", INT), B("sv", INT_ARRAY_2))
 	R(200, "bind", A("sockfd", INT), A("addr", SOCKADDR), A("addrlen", SOCKLEN_T))
 	R(201, "listen", A("sockfd", INT), A("backlog", INT))
 	R(202, "accept", A("sockfd", INT), A("addr", SOCKADDR), A("addrlen", SOCKLEN_T))
