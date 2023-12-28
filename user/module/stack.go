@@ -12,6 +12,7 @@ import (
     "stackplz/user/config"
     "stackplz/user/event"
     "stackplz/user/next/argtype"
+    next_config "stackplz/user/next/config"
     "stackplz/user/util"
     "strings"
     "unsafe"
@@ -428,15 +429,17 @@ func (this *MStack) update_sysenter_point_args() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
+    var syscall_Points []*next_config.SyscallPoint
     if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
-        panic("TraceMode TRACE_ALL not implemented yet")
+        syscall_Points = next_config.GetAllPoints()
     } else {
-        for _, syscall_point := range this.mconf.SysCallConf.NextPointArgs {
-            point_config := syscall_point.GetEnterConfig()
-            err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
-            if err != nil {
-                panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
-            }
+        syscall_Points = this.mconf.SysCallConf.NextPointArgs
+    }
+    for _, syscall_point := range syscall_Points {
+        point_config := syscall_point.GetEnterConfig()
+        err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
         }
     }
     if this.mconf.Debug {
@@ -450,15 +453,17 @@ func (this *MStack) update_sysexit_point_args() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
+    var syscall_Points []*next_config.SyscallPoint
     if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
-        panic("TraceMode TRACE_ALL not implemented yet")
+        syscall_Points = next_config.GetAllPoints()
     } else {
-        for _, syscall_point := range this.mconf.SysCallConf.NextPointArgs {
-            point_config := syscall_point.GetExitConfig()
-            err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
-            if err != nil {
-                panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
-            }
+        syscall_Points = this.mconf.SysCallConf.NextPointArgs
+    }
+    for _, syscall_point := range syscall_Points {
+        point_config := syscall_point.GetExitConfig()
+        err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
         }
     }
     if this.mconf.Debug {

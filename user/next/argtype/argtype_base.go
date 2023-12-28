@@ -40,77 +40,23 @@ func (this *ARG_NUM) Clone() IArgType {
 	return &ARG_NUM{*p, this.FlagsConfig, this.FormatType}
 }
 
-// func AttachFlagsParser(p IArgType, flags_parser *FlagsConfig) IArgType {
-// 	at := ARG_NUM{}
-// 	at.Name = p.GetName()
-// 	at.Alias = p.GetAlias()
-// 	at.Size = p.GetSize()
-// 	at.FlagsConfig = flags_parser
-// 	at.FormatType = at.FlagsConfig.FormatType
-// 	switch p.(type) {
-// 	case *ARG_PTR:
-// 		return &ARG_PTR{at, nil, false}
-// 	case *ARG_INT:
-// 		return &ARG_INT{at}
-// 	case *ARG_UINT:
-// 		return &ARG_UINT{at}
-// 	case *ARG_INT8:
-// 		return &ARG_INT8{at}
-// 	case *ARG_INT16:
-// 		return &ARG_INT16{at}
-// 	case *ARG_INT32:
-// 		return &ARG_INT32{at}
-// 	case *ARG_INT64:
-// 		return &ARG_INT64{at}
-// 	case *ARG_UINT8:
-// 		return &ARG_UINT8{at}
-// 	case *ARG_UINT16:
-// 		return &ARG_UINT16{at}
-// 	case *ARG_UINT32:
-// 		return &ARG_UINT32{at}
-// 	case *ARG_UINT64:
-// 		return &ARG_UINT64{at}
-// 	}
-// 	return &at
-// }
-
-// func NewNumFormat(p IArgType, format_type uint32) IArgType {
-// 	at := ARG_NUM{}
-// 	at.Name = p.GetName()
-// 	at.Alias = p.GetAlias()
-// 	at.Size = p.GetSize()
-// 	at.FormatType = format_type
-// 	switch p.(type) {
-// 	case *ARG_PTR:
-// 		return &ARG_PTR{at, nil, false}
-// 	case *ARG_INT:
-// 		return &ARG_INT{at}
-// 	case *ARG_UINT:
-// 		return &ARG_UINT{at}
-// 	case *ARG_INT8:
-// 		return &ARG_INT8{at}
-// 	case *ARG_INT16:
-// 		return &ARG_INT16{at}
-// 	case *ARG_INT32:
-// 		return &ARG_INT32{at}
-// 	case *ARG_INT64:
-// 		return &ARG_INT64{at}
-// 	case *ARG_UINT8:
-// 		return &ARG_UINT8{at}
-// 	case *ARG_UINT16:
-// 		return &ARG_UINT16{at}
-// 	case *ARG_UINT32:
-// 		return &ARG_UINT32{at}
-// 	case *ARG_UINT64:
-// 		return &ARG_UINT64{at}
-// 	}
-// 	return &at
-// }
+type IArgTypePtr interface {
+	SetIsNum(bool)
+	SetPtrArgType(IArgType)
+}
 
 type ARG_PTR struct {
 	ARG_NUM
-	PtrArgType IArgType
 	IsNum      bool
+	PtrArgType IArgType
+}
+
+func (this *ARG_PTR) SetIsNum(is_num bool) {
+	this.IsNum = is_num
+}
+
+func (this *ARG_PTR) SetPtrArgType(p IArgType) {
+	this.PtrArgType = p
 }
 
 func (this *ARG_PTR) Clone() IArgType {
@@ -118,7 +64,7 @@ func (this *ARG_PTR) Clone() IArgType {
 	if !ok {
 		panic("...")
 	}
-	return &ARG_PTR{*p, this.PtrArgType, this.IsNum}
+	return &ARG_PTR{*p, this.IsNum, this.PtrArgType}
 }
 
 type ARG_INT struct {
@@ -248,7 +194,6 @@ func (this *ARG_PTR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) strin
 	if this.PtrArgType != nil {
 		if this.IsNum {
 			var arg Arg_str
-			// var arg Arg_str
 			if err := binary.Read(buf, binary.LittleEndian, &arg); err != nil {
 				panic(err)
 			}
@@ -264,30 +209,6 @@ func (this *ARG_PTR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) strin
 	}
 	return fmt.Sprintf("0x%x", ptr)
 }
-
-// func (this *ARG_PTR) SetupPtrType(p IArgType, is_num bool) IArgType {
-// 	at := ARG_PTR{}
-// 	at.Name = fmt.Sprintf("%s_%s", this.Name, p.GetName())
-// 	at.Alias = this.Alias
-// 	at.Size = p.GetSize()
-// 	at.PtrArgType = p
-// 	at.IsNum = is_num
-// 	// 对于数字类型是需要的
-// 	if at.IsNum {
-// 		// 默认保存一个指针大小
-// 		at.AddOp(SaveStruct(8))
-// 	}
-// 	at.AddOpList(p)
-// 	return &at
-// }
-
-// func SetupPtrType(p IArgType, is_num bool) IArgType {
-// 	at, ok := (GetArgType("ptr")).(*ARG_PTR)
-// 	if !ok {
-// 		panic("...")
-// 	}
-// 	return at.SetupPtrType(p, is_num)
-// }
 
 func (this *ARG_INT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int32(ptr)
@@ -633,10 +554,12 @@ func init() {
 	// RegisterAlias("size_t", "uint64")
 	// // ssize_t aarch64 下是 int64 aarch32 下是 int32
 	// RegisterAlias("ssize_t", "int64")
-	RegisterAliasType(SOCKLEN_T, UINT32)
-	RegisterAliasType(SIZE_T, UINT64)
-	RegisterAliasType(SSIZE_T, INT64)
 
 	Register(&ARG_STRUCT{}, "struct", TYPE_STRUCT, STRUCT, 0)
 	Register(&ARG_ARRAY{}, "array", TYPE_ARRAY, ARRAY, 0)
+
+	RegisterAliasType(SOCKLEN_T, UINT32)
+	RegisterAliasType(SIZE_T, UINT64)
+	RegisterAliasType(SSIZE_T, INT64)
+	RegisterAliasType(SIGINFO_V2, INT_ARRAY_1)
 }

@@ -178,14 +178,54 @@ func LazyRegister(type_index uint32) IArgType {
 	// 所谓 lazy 也就是用到的时候再注册
 	// 当然这是对复杂类型来说的 基础类型会提前准备好
 	switch type_index {
+	case INT_ARRAY_1:
+		return r_PRE_ARRAY(GetArgType(INT), INT_ARRAY_1, 1)
 	case INT_ARRAY_2:
 		return r_PRE_ARRAY(GetArgType(INT), INT_ARRAY_2, 2)
+	case UINT_ARRAY_1:
+		return r_PRE_ARRAY(GetArgType(UINT), UINT_ARRAY_1, 1)
+	case INT_PTR:
+		return r_POINTER(GetArgType(INT), true)
+	case UINT_PTR:
+		return r_POINTER(GetArgType(UINT), true)
 	case STRING:
 		return r_STRING()
 	case STRING_ARRAY:
 		return r_STRING_ARRAY()
 	case BUFFER:
 		return r_BUFFER()
+	case STACK_T:
+		return r_STACK_T()
+	case TIMESPEC:
+		return r_TIMESPEC()
+	case SIGSET:
+		return r_SIGSET()
+	case SIGINFO:
+		return r_SIGINFO()
+	case SIGACTION:
+		return r_SIGACTION()
+	case EPOLLEVENT:
+		return r_EPOLLEVENT()
+	case POLLFD:
+		return r_POLLFD()
+	case LINUX_DIRENT64:
+		return r_DIRENT()
+	case ITTMERSPEC:
+		return r_ITTMERSPEC()
+	case RUSAGE:
+		return r_RUSAGE()
+	case UTSNAME:
+		return r_UTSNAME()
+	case TIMEVAL:
+		return r_TIMEVAL()
+	case TIMEZONE:
+		return r_TIMEZONE()
+	case SYSINFO:
+		return r_SYSINFO()
+	case STAT:
+		return r_STAT()
+	case STATFS:
+		return r_STATFS()
 	case MSGHDR:
 		return r_MSGHDR()
 	case IOVEC:

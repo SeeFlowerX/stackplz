@@ -14,6 +14,23 @@ import (
 
 // 这里是一些列基础参数的组合生成
 
+func r_POINTER(p IArgType, is_num bool) IArgType {
+	ptr_name := fmt.Sprintf("ptr_%s", p.GetName())
+	new_p := RegisterNew(ptr_name, POINTER)
+	new_i, ok := (new_p).(IArgTypePtr)
+	if !ok {
+		panic("...")
+	}
+	new_i.SetIsNum(is_num)
+	new_i.SetPtrArgType(p)
+	if is_num {
+		// 默认保存一个指针大小
+		new_p.AddOp(SaveStruct(8))
+	}
+	new_p.AddOpList(p)
+	return new_p
+}
+
 func parse_STRING(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	if !parse_more {
 		return fmt.Sprintf("0x%x", ptr)
@@ -139,19 +156,19 @@ func r_PRE_ARRAY(p IArgType, type_index, array_len uint32) IArgType {
 	return new_p
 }
 
-// func r_ARRAY(p IArgType, array_len uint32) IArgType {
-// 	array_name := fmt.Sprintf("array_%s_%d", p.GetName(), array_len)
-// 	new_p := RegisterNew(array_name, ARRAY)
-// 	new_i, ok := (new_p).(IArgTypeArray)
-// 	if !ok {
-// 		panic("...")
-// 	}
-// 	new_i.SetArrayLen(array_len)
-// 	new_i.SetArrayArgType(p)
-// 	new_p.AddOp(SaveStruct(uint64(p.GetSize() * array_len)))
-// 	new_p.SetParseCB(parse_ARRAY)
-// 	return new_p
-// }
+func r_ARRAY(p IArgType, array_len uint32) IArgType {
+	array_name := fmt.Sprintf("array_%s_%d", p.GetName(), array_len)
+	new_p := RegisterNew(array_name, ARRAY)
+	new_i, ok := (new_p).(IArgTypeArray)
+	if !ok {
+		panic("...")
+	}
+	new_i.SetArrayLen(array_len)
+	new_i.SetArrayArgType(p)
+	new_p.AddOp(SaveStruct(uint64(p.GetSize() * array_len)))
+	new_p.SetParseCB(parse_ARRAY)
+	return new_p
+}
 
 func parse_ITTMERSPEC(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	if !parse_more {
@@ -399,6 +416,12 @@ func r_TIMESPEC() IArgType {
 	return at
 }
 
+func r_SIGSET() IArgType {
+	// sigset 类型实际上是一个 uint32[1]
+	p := NewNumFormat(GetArgType(UINT), FORMAT_HEX)
+	return r_ARRAY(p, 1)
+}
+
 func parse_STAT(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	if !parse_more {
 		return fmt.Sprintf("0x%x", ptr)
@@ -605,6 +628,7 @@ func r_IOVEC() IArgType {
 	at.SetSize(uint32(unsafe.Sizeof(t)))
 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.GetSize())))
 	at.AddOp(OPC_SAVE_STRUCT)
+	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(MAX_BUF_READ_SIZE)))
 	at.AddOp(BuildReadPtrLen(uint64(unsafe.Offsetof(t.Len))))
 	at.AddOp(OPC_READ_POINTER)
 	at.AddOp(OPC_MOVE_POINTER_VALUE)

@@ -107,6 +107,10 @@ func (this *SyscallPoints) Add(point *SyscallPoint) {
 	this.points = append(this.points, point)
 }
 
+func (this *SyscallPoints) GetAllPoints() []*SyscallPoint {
+	return this.points
+}
+
 func (this *SyscallPoints) GetPointByName(name string) *SyscallPoint {
 	for _, point := range this.points {
 		if point.Name == name {
@@ -131,6 +135,10 @@ func GetSyscallPointByName(name string) *SyscallPoint {
 
 func GetSyscallPointByNR(nr uint32) *SyscallPoint {
 	return aarch64_syscall_points.GetPointByNR(nr)
+}
+
+func GetAllPoints() []*SyscallPoint {
+	return aarch64_syscall_points.GetAllPoints()
 }
 
 var aarch64_syscall_points = SyscallPoints{}
@@ -181,7 +189,7 @@ func init() {
 	R(19, "eventfd2", A("initval", INT), A("flags", INT))
 	R(20, "epoll_create1", A("flags", INT))
 	R(21, "epoll_ctl", A("epfd", INT), A("op", INT), A("fd", INT), A("event", EPOLLEVENT))
-	R(22, "epoll_pwait", A("epfd", INT), A("events", POINTER), A("maxevents", INT), A("timeout", INT), A("sigmask", SIGSET_PTR), A("sigsetsize", INT))
+	R(22, "epoll_pwait", A("epfd", INT), A("events", POINTER), A("maxevents", INT), A("timeout", INT), A("sigmask", SIGSET), A("sigsetsize", INT))
 	R(23, "dup", A("oldfd", INT))
 	R(24, "dup3", A("oldfd", INT), A("newfd", INT), A("flags", INT))
 	R(25, "fcntl", A("fd", INT), A("cmd", INT), A("arg", INT))
@@ -232,7 +240,7 @@ func init() {
 	R(70, "pwritev", A("fd", INT), A("iov", IOVEC_X2), A("iovcnt", INT), A("offset", INT))
 	R(71, "sendfile", A("out_fd", INT), A("in_fd", INT), A("offset", INT), A("count", INT))
 	R(72, "pselect6", A("n", INT), A("inp", POINTER), A("outp", POINTER), A("exp", POINTER), A("tsp", TIMESPEC), A("sig", POINTER))
-	R(73, "ppoll", A("fds", POLLFD), A("nfds", INT), A("tmo_p", TIMESPEC), A("sigmask", SIGSET_PTR), A("sigsetsize", INT))
+	R(73, "ppoll", A("fds", POLLFD), A("nfds", INT), C("tmo_p", TIMESPEC), A("sigmask", SIGSET), A("sigsetsize", INT))
 	R(74, "signalfd4", A("ufd", INT), A("user_mask", POINTER), A("sizemask", INT), A("flags", INT))
 	R(75, "vmsplice", A("fd", INT), A("uiov", IOVEC_X2), A("nr_segs", INT), A("flags", INT))
 	R(76, "splice", A("fd_in", INT), A("off_in", INT), A("fd_out", INT), A("off_out", INT), A("len", INT), A("flags", INT))
@@ -292,11 +300,11 @@ func init() {
 	R(130, "tkill", A("tid", INT), A("sig", INT))
 	R(131, "tgkill", A("tgid", INT), A("tid", INT), A("sig", INT))
 	R(132, "sigaltstack", A("ss", STACK_T), A("old_ss", STACK_T))
-	R(133, "rt_sigsuspend", A("mask", SIGSET_PTR))
+	R(133, "rt_sigsuspend", A("mask", SIGSET))
 	R(134, "rt_sigaction", A("signum", INT), A("act", SIGACTION), A("oldact", SIGACTION))
-	R(135, "rt_sigprocmask", A("how", INT), A("set", SIGSET_PTR), A("oldset", SIGSET_PTR), A("sigsetsize", SIZE_T))
-	R(136, "rt_sigpending", A("uset", SIGSET_PTR), A("sigsetsize", INT))
-	R(137, "rt_sigtimedwait", A("uthese", SIGSET_PTR), A("uinfo", SIGINFO), A("uts", TIMESPEC), A("sigsetsize", SIZE_T))
+	R(135, "rt_sigprocmask", A("how", INT), A("set", SIGSET), A("oldset", SIGSET), A("sigsetsize", SIZE_T))
+	R(136, "rt_sigpending", A("uset", SIGSET), A("sigsetsize", INT))
+	R(137, "rt_sigtimedwait", A("uthese", SIGSET), A("uinfo", SIGINFO), A("uts", TIMESPEC), A("sigsetsize", SIZE_T))
 	R(138, "rt_sigqueueinfo", A("pid", INT), A("sig", INT), A("uinfo", SIGINFO))
 	R(139, "rt_sigreturn", A("mask", INT))
 	R(140, "setpriority", A("which", INT), A("who", INT), A("prio", INT))
@@ -456,7 +464,7 @@ func init() {
 	R(438, "pidfd_getfd", A("pidfd", INT), A("fd", INT), A("flags", INT))
 	R(439, "faccessat2", A("dirfd", INT), A("pathname", STRING), A("flags", INT), A("mode", INT))
 	R(440, "process_madvise", A("pidfd", INT), A("vec", POINTER), A("vlen", INT), A("behavior", INT), A("flags", INT))
-	R(441, "epoll_pwait2", A("epfd", INT), A("events", POINTER), A("maxevents", INT), A("timeout", TIMESPEC), A("sigmask", SIGSET_PTR), A("sigsetsize", INT))
+	R(441, "epoll_pwait2", A("epfd", INT), A("events", POINTER), A("maxevents", INT), A("timeout", TIMESPEC), A("sigmask", SIGSET), A("sigsetsize", INT))
 	R(442, "mount_setattr", A("dfd", INT), A("path", STRING), A("flags", INT), A("uattr", POINTER), A("usize", INT))
 	R(443, "quotactl_fd", A("fd", INT), A("cmd", INT), A("id", INT), A("addr", POINTER))
 	R(444, "landlock_create_ruleset", A("attr", POINTER), A("size", INT), A("flags", INT))
