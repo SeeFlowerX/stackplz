@@ -223,6 +223,7 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                 u64 ptr = op_ctx->read_addr & 0xffffffffff;
                 bpf_probe_read_user(&ptr, sizeof(ptr), (void*) ptr);
                 save_to_submit_buf(p.event, (void *)&ptr, sizeof(ptr), op_ctx->save_index);
+                op_ctx->save_index += 1;
                 // 每次取出后使用前都要 fix 很坑
                 ptr = ptr & 0xffffffffff;
                 int status = save_str_to_buf(p.event, (void*) ptr, op_ctx->save_index);
