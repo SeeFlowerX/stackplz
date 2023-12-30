@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"stackplz/user/next/common"
+)
 
 type ConfigMap struct {
 	stackplz_pid     uint32
@@ -43,4 +46,18 @@ func (this *ArgFilter) Match(name string) bool {
 		return false
 	}
 	return name == fmt.Sprintf("f%d", this.Filter_index-1)
+}
+
+func (this *ArgFilter) ToNext() NextArgFilter {
+	t := NextArgFilter{}
+	t.Filter_type = this.Filter_type
+	t.Str_len = this.OldStr_len
+	t.Str_val = this.OldStr_val
+	return t
+}
+
+type NextArgFilter struct {
+	Filter_type uint32
+	Str_val     [common.MAX_STRCMP_LEN]byte
+	Str_len     uint32
 }

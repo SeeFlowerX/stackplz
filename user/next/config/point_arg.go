@@ -3,23 +3,33 @@ package config
 import (
 	"bytes"
 	"stackplz/user/next/argtype"
+	"stackplz/user/next/common"
 	. "stackplz/user/next/common"
 )
 
 type PointArg struct {
-	Name      string
-	RegIndex  uint32
-	TypeIndex uint32
-	PointType uint32
-	GroupType uint32
+	Name            string
+	RegIndex        uint32
+	TypeIndex       uint32
+	FilterIndexList []uint32
+	PointType       uint32
+	GroupType       uint32
 }
 
 func (this *PointArg) SetRegIndex(reg_index uint32) {
 	this.RegIndex = reg_index
 }
 
+func (this *PointArg) AddFilterIndex(filter_index uint32) {
+	this.FilterIndexList = append(this.FilterIndexList, filter_index)
+}
+
 func (this *PointArg) SetGroupType(group_type uint32) {
 	this.GroupType = group_type
+}
+
+func (this *PointArg) ReadMore() bool {
+	return this.PointType == EBPF_SYS_ALL || this.PointType == this.GroupType
 }
 
 func (this *PointArg) Parse(ptr uint64, buf *bytes.Buffer, point_type uint32) string {
@@ -39,9 +49,15 @@ func (this *PointArg) GetOpList() []uint32 {
 	}
 	op_list = append(op_list, argtype.Add_READ_SAVE_REG(uint64(this.RegIndex)).Index)
 	op_list = append(op_list, argtype.OPC_MOVE_REG_VALUE.Index)
-	if this.PointType == EBPF_SYS_ALL || this.PointType == this.GroupType {
+	if this.ReadMore() {
 		for _, op_key := range argtype.GetOpKeyList(this.TypeIndex) {
 			op_list = append(op_list, op_key)
+			if this.TypeIndex == common.STRING {
+				for _, v := range this.FilterIndexList {
+					filter_op := argtype.OPC_FILTER_STRING.NewValue(uint64(v))
+					op_list = append(op_list, filter_op.Index)
+				}
+			}
 		}
 	}
 	return op_list

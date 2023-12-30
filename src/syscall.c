@@ -190,17 +190,15 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                 break;
             case OP_FILTER_STRING: {
                 // 这里会受到循环次数的限制
+                // 实测 384 可以 512 不行 除非有什么更好的优化方法
+                op_ctx->skip_flag = 1; // 这里是 apply_filter 的意思
                 next_arg_filter_t* filter = bpf_map_lookup_elem(&next_arg_filter, &op->value);
                 if (unlikely(filter == NULL)) return 0;
                 bool is_match = next_strcmp_by_map(op_ctx, filter);
-                if (filter->filter_type == WHITELIST_FILTER) {
-                    if (!is_match) {
-                        op_ctx->skip_flag = 1;
-                    }
-                } else if (filter->filter_type == BLACKLIST_FILTER) {
-                    if (is_match) {
-                        op_ctx->skip_flag = 1;
-                    }
+                if (filter->filter_type == WHITELIST_FILTER && is_match) {
+                        op_ctx->match_whitelist = 1;
+                } else if (filter->filter_type == BLACKLIST_FILTER && is_match) {
+                        op_ctx->match_blacklist = 1;
                 }
                 break;
             }
@@ -213,8 +211,7 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                     // 失败的情况存一个空数据 暂时没有遇到 有待测试
                     save_bytes_to_buf(p.event, 0, 0, op_ctx->save_index);
                 } else {
-                   op_ctx->str_start = old_off + sizeof(int) + 1;
-                   op_ctx->str_len = p.event->buf_off - op_ctx->str_start;
+                   op_ctx->str_len = p.event->buf_off - (old_off + sizeof(int) + 1);
                 }
                 op_ctx->save_index += 1;
                 break;
@@ -239,7 +236,22 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                 // bpf_printk("[stackplz] unknown op code:%d\n", op->code);
                 break;
         }
+        if (op_ctx->match_blacklist) break;
     }
+
+    // 跳过逻辑：
+    // 1. 不与任何白名单规则匹配，跳过
+    // 2. 与任意黑名单规则之一匹配，跳过
+    if (op_ctx->skip_flag == 1) {
+        if (op_ctx->match_whitelist == 0 || op_ctx->match_blacklist == 1) {
+            op_ctx->skip_flag = 1;
+        } else {
+            op_ctx->skip_flag = 0;
+        }
+        op_ctx->match_whitelist = 0;
+        op_ctx->match_blacklist = 0;
+    }
+
     return 0;
 }
 
@@ -455,6 +467,11 @@ int next_raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     op_ctx->op_key_index = 0;
 
     read_args(p, point_args, op_ctx, regs);
+
+    if (op_ctx->skip_flag) {
+        op_ctx->skip_flag = 0;
+        return 0;
+    }
 
     // 读取返回值
     u64 ret = READ_KERN(regs->regs[0]);

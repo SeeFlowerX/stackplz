@@ -6,6 +6,7 @@ import (
     "log"
     "os"
     "regexp"
+    "stackplz/user/next/common"
     next_config "stackplz/user/next/config"
     "stackplz/user/util"
     "strconv"
@@ -280,6 +281,7 @@ type SyscallConfig struct {
     logger           *log.Logger
     debug            bool
     arg_filter       *[]ArgFilter
+    next_arg_filter  *[]NextArgFilter
     Enable           bool
     TraceMode        uint32
     SyscallPointArgs []*SyscallPointArgs_T
@@ -374,6 +376,7 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
     }
     for _, v := range unique_items {
         var index_items []uint32
+        var next_index_items [][]uint32
         syscall_name := v
         items := strings.SplitN(syscall_name, ":", 2)
         if len(items) == 2 {
@@ -386,6 +389,20 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
                         index_items = append(index_items, arg_filter.Filter_index)
                     }
                 }
+            }
+
+            filter_groups := strings.Split(items[1], "|")
+            for _, filter_group := range filter_groups {
+                var items []uint32
+                filter_names := strings.Split(filter_group, ".")
+                for _, filter_name := range filter_names {
+                    for _, arg_filter := range *this.arg_filter {
+                        if arg_filter.Match(filter_name) {
+                            items = append(items, arg_filter.Filter_index)
+                        }
+                    }
+                }
+                next_index_items = append(next_index_items, items)
             }
         }
         point := GetWatchPointByName(syscall_name)
@@ -406,7 +423,36 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
             }
         }
         if gconfig.Next {
-            this.NextPointArgs = append(this.NextPointArgs, next_config.GetSyscallPointByName(syscall_name))
+            point := next_config.GetSyscallPointByName(syscall_name)
+            for i, items := range next_index_items {
+                str_a_idx := 0
+                for _, point_arg := range point.EnterPointArgs {
+                    if point_arg.TypeIndex == common.STRING {
+                        if str_a_idx == i {
+                            for _, filter_index := range items {
+                                if point_arg.ReadMore() {
+                                    point_arg.AddFilterIndex(filter_index)
+                                }
+                            }
+                        }
+                        str_a_idx += 1
+                    }
+                }
+                str_b_idx := 0
+                for _, point_arg := range point.ExitPointArgs {
+                    if point_arg.TypeIndex == common.STRING {
+                        if str_b_idx == i {
+                            for _, filter_index := range items {
+                                if point_arg.ReadMore() {
+                                    point_arg.AddFilterIndex(filter_index)
+                                }
+                            }
+                        }
+                        str_b_idx += 1
+                    }
+                }
+            }
+            this.NextPointArgs = append(this.NextPointArgs, point)
         }
         this.SyscallPointArgs = append(this.SyscallPointArgs, point_args)
         this.SysWhitelist = append(this.SysWhitelist, uint32(nr_point.NR))

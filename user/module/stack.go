@@ -390,6 +390,28 @@ func (this *MStack) update_arg_filter() {
     }
 }
 
+func (this *MStack) update_next_arg_filter() {
+    map_name := "next_arg_filter"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    // w/white b/black
+    // 对于返回值以特定字符串开头的进行过滤 如果要对非首个字符串参数做过滤 那么通过 | 标识占位
+    // ./stackplz -n com.termux -s "openat:f0.f2,readlinkat:|f1" -f w:/data -f w:/apex -f w:/dev
+    for _, filter := range this.mconf.ArgFilterRule {
+        filter_key := uint64(filter.Filter_index)
+        filter_value := filter.ToNext()
+        err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
 func (this *MStack) update_syscall_point_args() {
     map_name := "syscall_point_args_map"
     bpf_map, err := this.FindMap(map_name)
@@ -542,11 +564,12 @@ func (this *MStack) updateFilter() (err error) {
     this.update_common_filter()
     this.update_child_parent()
     this.update_thread_filter()
-    this.update_arg_filter()
     this.update_stack_config()
     if this.mconf.Next {
+        this.update_next_arg_filter()
         this.update_next_syscall_config()
     } else {
+        this.update_arg_filter()
         this.update_syscall_config()
     }
     return nil

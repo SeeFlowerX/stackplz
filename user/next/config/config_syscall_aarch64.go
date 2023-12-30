@@ -103,6 +103,12 @@ func (this *SyscallPoints) Dup(nr uint32, name string) bool {
 	return is_dup
 }
 
+func (this *SyscallPoints) ShowInfo() {
+	for _, point := range this.points {
+		fmt.Printf("[%s] count: %d %d\n", point.Name, point.GetEnterConfig().OpCount, point.GetExitConfig().OpCount)
+	}
+}
+
 func (this *SyscallPoints) Add(point *SyscallPoint) {
 	this.points = append(this.points, point)
 }
