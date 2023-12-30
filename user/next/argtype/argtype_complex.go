@@ -723,8 +723,6 @@ func r_MSGHDR() IArgType {
 	at.AddOp(OPC_FOR_BREAK)
 	at_iovec := GetArgType(IOVEC)
 	at.AddOpList(GetArgType(IOVEC))
-	// iovec := GetArgType("iovec")
-	// this.OpList = append(this.OpList, iovec.GetOpList()...)
 	at.AddOp(OPC_MOVE_TMP_VALUE)
 	at.AddOp(OPC_ADD_OFFSET.NewValue(uint64(at_iovec.GetSize())))
 	at.AddOp(OPC_FOR_BREAK)
