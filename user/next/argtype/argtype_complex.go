@@ -719,8 +719,9 @@ func r_MSGHDR() IArgType {
 	// 由于结构体直接可以取到长度 这里就不再保存一次了
 	// at.AddOp(OPC_SAVE_POINTER)
 	at.AddOp(BuildReadPtrAddr(uint64(unsafe.Offsetof(t.Iov))))
-	at.AddOp(OPC_SET_TMP_VALUE)
+	// 说起来测试好几个软件 sendmsg,recvmsg 没有遇到过 iovlen 超过 2 的情况
 	at.AddOp(OPC_FOR_BREAK)
+	at.AddOp(OPC_SET_TMP_VALUE)
 	at_iovec := GetArgType(IOVEC)
 	at.AddOpList(GetArgType(IOVEC))
 	at.AddOp(OPC_MOVE_TMP_VALUE)
