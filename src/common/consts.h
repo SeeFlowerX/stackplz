@@ -5,8 +5,8 @@
 #define MAX_COUNT 20
 #define MAX_FILTER_COUNT 6
 #define MAX_PATH_COMPONENTS   48
-#define MAX_OP_COUNT 512
-#define MAX_LOOP_COUNT 30
+#define MAX_OP_COUNT 192
+#define MAX_LOOP_COUNT 32
 #define MAX_STRCMP_LEN 256
 
 // clang-format off

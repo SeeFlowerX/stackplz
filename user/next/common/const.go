@@ -1,8 +1,8 @@
 package common
 
 const MAX_IOV_COUNT = 6
-const MAX_LOOP_COUNT = 30
-const MAX_OP_COUNT = 512
+const MAX_LOOP_COUNT = 32
+const MAX_OP_COUNT = 192
 const MAX_BUF_READ_SIZE = 4096
 
 const (

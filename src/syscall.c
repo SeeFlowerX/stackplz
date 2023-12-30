@@ -189,19 +189,19 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                 op_ctx->save_index += 1;
                 break;
             case OP_FILTER_STRING: {
-                // // 这里会受到循环次数的限制
-                // next_arg_filter_t* filter = bpf_map_lookup_elem(&next_arg_filter, &op->value);
-                // if (unlikely(filter == NULL)) return 0;
-                // bool is_match = next_strcmp_by_map(op_ctx, filter);
-                // if (filter->filter_type == WHITELIST_FILTER) {
-                //     if (!is_match) {
-                //         op_ctx->skip_flag = 1;
-                //     }
-                // } else if (filter->filter_type == BLACKLIST_FILTER) {
-                //     if (is_match) {
-                //         op_ctx->skip_flag = 1;
-                //     }
-                // }
+                // 这里会受到循环次数的限制
+                next_arg_filter_t* filter = bpf_map_lookup_elem(&next_arg_filter, &op->value);
+                if (unlikely(filter == NULL)) return 0;
+                bool is_match = next_strcmp_by_map(op_ctx, filter);
+                if (filter->filter_type == WHITELIST_FILTER) {
+                    if (!is_match) {
+                        op_ctx->skip_flag = 1;
+                    }
+                } else if (filter->filter_type == BLACKLIST_FILTER) {
+                    if (is_match) {
+                        op_ctx->skip_flag = 1;
+                    }
+                }
                 break;
             }
             case OP_SAVE_STRING:
