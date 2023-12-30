@@ -10,7 +10,6 @@ type PointArg struct {
 	Name      string
 	RegIndex  uint32
 	TypeIndex uint32
-	OpList    []uint32
 	PointType uint32
 	GroupType uint32
 }
@@ -32,18 +31,20 @@ func (this *PointArg) Parse(ptr uint64, buf *bytes.Buffer, point_type uint32) st
 }
 
 func (this *PointArg) GetOpList() []uint32 {
+	// op_list 使用时生成即可
+	op_list := []uint32{}
 	// sys exit 取出的返回值要特殊处理 这里没用实际的操作
 	if this.RegIndex == REG_ARM64_MAX {
-		return this.OpList
+		return op_list
 	}
-	this.OpList = append(this.OpList, argtype.Add_READ_SAVE_REG(uint64(this.RegIndex)).Index)
-	this.OpList = append(this.OpList, argtype.OPC_MOVE_REG_VALUE.Index)
+	op_list = append(op_list, argtype.Add_READ_SAVE_REG(uint64(this.RegIndex)).Index)
+	op_list = append(op_list, argtype.OPC_MOVE_REG_VALUE.Index)
 	if this.PointType == EBPF_SYS_ALL || this.PointType == this.GroupType {
 		for _, op_key := range argtype.GetOpKeyList(this.TypeIndex) {
-			this.OpList = append(this.OpList, op_key)
+			op_list = append(op_list, op_key)
 		}
 	}
-	return this.OpList
+	return op_list
 }
 
 func (this *PointArg) Clone() *PointArg {
@@ -51,7 +52,6 @@ func (this *PointArg) Clone() *PointArg {
 	p.Name = this.Name
 	p.RegIndex = this.RegIndex
 	p.TypeIndex = this.TypeIndex
-	p.OpList = append(p.OpList, this.OpList...)
 	p.PointType = this.PointType
 	return &p
 }
