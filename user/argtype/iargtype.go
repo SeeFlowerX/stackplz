@@ -3,7 +3,7 @@ package argtype
 import (
 	"bytes"
 	"fmt"
-	. "stackplz/user/next/common"
+	. "stackplz/user/common"
 )
 
 type IArgType interface {

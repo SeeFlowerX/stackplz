@@ -4,25 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"stackplz/user/next/argtype"
-	. "stackplz/user/next/common"
+	"stackplz/user/argtype"
+	. "stackplz/user/common"
 	"strings"
 )
-
-type PointOpKeyConfig struct {
-	OpCount   uint32
-	OpKeyList [MAX_OP_COUNT]uint32
-}
-
-func (this *PointOpKeyConfig) AddPointArg(point_arg *PointArg) {
-	for _, op_key := range point_arg.GetOpList() {
-		this.OpKeyList[this.OpCount] = op_key
-		this.OpCount++
-		if this.OpCount == MAX_OP_COUNT {
-			panic("PointOpKeyConfig->AddPointArg failed, need increase MAX_OP_COUNT")
-		}
-	}
-}
 
 type SyscallPoint struct {
 	Nr             uint32
@@ -145,6 +130,10 @@ func GetSyscallPointByNR(nr uint32) *SyscallPoint {
 
 func GetAllPoints() []*SyscallPoint {
 	return aarch64_syscall_points.GetAllPoints()
+}
+
+func GetALLOpList() map[uint32]argtype.BaseOpConfig {
+	return argtype.GetALLOpList()
 }
 
 var aarch64_syscall_points = SyscallPoints{}

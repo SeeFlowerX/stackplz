@@ -44,7 +44,6 @@ type GlobalConfig struct {
     ExternalBTF  string
     SysCall      string
     NoSysCall    string
-    Next         bool
 }
 
 func NewGlobalConfig() *GlobalConfig {

@@ -21,7 +21,7 @@ import (
     "golang.org/x/sys/unix"
 )
 
-type MStack struct {
+type MSyscall struct {
     Module
     bpfManager        *manager.Manager
     bpfManagerOptions manager.Options
@@ -31,20 +31,21 @@ type MStack struct {
     hookBpfFile string
 }
 
-func (this *MStack) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
+func (this *MSyscall) Init(ctx context.Context, logger *log.Logger, conf config.IConfig) error {
     this.Module.Init(ctx, logger, conf)
     this.Module.SetChild(this)
     this.eventMaps = make([]*ebpf.Map, 0, 2)
     this.eventFuncMaps = make(map[*ebpf.Map]event.IEventStruct)
-    this.hookBpfFile = "stack.o"
+    this.hookBpfFile = "syscall.o"
+
     return nil
 }
 
-func (this *MStack) GetConf() config.IConfig {
+func (this *MSyscall) GetConf() config.IConfig {
     return this.mconf
 }
 
-func (this *MStack) setupManager() error {
+func (this *MSyscall) setupManager() error {
     maps := []*manager.Map{}
     probes := []*manager.Probe{}
 
@@ -59,35 +60,17 @@ func (this *MStack) setupManager() error {
     }
     probes = append(probes, fork_probe)
 
-    for i, uprobe_point := range this.mconf.StackUprobeConf.Points {
-        // stack hook 配置
-        sym := uprobe_point.Symbol
-        var stack_probe *manager.Probe
-        if sym == "" {
-            sym = util.RandStringBytes(8)
-            stack_probe = &manager.Probe{
-                Section:          fmt.Sprintf("uprobe/stack_%d", i),
-                EbpfFuncName:     fmt.Sprintf("probe_stack_%d", i),
-                AttachToFuncName: sym,
-                BinaryPath:       uprobe_point.LibPath,
-                // 这个是相对于库文件基址的偏移
-                UAddress: uprobe_point.Offset,
-            }
-        } else {
-            stack_probe = &manager.Probe{
-                Section:          fmt.Sprintf("uprobe/stack_%d", i),
-                EbpfFuncName:     fmt.Sprintf("probe_stack_%d", i),
-                AttachToFuncName: sym,
-                BinaryPath:       uprobe_point.LibPath,
-                // 这个是相对于符号的偏移
-                UprobeOffset: uprobe_point.Offset,
-            }
-        }
-        if this.mconf.Debug {
-            this.logger.Printf("uprobe uprobe_index:%d hook %s", i, uprobe_point.String())
-        }
-        probes = append(probes, stack_probe)
+    // syscall hook 配置
+    sys_enter_probe := &manager.Probe{
+        Section:      "raw_tracepoint/sys_enter",
+        EbpfFuncName: "raw_syscalls_sys_enter",
     }
+    sys_exit_probe := &manager.Probe{
+        Section:      "raw_tracepoint/sys_exit",
+        EbpfFuncName: "raw_syscalls_sys_exit",
+    }
+    probes = append(probes, sys_enter_probe)
+    probes = append(probes, sys_exit_probe)
 
     this.bpfManager = &manager.Manager{
         Probes: probes,
@@ -96,7 +79,7 @@ func (this *MStack) setupManager() error {
     return nil
 }
 
-func (this *MStack) setupManagerOptions() {
+func (this *MSyscall) setupManagerOptions() {
     // 对于没有开启 CONFIG_DEBUG_INFO_BTF 的加载额外的 btf.Spec
     if this.mconf.ExternalBTF != "" {
         byteBuf, err := assets.Asset("user/assets/" + this.mconf.ExternalBTF)
@@ -135,19 +118,19 @@ func (this *MStack) setupManagerOptions() {
     }
 }
 
-func (this *MStack) Start() error {
+func (this *MSyscall) Start() error {
     return this.start()
 }
 
-func (this *MStack) Clone() IModule {
-    mod := new(MStack)
+func (this *MSyscall) Clone() IModule {
+    mod := new(MSyscall)
     mod.name = this.name
     mod.mType = this.mType
     return mod
 }
 
-func (this *MStack) start() error {
-    // 初始化uprobe相关设置
+func (this *MSyscall) start() error {
+    // 初始化相关设置
     err := this.setupManager()
     if err != nil {
         return err
@@ -187,7 +170,7 @@ func (this *MStack) start() error {
     return nil
 }
 
-func (this *MStack) update_map(map_name string, filter_key uint32, filter_value interface{}) {
+func (this *MSyscall) update_map(map_name string, filter_key uint32, filter_value interface{}) {
     bpf_map, err := this.FindMap(map_name)
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
@@ -201,7 +184,7 @@ func (this *MStack) update_map(map_name string, filter_key uint32, filter_value 
     }
 }
 
-func (this *MStack) update_base_config() {
+func (this *MSyscall) update_base_config() {
     // 更新 base_config 用作基础的过滤 比如排除 stackplz 自身相关的调用
     var filter_key uint32 = 0
     map_name := "base_config"
@@ -209,7 +192,7 @@ func (this *MStack) update_base_config() {
     this.update_map(map_name, filter_key, unsafe.Pointer(&filter_value))
 }
 
-func (this *MStack) update_common_list(items []uint32, offset uint32) {
+func (this *MSyscall) update_common_list(items []uint32, offset uint32) {
     map_name := "common_list"
     bpf_map, err := this.FindMap(map_name)
     if err != nil {
@@ -231,7 +214,7 @@ func (this *MStack) update_common_list(items []uint32, offset uint32) {
     }
 }
 
-func (this *MStack) list2string(items []uint32) string {
+func (this *MSyscall) list2string(items []uint32) string {
     var results []string
     for _, v := range items {
         results = append(results, fmt.Sprintf("%d", v))
@@ -239,7 +222,7 @@ func (this *MStack) list2string(items []uint32) string {
     return strings.Join(results, ",")
 }
 
-func (this *MStack) update_common_filter() {
+func (this *MSyscall) update_common_filter() {
     this.update_common_list(this.mconf.UidWhitelist, util.UID_WHITELIST_START)
     this.update_common_list(this.mconf.UidBlacklist, util.UID_BLACKLIST_START)
     this.update_common_list(this.mconf.PidWhitelist, util.PID_WHITELIST_START)
@@ -255,7 +238,7 @@ func (this *MStack) update_common_filter() {
     this.update_map(map_name, filter_key, unsafe.Pointer(&filter_value))
 }
 
-func (this *MStack) update_child_parent() {
+func (this *MSyscall) update_child_parent() {
     // 这个可以合并到 common_list 后面改进
     map_name := "child_parent_map"
     for _, v := range this.mconf.PidWhitelist {
@@ -263,7 +246,7 @@ func (this *MStack) update_child_parent() {
     }
 }
 
-func (this *MStack) update_thread_filter() {
+func (this *MSyscall) update_thread_filter() {
     map_name := "thread_filter"
     bpf_map, err := this.FindMap(map_name)
     if err != nil {
@@ -326,7 +309,7 @@ func (this *MStack) update_thread_filter() {
     }
 }
 
-func (this *MStack) update_arg_filter() {
+func (this *MSyscall) update_arg_filter() {
     map_name := "arg_filter"
     bpf_map, err := this.FindMap(map_name)
     if err != nil {
@@ -348,7 +331,55 @@ func (this *MStack) update_arg_filter() {
     }
 }
 
-func (this *MStack) update_op_list() {
+func (this *MSyscall) update_sysenter_point_args() {
+    map_name := "sysenter_point_args"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    var syscall_Points []*config.SyscallPoint
+    if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
+        syscall_Points = config.GetAllPoints()
+    } else {
+        syscall_Points = this.mconf.SysCallConf.PointArgs
+    }
+    for _, syscall_point := range syscall_Points {
+        point_config := syscall_point.GetEnterConfig()
+        err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
+func (this *MSyscall) update_sysexit_point_args() {
+    map_name := "sysexit_point_args"
+    bpf_map, err := this.FindMap(map_name)
+    if err != nil {
+        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
+    }
+    var syscall_Points []*config.SyscallPoint
+    if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
+        syscall_Points = config.GetAllPoints()
+    } else {
+        syscall_Points = this.mconf.SysCallConf.PointArgs
+    }
+    for _, syscall_point := range syscall_Points {
+        point_config := syscall_point.GetExitConfig()
+        err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
+        if err != nil {
+            panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
+        }
+    }
+    if this.mconf.Debug {
+        this.logger.Printf("update %s success", map_name)
+    }
+}
+
+func (this *MSyscall) update_op_list() {
     map_name := "op_list"
     bpf_map, err := this.FindMap(map_name)
     if err != nil {
@@ -366,52 +397,39 @@ func (this *MStack) update_op_list() {
     }
 }
 
-func (this *MStack) update_stack_config() {
-    if !this.mconf.StackUprobeConf.IsEnable() {
-        return
-    }
-    map_name := "uprobe_point_args"
-    bpf_map, err := this.FindMap(map_name)
-    if err != nil {
-        panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
-    }
-    for _, uprobe_point := range this.mconf.StackUprobeConf.Points {
-        var filter_key uint32 = uprobe_point.Index
-        filter_value := uprobe_point.GetConfig()
-        err := bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
-        if err != nil {
-            panic(fmt.Sprintf("update [%s] failed, filter_key:%d, err:%v", map_name, filter_key, err))
-        }
-    }
-    if this.mconf.Debug {
-        this.logger.Printf("update %s success", map_name)
-    }
-}
-
-func (this *MStack) updateFilter() (err error) {
+func (this *MSyscall) updateFilter() (err error) {
     this.update_base_config()
     this.update_common_filter()
     this.update_child_parent()
     this.update_thread_filter()
-    this.update_stack_config()
     this.update_arg_filter()
+    this.update_sysenter_point_args()
+    this.update_sysexit_point_args()
     this.update_op_list()
+    this.update_common_list(this.mconf.SysCallConf.SysWhitelist, util.SYS_WHITELIST_START)
+    this.update_common_list(this.mconf.SysCallConf.SysBlacklist, util.SYS_BLACKLIST_START)
+    if this.mconf.Debug {
+        this.logger.Printf("SysCallConf:%s", this.mconf.SysCallConf.Info())
+    }
+
     return nil
 }
 
-func (this *MStack) initDecodeFun() error {
+func (this *MSyscall) initDecodeFun() error {
+
     EventsMap, err := this.FindMap("events")
     if err != nil {
         return err
     }
     this.eventMaps = append(this.eventMaps, EventsMap)
-    // 根据设置添加 map 不然即使不使用的map也会创建缓冲区
-    uprobestackEvent := &event.UprobeEvent{}
-    this.eventFuncMaps[EventsMap] = uprobestackEvent
+
+    syscallEvent := &event.SyscallEvent{}
+    this.eventFuncMaps[EventsMap] = syscallEvent
+
     return nil
 }
 
-func (this *MStack) FindMap(map_name string) (*ebpf.Map, error) {
+func (this *MSyscall) FindMap(map_name string) (*ebpf.Map, error) {
     em, found, err := this.bpfManager.GetMap(map_name)
     if err != nil {
         return em, err
@@ -422,18 +440,18 @@ func (this *MStack) FindMap(map_name string) (*ebpf.Map, error) {
     return em, err
 }
 
-func (this *MStack) Events() []*ebpf.Map {
+func (this *MSyscall) Events() []*ebpf.Map {
     return this.eventMaps
 }
 
-func (this *MStack) DecodeFun(em *ebpf.Map) (event.IEventStruct, bool) {
+func (this *MSyscall) DecodeFun(em *ebpf.Map) (event.IEventStruct, bool) {
     fun, found := this.eventFuncMaps[em]
     return fun, found
 }
 
 func init() {
-    mod := &MStack{}
-    mod.name = MODULE_NAME_STACK
-    mod.mType = PROBE_TYPE_UPROBE
+    mod := &MSyscall{}
+    mod.name = MODULE_NAME_SYSCALL
+    mod.mType = PROBE_TYPE_TRACEPOINT
     Register(mod)
 }

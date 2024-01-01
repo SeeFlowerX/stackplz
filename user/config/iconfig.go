@@ -1,9 +1,9 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"log"
+	. "stackplz/user/common"
 )
 
 type IConfig interface {
@@ -68,11 +68,25 @@ var RegsMagicMap map[string]uint32 = map[string]uint32{
 	"pc":  REG_ARM64_PC,
 }
 
-func ParseAsReg(reg string) (uint32, error) {
+func GetRegIndex(reg string) uint32 {
 	value, ok := RegsMagicMap[reg]
-	if ok {
-		return value, nil
-	} else {
-		return 0, errors.New(fmt.Sprintf("ParseAsReg failed =>%s<=", reg))
+	if !ok {
+		panic(fmt.Sprintf("ParseAsReg failed =>%s<=", reg))
+	}
+	return value
+}
+
+type PointOpKeyConfig struct {
+	OpCount   uint32
+	OpKeyList [MAX_OP_COUNT]uint32
+}
+
+func (this *PointOpKeyConfig) AddPointArg(point_arg *PointArg) {
+	for _, op_key := range point_arg.GetOpList() {
+		this.OpKeyList[this.OpCount] = op_key
+		this.OpCount++
+		if this.OpCount == MAX_OP_COUNT {
+			panic("PointOpKeyConfig->AddPointArg failed, need increase MAX_OP_COUNT")
+		}
 	}
 }

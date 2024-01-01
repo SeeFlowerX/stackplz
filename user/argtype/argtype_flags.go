@@ -2,7 +2,7 @@ package argtype
 
 import (
 	"fmt"
-	. "stackplz/user/next/common"
+	. "stackplz/user/common"
 	"strings"
 )
 

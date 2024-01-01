@@ -216,32 +216,7 @@ static __always_inline str_buf_t *make_str_buf() {
     return bpf_map_lookup_elem(&str_buf_map, &id);
 }
 
-static __always_inline u32 strcmp_by_map(arg_filter_t *filter_config, buf_t *string_p) {
-    u32 str_len = 256;
-    if (str_len > filter_config->oldstr_len) {
-        str_len = filter_config->oldstr_len;
-    }
-    str_buf_t* str_value = make_str_buf();
-    if (str_value == NULL) {
-        return 0;
-    }
-    if (str_len > 0) {
-        // 必须重置
-        __builtin_memset(str_value->str_val, 0, sizeof(str_value->str_val));
-        bpf_probe_read(str_value->str_val, str_len, string_p->buf);
-    }
-    // map的key最好是一个不变的内容 否则会引起一些奇怪的冲突
-    bpf_map_update_elem(&str_buf, &filter_config->oldstr_val, &str_len, BPF_ANY);
-    u32* str_len_value = bpf_map_lookup_elem(&str_buf, str_value);
-
-    if (str_len_value == NULL) {
-        return 0;
-    }
-    bpf_map_delete_elem(&str_buf, str_value);
-    return 1;
-}
-
-static __always_inline u32 next_strcmp_by_map(op_ctx_t* op_ctx, next_arg_filter_t *filter) {
+static __always_inline u32 strcmp_by_map(op_ctx_t* op_ctx, arg_filter_t *filter) {
     str_buf_t* str_value = make_str_buf();
     if (unlikely(str_value == NULL)) return 0;
     __builtin_memset(str_value->str_val, 0, sizeof(str_value->str_val));

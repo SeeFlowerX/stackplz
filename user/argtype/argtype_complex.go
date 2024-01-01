@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"reflect"
-	. "stackplz/user/next/common"
+	. "stackplz/user/common"
 	"stackplz/user/util"
 	"strings"
 	"syscall"
@@ -362,8 +362,21 @@ func r_BUFFER_X2() IArgType {
 	return at
 }
 
-func r_BUFFER_LEN(length uint32) IArgType {
+func R_BUFFER_REG(reg_index uint32) IArgType {
+	at := RegisterNew(fmt.Sprintf("buffer_reg_%d", reg_index), BUFFER)
+	at.CleanOpList()
+	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(MAX_BUF_READ_SIZE)))
+	at.AddOp(BuildReadRegLen(uint64(reg_index)))
+	at.AddOp(OPC_SAVE_STRUCT)
+	return at
+}
+
+func R_BUFFER_LEN(length uint32) IArgType {
+	if length > MAX_BUF_READ_SIZE {
+		panic(fmt.Sprintf("max buf read size:%d, provided:%d", MAX_BUF_READ_SIZE, length))
+	}
 	at := RegisterNew(fmt.Sprintf("buffer_len_%d", length), BUFFER)
+	at.CleanOpList()
 	at.SetSize(length)
 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(length)))
 	at.AddOp(OPC_SAVE_STRUCT)

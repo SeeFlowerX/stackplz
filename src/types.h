@@ -16,35 +16,20 @@ typedef struct args {
     u32 flag;
 } args_t;
 
-typedef struct match_ctx {
-    u32 apply_filter;
-    u32 match_whitelist;
-    u32 match_blacklist;
-} match_ctx_t;
-
 typedef struct thread_name {
     char name[16];
 } thread_name_t;
 
-typedef struct arg_filter {
-    u32 filter_type;
-    u32 filter_index;
-    u64 num_val;
-    char oldstr_val[256];
-    u32 oldstr_len;
-    char newstr_val[256];
-    u32 newstr_len;
-} arg_filter_t;
 
 typedef struct str_buf {
     char str_val[256];
 } str_buf_t;
 
-typedef struct next_arg_filter {
+typedef struct arg_filter {
     u32 filter_type;
     char str_val[256];
     u32 str_len;
-} next_arg_filter_t;
+} arg_filter_t;
 
 enum arg_filter_e
 {

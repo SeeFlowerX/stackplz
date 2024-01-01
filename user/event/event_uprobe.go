@@ -4,6 +4,7 @@ import (
     "encoding/binary"
     "encoding/json"
     "fmt"
+    "stackplz/user/argtype"
     "stackplz/user/config"
     "stackplz/user/util"
     "strings"
@@ -35,37 +36,38 @@ func (this *UprobeEvent) ParseEvent() (IEventStruct, error) {
 }
 
 func (this *UprobeEvent) ParseContext() (err error) {
+    if this.EventId != UPROBE_ENTER {
+        panic(fmt.Sprintf("UprobeEvent.ParseContext() failed, EventId:%d", this.EventId))
+    }
+
+    // this.logger.Printf("ParseContext EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
+
     if err = binary.Read(this.buf, binary.LittleEndian, &this.probe_index); err != nil {
         panic(err)
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
         panic(err)
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
         panic(err)
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
+    if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
         panic(err)
     }
     // 根据预设索引解析参数
     if (this.probe_index.Value + 1) > uint32(len(this.mconf.StackUprobeConf.Points)) {
         panic(fmt.Sprintf("probe_index %d bigger than points", this.probe_index.Value))
     }
-    this.uprobe_point = &this.mconf.StackUprobeConf.Points[this.probe_index.Value]
+    this.uprobe_point = this.mconf.StackUprobeConf.Points[this.probe_index.Value]
+
     var results []string
-    for _, point_arg := range this.uprobe_point.Args {
-        var ptr config.Arg_reg
-        if err = binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
+    for _, point_arg := range this.uprobe_point.PointArgs {
+        var ptr argtype.Arg_reg
+        if err := binary.Read(this.buf, binary.LittleEndian, &ptr); err != nil {
             panic(err)
         }
-        base_arg_str := fmt.Sprintf("%s=0x%x", point_arg.ArgName, ptr.Address)
-        point_arg.SetValue(base_arg_str)
-        if point_arg.BaseType == config.TYPE_NUM {
-            results = append(results, point_arg.ArgValue)
-            continue
-        }
-        this.ParseArgByType(&point_arg, ptr)
-        results = append(results, point_arg.ArgValue)
+        arg_fmt := point_arg.Parse(ptr.Address, this.buf, config.EBPF_UPROBE_ENTER)
+        results = append(results, fmt.Sprintf("%s=%s", point_arg.Name, arg_fmt))
     }
     this.arg_str = "(" + strings.Join(results, ", ") + ")"
     this.ParsePadding()
@@ -131,7 +133,7 @@ func (this *UprobeEvent) String() string {
     }
 
     var s string
-    s = fmt.Sprintf("[%s] %s%s %s %s SP:0x%x", this.GetUUID(), this.uprobe_point.PointName, this.arg_str, lr_str, pc_str, this.sp.Address)
+    s = fmt.Sprintf("[%s] %s%s %s %s SP:0x%x", this.GetUUID(), this.uprobe_point.Name, this.arg_str, lr_str, pc_str, this.sp.Address)
 
     return s + stack_str
 }

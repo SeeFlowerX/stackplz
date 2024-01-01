@@ -6,8 +6,8 @@ import (
     "log"
     "os"
     "regexp"
-    "stackplz/user/next/common"
-    next_config "stackplz/user/next/config"
+    "stackplz/user/argtype"
+    . "stackplz/user/common"
     "stackplz/user/util"
     "strconv"
     "strings"
@@ -19,7 +19,7 @@ type StackUprobeConfig struct {
     arg_filter *[]ArgFilter
     LibName    string
     LibPath    string
-    Points     []UprobeArgs
+    Points     []*UprobeArgs
 }
 
 func ParseStrAsNum(v string) (uint64, error) {
@@ -31,7 +31,7 @@ func ParseStrAsNum(v string) (uint64, error) {
     return op_value, nil
 }
 
-func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
+func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg) error {
     // ./stackplz -n icu.nullptr.nativetest -l libc.so -w 0x5B950[*int:x20,*int:x20+4] -w 0x5B7BC[*int:x20,*int:x20+4]
     // ./stackplz -n com.xingin.xhs -l libart.so -w 0x4B8A74[str:x22,str:x8] --tname com.xingin.xhs --reg x28
     // str
@@ -39,10 +39,9 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
     // buf:64:sp+0x20-0x8
     // 解析为单个参数的读取配置 -> 在何处读、读取类型
     var err error = nil
-    var arg_type ArgType
     var to_ptr bool = false
     var type_name string = ""
-    var arg_index string = ""
+    var read_op_str string = ""
     var arg_filter string = ""
     var items []string
     // 参数是否为指针
@@ -58,9 +57,9 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
         type_name = items[0]
     } else if len(items) == 2 {
         type_name = items[0]
-        arg_index = items[1]
+        read_op_str = items[1]
     } else {
-        return arg_type, errors.New(fmt.Sprintf("parse arg_str:%s failed, err:%v", arg_str, err))
+        return errors.New(fmt.Sprintf("parse arg_str:%s failed, err:%v", arg_str, err))
     }
     // 提取参数过滤规则
     filter_items := strings.SplitN(type_name, ".", 2)
@@ -70,77 +69,81 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
     }
     switch type_name {
     case "int":
-        arg_type = EXP_INT
+        if to_ptr {
+            point_arg.SetTypeIndex(INT_PTR)
+        } else {
+            point_arg.SetTypeIndex(INT)
+        }
     case "uint":
-        arg_type = UINT32
+        if to_ptr {
+            point_arg.SetTypeIndex(UINT_PTR)
+        } else {
+            point_arg.SetTypeIndex(UINT)
+        }
     case "int64":
-        arg_type = INT64
+        point_arg.SetTypeIndex(INT64)
     case "uint64":
-        arg_type = UINT64
+        point_arg.SetTypeIndex(UINT64)
     case "str":
-        arg_type = STRING
+        point_arg.SetTypeIndex(STRING)
         filter_names := strings.Split(arg_filter, ".")
-        for i, filter_name := range filter_names {
-            if i >= MAX_FILTER_COUNT {
-                break
-            }
+        for _, filter_name := range filter_names {
             for _, arg_filter := range *this.arg_filter {
                 if arg_filter.Match(filter_name) {
-                    arg_type.FilterIdx[i] = arg_filter.Filter_index
+                    point_arg.AddFilterIndex(arg_filter.Filter_index)
                 }
             }
         }
+        point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     case "ptr":
-        arg_type = POINTER
+        point_arg.SetTypeIndex(POINTER)
     case "buf":
-        arg_type = BUFFER_T.NewReadCount(256)
         // 对于 buf 类型 其参数读取索引位于最后
-        buf_items := strings.SplitN(arg_index, ":", 2)
+        // 0x89ab[buf:64,int] 命中hook点时读取 x0 处64字节数据 读取 x1 值
+        // 0x89ab[buf:64:sp+0x20-0x8] 命中hook点时读取 sp+0x20-0x8 处64字节数据
+        // 0x89ab[buf:x1:sp+0x20-0x8] 命中hook点时读取 sp+0x20-0x8 处x1寄存器大小字节数据
+        // 命令行读取的时候默认读取大小为 256 可以指定为比这个更大的数 但是不能超过 4096
+        at := argtype.R_BUFFER_LEN(256)
+        buf_items := strings.SplitN(read_op_str, ":", 2)
         var size_str = ""
         if len(buf_items) == 1 {
             size_str = buf_items[0]
-            arg_index = ""
+            read_op_str = ""
         } else if len(buf_items) == 2 {
             size_str = buf_items[0]
-            arg_index = buf_items[1]
+            read_op_str = buf_items[1]
         } else {
-            return arg_type, errors.New(fmt.Sprintf("parse buf arg_str:%s failed", arg_str))
+            return errors.New(fmt.Sprintf("parse buf arg_str:%s failed", arg_str))
         }
-        if size_str == "" {
-            break
-        }
-        // base 指定为 0 的时候 会自动判断是不是16进制 但必须有 0x/0X 前缀
-        size, err := strconv.ParseUint(size_str, 0, 32)
-        if err == nil {
-            arg_type.SetReadCount(uint32(size))
-        } else {
-            count_index, err := ParseAsReg(size_str)
-            if err != nil {
-                return arg_type, errors.New(fmt.Sprintf("parse size_str:%s as hex/reg failed, arg_str:%s", size_str, arg_str))
+        if size_str != "" {
+            // base 指定为 0 的时候 会自动判断是不是16进制 但必须有 0x/0X 前缀
+            size, err := strconv.ParseUint(size_str, 0, 32)
+            if err == nil {
+                // 以指定长度作为读取大小
+                at = argtype.R_BUFFER_LEN(uint32(size))
+            } else {
+                // 以寄存器的值作为读取大小
+                at = argtype.R_BUFFER_REG(GetRegIndex(size_str))
             }
-            arg_type.SetCountIndex(count_index)
         }
-    case "pattr":
-        arg_type = PTHREAD_ATTR
+        point_arg.SetTypeIndex(at.GetTypeIndex())
+        // 这个设定用于指示是否进一步读取和解析
+        point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     default:
-        err = errors.New(fmt.Sprintf("unsupported arg_type:%s", items[0]))
+        err = errors.New(fmt.Sprintf("unsupported type:%s", items[0]))
     }
     if err != nil {
-        return arg_type, err
+        return err
     }
-    if to_ptr {
-        // 实际上应该视作一个结构体
-        arg_type = arg_type.NewBaseType(TYPE_STRUCT)
-    }
-    if arg_index != "" {
-        arg_index, read_offset := ParseArgIndex(arg_index)
-        read_index, err := ParseAsReg(arg_index)
-        if err != nil {
-            return arg_type, err
-        }
-        arg_type.SetReadIndex(read_index)
+
+    if read_op_str != "" {
+        // read_op_str 0x12345[str:sp+0x20-0x8(+8(+16))]
+        // 即一系列 加、减、取指针 操作作为要读取类型的地址
+        // 后续写一个解析规则来处理
+        reg_name, read_offset := ParseArgIndex(read_op_str)
+        point_arg.SetRegIndex(GetRegIndex(reg_name))
         if read_offset != "" {
-            var offset uint64 = 0
+            var offset int64 = 0
             if strings.HasPrefix(read_offset, "+") {
                 op_add_items := strings.Split(read_offset, "+")
                 for _, v := range op_add_items {
@@ -151,17 +154,17 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
                     op_sub_items := strings.Split(v, "-")
                     op_value, err := ParseStrAsNum(op_sub_items[0])
                     if err != nil {
-                        return arg_type, err
+                        return err
                     }
-                    offset += op_value
+                    offset += int64(op_value)
                     if len(op_sub_items) > 1 {
                         for _, v2 := range op_sub_items[1:] {
                             v2 = strings.TrimSpace(v2)
                             op_value, err := ParseStrAsNum(v2)
                             if err != nil {
-                                return arg_type, err
+                                return err
                             }
-                            offset -= op_value
+                            offset -= int64(op_value)
                         }
                     }
                 }
@@ -175,28 +178,31 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string) (ArgType, error) {
                     op_add_items := strings.Split(v, "+")
                     op_value, err := ParseStrAsNum(op_add_items[0])
                     if err != nil {
-                        return arg_type, err
+                        return err
                     }
-                    offset -= op_value
+                    offset -= int64(op_value)
                     if len(op_add_items) > 1 {
                         for _, v2 := range op_add_items[1:] {
                             v2 = strings.TrimSpace(v2)
                             op_value, err := ParseStrAsNum(v2)
                             if err != nil {
-                                return arg_type, err
+                                return err
                             }
-                            offset += op_value
+                            offset += int64(op_value)
                         }
                     }
                 }
             } else {
-                return arg_type, errors.New(fmt.Sprintf("parse read_offset:%s failed", read_offset))
+                return errors.New(fmt.Sprintf("parse read_offset:%s failed", read_offset))
             }
-            arg_type.SetReadOffset(offset)
+            if offset > 0 {
+                point_arg.AddExtraOp(argtype.OPC_ADD_OFFSET.NewValue(uint64(offset)))
+            } else if offset < 0 {
+                point_arg.AddExtraOp(argtype.OPC_ADD_OFFSET.NewValue(uint64(offset)))
+            }
         }
     }
-    // fmt.Println("arg_type", arg_type.String())
-    return arg_type, err
+    return err
 }
 
 func (this *StackUprobeConfig) IsEnable() bool {
@@ -217,20 +223,17 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
 
     // strstr+0x0[str,str] 命中 strstr + 0x0 时将x0和x1读取为字符串
     // write[int,buf:128,int] 命中 write 时将x0读取为int、x1读取为字节数组、x2读取为int
-    // 0x89ab[buf:64,int] 命中hook点时读取 x0 处64字节数据 读取 x1 值
-    // 0x89ab[buf:64:sp+0x20-0x8] 命中hook点时读取 sp+0x20-0x8 处64字节数据
-    // 0x89ab[buf:x1:sp+0x20-0x8] 命中hook点时读取 sp+0x20-0x8 处x1寄存器大小字节数据
     for point_index, config_str := range configs {
         reg := regexp.MustCompile(`(\w+)(\+0x[[:xdigit:]]+)?(\[.+?\])?`)
         match := reg.FindStringSubmatch(config_str)
 
         if len(match) > 0 {
-            hook_point := UprobeArgs{}
+            hook_point := &UprobeArgs{}
             hook_point.Index = uint32(point_index)
             hook_point.Offset = 0x0
             hook_point.LibPath = this.LibPath
             sym_or_off := match[1]
-            hook_point.PointName = sym_or_off
+            hook_point.Name = sym_or_off
             if strings.HasPrefix(sym_or_off, "0x") {
                 offset, err := strconv.ParseUint(strings.TrimPrefix(sym_or_off, "0x"), 16, 64)
                 if err != nil {
@@ -256,13 +259,11 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
                 args := strings.Split(hook_point.ArgsStr, ",")
                 for arg_index, arg_str := range args {
                     arg_name := fmt.Sprintf("arg_%d", arg_index)
-                    arg := PointArg{arg_name, UPROBE_ENTER_READ, INT, "???"}
-                    arg_type, err := this.ParseArgType(arg_str)
-                    if err != nil {
+                    point_arg := NewUprobePointArg(arg_name, POINTER, uint32(arg_index))
+                    if err := this.ParseArgType(arg_str, point_arg); err != nil {
                         return err
                     }
-                    arg.ArgType = arg_type
-                    hook_point.Args = append(hook_point.Args, arg)
+                    hook_point.PointArgs = append(hook_point.PointArgs, point_arg)
                 }
             }
             this.Points = append(this.Points, hook_point)
@@ -278,16 +279,14 @@ type PointFilter struct {
 }
 
 type SyscallConfig struct {
-    logger           *log.Logger
-    debug            bool
-    arg_filter       *[]ArgFilter
-    next_arg_filter  *[]NextArgFilter
-    Enable           bool
-    TraceMode        uint32
-    SyscallPointArgs []*SyscallPointArgs_T
-    NextPointArgs    []*next_config.SyscallPoint
-    SysWhitelist     []uint32
-    SysBlacklist     []uint32
+    logger       *log.Logger
+    debug        bool
+    arg_filter   *[]ArgFilter
+    Enable       bool
+    TraceMode    uint32
+    PointArgs    []*SyscallPoint
+    SysWhitelist []uint32
+    SysBlacklist []uint32
 }
 
 func (this *SyscallConfig) SetDebug(debug bool) {
@@ -375,21 +374,11 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
         }
     }
     for _, v := range unique_items {
-        var index_items []uint32
-        var next_index_items [][]uint32
+        var index_items [][]uint32
         syscall_name := v
         items := strings.SplitN(syscall_name, ":", 2)
         if len(items) == 2 {
             syscall_name = items[0]
-            filter_names := strings.Split(items[1], ".")
-            // 改成map好点
-            for _, filter_name := range filter_names {
-                for _, arg_filter := range *this.arg_filter {
-                    if arg_filter.Match(filter_name) {
-                        index_items = append(index_items, arg_filter.Filter_index)
-                    }
-                }
-            }
 
             filter_groups := strings.Split(items[1], "|")
             for _, filter_group := range filter_groups {
@@ -402,60 +391,40 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
                         }
                     }
                 }
-                next_index_items = append(next_index_items, items)
+                index_items = append(index_items, items)
             }
         }
-        point := GetWatchPointByName(syscall_name)
-        nr_point, ok := (point).(*SysCallArgs)
-        if !ok {
-            panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", syscall_name))
-        }
-
-        point_args := nr_point.GetConfig()
-        for i := 0; i < len(point_args.ArgTypes); i++ {
-            t := &point_args.ArgTypes[i]
-            if t.ArgType == STRING {
-                for j := 0; j < MAX_FILTER_COUNT; j++ {
-                    if j < len(index_items) {
-                        t.FilterIdx[j] = index_items[j]
-                    }
-                }
-            }
-        }
-        if gconfig.Next {
-            point := next_config.GetSyscallPointByName(syscall_name)
-            for i, items := range next_index_items {
-                str_a_idx := 0
-                for _, point_arg := range point.EnterPointArgs {
-                    if point_arg.TypeIndex == common.STRING {
-                        if str_a_idx == i {
-                            for _, filter_index := range items {
-                                if point_arg.ReadMore() {
-                                    point_arg.AddFilterIndex(filter_index)
-                                }
+        point := GetSyscallPointByName(syscall_name)
+        for i, items := range index_items {
+            str_a_idx := 0
+            for _, point_arg := range point.EnterPointArgs {
+                if point_arg.TypeIndex == STRING {
+                    if str_a_idx == i {
+                        for _, filter_index := range items {
+                            if point_arg.ReadMore() {
+                                point_arg.AddFilterIndex(filter_index)
                             }
                         }
-                        str_a_idx += 1
                     }
-                }
-                str_b_idx := 0
-                for _, point_arg := range point.ExitPointArgs {
-                    if point_arg.TypeIndex == common.STRING {
-                        if str_b_idx == i {
-                            for _, filter_index := range items {
-                                if point_arg.ReadMore() {
-                                    point_arg.AddFilterIndex(filter_index)
-                                }
-                            }
-                        }
-                        str_b_idx += 1
-                    }
+                    str_a_idx += 1
                 }
             }
-            this.NextPointArgs = append(this.NextPointArgs, point)
+            str_b_idx := 0
+            for _, point_arg := range point.ExitPointArgs {
+                if point_arg.TypeIndex == STRING {
+                    if str_b_idx == i {
+                        for _, filter_index := range items {
+                            if point_arg.ReadMore() {
+                                point_arg.AddFilterIndex(filter_index)
+                            }
+                        }
+                    }
+                    str_b_idx += 1
+                }
+            }
         }
-        this.SyscallPointArgs = append(this.SyscallPointArgs, point_args)
-        this.SysWhitelist = append(this.SysWhitelist, uint32(nr_point.NR))
+        this.PointArgs = append(this.PointArgs, point)
+        this.SysWhitelist = append(this.SysWhitelist, uint32(point.Nr))
     }
 }
 
@@ -465,12 +434,8 @@ func (this *SyscallConfig) Parse_SysBlacklist(text string) {
     }
     items := strings.Split(text, ",")
     for _, v := range items {
-        point := GetWatchPointByName(v)
-        nr_point, ok := (point).(*SysCallArgs)
-        if !ok {
-            panic(fmt.Sprintf("cast [%s] watchpoint to SysCallArgs failed", v))
-        }
-        this.SysBlacklist = append(this.SysBlacklist, uint32(nr_point.NR))
+        point := GetSyscallPointByName(v)
+        this.SysBlacklist = append(this.SysBlacklist, uint32(point.Nr))
     }
 }
 
@@ -481,21 +446,13 @@ func (this *SyscallConfig) IsEnable() bool {
 func (this *SyscallConfig) Info() string {
     var whitelist []string
     for _, v := range this.SysWhitelist {
-        point := GetWatchPointByNR(v)
-        nr_point, ok := (point).(*SysCallArgs)
-        if !ok {
-            panic(fmt.Sprintf("cast [%d] watchpoint to SysCallArgs failed", v))
-        }
-        whitelist = append(whitelist, nr_point.Name())
+        point := GetSyscallPointByNR(v)
+        whitelist = append(whitelist, point.Name)
     }
     var blacklist []string
     for _, v := range this.SysBlacklist {
-        point := GetWatchPointByNR(v)
-        nr_point, ok := (point).(*SysCallArgs)
-        if !ok {
-            panic(fmt.Sprintf("cast [%d] watchpoint to SysCallArgs failed", v))
-        }
-        blacklist = append(blacklist, nr_point.Name())
+        point := GetSyscallPointByNR(v)
+        blacklist = append(blacklist, point.Name)
     }
     return fmt.Sprintf("whitelist:[%s];blacklist:[%s]", strings.Join(whitelist, ","), strings.Join(blacklist, ","))
 }
@@ -538,7 +495,6 @@ type ModuleConfig struct {
     DumpHex      bool
     ShowTime     bool
     ShowUid      bool
-    Next         bool
 
     Name            string
     StackUprobeConf *StackUprobeConfig
@@ -652,34 +608,16 @@ func (this *ModuleConfig) Parse_ArgFilter(arg_filter []string) {
             if len(str_old) > 256 {
                 panic(fmt.Sprintf("string is to long, max length is 256"))
             }
-            arg_filter.OldStr_len = uint32(len(str_old))
-            copy(arg_filter.OldStr_val[:], str_old)
+            arg_filter.Str_len = uint32(len(str_old))
+            copy(arg_filter.Str_val[:], str_old)
         case "b", "black":
             arg_filter.Filter_type = BLACKLIST_FILTER
             str_old := []byte(items[1])
             if len(str_old) > 256 {
                 panic(fmt.Sprintf("string is to long, max length is 256"))
             }
-            arg_filter.OldStr_len = uint32(len(str_old))
-            copy(arg_filter.OldStr_val[:], str_old)
-        case "r", "replace":
-            r_items := strings.SplitN(items[1], ":::", 2)
-            if len(r_items) != 2 {
-                panic(fmt.Sprintf("parse replace ArgFilterRule failed, filter_str:%s", filter_str))
-            }
-            arg_filter.Filter_type = REPLACE_FILTER
-            str_old := []byte(r_items[0])
-            str_new := []byte(r_items[1])
-            str_new = append(str_new, byte(0))
-            if len(str_old) > 256 || len(str_new) > 256 {
-                panic(fmt.Sprintf("string is to long, max length is 256"))
-            }
-            arg_filter.OldStr_len = uint32(len(str_old))
-            copy(arg_filter.OldStr_val[:], str_old)
-            // 注意这里长度 +1 是为了能写入一个 \0
-            // 由于写用户态的函数必须提前指定长度 所以这里 NewStr_len 没有其作用
-            arg_filter.NewStr_len = uint32(len(str_new) + 1)
-            copy(arg_filter.NewStr_val[:], str_new)
+            arg_filter.Str_len = uint32(len(str_old))
+            copy(arg_filter.Str_val[:], str_old)
         default:
             panic(fmt.Sprintf("parse ArgFilterRule failed, filter_str:%s", filter_str))
         }

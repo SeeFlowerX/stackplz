@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	. "stackplz/user/next/common"
+	. "stackplz/user/common"
 	"stackplz/user/util"
 	"strconv"
 	"unsafe"

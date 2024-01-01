@@ -281,7 +281,6 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.DumpHex = gconfig.DumpHex
     mconfig.ShowTime = gconfig.ShowTime
     mconfig.ShowUid = gconfig.ShowUid
-    mconfig.Next = gconfig.Next
 
     // 1. hook uprobe
     mconfig.InitStackUprobeConfig()
@@ -393,9 +392,15 @@ func runFunc(command *cobra.Command, args []string) {
 
     var modNames []string
     if mconfig.BrkAddr != 0 {
-        modNames = []string{module.MODULE_NAME_BRK}
+        modNames = append(modNames, module.MODULE_NAME_BRK)
+    } else if gconfig.SysCall != "" {
+        modNames = append(modNames, module.MODULE_NAME_PERF)
+        modNames = append(modNames, module.MODULE_NAME_SYSCALL)
+    } else if len(gconfig.HookPoint) > 0 {
+        modNames = append(modNames, module.MODULE_NAME_PERF)
+        modNames = append(modNames, module.MODULE_NAME_STACK)
     } else {
-        modNames = []string{module.MODULE_NAME_PERF, module.MODULE_NAME_STACK}
+        Logger.Fatal("hook nothing, plz set -w/--point or -s/--syscall or --brk")
     }
     for _, modName := range modNames {
         // 现在合并成只有一个模块了 所以直接通过名字获取
@@ -618,6 +623,4 @@ func init() {
     // syscall hook
     rootCmd.PersistentFlags().StringVarP(&gconfig.SysCall, "syscall", "s", "", "filter syscalls")
     rootCmd.PersistentFlags().StringVar(&gconfig.NoSysCall, "no-syscall", "", "syscall black list, max 20")
-    // 新的数据读取方案
-    rootCmd.PersistentFlags().BoolVar(&gconfig.Next, "next", false, "next version")
 }

@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"stackplz/user/next/common"
+	"stackplz/user/common"
 )
 
 type ConfigMap struct {
@@ -35,10 +35,8 @@ type ArgFilter struct {
 	Filter_type  uint32
 	Filter_index uint32
 	Num_val      uint64
-	OldStr_val   [256]byte
-	OldStr_len   uint32
-	NewStr_val   [256]byte
-	NewStr_len   uint32
+	Str_val      [256]byte
+	Str_len      uint32
 }
 
 func (this *ArgFilter) Match(name string) bool {
@@ -48,15 +46,15 @@ func (this *ArgFilter) Match(name string) bool {
 	return name == fmt.Sprintf("f%d", this.Filter_index-1)
 }
 
-func (this *ArgFilter) ToNext() NextArgFilter {
-	t := NextArgFilter{}
+func (this *ArgFilter) ToEbpfValue() EArgFilter {
+	t := EArgFilter{}
 	t.Filter_type = this.Filter_type
-	t.Str_len = this.OldStr_len
-	t.Str_val = this.OldStr_val
+	t.Str_len = this.Str_len
+	t.Str_val = this.Str_val
 	return t
 }
 
-type NextArgFilter struct {
+type EArgFilter struct {
 	Filter_type uint32
 	Str_val     [common.MAX_STRCMP_LEN]byte
 	Str_len     uint32
