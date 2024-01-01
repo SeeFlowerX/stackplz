@@ -90,15 +90,3 @@ func B(arg_name string, type_index uint32) *PointArg {
 func C(arg_name string, type_index uint32) *PointArg {
 	return NewPointArg(arg_name, type_index, EBPF_SYS_ALL)
 }
-
-// func A(arg_name string, arg_type argtype.IArgType) *PointArg {
-// 	return NewPointArg(arg_name, arg_type, EBPF_SYS_ENTER)
-// }
-
-// func B(arg_name string, arg_type argtype.IArgType) *PointArg {
-// 	return NewPointArg(arg_name, arg_type, EBPF_SYS_EXIT)
-// }
-
-// func C(arg_name string, arg_type argtype.IArgType) *PointArg {
-// 	return NewPointArg(arg_name, arg_type, EBPF_SYS_ALL)
-// }
