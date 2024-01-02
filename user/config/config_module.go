@@ -20,6 +20,8 @@ type StackUprobeConfig struct {
     LibName    string
     LibPath    string
     Points     []*UprobeArgs
+    DumpHex    bool
+    Color      bool
 }
 
 func ParseStrAsNum(v string) (uint64, error) {
@@ -126,6 +128,8 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
                 at = argtype.R_BUFFER_REG(GetRegIndex(size_str))
             }
         }
+        at.SetDumpHex(this.DumpHex)
+        at.SetColor(this.Color)
         point_arg.SetTypeIndex(at.GetTypeIndex())
         // 这个设定用于指示是否进一步读取和解析
         point_arg.SetGroupType(EBPF_UPROBE_ENTER)
@@ -204,6 +208,14 @@ func (this *StackUprobeConfig) IsEnable() bool {
 
 func (this *StackUprobeConfig) SetArgFilterRule(arg_filter *[]ArgFilter) {
     this.arg_filter = arg_filter
+}
+
+func (this *StackUprobeConfig) SetDumpHex(dump_hex bool) {
+    this.DumpHex = dump_hex
+}
+
+func (this *StackUprobeConfig) SetColor(color bool) {
+    this.Color = color
 }
 
 func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
@@ -514,6 +526,8 @@ func (this *ModuleConfig) InitSyscallConfig() {
 
 func (this *ModuleConfig) InitStackUprobeConfig() {
     config := &StackUprobeConfig{}
+    config.SetDumpHex(this.DumpHex)
+    config.SetColor(this.Color)
     config.SetArgFilterRule(&this.ArgFilterRule)
     this.StackUprobeConf = config
 }

@@ -23,6 +23,10 @@ type IArgType interface {
 	SetTypeIndex(uint32)
 	GetTypeIndex() uint32
 	SetParentIndex(uint32)
+	SetDumpHex(bool)
+	SetColor(bool)
+	GetDumpHex() bool
+	GetColor() bool
 	GetParentIndex() uint32
 	GetSize() uint32
 	AddOpList(p IArgType)
@@ -47,6 +51,8 @@ type ArgType struct {
 	// 可选的别名
 	AliaNames []string
 	ParseCB   ParseFN
+	DumpHex   bool
+	Color     bool
 }
 
 func (this *ArgType) Init(name string, base_type, type_index, size uint32) {
@@ -67,6 +73,8 @@ func (this *ArgType) Clone() IArgType {
 	at.OpList = append(at.OpList, this.OpList...)
 	at.AliaNames = append(at.AliaNames, this.AliaNames...)
 	at.ParseCB = this.ParseCB
+	at.DumpHex = this.DumpHex
+	at.Color = this.Color
 	return &at
 }
 
@@ -88,6 +96,22 @@ func (this *ArgType) DumpOpList() {
 	for index, op_index := range this.OpList {
 		fmt.Printf("idx:%3d op_key:%3d %s\n", index, op_index, OPM.GetOpInfo(op_index))
 	}
+}
+
+func (this *ArgType) SetDumpHex(dump_hex bool) {
+	this.DumpHex = dump_hex
+}
+
+func (this *ArgType) SetColor(color bool) {
+	this.Color = color
+}
+
+func (this *ArgType) GetDumpHex() bool {
+	return this.DumpHex
+}
+
+func (this *ArgType) GetColor() bool {
+	return this.Color
 }
 
 func (this *ArgType) AddOp(op *OpConfig) {

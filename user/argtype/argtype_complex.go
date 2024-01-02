@@ -343,6 +343,9 @@ func parse_BUFFER(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) 
 	if err := binary.Read(buf, binary.LittleEndian, &payload); err != nil {
 		panic(err)
 	}
+	if ctx.GetDumpHex() {
+		return fmt.Sprintf("0x%x%s", ptr, arg.HexFormat(payload, ctx.GetColor()))
+	}
 	return fmt.Sprintf("0x%x%s", ptr, arg.Format(payload))
 }
 
