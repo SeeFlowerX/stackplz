@@ -229,6 +229,21 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 op_ctx->save_index += 1;
                 break;
             }
+            case OP_READ_STD_STRING:
+            {
+                // 搭配 OP_SAVE_STRING 使用 这里仅计算实际的字符串地址
+                u64 ptr = op_ctx->read_addr & 0xffffffffff;
+                u8 value;
+                bpf_probe_read_user(&value, sizeof(value), (void*) ptr);
+                if ((value & 1) == 0) {
+                    ptr += 1;
+                } else {
+                    ptr += 8 * 2;
+                    bpf_probe_read_user(&ptr, sizeof(ptr), (void*) ptr);
+                }
+                op_ctx->read_addr = ptr;
+                break;
+            }
             default:
                 break;
         }

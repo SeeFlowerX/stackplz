@@ -159,9 +159,17 @@ cat /proc/kallsyms  | grep "T sys_"
 ```bash
 # 打印名称和完整路径
 ./stackplz -n com.coolapk.market -l linker64 -w __dl__ZN6soinfo17call_constructorsEv[ptr,str.f0:x0+409,str:x0+448.] -f w:libjiagu
+./stackplz -n com.coolapk.market -l linker64 -w __dl__ZN6soinfo17call_constructorsEv[ptr,std.f0:x0+408,std:x0+432] -f w:libjiagu
 # 将 init_array_count_ 和 init_array_ 内容打印出来 
-./stackplz -n com.coolapk.market -l linker64 -w __dl__ZN6soinfo17call_constructorsEv[ptr,str.f0:x0+409,int:x0+160,buf:256:x0+152] -f w:libjiagu --dumphex --color
+./stackplz -n com.coolapk.market -l linker64 -w __dl__ZN6soinfo17call_constructorsEv[ptr,std.f0:x0+408,*int:x0+160,ptr_arr:6:x0+152.] -f w:libjiagu --dumphex --color
 ```
+
+偏移说明如下，这些偏移可以根据`call_constructors get_realpath get_soname`得到：
+
+- 408 -> std::string soname_;
+- 432 -> std::string realpath_;
+- 152 -> linker_ctor_function_t* init_array_;
+- 160 -> size_t init_array_count_;
 
 3.8 按分组批量追踪进程
 

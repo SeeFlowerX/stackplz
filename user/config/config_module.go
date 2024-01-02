@@ -73,12 +73,14 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
     case "int":
         if to_ptr {
             point_arg.SetTypeIndex(INT_PTR)
+            point_arg.SetGroupType(EBPF_UPROBE_ENTER)
         } else {
             point_arg.SetTypeIndex(INT)
         }
     case "uint":
         if to_ptr {
             point_arg.SetTypeIndex(UINT_PTR)
+            point_arg.SetGroupType(EBPF_UPROBE_ENTER)
         } else {
             point_arg.SetTypeIndex(UINT)
         }
@@ -86,8 +88,13 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
         point_arg.SetTypeIndex(INT64)
     case "uint64":
         point_arg.SetTypeIndex(UINT64)
-    case "str":
-        point_arg.SetTypeIndex(STRING)
+    case "str", "std":
+        // std 特指 std::string
+        if type_name == "str" {
+            point_arg.SetTypeIndex(STRING)
+        } else {
+            point_arg.SetTypeIndex(STD_STRING)
+        }
         filter_names := strings.Split(arg_filter, ".")
         for _, filter_name := range filter_names {
             for _, arg_filter := range *this.arg_filter {
@@ -99,6 +106,25 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
         point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     case "ptr":
         point_arg.SetTypeIndex(POINTER)
+    case "ptr_arr":
+        ptr_arr_items := strings.SplitN(read_op_str, ":", 2)
+        var count_str = ""
+        if len(ptr_arr_items) == 1 {
+            count_str = ptr_arr_items[0]
+            read_op_str = ""
+        } else if len(ptr_arr_items) == 2 {
+            count_str = ptr_arr_items[0]
+            read_op_str = ptr_arr_items[1]
+        } else {
+            return errors.New(fmt.Sprintf("parse ptr_arr arg_str:%s failed", arg_str))
+        }
+        size, err := strconv.ParseUint(count_str, 0, 32)
+        if err != nil {
+            return errors.New(fmt.Sprintf("parse ptr_arr arg_str:%s failed", arg_str))
+        }
+        at := argtype.R_POINTER_ARRAY(uint32(size))
+        point_arg.SetTypeIndex(at.GetTypeIndex())
+        point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     case "buf":
         // 对于 buf 类型 其参数读取索引位于最后
         // 0x89ab[buf:64,int] 命中hook点时读取 x0 处64字节数据 读取 x1 值

@@ -214,6 +214,8 @@ func LazyRegister(type_index uint32) IArgType {
 		return r_POINTER(GetArgType(UINT), true)
 	case STRING:
 		return r_STRING()
+	case STD_STRING:
+		return r_STD_STRING()
 	case STRING_ARRAY:
 		return r_STRING_ARRAY()
 	case BUFFER:

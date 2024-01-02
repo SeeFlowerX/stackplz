@@ -54,6 +54,14 @@ func r_STRING() IArgType {
 	return at
 }
 
+func r_STD_STRING() IArgType {
+	at := RegisterPre("std_string", STD_STRING, STRUCT)
+	at.AddOp(OPC_READ_STD_STRING)
+	at.AddOp(OPC_SAVE_STRING)
+	at.SetParseCB(parse_STRING)
+	return at
+}
+
 func parse_STRING_ARRAY(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	if !parse_more {
 		return fmt.Sprintf("0x%x", ptr)
@@ -124,6 +132,16 @@ func parse_ARRAY(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) s
 		break
 	case *ARG_INT32:
 		var arg []int32 = make([]int32, p.ArrayLen)
+		if err := binary.Read(buf, binary.LittleEndian, &arg); err != nil {
+			panic(err)
+		}
+		for _, v := range arg {
+			result := p.ArrayArgType.Parse(uint64(v), buf, parse_more)
+			results = append(results, result)
+		}
+		break
+	case *ARG_UINT64:
+		var arg []uint64 = make([]uint64, p.ArrayLen)
 		if err := binary.Read(buf, binary.LittleEndian, &arg); err != nil {
 			panic(err)
 		}
@@ -436,6 +454,11 @@ func r_SIGSET() IArgType {
 	// sigset 类型实际上是一个 uint32[1]
 	p := NewNumFormat(GetArgType(UINT), FORMAT_HEX)
 	return r_ARRAY(p, 1)
+}
+
+func R_POINTER_ARRAY(length uint32) IArgType {
+	p := NewNumFormat(GetArgType(UINT64), FORMAT_HEX)
+	return r_ARRAY(p, length)
 }
 
 func parse_STAT(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {

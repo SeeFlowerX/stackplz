@@ -427,27 +427,26 @@ func (this *ARG_UINT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) st
 
 func (this *ARG_UINT64) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint64(ptr)
-	value_fmt := fmt.Sprintf("%d", value_fix)
+	flags_fmt := ""
 	if this.FlagsConfig != nil {
-		flags_fmt := this.FlagsConfig.Parse(int32(value_fix))
-		switch this.FormatType {
-		case FORMAT_NUM:
-			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
-		case FORMAT_HEX_PURE:
-			return fmt.Sprintf("%x%s", value_fix, flags_fmt)
-		case FORMAT_HEX:
-			return fmt.Sprintf("0x%x%s", value_fix, flags_fmt)
-		case FORMAT_DEC:
-			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
-		case FORMAT_OCT:
-			return fmt.Sprintf("0o%03s%s", strconv.FormatInt(int64(value_fix), 8), flags_fmt)
-		case FORMAT_BIN:
-			return fmt.Sprintf("0b%s%s", strconv.FormatInt(int64(value_fix), 2), flags_fmt)
-		default:
-			return fmt.Sprintf("%d%s", value_fix, flags_fmt)
-		}
+		flags_fmt = this.FlagsConfig.Parse(int32(value_fix))
 	}
-	return value_fmt
+	switch this.FormatType {
+	case FORMAT_NUM:
+		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
+	case FORMAT_HEX_PURE:
+		return fmt.Sprintf("%x%s", value_fix, flags_fmt)
+	case FORMAT_HEX:
+		return fmt.Sprintf("0x%x%s", value_fix, flags_fmt)
+	case FORMAT_DEC:
+		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
+	case FORMAT_OCT:
+		return fmt.Sprintf("0o%03s%s", strconv.FormatInt(int64(value_fix), 8), flags_fmt)
+	case FORMAT_BIN:
+		return fmt.Sprintf("0b%s%s", strconv.FormatInt(int64(value_fix), 2), flags_fmt)
+	default:
+		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
+	}
 }
 
 type IArgTypeArray interface {
