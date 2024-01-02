@@ -46,6 +46,14 @@ func (this *BrkEvent) Check() bool {
     return true
 }
 
+func (this *BrkEvent) ParseEvent() (IEventStruct, error) {
+    // 直接调用 ParseContext 即可 不需要先调用一遍 this.ContextEvent.ParseEvent()
+    if err := this.ParseContext(); err != nil {
+        panic(fmt.Sprintf("SyscallEvent.ParseContext() err:%v", err))
+    }
+    return this, nil
+}
+
 func (this *BrkEvent) ParseContext() (err error) {
     this.EventId = HW_BREAKPOINT
     this.buf = bytes.NewBuffer(this.rec.RawSample)

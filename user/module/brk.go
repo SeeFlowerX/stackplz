@@ -139,21 +139,6 @@ func (this *PerfBRK) start() error {
 }
 
 func (this *PerfBRK) initDecodeFun() (err error) {
-	// err = unix.Setrlimit(unix.RLIMIT_MEMLOCK, &unix.Rlimit{
-	// 	Cur: math.MaxUint64,
-	// 	Max: math.MaxUint64,
-	// })
-	// if err != nil {
-	// 	return errors.New(fmt.Sprintf("error:%v , couldn't adjust RLIMIT_MEMLOCK", err))
-	// }
-	// events, err := ebpf.NewMap(&ebpf.MapSpec{
-	// 	Name: "brk_events",
-	// 	Type: ebpf.PerfEventArray,
-	// })
-	// if err != nil {
-	// 	return err
-	// }
-
 	map_name := "brk_events"
 	BrkEventsMap, found, err := this.bpfManager.GetMap(map_name)
 	if err != nil {
@@ -164,9 +149,9 @@ func (this *PerfBRK) initDecodeFun() (err error) {
 	}
 
 	this.eventMaps = append(this.eventMaps, BrkEventsMap)
-	commonEvent := &event.CommonEvent{}
-	commonEvent.SetConf(this.mconf)
-	this.eventFuncMaps[BrkEventsMap] = commonEvent
+	brkEvent := &event.BrkEvent{}
+	brkEvent.SetConf(this.mconf)
+	this.eventFuncMaps[BrkEventsMap] = brkEvent
 
 	return nil
 }

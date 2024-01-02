@@ -119,25 +119,9 @@ func (this *ContextEvent) ParsePadding() (err error) {
     return nil
 }
 
-func (this *ContextEvent) NewBrkEvent() IEventStruct {
-    event := &BrkEvent{ContextEvent: *this}
-    err := event.ParseContext()
-    if err != nil {
-        panic(fmt.Sprintf("BrkEvent.ParseContext() err:%v", err))
-    }
-    if !event.Check() {
-        return nil
-    }
-    return event
-}
-
 func (this *ContextEvent) ParseEvent() (IEventStruct, error) {
     switch this.rec.RecordType {
     case unix.PERF_RECORD_SAMPLE:
-        if this.mconf.BrkAddr != 0 {
-            return this.NewBrkEvent(), nil
-        }
-
         // 先把需要的基础信息解析出来
         err := this.ParseContext()
         if err != nil {
