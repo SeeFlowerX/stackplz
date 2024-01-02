@@ -152,12 +152,12 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
         // 即一系列 加、减、取指针 操作作为要读取类型的地址 通过以下规则来转换
         has_first_op := false
         for ptr_idx, op_str := range strings.Split(read_op_str, ".") {
-            if op_str == "" {
-                continue
-            }
             if ptr_idx > 0 {
                 point_arg.AddExtraOp(argtype.OPC_READ_POINTER)
                 point_arg.AddExtraOp(argtype.OPC_MOVE_POINTER_VALUE)
+            }
+            if op_str == "" {
+                continue
             }
             v := op_str + "+"
             last_op := ""

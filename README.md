@@ -154,6 +154,15 @@ cat /proc/kallsyms  | grep "T sys_"
 ./stackplz --name com.sfx.ebpf -w 0xA94E8[int:x1,int:x0]
 ```
 
+在`call_constructors`处获取`soinfo`内容
+
+```bash
+# 打印名称和完整路径
+./stackplz -n com.coolapk.market -l linker64 -w __dl__ZN6soinfo17call_constructorsEv[ptr,str.f0:x0+409,str:x0+448.] -f w:libjiagu
+# 将 init_array_count_ 和 init_array_ 内容打印出来 
+./stackplz -n com.coolapk.market -l linker64 -w __dl__ZN6soinfo17call_constructorsEv[ptr,str.f0:x0+409,int:x0+160,buf:256:x0+152] -f w:libjiagu --dumphex --color
+```
+
 3.8 按分组批量追踪进程
 
 追踪全部APP类型的进程，但是排除一个特定的uid：
@@ -233,17 +242,6 @@ cat /proc/kallsyms  | grep "T sys_"
 ```bash
 ./stackplz -n com.starbucks.cn -s openat:f0.f1.f2 -f w:/system -f w:/dev -f b:/system/lib64 -o tmp.log
 ```
-
-替换规则（下面的测试命令开两个shell执行）：
-
-```bash
-./stackplz -n com.starbucks.cn,iso -s execve,openat:f0 -f r:/system/bin/su:::/system/bin/zz -o tmp_s.log
-./stackplz -n com.starbucks.cn,iso -w popen[str.f0.f1] -f r:mount:::mounx -f "r:which su:::which zz" -o tmp_w.log
-```
-
-ebpf中`bpf_probe_write_user`需要预先指定写入数据大小，本项目暂且覆盖256字节，可能有潜在的问题
-
-替换功能仅做演示，用于展示ebpf操作数据的能力，如果要改为较为灵活的方式，会涉及常量编辑等功能，暂不实现
 
 3.11 支持远程硬件断点，frida联动
 
