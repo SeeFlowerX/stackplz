@@ -264,6 +264,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
     // 后面更新map的时候不影响 列表不去重也行
 
+    mconfig.MaxOp = gconfig.MaxOp
     mconfig.Buffer = gconfig.Buffer
     mconfig.UnwindStack = gconfig.UnwindStack
     mconfig.ManualStack = gconfig.ManualStack
@@ -598,6 +599,7 @@ func init() {
     rootCmd.PersistentFlags().Uint64Var(&gconfig.BrkLen, "brk-len", 4, "hardware breakpoint length, default 4, support [1, 8]")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
+    rootCmd.PersistentFlags().Uint32Var(&gconfig.MaxOp, "maxop", 64, "max operation count for uprobe, at least 192 for string array")
     // 堆栈输出设定
     rootCmd.PersistentFlags().BoolVar(&gconfig.ManualStack, "mstack", false, "manual parse stack")
     rootCmd.PersistentFlags().BoolVar(&gconfig.UnwindStack, "stack", false, "enable unwindstack")

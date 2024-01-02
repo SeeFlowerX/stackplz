@@ -131,7 +131,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     op_ctx->save_index = 4;
     op_ctx->op_key_index = 0;
 
-    read_args(p, point_args, op_ctx, regs);
+    read_args(&p, point_args, op_ctx, regs);
     
     if (op_ctx->skip_flag) {
         op_ctx->skip_flag = 0;
@@ -201,7 +201,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     op_ctx->save_index = 1;
     op_ctx->op_key_index = 0;
 
-    read_args(p, point_args, op_ctx, regs);
+    read_args(&p, point_args, op_ctx, regs);
 
     if (op_ctx->skip_flag) {
         op_ctx->skip_flag = 0;

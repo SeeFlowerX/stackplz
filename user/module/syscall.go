@@ -145,7 +145,7 @@ func (this *MSyscall) start() error {
         return fmt.Errorf("%s\tcouldn't find asset %v .", this.Name(), err)
     }
 
-    // 初始化 bpfManager 这一步耗时超过 1.5s
+    // 初始化 bpfManager 循环次数越多这一步耗时越长
     if err = this.bpfManager.InitWithOptions(bytes.NewReader(byteBuf), this.bpfManagerOptions); err != nil {
         return fmt.Errorf("couldn't init manager %v", err)
     }
@@ -345,6 +345,8 @@ func (this *MSyscall) update_sysenter_point_args() {
     }
     for _, syscall_point := range syscall_Points {
         point_config := syscall_point.GetEnterConfig()
+        // syscall 已经通过了测试 暂时不需要
+        // point_config.MaxOpCount = this.mconf.MaxOp
         err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
         if err != nil {
             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))
@@ -369,6 +371,8 @@ func (this *MSyscall) update_sysexit_point_args() {
     }
     for _, syscall_point := range syscall_Points {
         point_config := syscall_point.GetExitConfig()
+        // syscall 已经通过了测试 暂时不需要
+        // point_config.MaxOpCount = this.mconf.MaxOp
         err := bpf_map.Update(unsafe.Pointer(&syscall_point.Nr), unsafe.Pointer(&point_config), ebpf.UpdateAny)
         if err != nil {
             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))

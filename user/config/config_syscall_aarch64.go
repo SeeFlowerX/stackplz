@@ -26,8 +26,8 @@ func (this *SyscallPoint) DumpOpList(tag string, op_list []uint32) {
 	}
 }
 
-func (this *SyscallPoint) GetEnterConfig() PointOpKeyConfig {
-	config := PointOpKeyConfig{}
+func (this *SyscallPoint) GetEnterConfig() SyscallPointOpKeyConfig {
+	config := SyscallPointOpKeyConfig{}
 	for _, point_arg := range this.EnterPointArgs {
 		config.AddPointArg(point_arg)
 	}
@@ -35,8 +35,8 @@ func (this *SyscallPoint) GetEnterConfig() PointOpKeyConfig {
 	return config
 }
 
-func (this *SyscallPoint) GetExitConfig() PointOpKeyConfig {
-	config := PointOpKeyConfig{}
+func (this *SyscallPoint) GetExitConfig() SyscallPointOpKeyConfig {
+	config := SyscallPointOpKeyConfig{}
 	for _, point_arg := range this.ExitPointArgs {
 		config.AddPointArg(point_arg)
 	}
@@ -184,7 +184,8 @@ func init() {
 	R(19, "eventfd2", A("initval", INT), A("flags", INT))
 	R(20, "epoll_create1", A("flags", INT))
 	R(21, "epoll_ctl", A("epfd", INT), A("op", INT), A("fd", INT), A("event", EPOLLEVENT))
-	R(22, "epoll_pwait", A("epfd", INT), A("events", POINTER), A("maxevents", INT), A("timeout", INT), A("sigmask", SIGSET), A("sigsetsize", INT))
+	// events 数量由 maxevents 决定 需要修正 op_list
+	R(22, "epoll_pwait", A("epfd", INT), B("events", EPOLLEVENT), A("maxevents", INT), A("timeout", INT), A("sigmask", SIGSET), A("sigsetsize", INT))
 	R(23, "dup", A("oldfd", INT))
 	R(24, "dup3", A("oldfd", INT), A("newfd", INT), A("flags", INT))
 	R(25, "fcntl", A("fd", INT), A("cmd", INT), A("arg", INT))
@@ -459,7 +460,7 @@ func init() {
 	R(438, "pidfd_getfd", A("pidfd", INT), A("fd", INT), A("flags", INT))
 	R(439, "faccessat2", A("dirfd", INT), A("pathname", STRING), A("flags", INT), A("mode", INT))
 	R(440, "process_madvise", A("pidfd", INT), A("vec", POINTER), A("vlen", INT), A("behavior", INT), A("flags", INT))
-	R(441, "epoll_pwait2", A("epfd", INT), A("events", POINTER), A("maxevents", INT), A("timeout", TIMESPEC), A("sigmask", SIGSET), A("sigsetsize", INT))
+	R(441, "epoll_pwait2", A("epfd", INT), A("events", EPOLLEVENT), A("maxevents", INT), A("timeout", TIMESPEC), A("sigmask", SIGSET), A("sigsetsize", INT))
 	R(442, "mount_setattr", A("dfd", INT), A("path", STRING), A("flags", INT), A("uattr", POINTER), A("usize", INT))
 	R(443, "quotactl_fd", A("fd", INT), A("cmd", INT), A("id", INT), A("addr", POINTER))
 	R(444, "landlock_create_ruleset", A("attr", POINTER), A("size", INT), A("flags", INT))

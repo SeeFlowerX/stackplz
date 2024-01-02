@@ -24,11 +24,18 @@ typedef struct point_arg_t {
 	u32 tmp_index;
 } point_arg;
 
-static __always_inline u32 read_args(program_data_t p, point_args_t* point_args, op_ctx_t* op_ctx, struct pt_regs* regs) {
+// 使用 __noinline 一定程度上可以提升循环次数
+// 不过增加循环次数的时候 验证器耗时也会增加
+static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_ctx_t* op_ctx, struct pt_regs* regs) {
     int zero = 0;
     // op_config_t* op = NULL;
     op_config_t* op = bpf_map_lookup_elem(&op_list, &zero);
-    for (int i = 0; i < MAX_OP_COUNT; i++) {
+    u32 maxop = MAX_OP_COUNT;
+    // u32 maxop = point_args->max_op_count;
+    // if (maxop > MAX_OP_COUNT) {
+    //     maxop = MAX_OP_COUNT;
+    // }
+    for (int i = 0; i < maxop; i++) {
         if (op != NULL && op_ctx->post_code != OP_SKIP) {
             op_ctx->op_code = op_ctx->post_code;
             op_ctx->post_code = OP_SKIP;
@@ -128,7 +135,7 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                 break;
             case OP_SAVE_ADDR:
                 // bpf_printk("[stackplz] OP_SAVE_ADDR val:0x%lx idx:%d\n", op_ctx->read_addr, op_ctx->save_index);
-                save_to_submit_buf(p.event, (void *)&op_ctx->read_addr, sizeof(op_ctx->read_addr), op_ctx->save_index);
+                save_to_submit_buf(p->event, (void *)&op_ctx->read_addr, sizeof(op_ctx->read_addr), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 break;
             case OP_READ_REG:
@@ -146,7 +153,7 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                 }
                 break;
             case OP_SAVE_REG:
-                save_to_submit_buf(p.event, (void *)&op_ctx->reg_value, sizeof(op_ctx->reg_value), op_ctx->save_index);
+                save_to_submit_buf(p->event, (void *)&op_ctx->reg_value, sizeof(op_ctx->reg_value), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 break;
             case OP_READ_POINTER:
@@ -159,7 +166,7 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                 }
                 break;
             case OP_SAVE_POINTER:
-                save_to_submit_buf(p.event, (void *)&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), op_ctx->save_index);
+                save_to_submit_buf(p->event, (void *)&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 break;
             case OP_SAVE_STRUCT:
@@ -172,12 +179,12 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
                     op_ctx->read_len = MAX_BYTES_ARR_SIZE;
                 }
                 // bpf_printk("[stackplz] OP_SAVE_STRUCT ptr:0x%lx len:%d\n", op_ctx->read_addr, op_ctx->read_len);
-                int save_struct_status = save_bytes_to_buf(p.event, (void *)(op_ctx->read_addr), op_ctx->read_len, op_ctx->save_index);
+                int save_struct_status = save_bytes_to_buf(p->event, (void *)(op_ctx->read_addr), op_ctx->read_len, op_ctx->save_index);
                 if (save_struct_status == 0) {
                     // 保存失败的情况 比如是一个非法的地址 那么就填一个空的 buf
                     // 那么只会保存 save_index 和 size -> [save_index][size][]
                     // ? 这里的处理方法好像不对 应该没问题 因为失败的时候 buf_off 没有变化
-                    save_bytes_to_buf(p.event, 0, 0, op_ctx->save_index);
+                    save_bytes_to_buf(p->event, 0, 0, op_ctx->save_index);
                 }
                 op_ctx->save_index += 1;
                 break;
@@ -198,13 +205,13 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
             case OP_SAVE_STRING:
                 // fix memory tag
                 op_ctx->read_addr = op_ctx->read_addr & 0xffffffffff;
-                u32 old_off = p.event->buf_off;
-                int save_string_status = save_str_to_buf(p.event, (void*) op_ctx->read_addr, op_ctx->save_index);
+                u32 old_off = p->event->buf_off;
+                int save_string_status = save_str_to_buf(p->event, (void*) op_ctx->read_addr, op_ctx->save_index);
                 if (save_string_status == 0) {
                     // 失败的情况存一个空数据 暂时没有遇到 有待测试
-                    save_bytes_to_buf(p.event, 0, 0, op_ctx->save_index);
+                    save_bytes_to_buf(p->event, 0, 0, op_ctx->save_index);
                 } else {
-                   op_ctx->str_len = p.event->buf_off - (old_off + sizeof(int) + 1);
+                   op_ctx->str_len = p->event->buf_off - (old_off + sizeof(int) + 1);
                 }
                 op_ctx->save_index += 1;
                 break;
@@ -212,13 +219,13 @@ static __always_inline u32 read_args(program_data_t p, point_args_t* point_args,
             {
                 u64 ptr = op_ctx->read_addr & 0xffffffffff;
                 bpf_probe_read_user(&ptr, sizeof(ptr), (void*) ptr);
-                save_to_submit_buf(p.event, (void *)&ptr, sizeof(ptr), op_ctx->save_index);
+                save_to_submit_buf(p->event, (void *)&ptr, sizeof(ptr), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 // 每次取出后使用前都要 fix 很坑
                 ptr = ptr & 0xffffffffff;
-                int status = save_str_to_buf(p.event, (void*) ptr, op_ctx->save_index);
+                int status = save_str_to_buf(p->event, (void*) ptr, op_ctx->save_index);
                 if (status == 0) {
-                    save_bytes_to_buf(p.event, 0, 0, op_ctx->save_index);
+                    save_bytes_to_buf(p->event, 0, 0, op_ctx->save_index);
                     // 为读取字符串数组设计的
                     op_ctx->loop_count = op_ctx->break_count;
                 }

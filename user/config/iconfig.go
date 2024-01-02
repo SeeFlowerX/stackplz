@@ -77,16 +77,47 @@ func GetRegIndex(reg string) uint32 {
 }
 
 type PointOpKeyConfig struct {
+	// MaxOpCount uint32
 	OpCount   uint32
 	OpKeyList [MAX_OP_COUNT]uint32
+}
+
+type SyscallPointOpKeyConfig struct {
+	// MaxOpCount uint32
+	OpCount   uint32
+	OpKeyList [SYSCALL_MAX_OP_COUNT]uint32
+}
+
+type UprobePointOpKeyConfig struct {
+	// MaxOpCount uint32
+	OpCount   uint32
+	OpKeyList [STACK_MAX_OP_COUNT]uint32
 }
 
 func (this *PointOpKeyConfig) AddPointArg(point_arg *PointArg) {
 	for _, op_key := range point_arg.GetOpList() {
 		this.OpKeyList[this.OpCount] = op_key
 		this.OpCount++
-		if this.OpCount == MAX_OP_COUNT {
-			panic("PointOpKeyConfig->AddPointArg failed, need increase MAX_OP_COUNT")
+		if this.OpCount == uint32(len(this.OpKeyList)) {
+			panic("PointOpKeyConfig->AddPointArg failed, need increase max op count")
+		}
+	}
+}
+func (this *SyscallPointOpKeyConfig) AddPointArg(point_arg *PointArg) {
+	for _, op_key := range point_arg.GetOpList() {
+		this.OpKeyList[this.OpCount] = op_key
+		this.OpCount++
+		if this.OpCount == uint32(len(this.OpKeyList)) {
+			panic("SyscallPointOpKeyConfig->AddPointArg failed, need increase max op count")
+		}
+	}
+}
+func (this *UprobePointOpKeyConfig) AddPointArg(point_arg *PointArg) {
+	for _, op_key := range point_arg.GetOpList() {
+		this.OpKeyList[this.OpCount] = op_key
+		this.OpCount++
+		if this.OpCount == uint32(len(this.OpKeyList)) {
+			panic("SyscallPointOpKeyConfig->AddPointArg failed, need increase max op count")
 		}
 	}
 }

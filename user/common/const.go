@@ -2,7 +2,9 @@ package common
 
 const MAX_IOV_COUNT = 6
 const MAX_LOOP_COUNT = 32
-const MAX_OP_COUNT = 256
+const MAX_OP_COUNT = 512
+const SYSCALL_MAX_OP_COUNT = 256
+const STACK_MAX_OP_COUNT = 64
 const MAX_STRCMP_LEN = 256
 const MAX_BUF_READ_SIZE = 4096
 

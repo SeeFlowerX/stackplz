@@ -16,8 +16,8 @@ type UprobeArgs struct {
 	PointArgs []*PointArg
 }
 
-func (this *UprobeArgs) GetConfig() PointOpKeyConfig {
-	config := PointOpKeyConfig{}
+func (this *UprobeArgs) GetConfig() UprobePointOpKeyConfig {
+	config := UprobePointOpKeyConfig{}
 	for _, point_arg := range this.PointArgs {
 		config.AddPointArg(point_arg)
 	}

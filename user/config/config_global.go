@@ -25,6 +25,7 @@ type GlobalConfig struct {
     Debug        bool
     Quiet        bool
     Buffer       uint32
+    MaxOp        uint32
     BrkPid       int
     BrkAddr      string
     BrkLib       string

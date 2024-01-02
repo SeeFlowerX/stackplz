@@ -74,7 +74,7 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) 
     op_ctx->save_index = 4;
     op_ctx->op_key_index = 0;
 
-    read_args(p, point_args, op_ctx, ctx);
+    read_args(&p, point_args, op_ctx, ctx);
 
     if (op_ctx->skip_flag) {
         op_ctx->skip_flag = 0;

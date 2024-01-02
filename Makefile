@@ -27,6 +27,7 @@ clean:
 ebpf_stack:
 	clang \
 	-D__TARGET_ARCH_$(LINUX_ARCH) \
+	-D__MODULE_STACK \
 	--target=bpf \
 	-c \
 	-nostdlibinc \
@@ -43,6 +44,7 @@ ebpf_stack:
 ebpf_syscall:
 	clang \
 	-D__TARGET_ARCH_$(LINUX_ARCH) \
+	-D__MODULE_SYSCALL \
 	--target=bpf \
 	-c \
 	-nostdlibinc \
