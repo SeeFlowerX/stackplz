@@ -48,7 +48,7 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) 
     common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
     if (unlikely(filter == NULL)) return 0;
 
-    save_to_submit_buf(p.event, (void *) &filter_key, sizeof(u32), 0);
+    save_to_submit_buf(p.event, (void *) &point_key, sizeof(u32), 0);
     u64 lr = 0;
     if(filter->is_32bit) {
         bpf_probe_read_kernel(&lr, sizeof(lr), &ctx->regs[14]);
