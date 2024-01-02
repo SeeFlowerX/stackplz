@@ -42,16 +42,12 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
         } else {
             if (op_ctx->op_key_index >= MAX_OP_COUNT) return 0;
             u32 op_key = point_args->op_key_list[op_ctx->op_key_index];
-            // bpf_printk("[stackplz] op_key:%d\n", op_key);
             op = bpf_map_lookup_elem(&op_list, &op_key);
             if (unlikely(op == NULL)) return 0;
             op_ctx->op_code = op->code;
             op_ctx->post_code = op->post_code;
             op_ctx->op_key_index += 1;
         }
-        // bpf_printk("[stackplz] index:%d value:%ld\n", op_ctx->op_key_index, op->value);
-        // bpf_printk("[stackplz] code:%d pre_code:%d post_code:%d\n", op->code, op->pre_code, op->post_code);
-        // bpf_printk("[stackplz] %d op_code:%d\n", i, op_ctx->op_code);
         if (op_ctx->op_code == OP_SKIP) break;
         switch (op_ctx->op_code) {
             case OP_RESET_CTX:
@@ -74,7 +70,6 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 }
                 break;
             case OP_SET_READ_LEN_POINTER_VALUE:
-                // bpf_printk("[stackplz] OP_SET_READ_LEN_POINTER_VALUE old_len:%d new_len:%d\n", op_ctx->read_len, op_ctx->pointer_value);
                 if (op_ctx->read_len > op_ctx->pointer_value) {
                     op_ctx->read_len = op_ctx->pointer_value;
                 }
@@ -83,11 +78,9 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 op_ctx->read_len *= op->value;
                 break;
             case OP_ADD_OFFSET:
-                // bpf_printk("[stackplz] OP_ADD_OFFSET ptr:0x%lx add:%d\n", op_ctx->read_addr, op->value);
                 op_ctx->read_addr += op->value;
                 break;
             case OP_SUB_OFFSET:
-                // bpf_printk("[stackplz] OP_SUB_OFFSET ptr:0x%lx sub:%d\n", op_ctx->read_addr, op->value);
                 op_ctx->read_addr -= op->value;
                 break;
             case OP_MOVE_REG_VALUE:
@@ -134,7 +127,6 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 }
                 break;
             case OP_SAVE_ADDR:
-                // bpf_printk("[stackplz] OP_SAVE_ADDR val:0x%lx idx:%d\n", op_ctx->read_addr, op_ctx->save_index);
                 save_to_submit_buf(p->event, (void *)&op_ctx->read_addr, sizeof(op_ctx->read_addr), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 break;
@@ -184,7 +176,6 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 if (op_ctx->read_len > MAX_BYTES_ARR_SIZE) {
                     op_ctx->read_len = MAX_BYTES_ARR_SIZE;
                 }
-                // bpf_printk("[stackplz] OP_SAVE_STRUCT ptr:0x%lx len:%d\n", op_ctx->read_addr, op_ctx->read_len);
                 int save_struct_status = save_bytes_to_buf(p->event, (void *)(op_ctx->read_addr), op_ctx->read_len, op_ctx->save_index);
                 if (save_struct_status == 0) {
                     // 保存失败的情况 比如是一个非法的地址 那么就填一个空的 buf
@@ -239,7 +230,6 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 break;
             }
             default:
-                // bpf_printk("[stackplz] unknown op code:%d\n", op->code);
                 break;
         }
         if (op_ctx->match_blacklist) break;
