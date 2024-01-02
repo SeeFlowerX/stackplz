@@ -136,71 +136,64 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
         return err
     }
 
+    // ./stackplz -n com.termux -l libtest.so -w 0x16254[buf:64:sp+0x20-0x8.+8.-4+0x16]
+    // read_op_str -> "sp+0x20-0x8.+8.-4+0x16"
+    // 该命令含义为
+    // 1. 在 libtest.so 偏移 0x16254 处hook
+    // 2. 计算 sp+0x20-0x8 后读取指针
+    // 3. 在上一步结果上 +8 后读取指针
+    // 4. 在上一步结果上 -4+0x16
+    // 5. 以上一步结果作为读取地址 读取 64 字节数据
     if read_op_str != "" {
-        // read_op_str 0x12345[str:sp+0x20-0x8(+8(+16))]
-        // 即一系列 加、减、取指针 操作作为要读取类型的地址
-        // 后续写一个解析规则来处理
-        reg_name, read_offset := ParseArgIndex(read_op_str)
-        point_arg.SetRegIndex(GetRegIndex(reg_name))
-        if read_offset != "" {
-            var offset int64 = 0
-            if strings.HasPrefix(read_offset, "+") {
-                op_add_items := strings.Split(read_offset, "+")
-                for _, v := range op_add_items {
-                    v = strings.TrimSpace(v)
-                    if v == "" {
-                        continue
-                    }
-                    op_sub_items := strings.Split(v, "-")
-                    op_value, err := ParseStrAsNum(op_sub_items[0])
-                    if err != nil {
-                        return err
-                    }
-                    offset += int64(op_value)
-                    if len(op_sub_items) > 1 {
-                        for _, v2 := range op_sub_items[1:] {
-                            v2 = strings.TrimSpace(v2)
-                            op_value, err := ParseStrAsNum(v2)
-                            if err != nil {
-                                return err
-                            }
-                            offset -= int64(op_value)
-                        }
-                    }
-                }
-            } else if strings.HasPrefix(read_offset, "-") {
-                op_sub_items := strings.Split(read_offset, "-")
-                for _, v := range op_sub_items {
-                    v = strings.TrimSpace(v)
-                    if v == "" {
-                        continue
-                    }
-                    op_add_items := strings.Split(v, "+")
-                    op_value, err := ParseStrAsNum(op_add_items[0])
-                    if err != nil {
-                        return err
-                    }
-                    offset -= int64(op_value)
-                    if len(op_add_items) > 1 {
-                        for _, v2 := range op_add_items[1:] {
-                            v2 = strings.TrimSpace(v2)
-                            op_value, err := ParseStrAsNum(v2)
-                            if err != nil {
-                                return err
-                            }
-                            offset += int64(op_value)
-                        }
-                    }
-                }
-            } else {
-                return errors.New(fmt.Sprintf("parse read_offset:%s failed", read_offset))
+        // 即一系列 加、减、取指针 操作作为要读取类型的地址 通过以下规则来转换
+        has_first_op := false
+        for ptr_idx, op_str := range strings.Split(read_op_str, ".") {
+            if op_str == "" {
+                continue
             }
-            if offset > 0 {
-                point_arg.AddExtraOp(argtype.OPC_ADD_OFFSET.NewValue(uint64(offset)))
-            } else if offset < 0 {
-                point_arg.AddExtraOp(argtype.OPC_ADD_OFFSET.NewValue(uint64(offset)))
+            if ptr_idx > 0 {
+                point_arg.AddExtraOp(argtype.OPC_READ_POINTER)
+                point_arg.AddExtraOp(argtype.OPC_MOVE_POINTER_VALUE)
+            }
+            v := op_str + "+"
+            last_op := ""
+            for {
+                i := strings.IndexAny(v, "+-")
+                if i < 0 {
+                    break
+                }
+                op := string(v[i])
+                token := string(v[0:i])
+                v = v[i+1:]
+                if token != "" {
+                    if value, err := strconv.ParseUint(token, 0, 64); err == nil {
+                        if !has_first_op {
+                            panic(fmt.Sprintf("first op must be reg"))
+                        }
+                        if last_op == "-" {
+                            point_arg.AddExtraOp(argtype.OPC_SUB_OFFSET.NewValue(value))
+                        } else {
+                            point_arg.AddExtraOp(argtype.OPC_ADD_OFFSET.NewValue(value))
+                        }
+                    } else {
+                        reg_index := GetRegIndex(token)
+                        point_arg.AddExtraOp(argtype.Add_READ_MOVE_REG(uint64(reg_index)))
+                        if has_first_op {
+                            if last_op == "-" {
+                                point_arg.AddExtraOp(argtype.OPC_SUB_REG)
+                            } else {
+                                point_arg.AddExtraOp(argtype.OPC_ADD_REG)
+                            }
+                        }
+                        if !has_first_op {
+                            has_first_op = true
+                        }
+                    }
+                }
+                last_op = op
             }
         }
+        point_arg.AddExtraOp(argtype.OPC_SAVE_ADDR)
     }
     return err
 }

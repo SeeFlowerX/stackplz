@@ -138,6 +138,12 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 save_to_submit_buf(p->event, (void *)&op_ctx->read_addr, sizeof(op_ctx->read_addr), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 break;
+            case OP_ADD_REG:
+                op_ctx->read_addr += op_ctx->reg_value;
+                break;
+            case OP_SUB_REG:
+                op_ctx->read_addr -= op_ctx->reg_value;
+                break;
             case OP_READ_REG:
                 if (op->pre_code == OP_SET_REG_INDEX) {
                     op_ctx->reg_index = op->value;

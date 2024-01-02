@@ -25,6 +25,7 @@ func (this *PointArg) SetTypeIndex(type_index uint32) {
 }
 
 func (this *PointArg) AddExtraOp(op *argtype.OpConfig) {
+	// fmt.Println("op info:", op.Index, argtype.OPM.GetOpInfo(op.Index))
 	this.ExtraOpList = append(this.ExtraOpList, op.Index)
 }
 
@@ -55,11 +56,12 @@ func (this *PointArg) GetOpList() []uint32 {
 	if this.RegIndex == REG_ARM64_MAX {
 		return op_list
 	}
-	op_list = append(op_list, argtype.Add_READ_SAVE_REG(uint64(this.RegIndex)).Index)
-	op_list = append(op_list, argtype.OPC_MOVE_REG_VALUE.Index)
 	if len(this.ExtraOpList) > 0 {
-		// 在基址的基础上做出系列 加、减、取指针 然后读取对应的类型
-		panic("...")
+		// 类型的最终读取地址 由 ExtraOpList 提供 记得读取之前要保存下地址
+		op_list = append(op_list, this.ExtraOpList...)
+	} else {
+		op_list = append(op_list, argtype.Add_READ_SAVE_REG(uint64(this.RegIndex)).Index)
+		op_list = append(op_list, argtype.OPC_MOVE_REG_VALUE.Index)
 	}
 	if this.ReadMore() {
 		for _, op_key := range argtype.GetOpKeyList(this.TypeIndex) {
