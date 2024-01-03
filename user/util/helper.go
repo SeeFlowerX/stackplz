@@ -179,6 +179,9 @@ func FindLib(library string, search_paths []string) (string, error) {
 	}
 	// 以 / 开头的认为是完整路径 否则在提供的路径中查找
 	if strings.HasPrefix(library, "/") {
+		if strings.Contains(library, "!") {
+			return library, nil
+		}
 		_, err := os.Stat(library)
 		if err != nil {
 			// 出现异常 提示对应的错误信息
