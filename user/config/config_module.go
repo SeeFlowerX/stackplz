@@ -16,12 +16,14 @@ import (
 )
 
 type StackUprobeConfig struct {
-    arg_filter *[]ArgFilter
-    LibName    string
-    LibPath    string
-    Points     []*UprobeArgs
-    DumpHex    bool
-    Color      bool
+    arg_filter   *[]ArgFilter
+    LibName      string
+    LibPath      string
+    RealFilePath string
+    NonElfOffset uint64
+    Points       []*UprobeArgs
+    DumpHex      bool
+    Color        bool
 }
 
 func ParseStrAsNum(v string) (uint64, error) {
@@ -263,6 +265,8 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
             hook_point.Index = uint32(point_index)
             hook_point.Offset = 0x0
             hook_point.LibPath = this.LibPath
+            hook_point.RealFilePath = this.RealFilePath
+            hook_point.NonElfOffset = this.NonElfOffset
             sym_or_off := match[1]
             hook_point.Name = sym_or_off
             if strings.HasPrefix(sym_or_off, "0x") {
@@ -297,18 +301,6 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
                     hook_point.PointArgs = append(hook_point.PointArgs, point_arg)
                 }
             }
-            if strings.Contains(this.LibPath, "!") {
-				libStr := strings.Split(this.LibPath, "!")
-				libExtraInfo := libStr[1]
-				libExtraOffset := strings.Split(libExtraInfo, "@")[1]
-
-				libZipOffet, err := strconv.ParseUint(strings.TrimPrefix(libExtraOffset, "0x"), 16, 64)
-				if err != nil {
-					return errors.New(fmt.Sprintf("parse for %s failed, libExtraOffset:%s err:%v", config_str, libExtraOffset, err))
-				}
-				// hook_point.LibPath = libStr[0]
-				hook_point.Offset = libZipOffet + hook_point.Offset
-			}
             this.Points = append(this.Points, hook_point)
         } else {
             return errors.New(fmt.Sprintf("parse for %s failed", config_str))

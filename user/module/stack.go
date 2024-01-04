@@ -69,7 +69,9 @@ func (this *MStack) setupManager() error {
                 Section:          fmt.Sprintf("uprobe/stack_%d", i),
                 EbpfFuncName:     fmt.Sprintf("probe_stack_%d", i),
                 AttachToFuncName: sym,
+                RealFilePath:     uprobe_point.RealFilePath,
                 BinaryPath:       uprobe_point.LibPath,
+                NonElfOffset:     uprobe_point.NonElfOffset,
                 // 这个是相对于库文件基址的偏移
                 UAddress: uprobe_point.Offset,
             }
@@ -78,14 +80,14 @@ func (this *MStack) setupManager() error {
                 Section:          fmt.Sprintf("uprobe/stack_%d", i),
                 EbpfFuncName:     fmt.Sprintf("probe_stack_%d", i),
                 AttachToFuncName: sym,
+                RealFilePath:     uprobe_point.RealFilePath,
                 BinaryPath:       uprobe_point.LibPath,
+                NonElfOffset:     uprobe_point.NonElfOffset,
                 // 这个是相对于符号的偏移
                 UprobeOffset: uprobe_point.Offset,
             }
         }
-        if this.mconf.Debug {
-            this.logger.Printf("uprobe uprobe_index:%d hook %s", i, uprobe_point.String())
-        }
+        this.logger.Printf("idx:%d %s", i, uprobe_point.String())
         probes = append(probes, stack_probe)
     }
 

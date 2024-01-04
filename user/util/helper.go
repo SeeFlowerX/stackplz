@@ -9,13 +9,10 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
-
-	"golang.org/x/exp/slices"
 )
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -171,62 +168,6 @@ func Get_PackageInfos() *PackageInfos {
 		pis.items = append(pis.items, PackageInfo{parts[0], uint32(value)})
 	}
 	return &pis
-}
-
-func FindLib(library string, search_paths []string) (string, error) {
-	if library == "" {
-		return "", nil
-	}
-	// 以 / 开头的认为是完整路径 否则在提供的路径中查找
-	if strings.HasPrefix(library, "/") {
-		if strings.Contains(library, "!") {
-			return library, nil
-		}
-		_, err := os.Stat(library)
-		if err != nil {
-			// 出现异常 提示对应的错误信息
-			if os.IsNotExist(err) {
-				return library, fmt.Errorf("%s not exists", library)
-			}
-			return library, err
-		}
-	} else {
-		var full_paths []string
-		for _, search_path := range search_paths {
-			// 去掉末尾可能存在的 /
-			check_path := strings.TrimRight(search_path, "/") + "/" + library
-			_, err := os.Stat(check_path)
-			if err != nil {
-				// 这里在debug模式下打印出来
-				continue
-			}
-			path_info, err := os.Lstat(check_path)
-			if err != nil {
-				continue
-			}
-			if path_info.Mode()&os.ModeSymlink != 0 {
-				real_path, err := filepath.EvalSymlinks(check_path)
-				if err != nil {
-					continue
-				}
-				check_path = real_path
-			}
-			if !slices.Contains(full_paths, check_path) {
-				full_paths = append(full_paths, check_path)
-			}
-		}
-		if len(full_paths) == 0 {
-			// 没找到
-			return library, fmt.Errorf("can not find %s in these paths\n\t%s", library, strings.Join(search_paths[:], "\n\t"))
-		}
-		if len(full_paths) > 1 {
-			// 在已有的搜索路径下可能存在多个同名的库 提示用户指定全路径
-			return library, fmt.Errorf("find %d libs with the same name\n%s", len(full_paths), strings.Join(full_paths[:], "\n\t"))
-		}
-		// 修正为完整路径
-		library = full_paths[0]
-	}
-	return library, nil
 }
 
 func ReadMapsByPid(pid uint32) (string, error) {

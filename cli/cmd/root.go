@@ -144,6 +144,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
     // 获取一次 后面用得到 免去重复获取
     exec_path = path.Dir(exec_path)
+    gconfig.ExecPath = exec_path
     _, err = os.Stat(exec_path + "/" + "preload_libs")
     var has_restore bool = false
     if err != nil {
@@ -285,10 +286,9 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
 
     // 1. hook uprobe
     mconfig.InitStackUprobeConfig()
-    mconfig.StackUprobeConf.LibPath, err = util.FindLib(gconfig.Library, gconfig.LibraryDirs)
+    err = gconfig.Parse_Libinfo(mconfig.StackUprobeConf)
     if err != nil {
-        logger.Fatal(err)
-        os.Exit(1)
+        return err
     }
     err = mconfig.StackUprobeConf.Parse_HookPoint(gconfig.HookPoint)
     if err != nil {
@@ -447,17 +447,31 @@ func addLibPath(name string) {
     if err != nil {
         panic(err)
     }
-    parts := strings.Split(content, ":")
-    if len(parts) == 2 {
-        items := strings.Split(parts[1], "/")
-        lib_search_path := strings.Join(items[:len(items)-1], "/") + "/lib/arm64"
-        _, err := os.Stat(lib_search_path)
-        if err == nil {
-            if !slices.Contains(gconfig.LibraryDirs, lib_search_path) {
-                if gconfig.Debug {
-                    mconfig.GetLogger().Printf("add lib_search_path => [%s]", lib_search_path)
+    for _, line := range strings.Split(content, "\n") {
+        parts := strings.Split(line, ":")
+        if len(parts) == 2 {
+            // 将 apk 文件也作为搜索路径
+            apk_path := parts[1]
+            _, err := os.Stat(apk_path)
+            if err == nil {
+                if !slices.Contains(gconfig.LibraryDirs, apk_path) {
+                    if gconfig.Debug {
+                        mconfig.GetLogger().Printf("add lib_search_path => [%s]", apk_path)
+                    }
+                    gconfig.LibraryDirs = append(gconfig.LibraryDirs, apk_path)
                 }
-                gconfig.LibraryDirs = append(gconfig.LibraryDirs, lib_search_path)
+            }
+            // 将 apk + /lib/arm64 作为搜索路径
+            items := strings.Split(parts[1], "/")
+            lib_search_path := strings.Join(items[:len(items)-1], "/") + "/lib/arm64"
+            _, err = os.Stat(lib_search_path)
+            if err == nil {
+                if !slices.Contains(gconfig.LibraryDirs, lib_search_path) {
+                    if gconfig.Debug {
+                        mconfig.GetLogger().Printf("add lib_search_path => [%s]", lib_search_path)
+                    }
+                    gconfig.LibraryDirs = append(gconfig.LibraryDirs, lib_search_path)
+                }
             }
         }
     }
