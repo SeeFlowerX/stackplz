@@ -22,6 +22,10 @@ type SyscallEvent struct {
     arg_str      string
 }
 
+func (this *SyscallEvent) DumpRecord() bool {
+    return this.mconf.DumpRecord(SYSCALL_EVENT, &this.rec)
+}
+
 func (this *SyscallEvent) ParseEvent() (IEventStruct, error) {
     data_e, err := this.ContextEvent.ParseEvent()
     if err != nil {

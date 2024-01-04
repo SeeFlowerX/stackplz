@@ -375,6 +375,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     if !enable_hook {
         logger.Fatal("hook nothing, plz set -w/--point or -s/--syscall or --brk")
     }
+    mconfig.DumpOpen(gconfig.DumpFile)
     return nil
 }
 
@@ -439,6 +440,8 @@ func runFunc(command *cobra.Command, args []string) {
         }
     }
     wg.Wait()
+    // 关闭打开的dump文件
+    mconfig.DumpClose()
     os.Exit(0)
 }
 
@@ -626,6 +629,9 @@ func init() {
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Color, "color", "c", false, "enable color for log file")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.FmtJson, "json", "j", false, "log event as json format")
     rootCmd.PersistentFlags().StringVarP(&gconfig.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
+    // 适合收集大量数据 减少数据丢失
+    rootCmd.PersistentFlags().StringVar(&gconfig.DumpFile, "dump", "", "save perf data to file")
+    rootCmd.PersistentFlags().StringVar(&gconfig.ParseFile, "parse", "", "parse perf data as json or readable format")
     // 常规ELF库hook设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.Library, "lib", "l", "libc.so", "lib name or lib full path, default is libc.so")
     rootCmd.PersistentFlags().StringArrayVarP(&gconfig.HookPoint, "point", "w", []string{}, "hook point config, e.g. strstr+0x0[str,str] write[int,buf:128,int]")

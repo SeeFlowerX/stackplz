@@ -44,6 +44,10 @@ func (this *EventProcessor) Serve() {
 }
 
 func (this *EventProcessor) dispatch(map_e event.IEventStruct) {
+	// 如果需要dump那就直接写到文件中去
+	if map_e.DumpRecord() {
+		return
+	}
 	// 在接收到数据之后就已经绑定了对应的事件 所以这里常规逻辑应该是直接开始解析
 	// 实际上绑定的是单一事件 由于perf event flag的设置不同 读取到的还有其他类型的数据
 	// 比如 fork exit 之类的 并非只有 sample

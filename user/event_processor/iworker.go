@@ -25,9 +25,7 @@ const (
 )
 
 type eventWorker struct {
-	incoming chan event.IEventStruct
-	// last_event event.IEventStruct
-	//events      []user.IEventStruct
+	incoming    chan event.IEventStruct
 	ticker      *time.Ticker
 	tickerCount uint8
 	UUID        string

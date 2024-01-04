@@ -44,6 +44,8 @@ type GlobalConfig struct {
     BrkLib       string
     BrkLen       uint64
     LogFile      string
+    DumpFile     string
+    ParseFile    string
     DataDir      string
     LibraryDirs  []string
     HookPoint    []string

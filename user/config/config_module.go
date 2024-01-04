@@ -1,6 +1,7 @@
 package config
 
 import (
+    "encoding/binary"
     "errors"
     "fmt"
     "log"
@@ -11,7 +12,9 @@ import (
     "stackplz/user/util"
     "strconv"
     "strings"
+    "syscall"
 
+    "github.com/cilium/ebpf/perf"
     "golang.org/x/exp/slices"
 )
 
@@ -527,6 +530,7 @@ type ModuleConfig struct {
     BrkType      uint32
     BrkKernel    bool
     Color        bool
+    DumpHandle   *os.File
     FmtJson      bool
     DumpHex      bool
     ShowTime     bool
@@ -690,14 +694,65 @@ func (this *ModuleConfig) GetConfigMap() ConfigMap {
     return config
 }
 
-func MySplit(r rune) bool {
-    return r == '+' || r == '-'
+func (this *ModuleConfig) DumpOpen(dump_name string) {
+    if dump_name == "" {
+        return
+    }
+    dir, _ := os.Getwd()
+    dump_path := dir + "/" + dump_name
+    // 提前打开文件
+    f, err := os.Create(dump_path)
+    if err != nil {
+        panic("create dump file failed...")
+    }
+    this.DumpHandle = f
 }
 
-func ParseArgIndex(arg_str string) (string, string) {
-    items := strings.FieldsFunc(arg_str, MySplit)
-    if len(items) > 0 {
-        return items[0], arg_str[len(items[0]):]
+func (this *ModuleConfig) DumpClose() {
+    // 关闭文件
+    if this.DumpHandle != nil {
+        err := this.DumpHandle.Close()
+        if err != nil {
+            panic(err)
+        }
     }
-    return arg_str, ""
+}
+
+func (this *ModuleConfig) DumpRecord(event_index uint8, rec *perf.Record) bool {
+    // 返回  是否需要dump
+    if this.DumpHandle == nil {
+        return false
+    }
+    // 将采集的数据按下面的格式进行记录
+    // total_len|event_index|rec_type|rec_len|rec_raw
+    total_len := uint32(1)
+    rec_len := uint32(len(rec.RawSample))
+    total_len += 4 + 4 + rec_len
+
+    if err := syscall.Flock(int(this.DumpHandle.Fd()), syscall.LOCK_SH); err != nil {
+        panic(fmt.Sprintf("add share lock in no block failed, err:%v", err))
+    }
+
+    var err error
+    if err = binary.Write(this.DumpHandle, binary.LittleEndian, total_len); err != nil {
+        panic(err)
+    }
+    if err = binary.Write(this.DumpHandle, binary.LittleEndian, event_index); err != nil {
+        panic(err)
+    }
+    if err = binary.Write(this.DumpHandle, binary.LittleEndian, rec.RecordType); err != nil {
+        panic(err)
+    }
+    if err = binary.Write(this.DumpHandle, binary.LittleEndian, rec_len); err != nil {
+        panic(err)
+    }
+    if err = binary.Write(this.DumpHandle, binary.LittleEndian, rec.RawSample); err != nil {
+        panic(err)
+    }
+
+    if err := syscall.Flock(int(this.DumpHandle.Fd()), syscall.LOCK_UN); err != nil {
+        panic(fmt.Sprintf("unlock share lock failed, err:%v", err))
+    }
+
+    return true
 }

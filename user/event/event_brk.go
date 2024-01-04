@@ -46,6 +46,10 @@ func (this *BrkEvent) Check() bool {
     return true
 }
 
+func (this *BrkEvent) DumpRecord() bool {
+    return this.mconf.DumpRecord(BRK_EVENT, &this.rec)
+}
+
 func (this *BrkEvent) ParseEvent() (IEventStruct, error) {
     // 直接调用 ParseContext 即可 不需要先调用一遍 this.ContextEvent.ParseEvent()
     if err := this.ParseContext(); err != nil {

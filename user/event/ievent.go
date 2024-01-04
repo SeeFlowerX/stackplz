@@ -22,12 +22,20 @@ const (
     HW_BREAKPOINT
 )
 
+const (
+    COMMON_EVENT uint8 = iota
+    BRK_EVENT
+    UPROBE_EVENT
+    SYSCALL_EVENT
+)
+
 type IEventStruct interface {
     String() string
     Clone() IEventStruct
     GetUUID() string
     RecordType() uint32
     GetEventId() uint32
+    DumpRecord() bool
     ParseEvent() (IEventStruct, error)
     ParseContext() error
     SetLogger(logger *log.Logger)
@@ -127,6 +135,10 @@ func (this *CommonEvent) NewExitEvent() IEventStruct {
 
 func (this *CommonEvent) RecordType() uint32 {
     return this.rec.RecordType
+}
+
+func (this *CommonEvent) DumpRecord() bool {
+    return this.mconf.DumpRecord(COMMON_EVENT, &this.rec)
 }
 
 func (this *CommonEvent) ParseEvent() (IEventStruct, error) {

@@ -21,6 +21,10 @@ type UprobeEvent struct {
     arg_str      string
 }
 
+func (this *UprobeEvent) DumpRecord() bool {
+    return this.mconf.DumpRecord(UPROBE_EVENT, &this.rec)
+}
+
 func (this *UprobeEvent) ParseEvent() (IEventStruct, error) {
     data_e, err := this.ContextEvent.ParseEvent()
     if err != nil {
