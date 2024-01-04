@@ -7,6 +7,7 @@ import (
     "fmt"
     "log"
     "os"
+    "stackplz/user/common"
     "stackplz/user/config"
     "stackplz/user/util"
     "time"
@@ -20,13 +21,6 @@ const (
     SYSCALL_EXIT
     UPROBE_ENTER
     HW_BREAKPOINT
-)
-
-const (
-    COMMON_EVENT uint8 = iota
-    BRK_EVENT
-    UPROBE_EVENT
-    SYSCALL_EVENT
 )
 
 type IEventStruct interface {
@@ -138,7 +132,7 @@ func (this *CommonEvent) RecordType() uint32 {
 }
 
 func (this *CommonEvent) DumpRecord() bool {
-    return this.mconf.DumpRecord(COMMON_EVENT, &this.rec)
+    return this.mconf.DumpRecord(common.COMMON_EVENT, &this.rec)
 }
 
 func (this *CommonEvent) ParseEvent() (IEventStruct, error) {

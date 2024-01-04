@@ -5,6 +5,7 @@ import (
     "encoding/json"
     "fmt"
     "stackplz/user/argtype"
+    "stackplz/user/common"
     "stackplz/user/config"
     "stackplz/user/util"
     "strings"
@@ -22,7 +23,7 @@ type UprobeEvent struct {
 }
 
 func (this *UprobeEvent) DumpRecord() bool {
-    return this.mconf.DumpRecord(UPROBE_EVENT, &this.rec)
+    return this.mconf.DumpRecord(common.UPROBE_EVENT, &this.rec)
 }
 
 func (this *UprobeEvent) ParseEvent() (IEventStruct, error) {

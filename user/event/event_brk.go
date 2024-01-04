@@ -4,6 +4,7 @@ import (
     "bytes"
     "encoding/binary"
     "fmt"
+    "stackplz/user/common"
     "stackplz/user/util"
 )
 
@@ -47,7 +48,7 @@ func (this *BrkEvent) Check() bool {
 }
 
 func (this *BrkEvent) DumpRecord() bool {
-    return this.mconf.DumpRecord(BRK_EVENT, &this.rec)
+    return this.mconf.DumpRecord(common.BRK_EVENT, &this.rec)
 }
 
 func (this *BrkEvent) ParseEvent() (IEventStruct, error) {

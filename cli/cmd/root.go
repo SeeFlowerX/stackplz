@@ -17,6 +17,7 @@ import (
     "stackplz/assets"
     "stackplz/user/config"
     "stackplz/user/event"
+    "stackplz/user/event_parser"
     "stackplz/user/module"
     "stackplz/user/rpc"
     "stackplz/user/util"
@@ -374,6 +375,12 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
     if !enable_hook {
         logger.Fatal("hook nothing, plz set -w/--point or -s/--syscall or --brk")
+    }
+    if gconfig.ParseFile != "" {
+        parser := event_parser.NewEventParser()
+        parser.SetLogger(logger)
+        parser.SetConf(mconfig)
+        parser.ParseDump(gconfig.ParseFile)
     }
     mconfig.DumpOpen(gconfig.DumpFile)
     return nil

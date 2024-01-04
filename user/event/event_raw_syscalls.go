@@ -4,6 +4,7 @@ import (
     "encoding/binary"
     "encoding/json"
     "fmt"
+    "stackplz/user/common"
     "stackplz/user/config"
     "stackplz/user/util"
 )
@@ -23,7 +24,7 @@ type SyscallEvent struct {
 }
 
 func (this *SyscallEvent) DumpRecord() bool {
-    return this.mconf.DumpRecord(SYSCALL_EVENT, &this.rec)
+    return this.mconf.DumpRecord(common.SYSCALL_EVENT, &this.rec)
 }
 
 func (this *SyscallEvent) ParseEvent() (IEventStruct, error) {

@@ -12,7 +12,7 @@ import (
     "stackplz/user/util"
     "strconv"
     "strings"
-    "syscall"
+    "sync"
 
     "github.com/cilium/ebpf/perf"
     "golang.org/x/exp/slices"
@@ -718,6 +718,8 @@ func (this *ModuleConfig) DumpClose() {
     }
 }
 
+var file_lock sync.Mutex
+
 func (this *ModuleConfig) DumpRecord(event_index uint8, rec *perf.Record) bool {
     // 返回  是否需要dump
     if this.DumpHandle == nil {
@@ -728,10 +730,8 @@ func (this *ModuleConfig) DumpRecord(event_index uint8, rec *perf.Record) bool {
     total_len := uint32(1)
     rec_len := uint32(len(rec.RawSample))
     total_len += 4 + 4 + rec_len
-
-    if err := syscall.Flock(int(this.DumpHandle.Fd()), syscall.LOCK_SH); err != nil {
-        panic(fmt.Sprintf("add share lock in no block failed, err:%v", err))
-    }
+    file_lock.Lock()
+    defer file_lock.Unlock()
 
     var err error
     if err = binary.Write(this.DumpHandle, binary.LittleEndian, total_len); err != nil {
@@ -748,10 +748,6 @@ func (this *ModuleConfig) DumpRecord(event_index uint8, rec *perf.Record) bool {
     }
     if err = binary.Write(this.DumpHandle, binary.LittleEndian, rec.RawSample); err != nil {
         panic(err)
-    }
-
-    if err := syscall.Flock(int(this.DumpHandle.Fd()), syscall.LOCK_UN); err != nil {
-        panic(fmt.Sprintf("unlock share lock failed, err:%v", err))
     }
 
     return true
