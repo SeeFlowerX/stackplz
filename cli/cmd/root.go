@@ -5,6 +5,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+    "bufio"
     "context"
     "errors"
     "fmt"
@@ -431,6 +432,24 @@ func runFunc(command *cobra.Command, args []string) {
     }
     if runMods > 0 {
         Logger.Printf("start %d modules", runMods)
+        if mconfig.UprobeSignal == uint32(syscall.SIGSTOP) {
+            go func() {
+                scanner := bufio.NewScanner(os.Stdin)
+                for {
+                    scanner.Scan()
+                    err := scanner.Err()
+                    if err != nil {
+                        Logger.Printf("get input from console failed, err:%v", err)
+                        syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+                    }
+                    input_text := scanner.Text()
+                    if input_text == "c" {
+                        event.LetItRun()
+                    }
+                }
+            }()
+        }
+
         <-stopper
     } else {
         Logger.Println("No runnable modules, Exit(1)")

@@ -11,6 +11,7 @@ import (
     "stackplz/user/util"
     "strconv"
     "strings"
+    "syscall"
 
     "golang.org/x/sys/unix"
 )
@@ -170,6 +171,9 @@ func (this *ContextEvent) ParseContext() (err error) {
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Pid); err != nil {
         return err
+    }
+    if this.mconf.UprobeSignal == uint32(syscall.SIGSTOP) && this.Pid != 0 {
+        AddStopped(this.Pid)
     }
     if err = binary.Read(this.buf, binary.LittleEndian, &this.Uid); err != nil {
         return err

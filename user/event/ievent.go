@@ -10,6 +10,8 @@ import (
     "stackplz/user/common"
     "stackplz/user/config"
     "stackplz/user/util"
+    "sync"
+    "syscall"
     "time"
 
     "github.com/cilium/ebpf/perf"
@@ -164,5 +166,37 @@ func (this *CommonEvent) SetConf(conf config.IConfig) {
         this.mconf = p
     } else {
         panic("CommonEvent.SetConf() cast to ModuleConfig failed")
+    }
+}
+
+var stopped_lock sync.Mutex
+var stopped_pid_list map[uint32]bool = map[uint32]bool{}
+
+func AddStopped(pid uint32) {
+    stopped_lock.Lock()
+    defer stopped_lock.Unlock()
+    stopped_pid_list[pid] = true
+}
+
+func DelStopped(pid uint32) {
+    stopped_lock.Lock()
+    defer stopped_lock.Unlock()
+    delete(stopped_pid_list, pid)
+}
+
+func LetItRun() {
+    fmt.Printf("------LetItRun------\n")
+    for stopped_pid := range stopped_pid_list {
+        err := syscall.Kill(int(stopped_pid), syscall.SIGCONT)
+        if err != nil {
+            if err == syscall.ESRCH {
+                fmt.Printf("No such process -> %d\n", stopped_pid)
+                DelStopped(stopped_pid)
+            } else {
+                fmt.Printf("LetItRun err:%v\n", err)
+                DelStopped(stopped_pid)
+            }
+        }
+        fmt.Printf("Let %d run\n", stopped_pid)
     }
 }
