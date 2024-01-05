@@ -23,6 +23,11 @@ type LibArg struct {
     DynSize   uint64
 }
 
+type UnwindOption struct {
+    RegMask uint64
+    ShowPC  bool
+}
+
 type UnwindBuf struct {
     Abi       uint64
     Regs      [33]uint64
@@ -287,7 +292,10 @@ func (this *ContextEvent) ParseContextStack() (err error) {
             }
             return nil
         }
-        this.Stackinfo = ParseStack(content, this.UnwindBuffer)
+        opt := &UnwindOption{}
+        opt.RegMask = (1 << 33) - 1
+        opt.ShowPC = this.mconf.ShowPC
+        this.Stackinfo = ParseStack(content, opt, this.UnwindBuffer)
     } else if this.rec.ExtraOptions.ShowRegs {
         err = this.RegsBuffer.ParseContext(this.buf)
         if err != nil {

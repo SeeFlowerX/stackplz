@@ -7,4 +7,4 @@ struct UnwindBuf {
     uint64_t dyn_size;
 };
 
-const char* get_stack(char* dl_path, char* map_buffer, uint64_t reg_mask, void* unwind_buf, void* stack_buf);
+const char* get_stack(char* dl_path, char* map_buffer, void* opt, void* unwind_buf, void* stack_buf);

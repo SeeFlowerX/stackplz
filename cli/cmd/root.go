@@ -283,6 +283,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.FmtJson = gconfig.FmtJson
     mconfig.RegName = gconfig.RegName
     mconfig.DumpHex = gconfig.DumpHex
+    mconfig.ShowPC = gconfig.ShowPC
     mconfig.ShowTime = gconfig.ShowTime
     mconfig.ShowUid = gconfig.ShowUid
 
@@ -664,6 +665,7 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.RegName, "reg", "", "get the offset of reg")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.DumpRet, "dumpret", "", false, "dump ret offset for symbol")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.DumpHex, "dumphex", "", false, "dump buffer as hex")
+    rootCmd.PersistentFlags().BoolVarP(&gconfig.ShowPC, "showpc", "", false, "show origin pc register value")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.ShowTime, "showtime", "", false, "show event boot time info")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.ShowUid, "showuid", "", false, "show process uid info")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.NoCheck, "nocheck", "", false, "disable check for bpf")

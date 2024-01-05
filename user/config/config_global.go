@@ -53,6 +53,7 @@ type GlobalConfig struct {
     RegName      string
     DumpRet      bool
     DumpHex      bool
+    ShowPC       bool
     ShowTime     bool
     ShowUid      bool
     NoCheck      bool

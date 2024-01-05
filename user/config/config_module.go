@@ -533,6 +533,7 @@ type ModuleConfig struct {
     DumpHandle   *os.File
     FmtJson      bool
     DumpHex      bool
+    ShowPC       bool
     ShowTime     bool
     ShowUid      bool
 

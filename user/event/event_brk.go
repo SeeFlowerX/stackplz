@@ -115,7 +115,10 @@ func (this *BrkEvent) ParseContextStack() {
             }
             return
         }
-        this.Stackinfo = ParseStack(content, this.UnwindBuffer)
+        opt := &UnwindOption{}
+        opt.RegMask = (1 << 33) - 1
+        opt.ShowPC = this.mconf.ShowPC
+        this.Stackinfo = ParseStack(content, opt, this.UnwindBuffer)
     } else if this.rec.ExtraOptions.ShowRegs {
         err := this.RegsBuffer.ParseContext(this.buf)
         if err != nil {

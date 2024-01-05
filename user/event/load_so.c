@@ -3,16 +3,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef const char* (*FPTR)(char*, uint64_t, void*, void*);
+typedef const char* (*FPTR)(char*, void*, void*, void*);
 FPTR fptr = NULL;
 int has_dlopen = 0;
 
-const char* get_stack(char* dl_path, char* map_buffer, uint64_t reg_mask, void* unwind_buf, void* stack_buf)
+const char* get_stack(char* dl_path, char* map_buffer, void* opt, void* unwind_buf, void* stack_buf)
 {
     // printf("[get_stack], has_dlopen:%d\n", has_dlopen);
     // fflush(stdout);
     if (has_dlopen == 1) {
-        return (*fptr)(map_buffer, reg_mask, unwind_buf, stack_buf);
+        return (*fptr)(map_buffer, opt, unwind_buf, stack_buf);
     }
     
     void* handle;
@@ -47,5 +47,5 @@ const char* get_stack(char* dl_path, char* map_buffer, uint64_t reg_mask, void* 
         has_dlopen = 1;
     }
 
-    return (*fptr)(map_buffer, reg_mask, unwind_buf, stack_buf);
+    return (*fptr)(map_buffer, opt, unwind_buf, stack_buf);
 }
