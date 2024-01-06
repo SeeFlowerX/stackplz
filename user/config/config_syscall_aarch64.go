@@ -200,9 +200,9 @@ func RegisterUserDefine(name string, point_args []*PointArg, exit_read bool) {
 		b_p := point_arg.Clone()
 		b_p.SetGroupType(EBPF_SYS_EXIT)
 		if exit_read {
-			a_p.SetPointType(EBPF_SYS_ALL)
+			b_p.SetPointType(EBPF_SYS_ALL)
 		} else {
-			a_p.SetPointType(EBPF_SYS_EXIT)
+			b_p.SetPointType(EBPF_SYS_EXIT)
 		}
 		b_point_args = append(b_point_args, b_p)
 	}
