@@ -81,6 +81,26 @@ func (this *CommonEvent) Clone() IEventStruct {
     return event
 }
 
+func (this *CommonEvent) ReadArg(field any) {
+    // 读取常规的参数 save_index|value
+    var err error
+    var index uint8
+    if err = binary.Read(this.buf, binary.LittleEndian, &index); err != nil {
+        panic(err)
+    }
+    if err = binary.Read(this.buf, binary.LittleEndian, field); err != nil {
+        panic(err)
+    }
+}
+
+func (this *CommonEvent) ReadValue(value any) {
+    // 读取单一的参数 适用于那些有潜在对齐问题的结构体
+    var err error
+    if err = binary.Read(this.buf, binary.LittleEndian, value); err != nil {
+        panic(err)
+    }
+}
+
 func (this *CommonEvent) ParseContext() (err error) {
     if len(this.rec.RawSample) == 0 {
         this.logger.Printf("[CommonEvent] RawSample len:%d\n", len(this.rec.RawSample))

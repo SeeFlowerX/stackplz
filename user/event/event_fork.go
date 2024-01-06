@@ -14,27 +14,20 @@ import (
 
 type ForkEvent struct {
     CommonEvent
-    config.BPF_record_fork
-}
-
-func (this *ForkEvent) JsonString(stack_str string) string {
-    v := config.FMT_record_fork{}
-    v.Event = "fork"
-    v.Pid = this.Pid
-    v.Ppid = this.Ppid
-    v.Tid = this.Tid
-    v.Ptid = this.Ptid
-    v.Time = this.Time
-    data, err := json.Marshal(v)
-    if err != nil {
-        panic(err)
-    }
-    return string(data)
+    config.ForkFields
 }
 
 func (this *ForkEvent) String() string {
+    if this.mconf.FmtJson {
+        data, err := json.Marshal(&this.ForkFields)
+        if err != nil {
+            panic(err)
+        }
+        return string(data)
+    }
+
     var s string
-    s = fmt.Sprintf("[PERF_RECORD_FORK] %s ppid:%d ptid:%d time:%d", this.GetUUID(), this.Ppid, this.Ptid, this.Time)
+    s = fmt.Sprintf("[ForkEvent] %s ppid=%d ptid=%d time=%d", this.GetUUID(), this.Ppid, this.Ptid, this.Time)
     return s
 }
 
@@ -51,24 +44,14 @@ func (this *ForkEvent) ParseContext() (err error) {
     if this.mconf.SelfPid == this.Pid {
         return nil
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Ppid); err != nil {
-        return err
+    this.ReadValue(&this.Ppid)
+    this.ReadValue(&this.Tid)
+    this.ReadValue(&this.Ptid)
+    this.ReadValue(&this.Time)
+    if this.mconf.Debug {
+        this.logger.Printf(this.String())
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Ptid); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Time); err != nil {
-        return err
-    }
-    if this.mconf.FmtJson {
-        this.logger.Printf(this.JsonString(""))
-    } else if this.mconf.Debug {
-        s := fmt.Sprintf("[ForkEvent] pid=%d ppid=%d tid=%d ptid=%d time=%d", this.Pid, this.Ppid, this.Tid, this.Ptid, this.Time)
-        this.logger.Printf(s)
-    }
+
     if slices.Contains(this.mconf.PidWhitelist, this.Pid) {
         maps_helper.UpdateForkEvent(this)
         return nil

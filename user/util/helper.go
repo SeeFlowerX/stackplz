@@ -369,6 +369,14 @@ func dumpByteSlice(b []byte, perfix string) *bytes.Buffer {
 	return bb
 }
 
+func RestoreByteSlice(str string) []byte {
+	text, err := strconv.Unquote("\"" + str + "\"")
+	if err != nil {
+		panic(fmt.Sprintf("RestoreByteSlice failed for %s", str))
+	}
+	return []byte(text)
+}
+
 func PrettyByteSlice(buffer []byte) string {
 	var out strings.Builder
 	for _, b := range buffer {

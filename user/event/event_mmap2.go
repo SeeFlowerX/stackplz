@@ -403,34 +403,20 @@ var maps_lock sync.Mutex
 
 type Mmap2Event struct {
     CommonEvent
-    config.BPF_record_mmap2
-}
-
-func (this *Mmap2Event) JsonString(stack_str string) string {
-    v := config.FMT_record_mmap2{}
-    v.Event = "mmap2"
-    v.Pid = this.Pid
-    v.Tid = this.Tid
-    v.Addr = fmt.Sprintf("0x%x", this.Addr)
-    v.Len = fmt.Sprintf("0x%x", this.Len)
-    v.Pgoff = fmt.Sprintf("0x%x", this.Pgoff)
-    v.Maj = this.Maj
-    v.Min = this.Min
-    v.Ino = this.Ino
-    v.Ino_generation = this.Ino_generation
-    v.Prot = fmt.Sprintf("0x%x", this.Prot)
-    v.Flags = fmt.Sprintf("0x%x", this.Flags)
-    v.Filename = this.Filename
-    data, err := json.Marshal(v)
-    if err != nil {
-        panic(err)
-    }
-    return string(data)
+    config.Mmap2Fields
 }
 
 func (this *Mmap2Event) String() string {
+    if this.mconf.FmtJson {
+        data, err := json.Marshal(&this.Mmap2Fields)
+        if err != nil {
+            panic(err)
+        }
+        return string(data)
+    }
+
     var s string
-    s += fmt.Sprintf("[PERF_RECORD_MMAP2] %s Base:0x%x Size:0x%x Perm:0x%x Prot:0x%x <%s>", this.GetUUID(), this.Addr, this.Len, this.Flags, this.Prot, this.Filename)
+    s += fmt.Sprintf("[Mmap2Event] %s addr=0x%x len=0x%x pgoff=0x%x mag=%d min=%d ino=%d ino_generation=%d prot=0x%x flags=0x%x <%s>", this.GetUUID(), this.Addr, this.Len, this.Pgoff, this.Maj, this.Min, this.Ino, this.Ino_generation, this.Prot, this.Flags, this.Filename)
     return s
 }
 
@@ -447,46 +433,25 @@ func (this *Mmap2Event) ParseContext() (err error) {
     if this.mconf.SelfPid == this.Pid {
         return nil
     }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Tid); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Addr); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Len); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Pgoff); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Maj); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Min); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Ino); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Ino_generation); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Prot); err != nil {
-        return err
-    }
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.Flags); err != nil {
-        return err
-    }
+
+    this.ReadValue(&this.Tid)
+    this.ReadValue(&this.Addr)
+    this.ReadValue(&this.Len)
+    this.ReadValue(&this.Pgoff)
+    this.ReadValue(&this.Maj)
+    this.ReadValue(&this.Min)
+    this.ReadValue(&this.Ino)
+    this.ReadValue(&this.Ino_generation)
+    this.ReadValue(&this.Prot)
+    this.ReadValue(&this.Flags)
+
     var tmp = make([]byte, this.buf.Len())
     if err = binary.Read(this.buf, binary.LittleEndian, &tmp); err != nil {
         return err
     }
     this.Filename = util.B2STrim(tmp)
-    if this.mconf.FmtJson {
-        this.logger.Printf(this.JsonString(""))
-    } else if this.mconf.Debug {
-        s := fmt.Sprintf("[Mmap2Event] pid=%d tid=%d addr=0x%x len=0x%x pgoff=0x%x mag=%d min=%d ino=%d ino_generation=%d prot=0x%x flags=0x%x <%s>", this.Pid, this.Tid, this.Addr, this.Len, this.Pgoff, this.Maj, this.Min, this.Ino, this.Ino_generation, this.Prot, this.Flags, this.Filename)
-        this.logger.Printf(s)
+    if this.mconf.Debug {
+        this.logger.Printf(this.String())
     }
     maps_helper.UpdateMaps(this)
     return nil

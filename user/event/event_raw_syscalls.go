@@ -1,7 +1,6 @@
 package event
 
 import (
-    "encoding/binary"
     "encoding/json"
     "fmt"
     "stackplz/user/common"
@@ -15,12 +14,8 @@ type SyscallEvent struct {
     RegsBuffer   RegsBuf
     UnwindBuffer UnwindBuf
     nr_point     *config.SyscallPoint
-    nr           config.Arg_nr
-    lr           config.Arg_reg
-    sp           config.Arg_reg
-    pc           config.Arg_reg
-    ret          uint64
-    arg_str      string
+    config.SyscallFields
+    Stack_str string
 }
 
 func (this *SyscallEvent) DumpRecord() bool {
@@ -42,27 +37,20 @@ func (this *SyscallEvent) ParseEvent() (IEventStruct, error) {
 }
 
 func (this *SyscallEvent) ParseContext() (err error) {
-    // 处理参数 常规参数的构成 是 索引 + 值
-    if err = binary.Read(this.buf, binary.LittleEndian, &this.nr); err != nil {
-        panic(err)
-    }
-    this.nr_point = config.GetSyscallPointByNR(this.nr.Value)
+    this.ReadArg(&this.NR)
+
+    this.nr_point = config.GetSyscallPointByNR(this.NR)
+    this.ArgName = this.nr_point.Name
 
     // this.logger.Printf("ParseContext EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
 
     if this.EventId == SYSCALL_ENTER {
-        if err = binary.Read(this.buf, binary.LittleEndian, &this.lr); err != nil {
-            panic(err)
-        }
-        if err = binary.Read(this.buf, binary.LittleEndian, &this.sp); err != nil {
-            panic(err)
-        }
-        if err = binary.Read(this.buf, binary.LittleEndian, &this.pc); err != nil {
-            panic(err)
-        }
-        this.arg_str = this.nr_point.ParseEnterPoint(this.buf)
+        this.ReadArg(&this.LR)
+        this.ReadArg(&this.SP)
+        this.ReadArg(&this.PC)
+        this.ArgStr = this.nr_point.ParseEnterPoint(this.buf)
     } else if this.EventId == SYSCALL_EXIT {
-        this.arg_str = this.nr_point.ParseExitPoint(this.buf)
+        this.ArgStr = this.nr_point.ParseExitPoint(this.buf)
     } else {
         panic(fmt.Sprintf("SyscallEvent.ParseContext() failed, EventId:%d", this.EventId))
     }
@@ -85,74 +73,72 @@ func (this *SyscallEvent) GetUUID() string {
     return s
 }
 
-func (this *SyscallEvent) JsonString(stack_str string) string {
+func (this *SyscallEvent) MarshalJSON() ([]byte, error) {
+    type ContextAlias config.ContextFields
+    type SyscallAlias config.SyscallFields
     if this.EventId == SYSCALL_ENTER {
-        v := config.SyscallFmt{}
-        v.Ts = this.Ts
-        v.Event = "sys_enter"
-        v.HostTid = this.HostTid
-        v.HostPid = this.HostPid
-        v.Tid = this.Tid
-        v.Pid = this.Pid
-        v.Uid = this.Uid
-        v.Comm = util.B2STrim(this.Comm[:])
-        v.Argnum = this.Argnum
-        v.Stack = stack_str
-        v.NR = this.nr_point.Name
-        v.LR = fmt.Sprintf("0x%x", this.lr.Address)
-        v.SP = fmt.Sprintf("0x%x", this.sp.Address)
-        v.PC = fmt.Sprintf("0x%x", this.pc.Address)
-        v.Arg_str = this.arg_str
-        data, err := json.Marshal(v)
-        if err != nil {
-            panic(err)
-        }
-        return string(data)
-    } else {
-        v := config.SyscallExitFmt{}
-        v.Ts = this.Ts
-        v.Event = "sys_exit"
-        v.HostTid = this.HostTid
-        v.HostPid = this.HostPid
-        v.Tid = this.Tid
-        v.Pid = this.Pid
-        v.Uid = this.Uid
-        v.Comm = util.B2STrim(this.Comm[:])
-        v.Argnum = this.Argnum
-        v.Stack = stack_str
-        v.NR = this.nr_point.Name
-        v.Arg_str = this.arg_str
-        data, err := json.Marshal(v)
-        if err != nil {
-            panic(err)
-        }
-        return string(data)
+        return json.Marshal(&struct {
+            Event string `json:"event"`
+            LR    string `json:"lr"`
+            SP    string `json:"sp"`
+            PC    string `json:"pc"`
+            Comm  string `json:"comm"`
+            *ContextAlias
+            *SyscallAlias
+            Stack_str string `json:"stack_str"`
+        }{
+            Event:        "sys_enter",
+            LR:           fmt.Sprintf("0x%x", this.LR),
+            SP:           fmt.Sprintf("0x%x", this.SP),
+            PC:           fmt.Sprintf("0x%x", this.PC),
+            Comm:         util.B2STrim(this.Comm[:]),
+            ContextAlias: (*ContextAlias)(&this.ContextFields),
+            SyscallAlias: (*SyscallAlias)(&this.SyscallFields),
+            Stack_str:    this.Stack_str,
+        })
     }
+    return json.Marshal(&struct {
+        Event string `json:"event"`
+        Comm  string `json:"comm"`
+        *ContextAlias
+        *SyscallAlias
+        Stack_str string `json:"stack_str"`
+    }{
+        Event:        "sys_exit",
+        Comm:         util.B2STrim(this.Comm[:]),
+        ContextAlias: (*ContextAlias)(&this.ContextFields),
+        SyscallAlias: (*SyscallAlias)(&this.SyscallFields),
+        Stack_str:    this.Stack_str,
+    })
 }
 
 func (this *SyscallEvent) String() string {
-    stack_str := ""
+    this.Stack_str = ""
     if this.EventId == SYSCALL_ENTER {
-        stack_str = this.GetStackTrace(stack_str)
+        this.Stack_str = this.GetStackTrace(this.Stack_str)
     }
-    // if this.mconf.FmtJson {
-    //     return this.JsonString(stack_str)
-    // }
+    if this.mconf.FmtJson {
+        data, err := json.Marshal(this)
+        if err != nil {
+            panic(err)
+        }
+        return string(data)
+    }
     var base_str string
-    base_str = fmt.Sprintf("[%s] %s%s", this.GetUUID(), this.nr_point.Name, this.arg_str)
+    base_str = fmt.Sprintf("[%s] %s%s", this.GetUUID(), this.nr_point.Name, this.ArgStr)
     if this.EventId == SYSCALL_ENTER {
         var lr_str string
         var pc_str string
         if this.mconf.GetOff {
-            lr_str = fmt.Sprintf("LR:0x%x(%s)", this.lr.Address, this.GetOffset(this.lr.Address))
-            pc_str = fmt.Sprintf("PC:0x%x(%s)", this.pc.Address, this.GetOffset(this.pc.Address))
+            lr_str = fmt.Sprintf("LR:0x%x(%s)", this.LR, this.GetOffset(this.LR))
+            pc_str = fmt.Sprintf("PC:0x%x(%s)", this.PC, this.GetOffset(this.PC))
         } else {
-            lr_str = fmt.Sprintf("LR:0x%x", this.lr.Address)
-            pc_str = fmt.Sprintf("PC:0x%x", this.pc.Address)
+            lr_str = fmt.Sprintf("LR:0x%x", this.LR)
+            pc_str = fmt.Sprintf("PC:0x%x", this.PC)
         }
-        base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.sp.Address)
+        base_str = fmt.Sprintf("%s %s %s SP:0x%x", base_str, lr_str, pc_str, this.SP)
     }
-    return base_str + stack_str
+    return base_str + this.Stack_str
 }
 
 func (this *SyscallEvent) Clone() IEventStruct {

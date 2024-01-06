@@ -85,7 +85,7 @@ func (this *RegsBuf) ParseContext(buf *bytes.Buffer) (err error) {
 
 type ContextEvent struct {
     CommonEvent
-    config.BPF_event_context
+    config.ContextFields
     Stackinfo    string
     RegsBuffer   RegsBuf
     UnwindBuffer *UnwindBuf
