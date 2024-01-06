@@ -24,6 +24,10 @@ func (this *PointArg) SetTypeIndex(type_index uint32) {
 	this.TypeIndex = type_index
 }
 
+func (this *PointArg) SetHexFormat() {
+	this.TypeIndex = argtype.R_NUM_HEX(this.TypeIndex).GetTypeIndex()
+}
+
 func (this *PointArg) AddExtraOp(op *argtype.OpConfig) {
 	// fmt.Println("op info:", op.Index, argtype.OPM.GetOpInfo(op.Index))
 	this.ExtraOpList = append(this.ExtraOpList, op.Index)

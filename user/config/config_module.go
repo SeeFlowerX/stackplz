@@ -74,6 +74,11 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
         type_name = filter_items[0]
         arg_filter = filter_items[1]
     }
+    to_hex := false
+    if strings.HasSuffix(type_name, "x") {
+        to_hex = true
+        type_name = type_name[:len(type_name)-1]
+    }
     switch type_name {
     case "int":
         if to_ptr {
@@ -89,6 +94,18 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
         } else {
             point_arg.SetTypeIndex(UINT)
         }
+    case "int8":
+        point_arg.SetTypeIndex(INT8)
+    case "uint8":
+        point_arg.SetTypeIndex(UINT8)
+    case "int16":
+        point_arg.SetTypeIndex(INT16)
+    case "uint16":
+        point_arg.SetTypeIndex(UINT16)
+    case "int32":
+        point_arg.SetTypeIndex(INT32)
+    case "uint32":
+        point_arg.SetTypeIndex(UINT32)
     case "int64":
         point_arg.SetTypeIndex(INT64)
     case "uint64":
@@ -169,6 +186,9 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
     }
     if err != nil {
         return err
+    }
+    if to_hex {
+        point_arg.SetHexFormat()
     }
 
     // ./stackplz -n com.termux -l libtest.so -w 0x16254[buf:64:sp+0x20-0x8.+8.-4+0x16]

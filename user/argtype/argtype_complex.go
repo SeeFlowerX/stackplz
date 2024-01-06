@@ -456,6 +456,10 @@ func r_SIGSET() IArgType {
 	return r_ARRAY(p, 1)
 }
 
+func R_NUM_HEX(type_index uint32) IArgType {
+	return NewNumFormat(GetArgType(type_index), FORMAT_HEX)
+}
+
 func R_POINTER_ARRAY(length uint32) IArgType {
 	p := NewNumFormat(GetArgType(UINT64), FORMAT_HEX)
 	return r_ARRAY(p, length)
