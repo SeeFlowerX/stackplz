@@ -62,6 +62,21 @@ cd /data/local/tmp && ./stackplz --prepare
 
 ![](./images/Snipaste_2023-07-22_21-17-17.png)
 
+> 自定义syscall参数类型
+
+受限于代码结构，暂时采取了一种迂回的方法
+
+即，在uprobe的写法下，末尾加上`s/ss`，即可转为hook syscall，两个s表示syscall退出时也同样读取结构体的详细数据
+
+常规类型末尾的x表示输出为hex
+
+```bash
+./stackplz -n com.termux -w writev[int,ptr,intx]s
+./stackplz -n com.termux -w writev[ptrx,buf,ptrx]ss --dumphex --color
+```
+
+关于syscall名，请查阅[Linux kernel syscall tables](https://syscalls.mebeim.net/?table=arm64/64/aarch64/v6.2)
+
 3.2 **追踪libc的open**
 
 注：默认设定的库是`/apex/com.android.runtime/lib64/bionic/libc.so`，要自定义请使用`--lib`指定

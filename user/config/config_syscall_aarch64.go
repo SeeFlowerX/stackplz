@@ -120,12 +120,30 @@ func (this *SyscallPoints) GetPointByNR(nr uint32) *SyscallPoint {
 	panic(fmt.Sprintf("GetPointByNR failed for nr:%d", nr))
 }
 
+func (this *SyscallPoints) DelPointByNR(nr uint32) {
+	del_ok := false
+	for index, point := range this.points {
+		if point.Nr == nr {
+			this.points = append(this.points[:index], this.points[index+1:]...)
+			del_ok = true
+			break
+		}
+	}
+	if !del_ok {
+		panic(fmt.Sprintf("DelPointByNR failed for nr:%d", nr))
+	}
+}
+
 func GetSyscallPointByName(name string) *SyscallPoint {
 	return aarch64_syscall_points.GetPointByName(name)
 }
 
 func GetSyscallPointByNR(nr uint32) *SyscallPoint {
 	return aarch64_syscall_points.GetPointByNR(nr)
+}
+
+func DelSyscallPointByNR(nr uint32) {
+	aarch64_syscall_points.DelPointByNR(nr)
 }
 
 func GetAllPoints() []*SyscallPoint {
@@ -152,6 +170,40 @@ func R(nr uint32, name string, point_args ...*PointArg) {
 		b_p := point_arg.Clone()
 		b_p.SetRegIndex(uint32(reg_index))
 		b_p.SetGroupType(EBPF_SYS_EXIT)
+		b_point_args = append(b_point_args, b_p)
+	}
+	// 后面取出 op list 的时候需要特殊处理
+	b_point_args = append(b_point_args, B("ret", INT))
+	point := &SyscallPoint{nr, name, a_point_args, b_point_args}
+	aarch64_syscall_points.Add(point)
+}
+
+func RegisterUserDefine(name string, point_args []*PointArg, exit_read bool) {
+	nr := GetSyscallPointByName(name).Nr
+	DelSyscallPointByNR(nr)
+
+	if aarch64_syscall_points.Dup(nr, name) {
+		panic(fmt.Sprintf("register duplicate for nr:%d name:%s", nr, name))
+	}
+	var a_point_args []*PointArg
+	var b_point_args []*PointArg
+	for _, point_arg := range point_args {
+		// 相比内置的定义 这里不需要指定寄存器索引
+		a_p := point_arg.Clone()
+		a_p.SetGroupType(EBPF_SYS_ENTER)
+		if exit_read {
+			a_p.SetPointType(EBPF_SYS_ALL)
+		} else {
+			a_p.SetPointType(EBPF_SYS_ENTER)
+		}
+		a_point_args = append(a_point_args, a_p)
+		b_p := point_arg.Clone()
+		b_p.SetGroupType(EBPF_SYS_EXIT)
+		if exit_read {
+			a_p.SetPointType(EBPF_SYS_ALL)
+		} else {
+			a_p.SetPointType(EBPF_SYS_EXIT)
+		}
 		b_point_args = append(b_point_args, b_p)
 	}
 	// 后面取出 op list 的时候需要特殊处理

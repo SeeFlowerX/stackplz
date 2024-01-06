@@ -303,6 +303,11 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
     mconfig.UprobeSignal = signal
 
+    u_syscall := mconfig.StackUprobeConf.GetSyscall()
+    if u_syscall != "" {
+        gconfig.SysCall = u_syscall
+    }
+
     // 2. hook syscall
     mconfig.InitSyscallConfig()
     mconfig.SysCallConf.Parse_SysWhitelist(gconfig)

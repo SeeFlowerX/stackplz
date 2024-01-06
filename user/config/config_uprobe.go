@@ -17,6 +17,15 @@ type UprobeArgs struct {
 	NonElfOffset uint64
 	ArgsStr      string
 	PointArgs    []*PointArg
+	BindSyscall  bool
+	ExitRead     bool
+}
+
+func (this *UprobeArgs) ToSyscall() bool {
+	if this.BindSyscall {
+		RegisterUserDefine(this.Name, this.PointArgs, this.ExitRead)
+	}
+	return this.BindSyscall
 }
 
 func (this *UprobeArgs) GetConfig() UprobePointOpKeyConfig {

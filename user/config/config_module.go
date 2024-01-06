@@ -269,6 +269,16 @@ func (this *StackUprobeConfig) SetColor(color bool) {
     this.Color = color
 }
 
+func (this *StackUprobeConfig) GetSyscall() string {
+    results := []string{}
+    for _, point := range this.Points {
+        if point.ToSyscall() {
+            results = append(results, point.Name)
+        }
+    }
+    return strings.Join(results, ",")
+}
+
 func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
     if this.LibPath == "" {
         return errors.New("library is empty, plz set with -l/--lib")
@@ -280,11 +290,26 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
     // strstr+0x0[str,str] 命中 strstr + 0x0 时将x0和x1读取为字符串
     // write[int,buf:128,int] 命中 write 时将x0读取为int、x1读取为字节数组、x2读取为int
     for point_index, config_str := range configs {
+        exit_read := false
+        bind_syscall := false
+        if strings.HasSuffix(config_str, "]s") {
+            // 临时方案 将 uprobe 用法绑定到 syscall 上
+            config_str = config_str[:len(config_str)-1]
+            bind_syscall = true
+        }
+        if strings.HasSuffix(config_str, "]ss") {
+            // 两个s表示对于sys_exit也要进行详细输出
+            config_str = config_str[:len(config_str)-2]
+            exit_read = true
+            bind_syscall = true
+        }
         reg := regexp.MustCompile(`(\w+)(\+0x[[:xdigit:]]+)?(\[.+?\])?`)
         match := reg.FindStringSubmatch(config_str)
 
         if len(match) > 0 {
             hook_point := &UprobeArgs{}
+            hook_point.BindSyscall = bind_syscall
+            hook_point.ExitRead = exit_read
             hook_point.Index = uint32(point_index)
             hook_point.Offset = 0x0
             hook_point.LibPath = this.LibPath

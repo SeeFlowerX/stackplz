@@ -41,6 +41,10 @@ func (this *PointArg) SetGroupType(group_type uint32) {
 	this.GroupType = group_type
 }
 
+func (this *PointArg) SetPointType(point_type uint32) {
+	this.PointType = point_type
+}
+
 func (this *PointArg) ReadMore() bool {
 	return this.PointType == EBPF_SYS_ALL || this.PointType == this.GroupType
 }
