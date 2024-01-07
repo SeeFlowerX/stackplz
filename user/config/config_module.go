@@ -81,19 +81,9 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
     }
     switch type_name {
     case "int":
-        if to_ptr {
-            point_arg.SetTypeIndex(INT_PTR)
-            point_arg.SetGroupType(EBPF_UPROBE_ENTER)
-        } else {
-            point_arg.SetTypeIndex(INT)
-        }
+        point_arg.SetTypeIndex(INT)
     case "uint":
-        if to_ptr {
-            point_arg.SetTypeIndex(UINT_PTR)
-            point_arg.SetGroupType(EBPF_UPROBE_ENTER)
-        } else {
-            point_arg.SetTypeIndex(UINT)
-        }
+        point_arg.SetTypeIndex(UINT)
     case "int8":
         point_arg.SetTypeIndex(INT8)
     case "uint8":
@@ -189,6 +179,10 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
     }
     if to_hex {
         point_arg.SetHexFormat()
+    }
+    if to_ptr {
+        point_arg.ToPointerType()
+        point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     }
 
     // ./stackplz -n com.termux -l libtest.so -w 0x16254[buf:64:sp+0x20-0x8.+8.-4+0x16]

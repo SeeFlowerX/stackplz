@@ -14,7 +14,7 @@ import (
 
 // 这里是一些列基础参数的组合生成
 
-func r_POINTER(p IArgType, is_num bool) IArgType {
+func R_POINTER(p IArgType, is_num bool) IArgType {
 	ptr_name := fmt.Sprintf("ptr_%s", p.GetName())
 	new_p := RegisterNew(ptr_name, POINTER)
 	new_i, ok := (new_p).(IArgTypePtr)

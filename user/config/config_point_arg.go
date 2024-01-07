@@ -28,6 +28,12 @@ func (this *PointArg) SetHexFormat() {
 	this.TypeIndex = argtype.R_NUM_HEX(this.TypeIndex).GetTypeIndex()
 }
 
+func (this *PointArg) ToPointerType() {
+	// 暂时仅限数字类型
+	at := argtype.GetArgType(this.TypeIndex)
+	this.TypeIndex = argtype.R_POINTER(at, true).GetTypeIndex()
+}
+
 func (this *PointArg) AddExtraOp(op *argtype.OpConfig) {
 	// fmt.Println("op info:", op.Index, argtype.OPM.GetOpInfo(op.Index))
 	this.ExtraOpList = append(this.ExtraOpList, op.Index)

@@ -209,9 +209,9 @@ func LazyRegister(type_index uint32) IArgType {
 	case UINT_ARRAY_1:
 		return r_PRE_ARRAY(GetArgType(UINT), UINT_ARRAY_1, 1)
 	case INT_PTR:
-		return r_POINTER(GetArgType(INT), true)
+		return R_POINTER(GetArgType(INT), true)
 	case UINT_PTR:
-		return r_POINTER(GetArgType(UINT), true)
+		return R_POINTER(GetArgType(UINT), true)
 	case STRING:
 		return r_STRING()
 	case STD_STRING:
