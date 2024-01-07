@@ -47,12 +47,30 @@ func parse_STRING(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) 
 	return fmt.Sprintf("0x%x(%s)", ptr, util.B2STrim(payload))
 }
 
-func r_STRING() IArgType {
-	at := RegisterPre("string", STRING, STRUCT)
+// func r_STRING() IArgType {
+// 	at := RegisterPre("string", STRING, STRUCT)
+// 	at.AddOp(OPC_SAVE_STRING)
+// 	at.SetParseCB(parse_STRING)
+// 	return at
+// }
+
+func init_STRING() IArgType {
+	at := GetArgType(STRING)
+	// at := RegisterPre("string", STRING, BUFFER)
 	at.AddOp(OPC_SAVE_STRING)
-	at.SetParseCB(parse_STRING)
+	// at.SetParseCB(parse_STRING)
+	(at).(IArgStructSetting).SetParseImpl(&Arg_string{})
 	return at
 }
+
+// func PRE_R_STRUCT(arg_name string, type_index uint32, arg IParseStruct) IArgType {
+// 	at := RegisterPre(arg_name, type_index, STRUCT)
+// 	at.SetSize(arg.GetSize())
+// 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.GetSize())))
+// 	at.AddOp(OPC_SAVE_STRUCT)
+// 	(at).(IArgStructSetting).SetParseImpl(arg)
+// 	return at
+// }
 
 func r_STD_STRING() IArgType {
 	at := RegisterPre("std_string", STD_STRING, STRUCT)
@@ -349,28 +367,30 @@ func r_STATFS() IArgType {
 	return at
 }
 
-func parse_BUFFER(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {
-	if !parse_more {
-		return fmt.Sprintf("0x%x", ptr)
-	}
-	var arg Arg_str
-	if err := binary.Read(buf, binary.LittleEndian, &arg); err != nil {
-		panic(err)
-	}
-	payload := make([]byte, arg.Len)
-	if err := binary.Read(buf, binary.LittleEndian, &payload); err != nil {
-		panic(err)
-	}
-	if ctx.GetDumpHex() {
-		return fmt.Sprintf("0x%x%s", ptr, arg.HexFormat(payload, ctx.GetColor()))
-	}
-	return fmt.Sprintf("0x%x%s", ptr, arg.Format(payload))
-}
+// func parse_BUFFER(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+// 	if !parse_more {
+// 		return fmt.Sprintf("0x%x", ptr)
+// 	}
+// 	var arg Arg_str
+// 	if err := binary.Read(buf, binary.LittleEndian, &arg); err != nil {
+// 		panic(err)
+// 	}
+// 	payload := make([]byte, arg.Len)
+// 	if err := binary.Read(buf, binary.LittleEndian, &payload); err != nil {
+// 		panic(err)
+// 	}
+// 	if ctx.GetDumpHex() {
+// 		return fmt.Sprintf("0x%x%s", ptr, arg.HexFormat(payload, ctx.GetColor()))
+// 	}
+// 	return fmt.Sprintf("0x%x%s", ptr, arg.Format(payload))
+// }
 
-func r_BUFFER() IArgType {
-	at := RegisterPre("buffer", BUFFER, STRUCT)
+func init_BUFFER() IArgType {
+	at := GetArgType(BUFFER)
+	// at := RegisterPre("buffer", BUFFER, STRUCT)
 	at.AddOp(SaveStruct(uint64(MAX_BUF_READ_SIZE)))
-	at.SetParseCB(parse_BUFFER)
+	// at.SetParseCB(parse_BUFFER)
+	(at).(IArgStructSetting).SetParseImpl(&Arg_buffer{})
 	return at
 }
 
@@ -571,12 +591,21 @@ func parse_SIGACTION(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more boo
 	return fmt.Sprintf("0x%x", ptr)
 }
 
-func r_SIGACTION() IArgType {
-	at := RegisterNew("sigaction", STRUCT)
-	at.SetSize(uint32(unsafe.Sizeof(Sigaction{})))
+func R_STRUCT(arg_name string, arg IParseStruct) IArgType {
+	at := RegisterNew(arg_name, STRUCT)
+	at.SetSize(arg.GetSize())
 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.GetSize())))
 	at.AddOp(OPC_SAVE_STRUCT)
-	at.SetParseCB(parse_SIGACTION)
+	(at).(IArgStructSetting).SetParseImpl(arg)
+	return at
+}
+
+func PRE_R_STRUCT(arg_name string, type_index uint32, arg IParseStruct) IArgType {
+	at := RegisterPre(arg_name, type_index, STRUCT)
+	at.SetSize(arg.GetSize())
+	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.GetSize())))
+	at.AddOp(OPC_SAVE_STRUCT)
+	(at).(IArgStructSetting).SetParseImpl(arg)
 	return at
 }
 
@@ -705,8 +734,8 @@ func parse_MSGHDR(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) 
 	if err := binary.Read(buf, binary.LittleEndian, &arg_msghdr); err != nil {
 		panic(err)
 	}
-	var control_buf Arg_str
-	if err := binary.Read(buf, binary.LittleEndian, &control_buf); err != nil {
+	var control_buf Arg_buffer
+	if err := binary.Read(buf, binary.LittleEndian, control_buf.GetArgStruct()); err != nil {
 		panic(err)
 	}
 	control_payload := []byte{}
@@ -715,6 +744,7 @@ func parse_MSGHDR(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) 
 		if err := binary.Read(buf, binary.LittleEndian, &control_payload); err != nil {
 			panic(err)
 		}
+		control_buf.ArgPayload = control_payload
 	}
 	var iov_read_count int = MAX_IOV_COUNT
 	if int(arg_msghdr.Iovlen) < iov_read_count {
@@ -742,7 +772,7 @@ func parse_MSGHDR(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) 
 		iov_results = append(iov_results, fmt.Sprintf("iov_%d=%s", i, arg_iovec.Format()))
 	}
 	fmt_str := "(\n\t" + strings.Join(iov_results, ", \n\t") + "\n)"
-	return fmt.Sprintf("0x%x%s", ptr, arg_msghdr.FormatFull(fmt_str, control_buf.Format(control_payload)))
+	return fmt.Sprintf("0x%x%s", ptr, arg_msghdr.FormatFull(fmt_str, control_buf.Format()))
 }
 
 func r_MSGHDR() IArgType {

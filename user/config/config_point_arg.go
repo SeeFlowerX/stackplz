@@ -7,13 +7,17 @@ import (
 )
 
 type PointArg struct {
-	Name            string
-	RegIndex        uint32
-	TypeIndex       uint32
-	ExtraOpList     []uint32
-	FilterIndexList []uint32
-	PointType       uint32
-	GroupType       uint32
+	Name            string   `json:"arg_name"`
+	RegIndex        uint32   `json:"reg_index"`
+	TypeIndex       uint32   `json:"-"`
+	ExtraOpList     []uint32 `json:"-"`
+	FilterIndexList []uint32 `json:"-"`
+	PointType       uint32   `json:"-"`
+	GroupType       uint32   `json:"-"`
+}
+
+func (this *PointArg) GetTypeName() string {
+	return argtype.GetArgType(this.TypeIndex).GetName()
 }
 
 func (this *PointArg) SetRegIndex(reg_index uint32) {
@@ -61,6 +65,14 @@ func (this *PointArg) Parse(ptr uint64, buf *bytes.Buffer, point_type uint32) st
 		parse_more = true
 	}
 	return argtype.GetArgType(this.TypeIndex).Parse(ptr, buf, parse_more)
+}
+
+func (this *PointArg) ParseJson(ptr uint64, buf *bytes.Buffer, point_type uint32) any {
+	parse_more := false
+	if this.PointType == EBPF_SYS_ALL || this.PointType == point_type {
+		parse_more = true
+	}
+	return argtype.GetArgType(this.TypeIndex).ParseJson(ptr, buf, parse_more)
 }
 
 func (this *PointArg) GetOpList() []uint32 {

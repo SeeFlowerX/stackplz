@@ -18,6 +18,7 @@ type IArgType interface {
 	SetParseCB(ParseFN)
 	// Setup()
 	Parse(uint64, *bytes.Buffer, bool) string
+	ParseJson(uint64, *bytes.Buffer, bool) any
 	SetName(string)
 	GetName() string
 	SetTypeIndex(uint32)
@@ -51,6 +52,7 @@ type ArgType struct {
 	// 可选的别名
 	AliaNames []string
 	ParseCB   ParseFN
+	ParseImpl IParseStruct
 	DumpHex   bool
 	Color     bool
 }
@@ -73,6 +75,7 @@ func (this *ArgType) Clone() IArgType {
 	at.OpList = append(at.OpList, this.OpList...)
 	at.AliaNames = append(at.AliaNames, this.AliaNames...)
 	at.ParseCB = this.ParseCB
+	at.ParseImpl = this.ParseImpl
 	at.DumpHex = this.DumpHex
 	at.Color = this.Color
 	return &at
@@ -122,6 +125,10 @@ func (this *ArgType) SetParseCB(fn ParseFN) {
 	this.ParseCB = fn
 }
 
+func (this *ArgType) SetParseImpl(impl IParseStruct) {
+	this.ParseImpl = impl
+}
+
 func (this *ArgType) AddOpList(p IArgType) {
 	this.OpList = append(this.OpList, p.GetOpList()...)
 }
@@ -132,6 +139,10 @@ func (this *ArgType) CleanOpList() {
 
 func (this *ArgType) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	panic(fmt.Sprintf("ArgType.Parse() not implemented yet, name=%s index=%d", this.Name, this.TypeIndex))
+}
+
+func (this *ArgType) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	panic(fmt.Sprintf("ArgType.ParseJson() not implemented yet, name=%s index=%d", this.Name, this.TypeIndex))
 }
 
 func (this *ArgType) SetSize(size uint32) {
@@ -212,24 +223,25 @@ func LazyRegister(type_index uint32) IArgType {
 		return R_POINTER(GetArgType(INT), true)
 	case UINT_PTR:
 		return R_POINTER(GetArgType(UINT), true)
-	case STRING:
-		return r_STRING()
+	// case STRING:
+	// 	return r_STRING()
 	case STD_STRING:
 		return r_STD_STRING()
 	case STRING_ARRAY:
 		return r_STRING_ARRAY()
-	case BUFFER:
-		return r_BUFFER()
+	// case BUFFER:
+	// 	return r_BUFFER()
 	case STACK_T:
 		return r_STACK_T()
 	case TIMESPEC:
-		return r_TIMESPEC()
+		// return r_TIMESPEC()
+		return PRE_R_STRUCT("timespec", TIMESPEC, &Arg_Timespec{})
 	case SIGSET:
 		return r_SIGSET()
 	case SIGINFO:
 		return r_SIGINFO()
 	case SIGACTION:
-		return r_SIGACTION()
+		return PRE_R_STRUCT("sigaction", SIGACTION, &Arg_Sigaction{})
 	case EPOLLEVENT:
 		return r_EPOLLEVENT()
 	case POLLFD:

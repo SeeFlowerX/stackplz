@@ -40,17 +40,26 @@ func (this *SyscallEvent) ParseContext() (err error) {
     this.ReadArg(&this.NR)
 
     this.nr_point = config.GetSyscallPointByNR(this.NR)
-    this.ArgName = this.nr_point.Name
+    this.PointName = this.nr_point.Name
 
     // this.logger.Printf("ParseContext EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))
-
+    this.PointValue = nil
+    this.PointStr = ""
     if this.EventId == SYSCALL_ENTER {
         this.ReadArg(&this.LR)
         this.ReadArg(&this.SP)
         this.ReadArg(&this.PC)
-        this.ArgStr = this.nr_point.ParseEnterPoint(this.buf)
+        if this.mconf.FmtJson {
+            this.PointValue = this.nr_point.ParsePointJson(this.buf, config.EBPF_SYS_ENTER)
+        } else {
+            this.PointStr = this.nr_point.ParseEnterPoint(this.buf)
+        }
     } else if this.EventId == SYSCALL_EXIT {
-        this.ArgStr = this.nr_point.ParseExitPoint(this.buf)
+        if this.mconf.FmtJson {
+            this.PointValue = this.nr_point.ParsePointJson(this.buf, config.EBPF_SYS_EXIT)
+        } else {
+            this.PointStr = this.nr_point.ParseExitPoint(this.buf)
+        }
     } else {
         panic(fmt.Sprintf("SyscallEvent.ParseContext() failed, EventId:%d", this.EventId))
     }
@@ -79,20 +88,20 @@ func (this *SyscallEvent) MarshalJSON() ([]byte, error) {
     if this.EventId == SYSCALL_ENTER {
         return json.Marshal(&struct {
             Event string `json:"event"`
-            LR    string `json:"lr"`
-            SP    string `json:"sp"`
-            PC    string `json:"pc"`
             Comm  string `json:"comm"`
             *ContextAlias
+            LR string `json:"lr"`
+            SP string `json:"sp"`
+            PC string `json:"pc"`
             *SyscallAlias
             Stack_str string `json:"stack_str"`
         }{
             Event:        "sys_enter",
+            Comm:         util.B2STrim(this.Comm[:]),
+            ContextAlias: (*ContextAlias)(&this.ContextFields),
             LR:           fmt.Sprintf("0x%x", this.LR),
             SP:           fmt.Sprintf("0x%x", this.SP),
             PC:           fmt.Sprintf("0x%x", this.PC),
-            Comm:         util.B2STrim(this.Comm[:]),
-            ContextAlias: (*ContextAlias)(&this.ContextFields),
             SyscallAlias: (*SyscallAlias)(&this.SyscallFields),
             Stack_str:    this.Stack_str,
         })
@@ -125,7 +134,7 @@ func (this *SyscallEvent) String() string {
         return string(data)
     }
     var base_str string
-    base_str = fmt.Sprintf("[%s] %s%s", this.GetUUID(), this.nr_point.Name, this.ArgStr)
+    base_str = fmt.Sprintf("[%s] %s%s", this.GetUUID(), this.nr_point.Name, this.PointStr)
     if this.EventId == SYSCALL_ENTER {
         var lr_str string
         var pc_str string

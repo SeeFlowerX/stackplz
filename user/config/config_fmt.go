@@ -32,12 +32,13 @@ func (this *ContextFields) MarshalJSON() ([]byte, error) {
 }
 
 type SyscallFields struct {
-	NR      uint32 `json:"nr"`
-	LR      uint64 `json:"lr"`
-	SP      uint64 `json:"sp"`
-	PC      uint64 `json:"pc"`
-	ArgName string `json:"arg_name"`
-	ArgStr  string `json:"arg_str"`
+	NR         uint32 `json:"nr"`
+	LR         uint64 `json:"-"`
+	SP         uint64 `json:"-"`
+	PC         uint64 `json:"-"`
+	PointName  string `json:"point_name"`
+	PointStr   string `json:"point_str"`
+	PointValue any    `json:"point_value"`
 }
 
 type UprobeFields struct {

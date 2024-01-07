@@ -3,6 +3,7 @@ package argtype
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"net"
 	"stackplz/user/util"
@@ -11,12 +12,233 @@ import (
 	"unsafe"
 )
 
+// 基础的结构
+
+// ebpf保存的数据 每一个都有索引
+type Arg_index struct {
+	Index uint8 `json:"save_index"`
+}
+
+// 寄存器类型
+type Arg_reg struct {
+	Arg_index
+	Address uint64 `json:"reg_value"`
+}
+
+func (this *Arg_reg) MarshalJSON() ([]byte, error) {
+	type ArgIndexAlias Arg_index
+	return json.Marshal(&struct {
+		*ArgIndexAlias
+		Address string `json:"reg_value"`
+	}{
+		ArgIndexAlias: (*ArgIndexAlias)(&this.Arg_index),
+		Address:       fmt.Sprintf("0x%x", this.Address),
+	})
+}
+
+func (this *Arg_reg) Format() string {
+	var fields []string
+	fields = append(fields, fmt.Sprintf("[debug index:%d address:0x%x]", this.Index, this.Address))
+	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
+type IParseStruct interface {
+	Clone() IParseStruct
+	GetSize() uint32
+	GetStruct() any
+	GetArgStruct() *Arg_struct
+	Format() string
+}
+
+// 结构体类型
+type Arg_struct struct {
+	Arg_index
+	Len uint32 `json:"save_len"`
+}
+
+func (this *Arg_struct) Clone() IParseStruct {
+	panic("...")
+}
+
+func (this *Arg_struct) GetSize() uint32 {
+	panic("...")
+}
+
+func (this *Arg_struct) GetStruct() any {
+	panic("...")
+}
+
+func (this *Arg_struct) GetArgStruct() *Arg_struct {
+	return this
+}
+
+type IArgBuffer interface {
+	SetArgPayload([]byte)
+}
+
+type Arg_buffer struct {
+	Arg_struct
+	ArgPayload []byte
+}
+
+func (this *Arg_buffer) Clone() IParseStruct {
+	// 这里返回一个空的
+	return &Arg_buffer{}
+}
+
+func (this *Arg_buffer) GetStruct() any {
+	return &this.ArgPayload
+}
+
+func (this *Arg_buffer) SetArgPayload(payload []byte) {
+	this.ArgPayload = payload
+}
+
+func (this *Arg_buffer) Format() string {
+	hexdump := util.PrettyByteSlice(this.ArgPayload)
+	return fmt.Sprintf("(%s)", hexdump)
+}
+
+func (this *Arg_buffer) HexFormat(color bool) string {
+	var hexdump string
+	if color {
+		hexdump = util.HexDumpGreen(this.ArgPayload)
+	} else {
+		hexdump = util.HexDumpPure(this.ArgPayload)
+	}
+	return fmt.Sprintf("(\n%s)", hexdump)
+}
+
+func (this *Arg_buffer) MarshalJSON() ([]byte, error) {
+	type ArgStructAlias Arg_struct
+	return json.Marshal(&struct {
+		*ArgStructAlias
+		Buffer string `json:"buffer"`
+	}{
+		ArgStructAlias: (*ArgStructAlias)(&this.Arg_struct),
+		Buffer:         util.PrettyByteSlice(this.ArgPayload),
+	})
+}
+
+type Arg_str struct {
+	Arg_index
+	Len uint32 `json:"save_len"`
+}
+
+type Arg_string struct {
+	Arg_buffer
+}
+
+func (this *Arg_string) Clone() IParseStruct {
+	return &Arg_string{}
+}
+
+func (this *Arg_string) Format() string {
+	return fmt.Sprintf("(%s)", util.B2STrim(this.ArgPayload))
+}
+
+func (this *Arg_string) MarshalJSON() ([]byte, error) {
+	type ArgStructAlias Arg_struct
+	return json.Marshal(&struct {
+		*ArgStructAlias
+		Value string `json:"value"`
+	}{
+		ArgStructAlias: (*ArgStructAlias)(&this.Arg_struct),
+		Value:          util.B2STrim(this.ArgPayload),
+	})
+}
+
 type Sigaction struct {
-	Sa_handler   uint64
-	Sa_sigaction uint64
-	Sa_mask      uint64
-	Sa_flags     uint64
-	Sa_restorer  uint64
+	Sa_handler   uint64 `json:"sa_handler"`
+	Sa_sigaction uint64 `json:"sa_sigaction"`
+	Sa_mask      uint64 `json:"sa_mask"`
+	Sa_flags     uint64 `json:"sa_flags"`
+	Sa_restorer  uint64 `json:"sa_restorer"`
+}
+
+type Arg_Sigaction struct {
+	Arg_struct
+	Sigaction
+}
+
+func (this *Arg_Sigaction) Clone() IParseStruct {
+	// 这里返回一个空的
+	return &Arg_Sigaction{}
+}
+
+func (this *Arg_Sigaction) GetSize() uint32 {
+	return uint32(unsafe.Sizeof(this.Sigaction))
+}
+
+func (this *Arg_Sigaction) GetStruct() any {
+	return &this.Sigaction
+}
+
+func (this *Arg_Sigaction) Format() string {
+	var fields []string
+	fields = append(fields, fmt.Sprintf("sa_handler=0x%x", this.Sa_handler))
+	fields = append(fields, fmt.Sprintf("sa_sigaction=0x%x", this.Sa_sigaction))
+	fields = append(fields, fmt.Sprintf("sa_mask=0x%x", this.Sa_mask))
+	fields = append(fields, fmt.Sprintf("sa_flags=0x%x", this.Sa_flags))
+	fields = append(fields, fmt.Sprintf("sa_restorer=0x%x", this.Sa_restorer))
+	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+}
+
+func (this *Arg_Sigaction) MarshalJSON() ([]byte, error) {
+	type ArgStructAlias Arg_struct
+	return json.Marshal(&struct {
+		*ArgStructAlias
+		Sa_handler   string `json:"sa_handler"`
+		Sa_sigaction string `json:"sa_sigaction"`
+		Sa_mask      string `json:"sa_mask"`
+		Sa_flags     string `json:"sa_flags"`
+		Sa_restorer  string `json:"sa_restorer"`
+	}{
+		ArgStructAlias: (*ArgStructAlias)(&this.Arg_struct),
+		Sa_handler:     fmt.Sprintf("0x%x", this.Sa_handler),
+		Sa_sigaction:   fmt.Sprintf("0x%x", this.Sa_sigaction),
+		Sa_mask:        fmt.Sprintf("0x%x", this.Sa_mask),
+		Sa_flags:       fmt.Sprintf("0x%x", this.Sa_flags),
+		Sa_restorer:    fmt.Sprintf("0x%x", this.Sa_restorer),
+	})
+}
+
+type Arg_Timespec struct {
+	Arg_struct
+	syscall.Timespec
+}
+
+func (this *Arg_Timespec) Clone() IParseStruct {
+	// 这里返回一个空的
+	return &Arg_Timespec{}
+}
+
+func (this *Arg_Timespec) GetSize() uint32 {
+	return uint32(unsafe.Sizeof(this.Timespec))
+}
+
+func (this *Arg_Timespec) GetStruct() any {
+	return &this.Timespec
+}
+
+func (this *Arg_Timespec) Format() string {
+	var fields []string
+	fields = append(fields, fmt.Sprintf("sec=%d", this.Sec))
+	fields = append(fields, fmt.Sprintf("nsec=%d", this.Nsec))
+	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
+}
+
+func (this *Arg_Timespec) MarshalJSON() ([]byte, error) {
+	type ArgStructAlias Arg_struct
+	return json.Marshal(&struct {
+		*ArgStructAlias
+		Sec  int64 `json:"sec"`
+		Nsec int64 `json:"nsec"`
+	}{
+		ArgStructAlias: (*ArgStructAlias)(&this.Arg_struct),
+		Sec:            this.Sec,
+		Nsec:           this.Nsec,
+	})
 }
 
 type Pollfd struct {
@@ -118,54 +340,10 @@ type Arg_probe_index struct {
 	Index uint8
 	Value uint32
 }
-type Arg_reg struct {
-	Index   uint8
-	Address uint64
-}
-
-func (this *Arg_reg) Format() string {
-	var fields []string
-	fields = append(fields, fmt.Sprintf("[debug index:%d address:0x%x]", this.Index, this.Address))
-	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
-}
-
-type Arg_str struct {
-	Index uint8
-	Len   uint32
-}
-
-func (this *Arg_str) Format(payload []byte) string {
-	// hexdump := util.HexDumpPure(payload)
-	hexdump := util.PrettyByteSlice(payload)
-	return fmt.Sprintf("(%s)", hexdump)
-}
-
-func (this *Arg_str) HexFormat(payload []byte, color bool) string {
-	var hexdump string
-	if color {
-		hexdump = util.HexDumpGreen(payload)
-	} else {
-		hexdump = util.HexDumpPure(payload)
-	}
-	return fmt.Sprintf("(\n%s)", hexdump)
-}
 
 type Arg_str_arr struct {
 	Index uint8
 	Count uint8
-}
-
-type Arg_Timespec struct {
-	Index uint8
-	Len   uint32
-	syscall.Timespec
-}
-
-func (this *Arg_Timespec) Format() string {
-	var fields []string
-	fields = append(fields, fmt.Sprintf("sec=%d", this.Sec))
-	fields = append(fields, fmt.Sprintf("nsec=%d", this.Nsec))
-	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
 }
 
 type Arg_TimeZone_t struct {
@@ -211,12 +389,6 @@ func (this *Arg_Timeval) Format() string {
 	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
-type Arg_Sigaction struct {
-	Index uint8
-	Len   uint32
-	Sigaction
-}
-
 type Dirent struct {
 	Ino    uint64
 	Off    int64
@@ -225,16 +397,6 @@ type Dirent struct {
 	// 这个部分是在 readdir 的操作之后才有内容
 	Name      [256]byte
 	Pad_cgo_0 [5]byte
-}
-
-func (this *Arg_Sigaction) Format() string {
-	var fields []string
-	fields = append(fields, fmt.Sprintf("sa_handler=0x%x", this.Sa_handler))
-	fields = append(fields, fmt.Sprintf("sa_sigaction=0x%x", this.Sa_sigaction))
-	fields = append(fields, fmt.Sprintf("sa_mask=0x%x", this.Sa_mask))
-	fields = append(fields, fmt.Sprintf("sa_flags=0x%x", this.Sa_flags))
-	fields = append(fields, fmt.Sprintf("sa_restorer=0x%x", this.Sa_restorer))
-	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
 type Arg_Pollfd struct {

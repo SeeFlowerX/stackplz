@@ -67,6 +67,11 @@ func (this *ARG_PTR) Clone() IArgType {
 	return &ARG_PTR{*p, this.IsNum, this.PtrArgType}
 }
 
+func (this *ARG_PTR) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	// 临时写法 保证使用 --json 的时候暂时不出错
+	return this.Parse(ptr, buf, parse_more)
+}
+
 type ARG_INT struct {
 	ARG_NUM
 }
@@ -210,6 +215,10 @@ func (this *ARG_PTR) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) strin
 	return fmt.Sprintf("0x%x", ptr)
 }
 
+func (this *ARG_INT) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.Parse(ptr, buf, parse_more)
+}
+
 func (this *ARG_INT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int32(ptr)
 	flags_fmt := ""
@@ -233,6 +242,9 @@ func (this *ARG_INT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) strin
 		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
 	}
 }
+func (this *ARG_UINT) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.Parse(ptr, buf, parse_more)
+}
 func (this *ARG_UINT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint32(ptr)
 	flags_fmt := ""
@@ -255,6 +267,9 @@ func (this *ARG_UINT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) stri
 	default:
 		return fmt.Sprintf("%d%s", value_fix, flags_fmt)
 	}
+}
+func (this *ARG_INT8) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.Parse(ptr, buf, parse_more)
 }
 func (this *ARG_INT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int8(ptr)
@@ -280,6 +295,9 @@ func (this *ARG_INT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) stri
 	}
 	return value_fmt
 }
+func (this *ARG_INT16) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.Parse(ptr, buf, parse_more)
+}
 func (this *ARG_INT16) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int16(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
@@ -303,6 +321,9 @@ func (this *ARG_INT16) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) str
 		}
 	}
 	return value_fmt
+}
+func (this *ARG_INT32) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.Parse(ptr, buf, parse_more)
 }
 func (this *ARG_INT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int32(ptr)
@@ -328,6 +349,9 @@ func (this *ARG_INT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) str
 	}
 	return value_fmt
 }
+func (this *ARG_INT64) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.Parse(ptr, buf, parse_more)
+}
 func (this *ARG_INT64) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := int64(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
@@ -351,6 +375,9 @@ func (this *ARG_INT64) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) str
 		}
 	}
 	return value_fmt
+}
+func (this *ARG_UINT8) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.Parse(ptr, buf, parse_more)
 }
 func (this *ARG_UINT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint8(ptr)
@@ -376,6 +403,9 @@ func (this *ARG_UINT8) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) str
 	}
 	return value_fmt
 }
+func (this *ARG_UINT16) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.Parse(ptr, buf, parse_more)
+}
 func (this *ARG_UINT16) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint16(ptr)
 	value_fmt := fmt.Sprintf("%d", value_fix)
@@ -399,6 +429,9 @@ func (this *ARG_UINT16) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) st
 		}
 	}
 	return value_fmt
+}
+func (this *ARG_UINT32) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.Parse(ptr, buf, parse_more)
 }
 func (this *ARG_UINT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint32(ptr)
@@ -424,7 +457,9 @@ func (this *ARG_UINT32) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) st
 	}
 	return value_fmt
 }
-
+func (this *ARG_UINT64) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.Parse(ptr, buf, parse_more)
+}
 func (this *ARG_UINT64) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	value_fix := uint64(ptr)
 	flags_fmt := ""
@@ -478,6 +513,14 @@ func (this *ARG_ARRAY) Clone() IArgType {
 	return &ARG_ARRAY{*p, this.ArrayLen, this.ArrayArgType}
 }
 
+func (this *ARG_ARRAY) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	if this.ParseImpl == nil {
+		// 临时写法 保证使用 --json 的时候暂时不出错
+		return this.Parse(ptr, buf, parse_more)
+	}
+	return this.ParseArg(ptr, buf, parse_more, true)
+}
+
 func (this *ARG_ARRAY) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	if !parse_more {
 		return fmt.Sprintf("0x%x", ptr)
@@ -486,6 +529,86 @@ func (this *ARG_ARRAY) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) str
 		return this.ParseCB(this, ptr, buf, parse_more)
 	}
 	panic("....")
+}
+
+type IArgStructSetting interface {
+	SetParseImpl(impl IParseStruct)
+}
+
+type ARG_BUFFER struct {
+	ArgType
+}
+
+func (this *ARG_BUFFER) Clone() IArgType {
+	p, ok := (this.ArgType.Clone()).(*ArgType)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_BUFFER{*p}
+}
+
+func (this *ARG_BUFFER) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
+	result := this.ParseArg(ptr, buf, parse_more, false)
+	p, ok := (result).(string)
+	if !ok {
+		panic("...")
+	}
+	return p
+}
+
+func (this *ARG_BUFFER) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	return this.ParseArg(ptr, buf, parse_more, true)
+}
+
+func (this *ARG_BUFFER) ParseArg(ptr uint64, buf *bytes.Buffer, parse_more, fmt_json bool) any {
+	if !parse_more {
+		if !fmt_json {
+			return fmt.Sprintf("0x%x", ptr)
+		}
+		return &struct {
+			Ptr string `json:"ptr"`
+		}{
+			Ptr: fmt.Sprintf("0x%x", ptr),
+		}
+	}
+	if this.ParseImpl == nil {
+		panic(fmt.Sprintf("type %s not impl fmt json", this.Name))
+	}
+	this.ParseImpl = this.ParseImpl.Clone()
+	as := this.ParseImpl.GetArgStruct()
+	if err := binary.Read(buf, binary.LittleEndian, as); err != nil {
+		panic(err)
+	}
+	payload := make([]byte, as.Len)
+	if as.Len > 0 {
+		if err := binary.Read(buf, binary.LittleEndian, &payload); err != nil {
+			panic(err)
+		}
+		(this.ParseImpl).(IArgBuffer).SetArgPayload(payload)
+	}
+	if !fmt_json {
+		return fmt.Sprintf("0x%x%s", ptr, this.ParseImpl.Format())
+	}
+	type IParseStructAlias IParseStruct
+	return &struct {
+		Ptr      string            `json:"ptr"`
+		PtrValue IParseStructAlias `json:"ptr_value"`
+	}{
+		Ptr:      fmt.Sprintf("0x%x", ptr),
+		PtrValue: (IParseStructAlias)(this.ParseImpl),
+	}
+}
+
+type ARG_STRING struct {
+	ARG_BUFFER
+}
+
+func (this *ARG_STRING) Clone() IArgType {
+	p, ok := (this.ARG_BUFFER.Clone()).(*ARG_BUFFER)
+	if !ok {
+		panic("...")
+	}
+	return &ARG_STRING{*p}
 }
 
 type ARG_STRUCT struct {
@@ -501,15 +624,64 @@ func (this *ARG_STRUCT) Clone() IArgType {
 }
 
 func (this *ARG_STRUCT) Parse(ptr uint64, buf *bytes.Buffer, parse_more bool) string {
-	// if !parse_more {
-	// 	return fmt.Sprintf("0x%x", ptr)
-	// }
 	if this.ParseCB != nil {
 		return this.ParseCB(this, ptr, buf, parse_more)
 	}
+	result := this.ParseArg(ptr, buf, parse_more, false)
+	p, ok := (result).(string)
+	if !ok {
+		panic("...")
+	}
+	return p
+}
 
-	// 不同结构体需要分别实现解析
-	panic("....")
+func (this *ARG_STRUCT) ParseJson(ptr uint64, buf *bytes.Buffer, parse_more bool) any {
+	if this.ParseImpl == nil {
+		// 临时写法 保证使用 --json 的时候暂时不出错
+		return this.Parse(ptr, buf, parse_more)
+	}
+	return this.ParseArg(ptr, buf, parse_more, true)
+}
+
+func (this *ARG_STRUCT) ParseArg(ptr uint64, buf *bytes.Buffer, parse_more, fmt_json bool) any {
+	if parse_more {
+		if this.ParseImpl == nil {
+			panic(fmt.Sprintf("type %s not impl fmt json", this.Name))
+		}
+		this.ParseImpl = this.ParseImpl.Clone()
+		as := this.ParseImpl.GetArgStruct()
+		if err := binary.Read(buf, binary.LittleEndian, as); err != nil {
+			panic(err)
+		}
+		if as.Len > 0 && as.Len != this.Size {
+			panic(fmt.Sprintf("check %s size:%d index:%d len:%d", this.Name, this.Size, as.Index, as.Len))
+		}
+		if as.Len != 0 {
+			s := this.ParseImpl.GetStruct()
+			if err := binary.Read(buf, binary.LittleEndian, s); err != nil {
+				panic(err)
+			}
+			if !fmt_json {
+				return fmt.Sprintf("0x%x%s", ptr, this.ParseImpl.Format())
+			}
+			type IParseStructAlias IParseStruct
+			return &struct {
+				Ptr      string            `json:"ptr"`
+				PtrValue IParseStructAlias `json:"ptr_value"`
+			}{
+				Ptr:      fmt.Sprintf("0x%x", ptr),
+				PtrValue: (IParseStructAlias)(this.ParseImpl),
+			}
+		}
+	}
+	if !fmt_json {
+		return fmt.Sprintf("0x%x", ptr)
+	}
+	return &struct {
+		Ptr string `json:"ptr"`
+	}{
+		Ptr: fmt.Sprintf("0x%x", ptr),
+	}
 }
 
 func (this *ARG_STRUCT) DumpBuffer(buf *bytes.Buffer) string {
@@ -553,6 +725,11 @@ func init() {
 	// RegisterAlias("size_t", "uint64")
 	// // ssize_t aarch64 下是 int64 aarch32 下是 int32
 	// RegisterAlias("ssize_t", "int64")
+
+	Register(&ARG_BUFFER{}, "buffer", TYPE_BUFFER, BUFFER, 0)
+	init_BUFFER()
+	Register(&ARG_STRING{}, "string", TYPE_STRING, STRING, 0)
+	init_STRING()
 
 	Register(&ARG_STRUCT{}, "struct", TYPE_STRUCT, STRUCT, 0)
 	Register(&ARG_ARRAY{}, "array", TYPE_ARRAY, ARRAY, 0)

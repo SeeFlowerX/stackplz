@@ -57,6 +57,40 @@ func (this *SyscallPoint) ParseEnterPoint(buf *bytes.Buffer) string {
 	return "(" + strings.Join(results, ", ") + ")"
 }
 
+func (this *SyscallPoint) ParsePointJson(buf *bytes.Buffer, point_type uint32) any {
+	var results []any
+	var point_args []*PointArg
+	if point_type == EBPF_SYS_ENTER {
+		point_args = this.EnterPointArgs
+	} else {
+		point_args = this.ExitPointArgs
+	}
+	for _, point_arg := range point_args {
+		var ptr argtype.Arg_reg
+		if err := binary.Read(buf, binary.LittleEndian, &ptr); err != nil {
+			panic(err)
+		}
+		type ArgRegAlias argtype.Arg_reg
+		type PointArgAlias PointArg
+		result := &struct {
+			*PointArgAlias
+			*ArgRegAlias
+			Address  string `json:"reg_value"`
+			ArgType  string `json:"arg_type"`
+			ArgValue any    `json:"arg_value"`
+		}{
+			PointArgAlias: (*PointArgAlias)(point_arg),
+			ArgRegAlias:   (*ArgRegAlias)(&ptr),
+			Address:       fmt.Sprintf("0x%x", ptr.Address),
+			ArgType:       point_arg.GetTypeName(),
+			ArgValue:      point_arg.ParseJson(ptr.Address, buf, point_type),
+		}
+		results = append(results, result)
+	}
+	return &results
+
+}
+
 func (this *SyscallPoint) ParseExitPoint(buf *bytes.Buffer) string {
 	var results []string
 	for _, point_arg := range this.ExitPointArgs {
