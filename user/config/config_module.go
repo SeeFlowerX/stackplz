@@ -118,23 +118,30 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
         point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     case "ptr":
         point_arg.SetTypeIndex(POINTER)
-    case "ptr_arr":
-        ptr_arr_items := strings.SplitN(read_op_str, ":", 2)
+    case "ptr_arr", "uint_arr", "int_arr":
+        arr_items := strings.SplitN(read_op_str, ":", 2)
         var count_str = ""
-        if len(ptr_arr_items) == 1 {
-            count_str = ptr_arr_items[0]
+        if len(arr_items) == 1 {
+            count_str = arr_items[0]
             read_op_str = ""
-        } else if len(ptr_arr_items) == 2 {
-            count_str = ptr_arr_items[0]
-            read_op_str = ptr_arr_items[1]
+        } else if len(arr_items) == 2 {
+            count_str = arr_items[0]
+            read_op_str = arr_items[1]
         } else {
-            return errors.New(fmt.Sprintf("parse ptr_arr arg_str:%s failed", arg_str))
+            return errors.New(fmt.Sprintf("parse %s arg_str:%s failed", type_name, arg_str))
         }
         size, err := strconv.ParseUint(count_str, 0, 32)
         if err != nil {
-            return errors.New(fmt.Sprintf("parse ptr_arr arg_str:%s failed", arg_str))
+            return errors.New(fmt.Sprintf("parse %s arg_str:%s failed", type_name, arg_str))
         }
-        at := argtype.R_POINTER_ARRAY(uint32(size))
+        var at argtype.IArgType
+        if type_name == "int_arr" {
+            at = argtype.R_NUM_ARRAY(INT, uint32(size))
+        } else if type_name == "uint_arr" {
+            at = argtype.R_NUM_ARRAY(UINT, uint32(size))
+        } else {
+            at = argtype.R_NUM_ARRAY(UINT64, uint32(size))
+        }
         point_arg.SetTypeIndex(at.GetTypeIndex())
         point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     case "buf":
