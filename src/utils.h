@@ -169,7 +169,7 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 break;
             case OP_SAVE_STRUCT:
                 // fix memory tag
-                op_ctx->read_addr = op_ctx->read_addr & 0xffffffffff;
+                op_ctx->read_addr = op_ctx->read_addr & 0xffffffffffff;
                 if (op->pre_code == OP_SET_READ_COUNT) {
                     op_ctx->read_len *= op->value;
                 }
@@ -201,7 +201,7 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
             }
             case OP_SAVE_STRING:
                 // fix memory tag
-                op_ctx->read_addr = op_ctx->read_addr & 0xffffffffff;
+                op_ctx->read_addr = op_ctx->read_addr & 0xffffffffffff;
                 u32 old_off = p->event->buf_off;
                 int save_string_status = save_str_to_buf(p->event, (void*) op_ctx->read_addr, op_ctx->save_index);
                 if (save_string_status == 0) {
@@ -214,12 +214,12 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 break;
             case OP_SAVE_PTR_STRING:
             {
-                u64 ptr = op_ctx->read_addr & 0xffffffffff;
+                u64 ptr = op_ctx->read_addr & 0xffffffffffff;
                 bpf_probe_read_user(&ptr, sizeof(ptr), (void*) ptr);
                 save_to_submit_buf(p->event, (void *)&ptr, sizeof(ptr), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 // 每次取出后使用前都要 fix 很坑
-                ptr = ptr & 0xffffffffff;
+                ptr = ptr & 0xffffffffffff;
                 int status = save_str_to_buf(p->event, (void*) ptr, op_ctx->save_index);
                 if (status == 0) {
                     save_bytes_to_buf(p->event, 0, 0, op_ctx->save_index);
@@ -232,7 +232,7 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
             case OP_READ_STD_STRING:
             {
                 // 搭配 OP_SAVE_STRING 使用 这里仅计算实际的字符串地址
-                u64 ptr = op_ctx->read_addr & 0xffffffffff;
+                u64 ptr = op_ctx->read_addr & 0xffffffffffff;
                 u8 value;
                 bpf_probe_read_user(&value, sizeof(value), (void*) ptr);
                 if ((value & 1) == 0) {
