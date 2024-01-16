@@ -558,30 +558,31 @@ type ModuleConfig struct {
 
     ArgFilterRule []ArgFilter
 
-    TraceGroup   uint32
-    UprobeSignal uint32
-    UnwindStack  bool
-    ManualStack  bool
-    StackSize    uint32
-    ShowRegs     bool
-    GetOff       bool
-    RegName      string
-    ExternalBTF  string
-    Is32Bit      bool
-    Buffer       uint32
-    MaxOp        uint32
-    BrkPid       int
-    BrkAddr      uint64
-    BrkLen       uint64
-    BrkType      uint32
-    BrkKernel    bool
-    Color        bool
-    DumpHandle   *os.File
-    FmtJson      bool
-    DumpHex      bool
-    ShowPC       bool
-    ShowTime     bool
-    ShowUid      bool
+    TraceGroup    uint32
+    UprobeSignal  uint32
+    UprobeTSignal uint32
+    UnwindStack   bool
+    ManualStack   bool
+    StackSize     uint32
+    ShowRegs      bool
+    GetOff        bool
+    RegName       string
+    ExternalBTF   string
+    Is32Bit       bool
+    Buffer        uint32
+    MaxOp         uint32
+    BrkPid        int
+    BrkAddr       uint64
+    BrkLen        uint64
+    BrkType       uint32
+    BrkKernel     bool
+    Color         bool
+    DumpHandle    *os.File
+    FmtJson       bool
+    DumpHex       bool
+    ShowPC        bool
+    ShowTime      bool
+    ShowUid       bool
 
     Name            string
     StackUprobeConf *StackUprobeConfig
@@ -726,6 +727,7 @@ func (this *ModuleConfig) GetCommonFilter() CommonFilter {
 
     filter.trace_uid_group = this.TraceGroup
     filter.signal = this.UprobeSignal
+    filter.tsignal = this.UprobeTSignal
     return filter
 }
 

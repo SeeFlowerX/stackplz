@@ -15,6 +15,7 @@ type CommonFilter struct {
 	trace_mode      uint32
 	trace_uid_group uint32
 	signal          uint32
+	tsignal         uint32
 }
 
 type ThreadFilter struct {

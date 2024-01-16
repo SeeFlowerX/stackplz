@@ -9,6 +9,7 @@ typedef struct common_filter {
     u32 trace_mode;
     u32 trace_uid_group;
     u32 signal;
+    u32 tsignal;
 } common_filter_t;
 
 typedef struct args {

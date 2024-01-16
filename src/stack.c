@@ -85,6 +85,9 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) 
     if (filter->signal > 0) {
         bpf_send_signal(filter->signal);
     }
+    if (filter->tsignal > 0) {
+        bpf_send_signal_thread(filter->tsignal);
+    }
     return 0;
 }
 

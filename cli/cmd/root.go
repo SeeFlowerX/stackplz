@@ -302,6 +302,11 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         return err
     }
     mconfig.UprobeSignal = signal
+    signal, err = util.ParseSignal(gconfig.UprobeTSignal)
+    if err != nil {
+        return err
+    }
+    mconfig.UprobeTSignal = signal
 
     u_syscall := mconfig.StackUprobeConf.GetSyscall()
     if u_syscall != "" {
@@ -639,6 +644,7 @@ func init() {
     rootCmd.PersistentFlags().StringArrayVarP(&gconfig.ArgFilter, "filter", "f", []string{}, "arg filter rule")
 
     rootCmd.PersistentFlags().StringVar(&gconfig.UprobeSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
+    rootCmd.PersistentFlags().StringVar(&gconfig.UprobeTSignal, "tkill", "", "send signal to thread when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
     rootCmd.PersistentFlags().BoolVar(&gconfig.Rpc, "rpc", false, "enable rpc")
     rootCmd.PersistentFlags().StringVar(&gconfig.RpcPath, "rpc-path", "127.0.0.1:41718", "rpc path, default 127.0.0.1:41718")
     // 硬件断点设定

@@ -144,6 +144,9 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     if (filter->signal > 0) {
         bpf_send_signal(filter->signal);
     }
+    if (filter->tsignal > 0) {
+        bpf_send_signal_thread(filter->tsignal);
+    }
     return 0;
 }
 
