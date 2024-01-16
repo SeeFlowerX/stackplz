@@ -196,10 +196,10 @@ typedef struct op_ctx {
     u8 reg_index;
     u8 loop_count;
     u8 break_count;
+    u8 apply_filter;
     u8 skip_flag;
     u8 match_whitelist;
     u8 match_blacklist;
-    u8 unused;
     u32 loop_index;
     u32 op_key_index;
     u32 op_code;

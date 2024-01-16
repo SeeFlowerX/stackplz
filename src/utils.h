@@ -188,14 +188,16 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
             case OP_FILTER_STRING: {
                 // 这里会受到循环次数的限制
                 // 实测 384 可以 512 不行 除非有什么更好的优化方法
-                op_ctx->skip_flag = 1; // 这里是 apply_filter 的意思
                 arg_filter_t* filter = bpf_map_lookup_elem(&arg_filter, &op->value);
                 if (unlikely(filter == NULL)) return 0;
                 bool is_match = strcmp_by_map(op_ctx, filter);
-                if (filter->filter_type == WHITELIST_FILTER && is_match) {
+                if (filter->filter_type == WHITELIST_FILTER) {
+                    op_ctx->apply_filter = 1;
+                    if (is_match) {
                         op_ctx->match_whitelist = 1;
+                    }
                 } else if (filter->filter_type == BLACKLIST_FILTER && is_match) {
-                        op_ctx->match_blacklist = 1;
+                    op_ctx->match_blacklist = 1;
                 }
                 break;
             }
@@ -247,20 +249,19 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
             default:
                 break;
         }
-        if (op_ctx->match_blacklist) break;
+        // 黑名单不用读完 直接结束
+        if (op_ctx->match_blacklist == 1) break;
     }
 
     // 跳过逻辑：
-    // 1. 不与任何白名单规则匹配，跳过
-    // 2. 与任意黑名单规则之一匹配，跳过
-    if (op_ctx->skip_flag == 1) {
-        if (op_ctx->match_whitelist == 0 || op_ctx->match_blacklist == 1) {
-            op_ctx->skip_flag = 1;
-        } else {
-            op_ctx->skip_flag = 0;
-        }
-        op_ctx->match_whitelist = 0;
-        op_ctx->match_blacklist = 0;
+    // 1. 与任意黑名单规则之一匹配，跳过
+    // 2. 不与任何白名单规则匹配，跳过
+    if (op_ctx->match_blacklist == 1) {
+        op_ctx->skip_flag = 1;
+        return 0;
+    }
+    if (op_ctx->apply_filter == 1 && op_ctx->match_whitelist == 0) {
+        op_ctx->skip_flag = 1;
     }
 
     return 0;
