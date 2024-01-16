@@ -56,6 +56,7 @@ func (this *BrkEvent) ParseEvent() (IEventStruct, error) {
     if err := this.ParseContext(); err != nil {
         panic(fmt.Sprintf("SyscallEvent.ParseContext() err:%v", err))
     }
+    this.Check()
     return this, nil
 }
 
@@ -87,6 +88,9 @@ func (this *BrkEvent) Clone() IEventStruct {
 func (this *BrkEvent) GetPid() uint32 {
     if len(this.mconf.PidWhitelist) == 1 {
         return this.mconf.PidWhitelist[0]
+    }
+    if this.mconf.BrkPid == -1 {
+        return this.Pid
     }
     return uint32(this.mconf.BrkPid)
 }

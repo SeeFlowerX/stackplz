@@ -87,7 +87,7 @@ cd /data/local/tmp && ./stackplz --prepare
 
 ![](./images/Snipaste_2023-07-22_21-21-33.png)
 
-3.3 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号进行hook，并打印堆栈
+3.3 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号处下执行断点，并打印堆栈
 
 ```bash
 ./stackplz --brk-pid `pidof com.sfx.ebpf` --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
@@ -134,6 +134,8 @@ cat /proc/kallsyms  | grep "T sys_"
 ./stackplz --brk 0xffffff93c5beb634:x --brk-pid `pidof com.sfx.ebpf` --stack
 ./stackplz --brk 0xffffffc0003654dc:x --brk-pid `pidof com.sfx.ebpf` --regs
 ```
+
+某些时候确信数据被访问了，但是上面的命令还是没有输出，请尝试省略`--brk-pid`选项，即使用默认值`-1`
 
 3.6 以寄存器的值作为大小读取数据、或者指定大小
 
