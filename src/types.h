@@ -30,6 +30,7 @@ typedef struct arg_filter {
     u32 filter_type;
     char str_val[256];
     u32 str_len;
+    u64 num_val;
 } arg_filter_t;
 
 enum arg_filter_e
@@ -92,6 +93,7 @@ enum op_code_e
     OP_READ_POINTER,
     OP_SAVE_POINTER,
     OP_SAVE_STRUCT,
+    OP_FILTER_VALUE,
     OP_FILTER_STRING,
     OP_SAVE_STRING,
     OP_SAVE_PTR_STRING,

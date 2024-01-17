@@ -185,6 +185,25 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 }
                 op_ctx->save_index += 1;
                 break;
+            case OP_FILTER_VALUE: {
+                // 配合 OP_READ_REG 比较寄存器的值是否匹配
+                arg_filter_t* filter = bpf_map_lookup_elem(&arg_filter, &op->value);
+                if (unlikely(filter == NULL)) return 0;
+                if (filter->filter_type == EQUAL_FILTER) {
+                    if (filter->num_val != op_ctx->reg_value) {
+                        op_ctx->match_blacklist = 1;
+                    }
+                } else if (filter->filter_type == GREATER_FILTER) {
+                    if (filter->num_val <= op_ctx->reg_value) {
+                        op_ctx->match_blacklist = 1;
+                    }
+                } else if (filter->filter_type == LESS_FILTER) {
+                    if (filter->num_val >= op_ctx->reg_value) {
+                        op_ctx->match_blacklist = 1;
+                    }
+                }
+                break;
+            }
             case OP_FILTER_STRING: {
                 // 这里会受到循环次数的限制
                 // 实测 384 可以 512 不行 除非有什么更好的优化方法

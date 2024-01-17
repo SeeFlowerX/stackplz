@@ -52,6 +52,7 @@ func (this *ArgFilter) ToEbpfValue() EArgFilter {
 	t.Filter_type = this.Filter_type
 	t.Str_len = this.Str_len
 	t.Str_val = this.Str_val
+	t.Num_val = this.Num_val
 	return t
 }
 
@@ -59,4 +60,5 @@ type EArgFilter struct {
 	Filter_type uint32
 	Str_val     [common.MAX_STRCMP_LEN]byte
 	Str_len     uint32
+	Num_val     uint64
 }

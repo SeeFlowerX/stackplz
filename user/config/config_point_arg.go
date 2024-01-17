@@ -89,6 +89,14 @@ func (this *PointArg) GetOpList() []uint32 {
 		op_list = append(op_list, argtype.Add_READ_SAVE_REG(uint64(this.RegIndex)).Index)
 		op_list = append(op_list, argtype.OPC_MOVE_REG_VALUE.Index)
 	}
+
+	if this.TypeIndex == POINTER {
+		for _, v := range this.FilterIndexList {
+			filter_op := argtype.OPC_FILTER_VALUE.NewValue(uint64(v))
+			op_list = append(op_list, filter_op.Index)
+		}
+	}
+
 	if this.ReadMore() {
 		for _, op_key := range argtype.GetOpKeyList(this.TypeIndex) {
 			op_list = append(op_list, op_key)

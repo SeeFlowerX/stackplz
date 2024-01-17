@@ -118,6 +118,14 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
         point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     case "ptr":
         point_arg.SetTypeIndex(POINTER)
+        filter_names := strings.Split(arg_filter, ".")
+        for _, filter_name := range filter_names {
+            for _, arg_filter := range *this.arg_filter {
+                if arg_filter.Match(filter_name) {
+                    point_arg.AddFilterIndex(arg_filter.Filter_index)
+                }
+            }
+        }
     case "ptr_arr", "uint_arr", "int_arr":
         arr_items := strings.SplitN(read_op_str, ":", 2)
         var count_str = ""

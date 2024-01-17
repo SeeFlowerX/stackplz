@@ -35,7 +35,7 @@ func StrToNum(text string) uint32 {
 }
 
 func StrToNum64(text string) uint64 {
-	value, err := strconv.ParseUint(text, 10, 32)
+	value, err := strconv.ParseUint(text, 0, 64)
 	if err != nil {
 		panic(err)
 	}
