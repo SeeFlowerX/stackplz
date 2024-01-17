@@ -207,7 +207,12 @@ func R(nr uint32, name string, point_args ...*PointArg) {
 		b_point_args = append(b_point_args, b_p)
 	}
 	// 后面取出 op list 的时候需要特殊处理
-	b_point_args = append(b_point_args, B("ret", INT))
+	if name == "mmap" {
+		// 暂时先这样处理一下吧...
+		b_point_args = append(b_point_args, B("ret", POINTER))
+	} else {
+		b_point_args = append(b_point_args, B("ret", INT))
+	}
 	point := &SyscallPoint{nr, name, a_point_args, b_point_args}
 	aarch64_syscall_points.Add(point)
 }
