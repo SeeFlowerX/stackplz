@@ -254,6 +254,14 @@ func (this *MSyscall) update_thread_filter() {
     }
 
     var thread_blacklist []string = []string{
+        "Profile Saver",
+        "Runtime worker",
+        "ReferenceQueueD",
+        "FinalizerDaemon",
+        "FinalizerWatchd",
+        "HeapTaskDaemon",
+        "perfetto_hprof_",
+        // "Jit thread pool",
         "RenderThread",
         "FinalizerDaemon",
         "RxCachedThreadS",

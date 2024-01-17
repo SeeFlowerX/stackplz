@@ -737,9 +737,7 @@ func (this *ModuleConfig) GetConfigMap() ConfigMap {
     if len(this.TNameWhitelist) > 0 {
         config.thread_whitelist = 1
     }
-    if this.Debug {
-        this.logger.Printf("ConfigMap{stackplz_pid=%d}", config.stackplz_pid)
-    }
+    this.logger.Printf("ConfigMap{stackplz_pid=%d,thread_whitelist=%d}", config.stackplz_pid, config.thread_whitelist)
     return config
 }
 
