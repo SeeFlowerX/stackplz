@@ -48,6 +48,7 @@ type IParseStruct interface {
 	GetStruct() any
 	GetArgStruct() *Arg_struct
 	Format() string
+	HexFormat(bool) string
 }
 
 // 结构体类型
@@ -133,6 +134,10 @@ func (this *Arg_string) Clone() IParseStruct {
 	return &Arg_string{}
 }
 
+func (this *Arg_string) HexFormat(color bool) string {
+	return this.Format()
+}
+
 func (this *Arg_string) Format() string {
 	return fmt.Sprintf("(%s)", util.B2STrim(this.ArgPayload))
 }
@@ -172,6 +177,10 @@ func (this *Arg_Sigaction) GetSize() uint32 {
 
 func (this *Arg_Sigaction) GetStruct() any {
 	return &this.Sigaction
+}
+
+func (this *Arg_Sigaction) HexFormat(color bool) string {
+	return this.Format()
 }
 
 func (this *Arg_Sigaction) Format() string {
@@ -219,6 +228,10 @@ func (this *Arg_Timespec) GetSize() uint32 {
 
 func (this *Arg_Timespec) GetStruct() any {
 	return &this.Timespec
+}
+
+func (this *Arg_Timespec) HexFormat(color bool) string {
+	return this.Format()
 }
 
 func (this *Arg_Timespec) Format() string {
