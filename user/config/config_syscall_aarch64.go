@@ -28,6 +28,7 @@ func (this *SyscallPoint) DumpOpList(tag string, op_list []uint32) {
 
 func (this *SyscallPoint) GetEnterConfig() SyscallPointOpKeyConfig {
 	config := SyscallPointOpKeyConfig{}
+	config.Signal = 0
 	for _, point_arg := range this.EnterPointArgs {
 		config.AddPointArg(point_arg)
 	}
@@ -37,6 +38,7 @@ func (this *SyscallPoint) GetEnterConfig() SyscallPointOpKeyConfig {
 
 func (this *SyscallPoint) GetExitConfig() SyscallPointOpKeyConfig {
 	config := SyscallPointOpKeyConfig{}
+	config.Signal = 0
 	for _, point_arg := range this.ExitPointArgs {
 		config.AddPointArg(point_arg)
 	}

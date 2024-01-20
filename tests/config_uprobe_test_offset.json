@@ -1,0 +1,13 @@
+{
+    "type": "uprobe",
+    "library": "libc.so",
+    "points": [
+        {
+            "name": "0xA94E8",
+            "params": [
+                {"type": "int", "reg": "x1"},
+                {"type": "ptr", "read_op": "sp+0x30-0x2c"}
+            ]
+        }
+    ]
+}

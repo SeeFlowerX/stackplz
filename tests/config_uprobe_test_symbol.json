@@ -1,0 +1,12 @@
+{
+    "type": "uprobe",
+    "library": "libnative-lib.so",
+    "points": [
+        {
+            "name": "_Z5func1v",
+            "signal": "SIGSTOP",
+            "params": [
+            ]
+        }
+    ]
+}

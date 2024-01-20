@@ -13,55 +13,56 @@ import (
 )
 
 type GlobalConfig struct {
-    Prepare       bool
-    ExecPath      string
-    Name          string
-    Uid           string
-    NoUid         string
-    Pid           string
-    NoPid         string
-    Tid           string
-    NoTid         string
-    TName         string
-    NoTName       string
-    ArgFilter     []string
-    Color         bool
-    FmtJson       bool
-    UnwindStack   bool
-    ManualStack   bool
-    StackSize     uint32
-    ShowRegs      bool
-    GetOff        bool
-    UprobeSignal  string
-    UprobeTSignal string
-    Rpc           bool
-    RpcPath       string
-    Debug         bool
-    Quiet         bool
-    Buffer        uint32
-    MaxOp         uint32
-    BrkPid        int
-    BrkAddr       string
-    BrkLib        string
-    BrkLen        uint64
-    LogFile       string
-    DumpFile      string
-    ParseFile     string
-    DataDir       string
-    LibraryDirs   []string
-    HookPoint     []string
-    Library       string
-    RegName       string
-    DumpRet       bool
-    DumpHex       bool
-    ShowPC        bool
-    ShowTime      bool
-    ShowUid       bool
-    NoCheck       bool
-    Btf           bool
-    ExternalBTF   string
-    SysCall       string
-    NoSysCall     string
+    Prepare     bool
+    ExecPath    string
+    Name        string
+    Uid         string
+    NoUid       string
+    Pid         string
+    NoPid       string
+    Tid         string
+    NoTid       string
+    TName       string
+    NoTName     string
+    ArgFilter   []string
+    Color       bool
+    FmtJson     bool
+    UnwindStack bool
+    ManualStack bool
+    StackSize   uint32
+    ShowRegs    bool
+    GetOff      bool
+    KillSignal  string
+    TKillSignal string
+    Rpc         bool
+    RpcPath     string
+    Debug       bool
+    Quiet       bool
+    Buffer      uint32
+    MaxOp       uint32
+    BrkPid      int
+    BrkAddr     string
+    BrkLib      string
+    BrkLen      uint64
+    LogFile     string
+    DumpFile    string
+    ParseFile   string
+    DataDir     string
+    LibraryDirs []string
+    HookPoint   []string
+    Library     string
+    RegName     string
+    DumpRet     bool
+    DumpHex     bool
+    ShowPC      bool
+    ShowTime    bool
+    ShowUid     bool
+    NoCheck     bool
+    Btf         bool
+    ExternalBTF string
+    SysCall     string
+    NoSysCall   string
+    ConfigFiles []string
 }
 
 func NewGlobalConfig() *GlobalConfig {
@@ -78,7 +79,7 @@ func NewGlobalConfig() *GlobalConfig {
     return config
 }
 
-func (this *GlobalConfig) FindLibInApk(sconfig *StackUprobeConfig) (err error) {
+func (this *GlobalConfig) FindLibInApk(library string, sconfig *StackUprobeConfig) (err error) {
 
     // 在常规的情况下都没找到 尝试在 apk 文件中搜索 split apk 安装后的名字都是 split_config 开头
     // - base.apk!/lib/arm64-v8a/
@@ -101,7 +102,7 @@ func (this *GlobalConfig) FindLibInApk(sconfig *StackUprobeConfig) (err error) {
         for _, f := range zf.File {
             for _, search_path := range lib_search_paths {
                 // 这里是存在重复的可能的 不过不考虑这种情况
-                check_path := search_path + "/" + this.Library
+                check_path := search_path + "/" + library
                 if f.Name == check_path {
                     srcFile, err := f.Open()
                     if err != nil {
@@ -110,7 +111,7 @@ func (this *GlobalConfig) FindLibInApk(sconfig *StackUprobeConfig) (err error) {
                     // apk 路径作为最终的 uprobe 注册文件
                     sconfig.RealFilePath = apk_path
                     // 将文件释放到和stackplz一个目录 用于 apk + symbol
-                    sconfig.LibPath = filepath.Join(this.ExecPath, this.Library)
+                    sconfig.LibPath = filepath.Join(this.ExecPath, library)
                     dstFile, err := os.OpenFile(sconfig.LibPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
                     if err != nil {
                         panic(err)
@@ -131,13 +132,12 @@ func (this *GlobalConfig) FindLibInApk(sconfig *StackUprobeConfig) (err error) {
         }
     }
 
-    return errors.New(fmt.Sprintf("can not find %s in any apk", this.Library))
+    return errors.New(fmt.Sprintf("can not find %s in any apk", library))
 }
 
-func (this *GlobalConfig) Parse_Libinfo(sconfig *StackUprobeConfig) (err error) {
+func (this *GlobalConfig) Parse_Libinfo(library string, sconfig *StackUprobeConfig) (err error) {
     sconfig.LibPath = ""
     sconfig.NonElfOffset = 0
-    library := this.Library
     search_paths := this.LibraryDirs
 
     if library == "" {
@@ -176,7 +176,7 @@ func (this *GlobalConfig) Parse_Libinfo(sconfig *StackUprobeConfig) (err error) 
             }
         }
         if len(full_paths) == 0 {
-            err = this.FindLibInApk(sconfig)
+            err = this.FindLibInApk(library, sconfig)
             if err == nil {
                 return err
             }

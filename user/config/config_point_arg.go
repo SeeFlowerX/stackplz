@@ -28,6 +28,10 @@ func (this *PointArg) SetTypeIndex(type_index uint32) {
 	this.TypeIndex = type_index
 }
 
+func (this *PointArg) SetTypeByName(name string) {
+	this.TypeIndex = argtype.GetArgTypeByName(name).GetTypeIndex()
+}
+
 func (this *PointArg) SetHexFormat() {
 	this.TypeIndex = argtype.R_NUM_HEX(this.TypeIndex).GetTypeIndex()
 }
@@ -138,6 +142,7 @@ func B(arg_name string, type_index uint32) *PointArg {
 func C(arg_name string, type_index uint32) *PointArg {
 	return NewPointArg(arg_name, type_index, EBPF_SYS_ALL)
 }
+
 func NewUprobePointArg(arg_name string, type_index, reg_index uint32) *PointArg {
 	point_arg := PointArg{}
 	point_arg.Name = arg_name

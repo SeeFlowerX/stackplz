@@ -1,0 +1,21 @@
+{
+    "type": "uprobe",
+    "library": "libc.so",
+    "points": [
+        {
+            "name": "open64",
+            "params": [
+                {"type": "str"},
+                {"type": "int"},
+                {"type": "int", "format": "hex"},
+                {"type": "ptr", "reg": "x8"}
+            ]
+        },
+        {
+            "name": "__openat",
+            "params": [
+                {"type": "str", "reg": "x1", "filter": ["w:/data/app"]}
+            ]
+        }
+    ]
+}

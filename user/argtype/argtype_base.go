@@ -721,18 +721,20 @@ func init() {
 	Register(&ARG_UINT16{}, "uint16", TYPE_UINT16, UINT16, uint32(unsafe.Sizeof(uint16(0))))
 	Register(&ARG_UINT32{}, "uint32", TYPE_UINT32, UINT32, uint32(unsafe.Sizeof(uint32(0))))
 	Register(&ARG_UINT64{}, "uint64", TYPE_UINT64, UINT64, uint32(unsafe.Sizeof(uint64(0))))
-	// // 一些实际上是数字的类型 后续注意要区分架构
-	// // socklen_t aarch64 下是 uint32 aarch32 下是 int32
-	// RegisterAlias("socklen_t", "uint32")
-	// // size_t aarch64 下是 uint64 aarch32 下是 uint32
-	// RegisterAlias("size_t", "uint64")
-	// // ssize_t aarch64 下是 int64 aarch32 下是 int32
-	// RegisterAlias("ssize_t", "int64")
+	// 一些实际上是数字的类型 后续注意要区分架构
+	// socklen_t aarch64 下是 uint32 aarch32 下是 int32
+	RegisterAlias("socklen_t", "uint32")
+	// size_t aarch64 下是 uint64 aarch32 下是 uint32
+	RegisterAlias("size_t", "uint64")
+	// ssize_t aarch64 下是 int64 aarch32 下是 int32
+	RegisterAlias("ssize_t", "int64")
 
 	Register(&ARG_BUFFER{}, "buffer", TYPE_BUFFER, BUFFER, 0)
 	init_BUFFER()
+	RegisterAlias("buf", "buffer")
 	Register(&ARG_STRING{}, "string", TYPE_STRING, STRING, 0)
 	init_STRING()
+	RegisterAlias("str", "string")
 
 	Register(&ARG_STRUCT{}, "struct", TYPE_STRUCT, STRUCT, 0)
 	Register(&ARG_ARRAY{}, "array", TYPE_ARRAY, ARRAY, 0)

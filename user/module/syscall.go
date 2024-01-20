@@ -326,7 +326,13 @@ func (this *MSyscall) update_arg_filter() {
     // w/white b/black
     // 对于返回值以特定字符串开头的进行过滤 如果要对非首个字符串参数做过滤 那么通过 | 标识占位
     // ./stackplz -n com.termux -s "openat:f0.f2,readlinkat:|f1" -f w:/data -f w:/apex -f w:/dev
-    for _, filter := range this.mconf.ArgFilterRule {
+
+    filters := this.mconf.ArgFilterRule
+    if len(this.mconf.ArgFilterRule) == 0 {
+        filters = config.GetFilters()
+    }
+
+    for _, filter := range filters {
         filter_key := uint64(filter.Filter_index)
         filter_value := filter.ToEbpfValue()
         err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)

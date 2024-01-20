@@ -1,0 +1,36 @@
+{
+    "type": "syscall",
+    "points": [
+        {
+            "nr": 29,
+            "name": "ioctl",
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "cmd", "type": "int"},
+                {"name": "arg", "type": "ptr", "filter": ["eq:0x801"]}
+            ]
+        },
+        {
+            "nr": 206,
+            "name": "sendto",
+            "params": [
+                {"name": "sockfd", "type": "int"},
+                {"name": "buf", "type": "buf", "more":"enter", "size": "x2"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "int", "format": "socket_flags"},
+                {"name": "addr", "type": "sockaddr"},
+                {"name": "addrlen", "type": "socklen_t"}
+            ]
+        },
+        {
+            "nr": 207,
+            "name": "recvfrom",
+            "params": [
+                {"name": "sockfd", "type": "int"},
+                {"name": "buf", "type": "buf", "size": "x2", "more": "exit"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "int", "format": "socket_flags"}
+            ]
+        }
+    ]
+}

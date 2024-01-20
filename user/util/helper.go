@@ -3,7 +3,6 @@ package util
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -179,9 +178,9 @@ func ReadMapsByPid(pid uint32) (string, error) {
 	return string(content), nil
 }
 
-func ParseSignal(signal string) (uint32, error) {
+func ParseSignal(signal string) uint32 {
 	if signal == "" {
-		return 0, nil
+		return 0
 	}
 	sigs := map[string]uint32{
 		"SIGABRT":   uint32(syscall.SIGABRT),
@@ -222,9 +221,9 @@ func ParseSignal(signal string) (uint32, error) {
 	}
 	num, ok := sigs[signal]
 	if ok {
-		return num, nil
+		return num
 	}
-	return 0, errors.New(fmt.Sprintf("signal %s not support", signal))
+	panic(fmt.Sprintf("signal %s not support", signal))
 }
 
 func ParseReg(pid uint32, value uint64) (string, error) {

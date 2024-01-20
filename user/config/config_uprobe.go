@@ -19,6 +19,7 @@ type UprobeArgs struct {
 	PointArgs    []*PointArg
 	BindSyscall  bool
 	ExitRead     bool
+	KillSignal   uint32
 }
 
 func (this *UprobeArgs) ToSyscall() bool {
@@ -30,6 +31,7 @@ func (this *UprobeArgs) ToSyscall() bool {
 
 func (this *UprobeArgs) GetConfig() UprobePointOpKeyConfig {
 	config := UprobePointOpKeyConfig{}
+	config.Signal = this.KillSignal
 	for _, point_arg := range this.PointArgs {
 		config.AddPointArg(point_arg)
 	}

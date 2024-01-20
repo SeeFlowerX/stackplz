@@ -9,6 +9,7 @@ import (
     "stackplz/user/config"
     "stackplz/user/util"
     "strings"
+    "syscall"
 )
 
 type UprobeEvent struct {
@@ -54,6 +55,9 @@ func (this *UprobeEvent) ParseContext() (err error) {
     }
     this.uprobe_point = this.mconf.StackUprobeConf.Points[this.ProbeIndex]
     this.ArgName = this.uprobe_point.Name
+    if this.uprobe_point.KillSignal == uint32(syscall.SIGSTOP) && this.Pid != 0 {
+        AddStopped(this.Pid)
+    }
 
     var results []string
     for _, point_arg := range this.uprobe_point.PointArgs {

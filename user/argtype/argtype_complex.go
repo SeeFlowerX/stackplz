@@ -73,7 +73,7 @@ func init_STRING() IArgType {
 // }
 
 func r_STD_STRING() IArgType {
-	at := RegisterPre("std_string", STD_STRING, STRUCT)
+	at := RegisterPre("std", STD_STRING, STRUCT)
 	at.AddOp(OPC_READ_STD_STRING)
 	at.AddOp(OPC_SAVE_STRING)
 	at.SetParseCB(parse_STRING)

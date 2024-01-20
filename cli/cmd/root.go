@@ -267,58 +267,34 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
     // 后面更新map的时候不影响 列表不去重也行
 
-    mconfig.MaxOp = gconfig.MaxOp
-    mconfig.Buffer = gconfig.Buffer
-    mconfig.UnwindStack = gconfig.UnwindStack
-    mconfig.ManualStack = gconfig.ManualStack
-    if gconfig.StackSize&7 != 0 {
-        return errors.New(fmt.Sprintf("dump stack size %d is not 8-byte aligned.", gconfig.StackSize))
-    }
-    mconfig.StackSize = gconfig.StackSize
-    mconfig.ShowRegs = gconfig.ShowRegs
-    mconfig.GetOff = gconfig.GetOff
-    mconfig.Debug = gconfig.Debug
-    mconfig.Is32Bit = false
-    mconfig.Color = gconfig.Color
-    mconfig.FmtJson = gconfig.FmtJson
-    mconfig.RegName = gconfig.RegName
-    mconfig.DumpHex = gconfig.DumpHex
-    mconfig.ShowPC = gconfig.ShowPC
-    mconfig.ShowTime = gconfig.ShowTime
-    mconfig.ShowUid = gconfig.ShowUid
+    mconfig.InitCommonConfig(gconfig)
 
     // 1. hook uprobe
-    mconfig.InitStackUprobeConfig()
-    err = gconfig.Parse_Libinfo(mconfig.StackUprobeConf)
-    if err != nil {
-        return err
-    }
-    err = mconfig.StackUprobeConf.Parse_HookPoint(gconfig.HookPoint)
-    if err != nil {
-        return err
-    }
-    signal, err := util.ParseSignal(gconfig.UprobeSignal)
-    if err != nil {
-        return err
-    }
-    mconfig.UprobeSignal = signal
-    signal, err = util.ParseSignal(gconfig.UprobeTSignal)
-    if err != nil {
-        return err
-    }
-    mconfig.UprobeTSignal = signal
-
-    u_syscall := mconfig.StackUprobeConf.GetSyscall()
-    if u_syscall != "" {
-        gconfig.SysCall = u_syscall
+    if len(gconfig.HookPoint) > 0 {
+        err = gconfig.Parse_Libinfo(gconfig.Library, mconfig.StackUprobeConf)
+        if err != nil {
+            return err
+        }
+        err = mconfig.StackUprobeConf.Parse_HookPoint(gconfig.HookPoint)
+        if err != nil {
+            return err
+        }
+        u_syscall := mconfig.StackUprobeConf.GetSyscall()
+        if u_syscall != "" {
+            gconfig.SysCall = u_syscall
+        }
     }
 
     // 2. hook syscall
-    mconfig.InitSyscallConfig()
     mconfig.SysCallConf.Parse_SysWhitelist(gconfig)
     mconfig.SysCallConf.Parse_SysBlacklist(gconfig.NoSysCall)
 
-    // 3. watch breakpoint
+    // 3. hook config
+    if len(gconfig.ConfigFiles) > 0 {
+        mconfig.LoadConfig(gconfig)
+    }
+
+    // 4. watch breakpoint
     var brk_base uint64 = 0x0
     if gconfig.BrkLib != "" {
         if gconfig.BrkPid <= 0 {
@@ -414,10 +390,10 @@ func runFunc(command *cobra.Command, args []string) {
     var modNames []string
     if mconfig.BrkAddr != 0 {
         modNames = append(modNames, module.MODULE_NAME_BRK)
-    } else if gconfig.SysCall != "" {
+    } else if mconfig.SysCallConf.Enable {
         modNames = append(modNames, module.MODULE_NAME_PERF)
         modNames = append(modNames, module.MODULE_NAME_SYSCALL)
-    } else if len(gconfig.HookPoint) > 0 {
+    } else if len(mconfig.StackUprobeConf.Points) > 0 {
         modNames = append(modNames, module.MODULE_NAME_PERF)
         modNames = append(modNames, module.MODULE_NAME_STACK)
     } else {
@@ -443,23 +419,21 @@ func runFunc(command *cobra.Command, args []string) {
     }
     if runMods > 0 {
         Logger.Printf("start %d modules", runMods)
-        if mconfig.UprobeSignal == uint32(syscall.SIGSTOP) {
-            go func() {
-                scanner := bufio.NewScanner(os.Stdin)
-                for {
-                    scanner.Scan()
-                    err := scanner.Err()
-                    if err != nil {
-                        Logger.Printf("get input from console failed, err:%v", err)
-                        syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-                    }
-                    input_text := scanner.Text()
-                    if input_text == "c" {
-                        event.LetItRun()
-                    }
+        go func() {
+            scanner := bufio.NewScanner(os.Stdin)
+            for {
+                scanner.Scan()
+                err := scanner.Err()
+                if err != nil {
+                    Logger.Printf("get input from console failed, err:%v", err)
+                    syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
                 }
-            }()
-        }
+                input_text := scanner.Text()
+                if input_text == "c" {
+                    event.LetItRun()
+                }
+            }
+        }()
 
         <-stopper
     } else {
@@ -643,8 +617,8 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.NoTName, "no-tname", "", "thread name black list")
     rootCmd.PersistentFlags().StringArrayVarP(&gconfig.ArgFilter, "filter", "f", []string{}, "arg filter rule")
 
-    rootCmd.PersistentFlags().StringVar(&gconfig.UprobeSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
-    rootCmd.PersistentFlags().StringVar(&gconfig.UprobeTSignal, "tkill", "", "send signal to thread when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
+    rootCmd.PersistentFlags().StringVar(&gconfig.KillSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
+    rootCmd.PersistentFlags().StringVar(&gconfig.TKillSignal, "tkill", "", "send signal to thread when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
     rootCmd.PersistentFlags().BoolVar(&gconfig.Rpc, "rpc", false, "enable rpc")
     rootCmd.PersistentFlags().StringVar(&gconfig.RpcPath, "rpc-path", "127.0.0.1:41718", "rpc path, default 127.0.0.1:41718")
     // 硬件断点设定
@@ -664,7 +638,7 @@ func init() {
     // 日志设定
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Debug, "debug", "d", false, "enable debug logging")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Quiet, "quiet", "q", false, "wont logging to terminal when used")
-    rootCmd.PersistentFlags().BoolVarP(&gconfig.Color, "color", "c", false, "enable color for log file")
+    rootCmd.PersistentFlags().BoolVar(&gconfig.Color, "color", false, "enable color for log file")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.FmtJson, "json", "j", false, "log event as json format")
     rootCmd.PersistentFlags().StringVarP(&gconfig.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
     // 适合收集大量数据 减少数据丢失
@@ -684,4 +658,6 @@ func init() {
     // syscall hook
     rootCmd.PersistentFlags().StringVarP(&gconfig.SysCall, "syscall", "s", "", "filter syscalls")
     rootCmd.PersistentFlags().StringVar(&gconfig.NoSysCall, "no-syscall", "", "syscall black list, max 20")
+    // config hook
+    rootCmd.PersistentFlags().StringArrayVarP(&gconfig.ConfigFiles, "config", "c", []string{}, "hook config file")
 }

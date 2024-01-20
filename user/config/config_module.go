@@ -2,8 +2,10 @@ package config
 
 import (
     "encoding/binary"
+    "encoding/json"
     "errors"
     "fmt"
+    "io/ioutil"
     "log"
     "os"
     "regexp"
@@ -288,6 +290,55 @@ func (this *StackUprobeConfig) GetSyscall() string {
     return strings.Join(results, ",")
 }
 
+func (this *StackUprobeConfig) Parse_FileConfig(config *UprobeFileConfig) (err error) {
+    for index, point := range config.Points {
+        hook_point := &UprobeArgs{}
+        hook_point.BindSyscall = false
+        hook_point.ExitRead = false
+        hook_point.Index = uint32(index)
+        hook_point.LibPath = this.LibPath
+        hook_point.RealFilePath = this.RealFilePath
+        hook_point.NonElfOffset = this.NonElfOffset
+        hook_point.Name = point.Name
+        if point.Signal != "" {
+            hook_point.KillSignal = util.ParseSignal(point.Signal)
+        }
+
+        // strstr / strstr+0x4 / 0xA94E8
+        items := strings.Split(point.Name, "+")
+        if len(items) == 1 {
+            sym_or_off := items[0]
+            if strings.HasPrefix(sym_or_off, "0x") {
+                offset, err := strconv.ParseUint(sym_or_off, 0, 64)
+                if err != nil {
+                    return errors.New(fmt.Sprintf("parse for %s failed, err:%v", point.Name, err))
+                }
+                hook_point.Offset = offset
+                hook_point.Symbol = ""
+            } else {
+                hook_point.Symbol = sym_or_off
+            }
+        } else if len(items) == 2 {
+            hook_point.Symbol = items[0]
+            sym_or_off := items[1]
+            offset, err := strconv.ParseUint(sym_or_off, 0, 64)
+            if err != nil {
+                return errors.New(fmt.Sprintf("parse for %s failed, err:%v", point.Name, err))
+            }
+            hook_point.Offset = offset
+        } else {
+            return errors.New(fmt.Sprintf("parse for %s failed, err:%v", point.Name, err))
+        }
+
+        for arg_index, param := range point.Params {
+            point_arg := param.GetPointArg(uint32(arg_index))
+            hook_point.PointArgs = append(hook_point.PointArgs, point_arg)
+        }
+        this.Points = append(this.Points, hook_point)
+    }
+    return nil
+}
+
 func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
     if this.LibPath == "" {
         return errors.New("library is empty, plz set with -l/--lib")
@@ -566,31 +617,31 @@ type ModuleConfig struct {
 
     ArgFilterRule []ArgFilter
 
-    TraceGroup    uint32
-    UprobeSignal  uint32
-    UprobeTSignal uint32
-    UnwindStack   bool
-    ManualStack   bool
-    StackSize     uint32
-    ShowRegs      bool
-    GetOff        bool
-    RegName       string
-    ExternalBTF   string
-    Is32Bit       bool
-    Buffer        uint32
-    MaxOp         uint32
-    BrkPid        int
-    BrkAddr       uint64
-    BrkLen        uint64
-    BrkType       uint32
-    BrkKernel     bool
-    Color         bool
-    DumpHandle    *os.File
-    FmtJson       bool
-    DumpHex       bool
-    ShowPC        bool
-    ShowTime      bool
-    ShowUid       bool
+    TraceGroup  uint32
+    KillSignal  uint32
+    TKillSignal uint32
+    UnwindStack bool
+    ManualStack bool
+    StackSize   uint32
+    ShowRegs    bool
+    GetOff      bool
+    RegName     string
+    ExternalBTF string
+    Is32Bit     bool
+    Buffer      uint32
+    MaxOp       uint32
+    BrkPid      int
+    BrkAddr     uint64
+    BrkLen      uint64
+    BrkType     uint32
+    BrkKernel   bool
+    Color       bool
+    DumpHandle  *os.File
+    FmtJson     bool
+    DumpHex     bool
+    ShowPC      bool
+    ShowTime    bool
+    ShowUid     bool
 
     Name            string
     StackUprobeConf *StackUprobeConfig
@@ -605,21 +656,85 @@ func NewModuleConfig() *ModuleConfig {
     return config
 }
 
-func (this *ModuleConfig) InitSyscallConfig() {
-    config := &SyscallConfig{}
-    config.Enable = false
-    config.SetDebug(this.Debug)
-    config.SetLogger(this.logger)
-    config.SetArgFilterRule(&this.ArgFilterRule)
-    this.SysCallConf = config
+func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {
+
+    this.MaxOp = gconfig.MaxOp
+    this.Buffer = gconfig.Buffer
+    this.UnwindStack = gconfig.UnwindStack
+    this.ManualStack = gconfig.ManualStack
+    if gconfig.StackSize&7 != 0 {
+        panic(fmt.Sprintf("dump stack size %d is not 8-byte aligned.", gconfig.StackSize))
+    }
+    this.StackSize = gconfig.StackSize
+    this.ShowRegs = gconfig.ShowRegs
+    this.GetOff = gconfig.GetOff
+    this.Debug = gconfig.Debug
+    this.Is32Bit = false
+    this.Color = gconfig.Color
+    this.FmtJson = gconfig.FmtJson
+    this.RegName = gconfig.RegName
+    this.DumpHex = gconfig.DumpHex
+    this.ShowPC = gconfig.ShowPC
+    this.ShowTime = gconfig.ShowTime
+    this.ShowUid = gconfig.ShowUid
+
+    this.KillSignal = util.ParseSignal(gconfig.KillSignal)
+    this.TKillSignal = util.ParseSignal(gconfig.TKillSignal)
+
+    this.StackUprobeConf = &StackUprobeConfig{}
+    this.StackUprobeConf.SetDumpHex(this.DumpHex)
+    this.StackUprobeConf.SetColor(this.Color)
+    this.StackUprobeConf.SetArgFilterRule(&this.ArgFilterRule)
+
+    this.SysCallConf = &SyscallConfig{}
+    this.SysCallConf.SetDebug(this.Debug)
+    this.SysCallConf.SetLogger(this.logger)
+    this.SysCallConf.SetArgFilterRule(&this.ArgFilterRule)
 }
 
-func (this *ModuleConfig) InitStackUprobeConfig() {
-    config := &StackUprobeConfig{}
-    config.SetDumpHex(this.DumpHex)
-    config.SetColor(this.Color)
-    config.SetArgFilterRule(&this.ArgFilterRule)
-    this.StackUprobeConf = config
+func (this *ModuleConfig) LoadConfig(gconfig *GlobalConfig) {
+
+    // 一些配置文件有关的逻辑
+    // 1. 无论 uprobe 还是 syscall 指定的配置即为要hook的
+    // 2. syscall 有内置解析配置 需要配合命令行 -s/--syscall 使用
+    // 3. 指定了 syscall 类型的配置 则不会采用内置配置 也会无视 -s/--syscall
+
+    for _, file := range gconfig.ConfigFiles {
+        content, err := ioutil.ReadFile(file)
+        if err != nil {
+            panic(err)
+        }
+        base_config := &FileConfig{}
+        err = json.Unmarshal(content, base_config)
+        if err != nil {
+            panic(err)
+        }
+        switch base_config.Type {
+        case "uprobe":
+            config := &UprobeFileConfig{}
+            err = json.Unmarshal(content, config)
+            if err != nil {
+                panic(err)
+            }
+            err = gconfig.Parse_Libinfo(config.Library, this.StackUprobeConf)
+            if err != nil {
+                panic(err)
+            }
+            err = this.StackUprobeConf.Parse_FileConfig(config)
+            if err != nil {
+                panic(err)
+            }
+        case "syscall":
+            config := &SyscallFileConfig{}
+            err = json.Unmarshal(content, config)
+            if err != nil {
+                panic(err)
+            }
+        default:
+            panic(fmt.Sprintf("unsupported config type %s", base_config.Type))
+        }
+
+    }
 }
 
 func (this *ModuleConfig) Info() string {
@@ -734,8 +849,8 @@ func (this *ModuleConfig) GetCommonFilter() CommonFilter {
     filter.trace_mode = this.SysCallConf.TraceMode
 
     filter.trace_uid_group = this.TraceGroup
-    filter.signal = this.UprobeSignal
-    filter.tsignal = this.UprobeTSignal
+    filter.signal = this.KillSignal
+    filter.tsignal = this.TKillSignal
     return filter
 }
 

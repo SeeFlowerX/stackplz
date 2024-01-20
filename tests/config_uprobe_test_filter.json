@@ -1,0 +1,19 @@
+{
+    "type": "uprobe",
+    "library": "libc.so",
+    "points": [
+        {
+            "name": "__openat",
+            "params": [
+                {"type": "str", "reg": "x1", "filter": ["w:/data/data"]}
+            ]
+        },
+        {
+            "name": "strstr",
+            "params": [
+                {"name": "haystack", "type": "str"},
+                {"name": "needle", "type": "str"}
+            ]
+        }
+    ]
+}
