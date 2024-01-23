@@ -6,8 +6,9 @@
             "name": "ioctl",
             "params": [
                 {"name": "fd", "type": "int"},
-                {"name": "cmd", "type": "int"},
-                {"name": "arg", "type": "ptr", "filter": ["eq:0x801"]}
+                {"name": "cmd", "type": "ptr", "filter": ["eq:0xc0306201"]},
+                {"name": "arg", "type": "ptr"},
+                {"name": "ret", "type": "ptr"}
             ]
         },
         {
@@ -17,9 +18,10 @@
                 {"name": "sockfd", "type": "int"},
                 {"name": "buf", "type": "buf", "more":"enter", "size": "x2"},
                 {"name": "len", "type": "size_t"},
-                {"name": "flags", "type": "int", "format": "socket_flags"},
+                {"name": "flags", "type": "int", "format": "msg_flags"},
                 {"name": "addr", "type": "sockaddr"},
-                {"name": "addrlen", "type": "socklen_t"}
+                {"name": "addrlen", "type": "socklen_t"},
+                {"name": "ret", "type": "int"}
             ]
         },
         {
@@ -29,7 +31,8 @@
                 {"name": "sockfd", "type": "int"},
                 {"name": "buf", "type": "buf", "size": "x2", "more": "exit"},
                 {"name": "len", "type": "size_t"},
-                {"name": "flags", "type": "int", "format": "socket_flags"}
+                {"name": "flags", "type": "int", "format": "msg_flags"},
+                {"name": "ret", "type": "int"}
             ]
         }
     ]

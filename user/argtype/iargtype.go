@@ -279,6 +279,38 @@ func LazyRegister(type_index uint32) IArgType {
 	}
 }
 
+func PreRegister() {
+	// 先注册好各种内置类型
+	r_PRE_ARRAY(GetArgType(INT), INT_ARRAY_1, 1)
+	r_PRE_ARRAY(GetArgType(INT), INT_ARRAY_2, 2)
+	r_PRE_ARRAY(GetArgType(UINT), UINT_ARRAY_1, 1)
+	R_POINTER(GetArgType(INT), true)
+	R_POINTER(GetArgType(UINT), true)
+	r_STD_STRING()
+	r_STRING_ARRAY()
+	r_STACK_T()
+	PRE_R_STRUCT("timespec", TIMESPEC, &Arg_Timespec{})
+	r_SIGSET()
+	r_SIGINFO()
+	PRE_R_STRUCT("sigaction", SIGACTION, &Arg_Sigaction{})
+	r_EPOLLEVENT()
+	r_POLLFD()
+	r_DIRENT()
+	r_ITTMERSPEC()
+	r_RUSAGE()
+	r_UTSNAME()
+	r_TIMEVAL()
+	r_TIMEZONE()
+	r_SYSINFO()
+	r_STAT()
+	r_STATFS()
+	r_IOVEC()
+	r_IOVEC_X2()
+	r_MSGHDR()
+	r_SOCKADDR()
+	r_BUFFER_X2()
+}
+
 func Register(p IArgType, name string, base, index, size uint32) {
 	// 注册有预设的基础类型
 	if p == nil {

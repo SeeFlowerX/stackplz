@@ -739,6 +739,8 @@ func init() {
 	Register(&ARG_STRUCT{}, "struct", TYPE_STRUCT, STRUCT, 0)
 	Register(&ARG_ARRAY{}, "array", TYPE_ARRAY, ARRAY, 0)
 
+	PreRegister()
+
 	RegisterAliasType(SOCKLEN_T, UINT32)
 	RegisterAliasType(SIZE_T, UINT64)
 	RegisterAliasType(SSIZE_T, INT64)

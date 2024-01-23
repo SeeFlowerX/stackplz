@@ -28,6 +28,27 @@ func (this *PointArg) SetTypeIndex(type_index uint32) {
 	this.TypeIndex = type_index
 }
 
+func (this *PointArg) SetFlagsFormat(format string) {
+	var p argtype.IArgType
+	switch format {
+	case "fcntl_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.FcntlFlagsConfig)
+	case "statx_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.StatxFlagsConfig)
+	case "unlink_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.UnlinkFlagsConfig)
+	case "msg_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.MsgFlagsConfig)
+	case "socket_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.SocketFlagsConfig)
+	case "perm_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.PermissionFlagsConfig)
+	default:
+		panic("...")
+	}
+	this.TypeIndex = p.GetTypeIndex()
+}
+
 func (this *PointArg) SetTypeByName(name string) {
 	this.TypeIndex = argtype.GetArgTypeByName(name).GetTypeIndex()
 }
@@ -121,6 +142,7 @@ func (this *PointArg) Clone() *PointArg {
 	p.RegIndex = this.RegIndex
 	p.TypeIndex = this.TypeIndex
 	p.PointType = this.PointType
+	p.FilterIndexList = this.FilterIndexList
 	return &p
 }
 
@@ -128,6 +150,15 @@ func NewPointArg(arg_name string, type_index, point_type uint32) *PointArg {
 	point_arg := PointArg{}
 	point_arg.Name = arg_name
 	point_arg.RegIndex = REG_ARM64_MAX
+	point_arg.TypeIndex = type_index
+	point_arg.PointType = point_type
+	return &point_arg
+}
+
+func NewSyscallPointArg(arg_name string, type_index, reg_index, point_type uint32) *PointArg {
+	point_arg := PointArg{}
+	point_arg.Name = arg_name
+	point_arg.RegIndex = reg_index
 	point_arg.TypeIndex = type_index
 	point_arg.PointType = point_type
 	return &point_arg

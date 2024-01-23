@@ -42,7 +42,7 @@ func (this *FileConfig) GetType() string {
 	return this.Type
 }
 
-func (this *ParamConfig) GetPointArg(arg_index uint32) *PointArg {
+func (this *ParamConfig) GetPointArg(arg_index, point_type uint32) *PointArg {
 	// 参数名省略时 以 a{index} 这样的形式作为名字
 	arg_name := fmt.Sprintf("a%d", arg_index)
 	if this.Name != "" {
@@ -55,7 +55,15 @@ func (this *ParamConfig) GetPointArg(arg_index uint32) *PointArg {
 		reg_index = GetRegIndex(this.Reg)
 	}
 	// 基础配置
-	point_arg := NewUprobePointArg(arg_name, POINTER, reg_index)
+	var point_arg *PointArg
+	switch point_type {
+	case EBPF_SYS_ENTER, EBPF_SYS_EXIT, EBPF_SYS_ALL:
+		point_arg = NewSyscallPointArg(arg_name, POINTER, reg_index, point_type)
+	case EBPF_UPROBE_ENTER:
+		point_arg = NewUprobePointArg(arg_name, POINTER, reg_index)
+	default:
+		panic("...")
+	}
 	// 先处理一些比较特殊的情况
 
 	to_ptr := false
@@ -121,6 +129,13 @@ func (this *ParamConfig) GetPointArg(arg_index uint32) *PointArg {
 		point_arg.SetHexFormat()
 	case "hexdump":
 		point_arg.SetHexFormat()
+	case "fcntl_flags", "statx_flags", "unlink_flags", "socket_flags", "perm_flags", "msg_flags":
+		point_arg.SetFlagsFormat(this.Format)
+	case "":
+		// 没设置就默认方式处理
+		break
+	default:
+		panic(fmt.Sprintf("unsupported format type:%s", this.Format))
 	}
 
 	// 设置过滤规则 先解析规则 然后取到规则索引

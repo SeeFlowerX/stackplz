@@ -39,7 +39,8 @@ func (this *SyscallEvent) ParseEvent() (IEventStruct, error) {
 func (this *SyscallEvent) ParseContext() (err error) {
     this.ReadArg(&this.NR)
 
-    this.nr_point = config.GetSyscallPointByNR(this.NR)
+    this.nr_point = this.mconf.SysCallConf.GetSyscallPointByNR(this.NR)
+    // this.nr_point = config.GetSyscallPointByNR(this.NR)
     this.PointName = this.nr_point.Name
 
     // this.logger.Printf("ParseContext EventId:%d RawSample:\n%s", this.EventId, util.HexDump(this.rec.RawSample, util.COLORRED))

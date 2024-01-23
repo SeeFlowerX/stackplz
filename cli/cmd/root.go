@@ -285,14 +285,14 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         }
     }
 
-    // 2. hook syscall
-    mconfig.SysCallConf.Parse_SysWhitelist(gconfig)
-    mconfig.SysCallConf.Parse_SysBlacklist(gconfig.NoSysCall)
-
     // 3. hook config
     if len(gconfig.ConfigFiles) > 0 {
         mconfig.LoadConfig(gconfig)
     }
+
+    // 2. hook syscall
+    mconfig.SysCallConf.Parse_SysWhitelist(gconfig)
+    mconfig.SysCallConf.Parse_SysBlacklist(gconfig.NoSysCall)
 
     // 4. watch breakpoint
     var brk_base uint64 = 0x0

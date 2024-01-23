@@ -142,6 +142,30 @@ var SocketFlags []*FlagOp = []*FlagOp{
 	{"SOCK_NONBLOCK", int32(00004000)},
 }
 
+var MsgFlags []*FlagOp = []*FlagOp{
+	{"MSG_OOB", int32(1)},
+	{"MSG_PEEK", int32(2)},
+	{"MSG_DONTROUTE", int32(4)},
+	{"MSG_TRYHARD", int32(4)},
+	{"MSG_CTRUNC", int32(8)},
+	{"MSG_PROBE", int32(0x10)},
+	{"MSG_TRUNC", int32(0x20)},
+	{"MSG_DONTWAIT", int32(0x40)},
+	{"MSG_EOR", int32(0x80)},
+	{"MSG_WAITALL", int32(0x100)},
+	{"MSG_FIN", int32(0x200)},
+	{"MSG_SYN", int32(0x400)},
+	{"MSG_CONFIRM", int32(0x800)},
+	{"MSG_RST", int32(0x1000)},
+	{"MSG_ERRQUEUE", int32(0x2000)},
+	{"MSG_NOSIGNAL", int32(0x4000)},
+	{"MSG_MORE", int32(0x8000)},
+	{"MSG_WAITFORONE", int32(0x10000)},
+	{"MSG_BATCH", int32(0x40000)},
+	{"MSG_FASTOPEN", int32(0x20000000)},
+	{"MSG_CMSG_CLOEXEC", int32(0x40000000)},
+}
+
 var FcntlFlags []*FlagOp = []*FlagOp{
 	// {"AT_FDCWD", int32(-100)},
 	{"AT_SYMLINK_NOFOLLOW", int32(0x100)},
@@ -170,6 +194,7 @@ var FcntlFlagsConfig = &FlagsConfig{"stat", FORMAT_HEX, FcntlFlags}
 var StatxFlagsConfig = &FlagsConfig{"statx", FORMAT_HEX, StatxFlags}
 var UnlinkFlagsConfig = &FlagsConfig{"unlink", FORMAT_HEX, UnlinkFlags}
 var MreapFlagsConfig = &FlagsConfig{"mreap", FORMAT_HEX, MreapFlags}
+var MsgFlagsConfig = &FlagsConfig{"msg", FORMAT_HEX, MsgFlags}
 var SocketFlagsConfig = &FlagsConfig{"socket", FORMAT_HEX, SocketFlags}
 var PermissionFlagsConfig = &FlagsConfig{"permission", FORMAT_OCT, PermissionFlags}
 
@@ -177,6 +202,18 @@ func RegisterFlagsConfig(type_index, parent_index uint32, flags_config *FlagsCon
 	p := GetArgType(parent_index)
 	new_name := fmt.Sprintf("%s_flags_%s", p.GetName(), flags_config.Name)
 	new_p := RegisterPre(new_name, type_index, p.GetTypeIndex())
+	new_i, ok := (new_p).(IArgTypeNum)
+	if !ok {
+		panic("...")
+	}
+	new_i.SetFlagsConfig(flags_config)
+	return new_p
+}
+
+func NewNumFlags(parent_index uint32, flags_config *FlagsConfig) IArgType {
+	p := GetArgType(parent_index)
+	new_name := fmt.Sprintf("%s_flags_%s", p.GetName(), flags_config.Name)
+	new_p := RegisterNew(new_name, p.GetTypeIndex())
 	new_i, ok := (new_p).(IArgTypeNum)
 	if !ok {
 		panic("...")

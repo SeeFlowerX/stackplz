@@ -291,7 +291,7 @@ func (this *StackUprobeConfig) GetSyscall() string {
 }
 
 func (this *StackUprobeConfig) Parse_FileConfig(config *UprobeFileConfig) (err error) {
-    for index, point := range config.Points {
+    for index, point_config := range config.Points {
         hook_point := &UprobeArgs{}
         hook_point.BindSyscall = false
         hook_point.ExitRead = false
@@ -299,19 +299,19 @@ func (this *StackUprobeConfig) Parse_FileConfig(config *UprobeFileConfig) (err e
         hook_point.LibPath = this.LibPath
         hook_point.RealFilePath = this.RealFilePath
         hook_point.NonElfOffset = this.NonElfOffset
-        hook_point.Name = point.Name
-        if point.Signal != "" {
-            hook_point.KillSignal = util.ParseSignal(point.Signal)
+        hook_point.Name = point_config.Name
+        if point_config.Signal != "" {
+            hook_point.KillSignal = util.ParseSignal(point_config.Signal)
         }
 
         // strstr / strstr+0x4 / 0xA94E8
-        items := strings.Split(point.Name, "+")
+        items := strings.Split(point_config.Name, "+")
         if len(items) == 1 {
             sym_or_off := items[0]
             if strings.HasPrefix(sym_or_off, "0x") {
                 offset, err := strconv.ParseUint(sym_or_off, 0, 64)
                 if err != nil {
-                    return errors.New(fmt.Sprintf("parse for %s failed, err:%v", point.Name, err))
+                    return errors.New(fmt.Sprintf("parse for %s failed, err:%v", point_config.Name, err))
                 }
                 hook_point.Offset = offset
                 hook_point.Symbol = ""
@@ -323,15 +323,15 @@ func (this *StackUprobeConfig) Parse_FileConfig(config *UprobeFileConfig) (err e
             sym_or_off := items[1]
             offset, err := strconv.ParseUint(sym_or_off, 0, 64)
             if err != nil {
-                return errors.New(fmt.Sprintf("parse for %s failed, err:%v", point.Name, err))
+                return errors.New(fmt.Sprintf("parse for %s failed, err:%v", point_config.Name, err))
             }
             hook_point.Offset = offset
         } else {
-            return errors.New(fmt.Sprintf("parse for %s failed, err:%v", point.Name, err))
+            return errors.New(fmt.Sprintf("parse for %s failed, err:%v", point_config.Name, err))
         }
 
-        for arg_index, param := range point.Params {
-            point_arg := param.GetPointArg(uint32(arg_index))
+        for arg_index, param := range point_config.Params {
+            point_arg := param.GetPointArg(uint32(arg_index), EBPF_UPROBE_ENTER)
             hook_point.PointArgs = append(hook_point.PointArgs, point_arg)
         }
         this.Points = append(this.Points, hook_point)
@@ -444,8 +444,59 @@ func (this *SyscallConfig) SetArgFilterRule(arg_filter *[]ArgFilter) {
     this.arg_filter = arg_filter
 }
 
+func (this *SyscallConfig) GetSyscallPointByNR(nr uint32) *SyscallPoint {
+    // 后面加个 map 吧 总感觉这样会比较慢
+    for _, point_arg := range this.PointArgs {
+        if point_arg.Nr == nr {
+            return point_arg
+        }
+    }
+    panic(fmt.Sprintf("unknown nr:%d", nr))
+}
+
+func (this *SyscallConfig) Parse_FileConfig(config *SyscallFileConfig) (err error) {
+    for _, point_config := range config.Points {
+        var a_point_args []*PointArg
+        var b_point_args []*PointArg
+        for arg_index, param := range point_config.Params {
+            if param.Name == "ret" {
+                // 需要告知用户 syscall 中参数名 ret 仅用于返回值
+                point_arg := param.GetPointArg(uint32(arg_index), EBPF_SYS_EXIT)
+                b_point_args = append(b_point_args, point_arg)
+                break
+            }
+
+            var point_type uint32
+            switch param.More {
+            case "", "enter":
+                point_type = EBPF_SYS_ENTER
+            case "exit":
+                point_type = EBPF_SYS_EXIT
+            case "all":
+                point_type = EBPF_SYS_ALL
+            default:
+                panic(fmt.Sprintf("unknown point_type:%s", param.More))
+            }
+            point_arg := param.GetPointArg(uint32(arg_index), point_type)
+
+            a_p := point_arg.Clone()
+            a_p.SetGroupType(EBPF_SYS_ENTER)
+            a_point_args = append(a_point_args, a_p)
+
+            b_p := point_arg.Clone()
+            b_p.SetGroupType(EBPF_SYS_EXIT)
+            b_point_args = append(b_point_args, b_p)
+
+        }
+        point := &SyscallPoint{point_config.Nr, point_config.Name, a_point_args, b_point_args}
+        this.PointArgs = append(this.PointArgs, point)
+    }
+
+    return nil
+}
+
 func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
-    if gconfig.SysCall == "" {
+    if gconfig.SysCall == "" && len(gconfig.ConfigFiles) == 0 {
         this.Enable = false
         return
     }
@@ -504,7 +555,9 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
         case "%stat":
             syscall_items = append(syscall_items, []string{"statfs", "fstatfs", "newfstatat", "fstat", "statx"}...)
         default:
-            syscall_items = append(syscall_items, v)
+            if v != "" {
+                syscall_items = append(syscall_items, v)
+            }
         }
     }
     // 去重
@@ -516,6 +569,28 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
             }
         }
     }
+    if len(this.PointArgs) > 0 {
+        // 这个分支是配置文件走
+        if len(unique_items) == 0 {
+            // 命令行中不指定任何 syscall 那么会认为配置文件中的所有syscall都生效
+            // 这种是用户自定义syscall参数读取方式
+            for _, point_arg := range this.PointArgs {
+                this.SysWhitelist = append(this.SysWhitelist, point_arg.Nr)
+            }
+        } else {
+            // 指定了 syscall 则只从预置配置中选取存在的syscall
+            // 这种是使用预置配置
+            for _, syscall_name := range unique_items {
+                for _, point_arg := range this.PointArgs {
+                    if point_arg.Name == syscall_name {
+                        this.SysWhitelist = append(this.SysWhitelist, point_arg.Nr)
+                    }
+                }
+            }
+        }
+        return
+    }
+
     for _, v := range unique_items {
         var index_items [][]uint32
         syscall_name := v
@@ -727,6 +802,10 @@ func (this *ModuleConfig) LoadConfig(gconfig *GlobalConfig) {
         case "syscall":
             config := &SyscallFileConfig{}
             err = json.Unmarshal(content, config)
+            if err != nil {
+                panic(err)
+            }
+            err = this.SysCallConf.Parse_FileConfig(config)
             if err != nil {
                 panic(err)
             }
