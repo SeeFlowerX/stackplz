@@ -644,6 +644,9 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
         this.PointArgs = append(this.PointArgs, point)
         this.SysWhitelist = append(this.SysWhitelist, uint32(point.Nr))
     }
+    if len(this.PointArgs) == 0 {
+        this.Enable = false
+    }
 }
 
 func (this *SyscallConfig) Parse_SysBlacklist(text string) {

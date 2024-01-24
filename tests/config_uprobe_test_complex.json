@@ -1,0 +1,15 @@
+{
+    "type": "uprobe",
+    "library": "linker64",
+    "points": [
+        {
+            "name": "__dl__ZN6soinfo17call_constructorsEv",
+            "params": [
+                {"type": "ptr"},
+                {"type": "std", "read_op": "x0+408", "filter": ["w:libjiagu"]},
+                {"type": "*int", "read_op": "x0+160"},
+                {"type": "ptr_arr", "size":"6", "read_op": "x0+152."}
+            ]
+        }
+    ]
+}

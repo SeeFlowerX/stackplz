@@ -281,6 +281,10 @@ LR比较，需要提前计算用于比较的值：
 - 端口可以通过`--rpc-path`修改，默认`127.0.0.1:41718`
 - 用其他发socket也可以，自行实现
 
+3.12 `-c/--config`配置文件
+
+配置文件具体使用方式请查看[配置文件文档](./docs/CONFIG.md)：
+
 ---
 
 使用提示：
@@ -333,7 +337,7 @@ LR比较，需要提前计算用于比较的值：
 
 # 编译
 
-可参考[workflow](.github/workflows/build.yml)或查看[编译文档](BUILD.md)：
+可参考[workflow](.github/workflows/build.yml)或查看[编译文档](./docs/BUILD.md)：
 
 # Q & A
 
