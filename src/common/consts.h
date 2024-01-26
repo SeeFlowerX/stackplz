@@ -9,11 +9,11 @@
 #define MAX_STRCMP_LEN 256
 
 #if defined(__MODULE_STACK)
-    #define MAX_OP_COUNT 64
+    #define MAX_OP_COUNT 32
 #elif defined(__MODULE_SYSCALL)
-    #define MAX_OP_COUNT 256
+    #define MAX_OP_COUNT 32
 #else
-    #define MAX_OP_COUNT 512
+    #define MAX_OP_COUNT 32
 #endif
 
 // clang-format off

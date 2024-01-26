@@ -7,32 +7,32 @@
 
 #include "utils.h"
 
-SEC("raw_tracepoint/sched_process_fork")
-int tracepoint__sched__sched_process_fork(struct bpf_raw_tracepoint_args *ctx)
-{
-    long ret = 0;
-    program_data_t p = {};
-    if (!init_program_data(&p, ctx))
-        return 0;
+// SEC("raw_tracepoint/sched_process_fork")
+// int tracepoint__sched__sched_process_fork(struct bpf_raw_tracepoint_args *ctx)
+// {
+//     long ret = 0;
+//     program_data_t p = {};
+//     if (!init_program_data(&p, ctx))
+//         return 0;
 
-    struct task_struct *parent = (struct task_struct *) ctx->args[0];
-    struct task_struct *child = (struct task_struct *) ctx->args[1];
+//     struct task_struct *parent = (struct task_struct *) ctx->args[0];
+//     struct task_struct *child = (struct task_struct *) ctx->args[1];
 
-    u32 parent_ns_pid = get_task_ns_pid(parent);
-    u32 parent_ns_tgid = get_task_ns_tgid(parent);
-    u32 child_ns_pid = get_task_ns_pid(child);
-    u32 child_ns_tgid = get_task_ns_tgid(child);
+//     u32 parent_ns_pid = get_task_ns_pid(parent);
+//     u32 parent_ns_tgid = get_task_ns_tgid(parent);
+//     u32 child_ns_pid = get_task_ns_pid(child);
+//     u32 child_ns_tgid = get_task_ns_tgid(child);
 
-    u32* pid = bpf_map_lookup_elem(&child_parent_map, &parent_ns_pid);
-    if (unlikely(pid == NULL)) return 0;
+//     u32* pid = bpf_map_lookup_elem(&child_parent_map, &parent_ns_pid);
+//     if (unlikely(pid == NULL)) return 0;
 
-    if (*pid == parent_ns_pid){
-        ret = bpf_map_update_elem(&child_parent_map, &child_ns_pid, &parent_ns_pid, BPF_ANY);
-    } else {
-        bpf_printk("[stack] parent pid from map:%d\n", *pid);
-    }
-    return 0;
-}
+//     if (*pid == parent_ns_pid){
+//         ret = bpf_map_update_elem(&child_parent_map, &child_ns_pid, &parent_ns_pid, BPF_ANY);
+//     } else {
+//         bpf_printk("[stack] parent pid from map:%d\n", *pid);
+//     }
+//     return 0;
+// }
 
 static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) {
     program_data_t p = {};
@@ -82,15 +82,15 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) 
     }
 
     events_perf_submit(&p, UPROBE_ENTER);
-    if (filter->signal > 0) {
-        bpf_send_signal(filter->signal);
-    }
-    if (filter->tsignal > 0) {
-        bpf_send_signal_thread(filter->tsignal);
-    }
-    if (point_args->signal > 0) {
-        bpf_send_signal_thread(point_args->signal);
-    }
+    // if (filter->signal > 0) {
+    //     bpf_send_signal(filter->signal);
+    // }
+    // if (filter->tsignal > 0) {
+    //     bpf_send_signal_thread(filter->tsignal);
+    // }
+    // if (point_args->signal > 0) {
+    //     bpf_send_signal_thread(point_args->signal);
+    // }
     return 0;
 }
 

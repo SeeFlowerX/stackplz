@@ -76,7 +76,7 @@ ebpf_perf_mmap:
 .PHONY: genbtf
 genbtf:
 	cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf rock5b-5.10-f9d1b1529-arm64.btf rock5b-5.10-arm64_min.btf stack.o syscall.o
-	cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf a12-5.10-arm64.btf a12-5.10-arm64_min.btf stack.o syscall.o
+	cd ${ASSETS_PATH} && ./$(CMD_BPFTOOL) gen min_core_btf p4.btf p4_min.btf stack.o syscall.o
 
 .PHONY: assets
 assets:

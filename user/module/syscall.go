@@ -54,11 +54,11 @@ func (this *MSyscall) setupManager() error {
     }
     maps = append(maps, events_map)
 
-    fork_probe := &manager.Probe{
-        Section:      "raw_tracepoint/sched_process_fork",
-        EbpfFuncName: "tracepoint__sched__sched_process_fork",
-    }
-    probes = append(probes, fork_probe)
+    // fork_probe := &manager.Probe{
+    //     Section:      "raw_tracepoint/sched_process_fork",
+    //     EbpfFuncName: "tracepoint__sched__sched_process_fork",
+    // }
+    // probes = append(probes, fork_probe)
 
     // syscall hook 配置
     sys_enter_probe := &manager.Probe{

@@ -11,7 +11,7 @@ static __always_inline u32 get_task_pid_vnr(struct task_struct *task)
 {
     unsigned int level = 0;
     struct pid *pid = NULL;
-    pid = READ_KERN(task->thread_pid);
+    pid = READ_KERN(task->pids[PIDTYPE_PID].pid);
     level = READ_KERN(pid->level);
     return READ_KERN(pid->numbers[level].nr);
 }

@@ -53,11 +53,11 @@ func (this *MStack) setupManager() error {
     }
     maps = append(maps, events_map)
 
-    fork_probe := &manager.Probe{
-        Section:      "raw_tracepoint/sched_process_fork",
-        EbpfFuncName: "tracepoint__sched__sched_process_fork",
-    }
-    probes = append(probes, fork_probe)
+    // fork_probe := &manager.Probe{
+    //     Section:      "raw_tracepoint/sched_process_fork",
+    //     EbpfFuncName: "tracepoint__sched__sched_process_fork",
+    // }
+    // probes = append(probes, fork_probe)
 
     for i, uprobe_point := range this.mconf.StackUprobeConf.Points {
         // stack hook 配置

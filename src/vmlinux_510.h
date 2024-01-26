@@ -901,6 +901,11 @@ struct uprobe_task;
 
 struct vm_struct;
 
+struct pid_link {
+    struct hlist_node node;
+    struct pid *pid;
+};
+
 struct task_struct {
 	struct thread_info thread_info;
 	volatile long int state;
@@ -989,7 +994,7 @@ struct task_struct {
 	struct task_struct *group_leader;
 	struct list_head ptraced;
 	struct list_head ptrace_entry;
-	struct pid *thread_pid;
+    struct pid_link pids[4];
 	struct hlist_node pid_links[4];
 	struct list_head thread_group;
 	struct list_head thread_node;

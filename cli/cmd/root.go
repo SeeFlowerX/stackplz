@@ -498,7 +498,7 @@ func findBTFAssets() string {
         fmt.Println("Error:", err)
         os.Exit(1)
     }
-    btf_file := "a12-5.10-arm64_min.btf"
+    btf_file := "p4_min.btf"
     if strings.Contains(util.B2S(utsname.Release[:]), "rockchip") {
         btf_file = "rock5b-5.10-arm64_min.btf"
     }

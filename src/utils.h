@@ -35,6 +35,7 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
     // if (maxop > MAX_OP_COUNT) {
     //     maxop = MAX_OP_COUNT;
     // }
+    // #pragma unroll
     for (int i = 0; i < maxop; i++) {
         if (op != NULL && op_ctx->post_code != OP_SKIP) {
             op_ctx->op_code = op_ctx->post_code;
