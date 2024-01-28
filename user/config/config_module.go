@@ -461,7 +461,7 @@ func (this *SyscallConfig) Parse_FileConfig(config *SyscallFileConfig) (err erro
         for arg_index, param := range point_config.Params {
             if param.Name == "ret" {
                 // 需要告知用户 syscall 中参数名 ret 仅用于返回值
-                point_arg := param.GetPointArg(uint32(arg_index), EBPF_SYS_EXIT)
+                point_arg := param.GetPointArg(REG_ARM64_MAX, EBPF_SYS_EXIT)
                 b_point_args = append(b_point_args, point_arg)
                 break
             }
