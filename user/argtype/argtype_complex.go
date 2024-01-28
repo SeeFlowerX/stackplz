@@ -485,6 +485,15 @@ func R_NUM_ARRAY(type_index, length uint32) IArgType {
 	return r_ARRAY(p, length)
 }
 
+func R_NUM_ARRAY_FMT(type_index, length uint32, format string) IArgType {
+	if format == "hex" {
+		p := NewNumFormat(GetArgType(type_index), FORMAT_HEX)
+		return r_ARRAY(p, length)
+	}
+	p := NewNumFormat(GetArgType(type_index), FORMAT_NUM)
+	return r_ARRAY(p, length)
+}
+
 func parse_STAT(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool) string {
 	if !parse_more {
 		return fmt.Sprintf("0x%x", ptr)
@@ -714,6 +723,23 @@ func r_IOVEC_X2() IArgType {
 	t := syscall.Iovec{}
 	at := RegisterNew("iovec_x2", STRUCT)
 	op := BuildReadRegBreakCount(uint64(REG_ARM64_X2))
+	at.AddOp(OPM.AddOp(op))
+	at.AddOp(OPC_SAVE_REG)
+	at.AddOp(OPC_FOR_BREAK)
+	at.AddOp(OPC_SET_TMP_VALUE)
+	at.AddOpList(GetArgType(IOVEC))
+	at.AddOp(OPC_MOVE_TMP_VALUE)
+	at.AddOp(OPC_ADD_OFFSET.NewValue(uint64(unsafe.Sizeof(t))))
+	at.AddOp(OPC_FOR_BREAK)
+	at.SetParseCB(parse_IOVEC)
+	return at
+}
+
+func R_IOVEC_REG(reg_name string) IArgType {
+	t := syscall.Iovec{}
+	reg_index := GetRegIndex(reg_name)
+	at := RegisterNew("iovec_"+reg_name, STRUCT)
+	op := BuildReadRegBreakCount(uint64(reg_index))
 	at.AddOp(OPM.AddOp(op))
 	at.AddOp(OPC_SAVE_REG)
 	at.AddOp(OPC_FOR_BREAK)

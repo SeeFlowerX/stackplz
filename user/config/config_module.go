@@ -519,10 +519,18 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
             syscall_items = append(syscall_items, []string{"openat", "openat2", "faccessat", "faccessat2", "mknodat", "mkdirat"}...)
             syscall_items = append(syscall_items, []string{"unlinkat", "symlinkat", "linkat", "renameat", "renameat2", "readlinkat"}...)
             syscall_items = append(syscall_items, []string{"chdir", "fchdir", "chroot", "fchmod", "fchmodat", "fchownat", "fchown"}...)
+        case "%fileop":
+            syscall_items = append(syscall_items, []string{"mknodat", "mkdirat"}...)
+            syscall_items = append(syscall_items, []string{"linkat", "unlinkat"}...)
+            syscall_items = append(syscall_items, []string{"symlinkat", "renameat"}...)
         case "%clone":
             syscall_items = append(syscall_items, []string{"clone", "clone3"}...)
         case "%exec":
             syscall_items = append(syscall_items, []string{"execve", "execveat"}...)
+        case "%mount":
+            syscall_items = append(syscall_items, []string{"umount2", "mount", "move_mount", "fsmount", "mount_setattr"}...)
+        case "%fsop":
+            syscall_items = append(syscall_items, []string{"fsopen", "fsconfig", "fsmount", "fspick"}...)
         case "%process":
             syscall_items = append(syscall_items, []string{"clone", "clone3"}...)
             syscall_items = append(syscall_items, []string{"execve", "execveat"}...)
@@ -550,6 +558,8 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
             syscall_items = append(syscall_items, []string{"sched_rr_get_interval", "sched_setattr", "sched_getattr"}...)
         case "%dup":
             syscall_items = append(syscall_items, []string{"dup", "dup3"}...)
+        case "%inotify":
+            syscall_items = append(syscall_items, []string{"inotify_init1", "inotify_add_watch", "inotify_rm_watch"}...)
         case "%epoll":
             syscall_items = append(syscall_items, []string{"epoll_create1", "epoll_ctl", "epoll_pwait", "epoll_pwait2"}...)
         case "%stat":
@@ -581,10 +591,15 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
             // 指定了 syscall 则只从预置配置中选取存在的syscall
             // 这种是使用预置配置
             for _, syscall_name := range unique_items {
+                is_find := false
                 for _, point_arg := range this.PointArgs {
                     if point_arg.Name == syscall_name {
+                        is_find = true
                         this.SysWhitelist = append(this.SysWhitelist, point_arg.Nr)
                     }
+                }
+                if !is_find {
+                    panic(fmt.Sprintf("syscall %s not exists in config", syscall_name))
                 }
             }
         }

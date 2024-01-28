@@ -90,6 +90,10 @@ func (this *ParamConfig) GetPointArg(arg_index, point_type uint32) *PointArg {
 		point_arg.SetTypeIndex(at.GetTypeIndex())
 		// 这个设定用于指示是否进一步读取和解析
 		point_arg.SetGroupType(EBPF_UPROBE_ENTER)
+	case "iovec":
+		at := argtype.R_IOVEC_REG(this.Size)
+		point_arg.SetTypeIndex(at.GetTypeIndex())
+		point_arg.SetGroupType(EBPF_UPROBE_ENTER)
 	case "int_arr", "uint_arr", "ptr_arr":
 		// 必须指定数组长度
 		size, err := strconv.ParseUint(this.Size, 0, 32)
@@ -98,11 +102,11 @@ func (this *ParamConfig) GetPointArg(arg_index, point_type uint32) *PointArg {
 		}
 		var at argtype.IArgType
 		if type_name == "int_arr" {
-			at = argtype.R_NUM_ARRAY(INT, uint32(size))
+			at = argtype.R_NUM_ARRAY_FMT(INT, uint32(size), this.Format)
 		} else if type_name == "uint_arr" {
-			at = argtype.R_NUM_ARRAY(UINT, uint32(size))
+			at = argtype.R_NUM_ARRAY_FMT(UINT, uint32(size), this.Format)
 		} else {
-			at = argtype.R_NUM_ARRAY(UINT64, uint32(size))
+			at = argtype.R_NUM_ARRAY_FMT(UINT64, uint32(size), this.Format)
 		}
 		point_arg.SetTypeIndex(at.GetTypeIndex())
 		point_arg.SetGroupType(EBPF_UPROBE_ENTER)
@@ -114,7 +118,7 @@ func (this *ParamConfig) GetPointArg(arg_index, point_type uint32) *PointArg {
 	case "int", "uint", "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64":
 		point_arg.SetTypeByName(type_name)
 	default:
-		// 上面两个case可以合并 这样写只是为了做出区分
+		// 没有列举出来的 case 认为是内置的结构体
 		point_arg.SetTypeByName(type_name)
 	}
 
@@ -129,7 +133,7 @@ func (this *ParamConfig) GetPointArg(arg_index, point_type uint32) *PointArg {
 		point_arg.SetHexFormat()
 	case "hexdump":
 		point_arg.SetHexFormat()
-	case "fcntl_flags", "statx_flags", "unlink_flags", "socket_flags", "perm_flags", "msg_flags":
+	case "inotify_flags", "access_flags", "mmap_flags", "mremap_flags", "file_flags", "prot_flags", "fcntl_flags", "statx_flags", "unlink_flags", "socket_flags", "perm_flags", "msg_flags":
 		point_arg.SetFlagsFormat(this.Format)
 	case "":
 		// 没设置就默认方式处理

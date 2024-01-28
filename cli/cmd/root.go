@@ -286,7 +286,15 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
 
     // 3. hook config
-    if len(gconfig.ConfigFiles) > 0 {
+    if len(gconfig.ConfigFiles) == 0 {
+        config_syscall_aarch64 := "user/config/config_syscall_aarch64.json"
+        err = assets.RestoreAsset(exec_path, config_syscall_aarch64)
+        if err != nil {
+            panic(err)
+        }
+        gconfig.ConfigFiles = append(gconfig.ConfigFiles, config_syscall_aarch64)
+    }
+    if len(gconfig.HookPoint) == 0 {
         mconfig.LoadConfig(gconfig)
     }
 

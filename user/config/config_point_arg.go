@@ -31,6 +31,18 @@ func (this *PointArg) SetTypeIndex(type_index uint32) {
 func (this *PointArg) SetFlagsFormat(format string) {
 	var p argtype.IArgType
 	switch format {
+	case "inotify_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.InotifyFlagsConfig)
+	case "access_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.AccessFlagsConfig)
+	case "mmap_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.MMapFlagsConfig)
+	case "mremap_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.MremapFlagsConfig)
+	case "file_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.FileFlagsConfig)
+	case "prot_flags":
+		p = argtype.NewNumFlags(this.TypeIndex, argtype.ProtFlagsConfig)
 	case "fcntl_flags":
 		p = argtype.NewNumFlags(this.TypeIndex, argtype.FcntlFlagsConfig)
 	case "statx_flags":
@@ -54,6 +66,10 @@ func (this *PointArg) SetTypeByName(name string) {
 }
 
 func (this *PointArg) SetHexFormat() {
+	at := argtype.GetArgType(this.TypeIndex)
+	if at.GetParentIndex() == ARRAY {
+		return
+	}
 	this.TypeIndex = argtype.R_NUM_HEX(this.TypeIndex).GetTypeIndex()
 }
 
