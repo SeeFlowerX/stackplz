@@ -21,7 +21,6 @@ import (
 )
 
 type StackUprobeConfig struct {
-    arg_filter   *[]ArgFilter
     LibName      string
     LibPath      string
     RealFilePath string
@@ -51,7 +50,6 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
     var to_ptr bool = false
     var type_name string = ""
     var read_op_str string = ""
-    var arg_filter string = ""
     var items []string
     // 参数是否为指针
     if strings.HasPrefix(arg_str, "*") {
@@ -74,7 +72,12 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
     filter_items := strings.SplitN(type_name, ".", 2)
     if len(filter_items) == 2 {
         type_name = filter_items[0]
-        arg_filter = filter_items[1]
+        filter_names := strings.Split(filter_items[1], ".")
+        for _, filter_name := range filter_names {
+            if filter_name != "" {
+                point_arg.AddFilterIndex(GetFilterIndex(filter_name))
+            }
+        }
     }
     to_hex := false
     if strings.HasSuffix(type_name, "x") {
@@ -109,25 +112,9 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
         } else {
             point_arg.SetTypeIndex(STD_STRING)
         }
-        filter_names := strings.Split(arg_filter, ".")
-        for _, filter_name := range filter_names {
-            for _, arg_filter := range *this.arg_filter {
-                if arg_filter.Match(filter_name) {
-                    point_arg.AddFilterIndex(arg_filter.Filter_index)
-                }
-            }
-        }
         point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     case "ptr":
         point_arg.SetTypeIndex(POINTER)
-        filter_names := strings.Split(arg_filter, ".")
-        for _, filter_name := range filter_names {
-            for _, arg_filter := range *this.arg_filter {
-                if arg_filter.Match(filter_name) {
-                    point_arg.AddFilterIndex(arg_filter.Filter_index)
-                }
-            }
-        }
     case "ptr_arr", "uint_arr", "int_arr":
         arr_items := strings.SplitN(read_op_str, ":", 2)
         var count_str = ""
@@ -268,10 +255,6 @@ func (this *StackUprobeConfig) IsEnable() bool {
     return len(this.Points) > 0
 }
 
-func (this *StackUprobeConfig) SetArgFilterRule(arg_filter *[]ArgFilter) {
-    this.arg_filter = arg_filter
-}
-
 func (this *StackUprobeConfig) SetDumpHex(dump_hex bool) {
     this.DumpHex = dump_hex
 }
@@ -280,13 +263,17 @@ func (this *StackUprobeConfig) SetColor(color bool) {
     this.Color = color
 }
 
-func (this *StackUprobeConfig) GetSyscall() string {
+func (this *StackUprobeConfig) GetSyscall(mconfig *ModuleConfig) string {
     results := []string{}
+    var new_points []*UprobeArgs
     for _, point := range this.Points {
-        if point.ToSyscall() {
+        if mconfig.SysCallConf.UpdateSyscallPoint(point) {
             results = append(results, point.Name)
+        } else {
+            new_points = append(new_points, point)
         }
     }
+    this.Points = new_points
     return strings.Join(results, ",")
 }
 
@@ -424,7 +411,6 @@ type PointFilter struct {
 type SyscallConfig struct {
     logger       *log.Logger
     debug        bool
-    arg_filter   *[]ArgFilter
     Enable       bool
     TraceMode    uint32
     PointArgs    []*SyscallPoint
@@ -440,18 +426,55 @@ func (this *SyscallConfig) SetLogger(logger *log.Logger) {
     this.logger = logger
 }
 
-func (this *SyscallConfig) SetArgFilterRule(arg_filter *[]ArgFilter) {
-    this.arg_filter = arg_filter
-}
-
 func (this *SyscallConfig) GetSyscallPointByNR(nr uint32) *SyscallPoint {
-    // 后面加个 map 吧 总感觉这样会比较慢
     for _, point_arg := range this.PointArgs {
         if point_arg.Nr == nr {
             return point_arg
         }
     }
-    panic(fmt.Sprintf("unknown nr:%d", nr))
+    panic(fmt.Sprintf("unknown syscall nr:%d", nr))
+}
+
+func (this *SyscallConfig) GetSyscallPointByName(name string) *SyscallPoint {
+    for _, point_arg := range this.PointArgs {
+        if point_arg.Name == name {
+            return point_arg
+        }
+    }
+    panic(fmt.Sprintf("unknown syscall name:%s", name))
+}
+
+func (this *SyscallConfig) UpdateSyscallPoint(uprobe_point *UprobeArgs) bool {
+    if !uprobe_point.BindSyscall {
+        return false
+    }
+    point := this.GetSyscallPointByName(uprobe_point.Name)
+    var a_point_args []*PointArg
+    var b_point_args []*PointArg
+    for _, point_arg := range uprobe_point.PointArgs {
+        // 相比内置的定义 这里不需要指定寄存器索引
+        a_p := point_arg.Clone()
+        a_p.SetGroupType(EBPF_SYS_ENTER)
+        if uprobe_point.ExitRead {
+            a_p.SetPointType(EBPF_SYS_ALL)
+        } else {
+            a_p.SetPointType(EBPF_SYS_ENTER)
+        }
+        a_point_args = append(a_point_args, a_p)
+        b_p := point_arg.Clone()
+        b_p.SetGroupType(EBPF_SYS_EXIT)
+        if uprobe_point.ExitRead {
+            b_p.SetPointType(EBPF_SYS_ALL)
+        } else {
+            b_p.SetPointType(EBPF_SYS_EXIT)
+        }
+        b_point_args = append(b_point_args, b_p)
+    }
+    // 后面取出 op list 的时候需要特殊处理
+    b_point_args = append(b_point_args, B("ret", INT))
+    point.EnterPointArgs = a_point_args
+    point.ExitPointArgs = b_point_args
+    return true
 }
 
 func (this *SyscallConfig) Parse_FileConfig(config *SyscallFileConfig) (err error) {
@@ -495,16 +518,9 @@ func (this *SyscallConfig) Parse_FileConfig(config *SyscallFileConfig) (err erro
     return nil
 }
 
-func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
-    if gconfig.SysCall == "" && len(gconfig.ConfigFiles) == 0 {
-        this.Enable = false
-        return
-    }
-    this.Enable = true
-    this.TraceMode = TRACE_COMMON
-    items := strings.Split(gconfig.SysCall, ",")
+func (this *SyscallConfig) Parse_SyscallNames(text string) []string {
     var syscall_items []string
-    for _, v := range items {
+    for _, v := range strings.Split(text, ",") {
         switch v {
         case "all":
             this.TraceMode = TRACE_ALL
@@ -572,106 +588,95 @@ func (this *SyscallConfig) Parse_SysWhitelist(gconfig *GlobalConfig) {
     }
     // 去重
     var unique_items []string
-    if this.TraceMode != TRACE_ALL {
-        for _, v := range syscall_items {
-            if !slices.Contains(unique_items, v) {
-                unique_items = append(unique_items, v)
-            }
+    for _, v := range syscall_items {
+        if !slices.Contains(unique_items, v) {
+            unique_items = append(unique_items, v)
         }
     }
-    if len(this.PointArgs) > 0 {
-        // 这个分支是配置文件走
-        if len(unique_items) == 0 {
-            // 命令行中不指定任何 syscall 那么会认为配置文件中的所有syscall都生效
-            // 这种是用户自定义syscall参数读取方式
-            for _, point_arg := range this.PointArgs {
-                this.SysWhitelist = append(this.SysWhitelist, point_arg.Nr)
-            }
-        } else {
-            // 指定了 syscall 则只从预置配置中选取存在的syscall
-            // 这种是使用预置配置
-            for _, syscall_name := range unique_items {
-                is_find := false
-                for _, point_arg := range this.PointArgs {
-                    if point_arg.Name == syscall_name {
-                        is_find = true
-                        this.SysWhitelist = append(this.SysWhitelist, point_arg.Nr)
-                    }
-                }
-                if !is_find {
-                    panic(fmt.Sprintf("syscall %s not exists in config", syscall_name))
-                }
-            }
-        }
-        return
-    }
-
-    for _, v := range unique_items {
-        var index_items [][]uint32
-        syscall_name := v
-        items := strings.SplitN(syscall_name, ":", 2)
-        if len(items) == 2 {
-            syscall_name = items[0]
-
-            filter_groups := strings.Split(items[1], "|")
-            for _, filter_group := range filter_groups {
-                var items []uint32
-                filter_names := strings.Split(filter_group, ".")
-                for _, filter_name := range filter_names {
-                    for _, arg_filter := range *this.arg_filter {
-                        if arg_filter.Match(filter_name) {
-                            items = append(items, arg_filter.Filter_index)
-                        }
-                    }
-                }
-                index_items = append(index_items, items)
-            }
-        }
-        point := GetSyscallPointByName(syscall_name)
-        for i, items := range index_items {
-            str_a_idx := 0
-            for _, point_arg := range point.EnterPointArgs {
-                if point_arg.TypeIndex == STRING {
-                    if str_a_idx == i {
-                        for _, filter_index := range items {
-                            if point_arg.ReadMore() {
-                                point_arg.AddFilterIndex(filter_index)
-                            }
-                        }
-                    }
-                    str_a_idx += 1
-                }
-            }
-            str_b_idx := 0
-            for _, point_arg := range point.ExitPointArgs {
-                if point_arg.TypeIndex == STRING {
-                    if str_b_idx == i {
-                        for _, filter_index := range items {
-                            if point_arg.ReadMore() {
-                                point_arg.AddFilterIndex(filter_index)
-                            }
-                        }
-                    }
-                    str_b_idx += 1
-                }
-            }
-        }
-        this.PointArgs = append(this.PointArgs, point)
-        this.SysWhitelist = append(this.SysWhitelist, uint32(point.Nr))
-    }
-    if len(this.PointArgs) == 0 {
-        this.Enable = false
-    }
+    return unique_items
 }
 
-func (this *SyscallConfig) Parse_SysBlacklist(text string) {
-    if text == "" {
+func (this *SyscallConfig) Parse_Syscall(gconfig *GlobalConfig) {
+    this.Enable = true
+    this.TraceMode = TRACE_COMMON
+
+    // 解析黑名单
+    black_syscall_names := this.Parse_SyscallNames(gconfig.NoSysCall)
+    if this.TraceMode == TRACE_ALL {
+        // 正常人不会设置全黑名单吧
+        this.Enable = false
         return
     }
-    items := strings.Split(text, ",")
-    for _, v := range items {
-        point := GetSyscallPointByName(v)
-        this.SysBlacklist = append(this.SysBlacklist, uint32(point.Nr))
+    for _, syscall_name := range black_syscall_names {
+        point_arg := this.GetSyscallPointByName(syscall_name)
+        if !slices.Contains(this.SysBlacklist, point_arg.Nr) {
+            this.SysBlacklist = append(this.SysBlacklist, point_arg.Nr)
+        }
+    }
+    // 解析白名单
+    white_syscall_names := this.Parse_SyscallNames(gconfig.SysCall)
+    if this.TraceMode == TRACE_ALL {
+        white_syscall_names = []string{}
+        for _, point := range this.PointArgs {
+            white_syscall_names = append(white_syscall_names, point.Name)
+        }
+    }
+
+    for _, syscall_name := range white_syscall_names {
+        // 先解析出有没有过滤设置 这个是命令行用的
+        items := strings.Split(syscall_name, ":")
+        filter_groups := []string{}
+        if len(items) == 2 {
+            syscall_name = items[0]
+            filter_groups = strings.Split(items[1], "|")
+        }
+        // 取出对应配置
+        point := this.GetSyscallPointByName(syscall_name)
+        // 如果在黑名单中就跳过
+        if slices.Contains(this.SysBlacklist, point.Nr) {
+            continue
+        }
+        if slices.Contains(this.SysWhitelist, point.Nr) {
+            panic(fmt.Sprintf("nr:%d duplicate, bug ?", point.Nr))
+        }
+        this.SysWhitelist = append(this.SysWhitelist, point.Nr)
+        // 应用规则
+        if len(filter_groups) == 1 {
+            // 命令行上只有一个规则组 那么应用于首个字符串/数字参数
+            filter_names := strings.Split(filter_groups[0], ".")
+            for _, filter_name := range filter_names {
+                filter := GetFilterByName(filter_name)
+                if filter.IsStr() {
+                    for _, point_arg := range point.EnterPointArgs {
+                        if point_arg.TypeIndex == STRING && point_arg.ReadMore() {
+                            point_arg.AddFilterIndex(filter.Filter_index)
+                            break
+                        }
+                    }
+                } else {
+                    for _, point_arg := range point.EnterPointArgs {
+                        point_arg.AddFilterIndex(filter.Filter_index)
+                        break
+                    }
+                }
+            }
+        } else {
+            // 命令行上有多个规则组 那么分别应用于每个参数
+            for group_index, filter_group := range filter_groups {
+                filter_names := strings.Split(filter_group, ".")
+                for _, filter_name := range filter_names {
+                    filter := GetFilterByName(filter_name)
+                    for arg_index, point_arg := range point.EnterPointArgs {
+                        if arg_index == group_index {
+                            point_arg.AddFilterIndex(filter.Filter_index)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if len(this.SysWhitelist) == 0 {
+        this.Enable = false
     }
 }
 
@@ -682,12 +687,12 @@ func (this *SyscallConfig) IsEnable() bool {
 func (this *SyscallConfig) Info() string {
     var whitelist []string
     for _, v := range this.SysWhitelist {
-        point := GetSyscallPointByNR(v)
+        point := this.GetSyscallPointByNR(v)
         whitelist = append(whitelist, point.Name)
     }
     var blacklist []string
     for _, v := range this.SysBlacklist {
-        point := GetSyscallPointByNR(v)
+        point := this.GetSyscallPointByNR(v)
         blacklist = append(blacklist, point.Name)
     }
     return fmt.Sprintf("whitelist:[%s];blacklist:[%s]", strings.Join(whitelist, ","), strings.Join(blacklist, ","))
@@ -708,9 +713,8 @@ type ModuleConfig struct {
     TNameWhitelist []string
     TNameBlacklist []string
 
-    ArgFilterRule []ArgFilter
-
     TraceGroup  uint32
+    AutoResume  bool
     KillSignal  uint32
     TKillSignal uint32
     UnwindStack bool
@@ -771,18 +775,17 @@ func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {
     this.ShowTime = gconfig.ShowTime
     this.ShowUid = gconfig.ShowUid
 
+    this.AutoResume = gconfig.AutoResume
     this.KillSignal = util.ParseSignal(gconfig.KillSignal)
     this.TKillSignal = util.ParseSignal(gconfig.TKillSignal)
 
     this.StackUprobeConf = &StackUprobeConfig{}
     this.StackUprobeConf.SetDumpHex(this.DumpHex)
     this.StackUprobeConf.SetColor(this.Color)
-    this.StackUprobeConf.SetArgFilterRule(&this.ArgFilterRule)
 
     this.SysCallConf = &SyscallConfig{}
     this.SysCallConf.SetDebug(this.Debug)
     this.SysCallConf.SetLogger(this.logger)
-    this.SysCallConf.SetArgFilterRule(&this.ArgFilterRule)
 }
 
 func (this *ModuleConfig) LoadConfig(gconfig *GlobalConfig) {
@@ -889,49 +892,6 @@ func (this *ModuleConfig) Parse_Namelist(list_key, name_list string) {
         default:
             panic(fmt.Sprintf("unknown list_key:%s", list_key))
         }
-    }
-}
-
-func (this *ModuleConfig) Parse_ArgFilter(arg_filter []string) {
-    for filter_index, filter_str := range arg_filter {
-        var arg_filter ArgFilter
-        // Filter_index 默认 0
-        // 这里 +1 的原因是：很多涉及 arg_type 操作的时候可能忘了挨个复制filter_idx
-        arg_filter.Filter_index = uint32(filter_index) + 1
-        items := strings.SplitN(filter_str, ":", 2)
-        if len(items) != 2 {
-            panic(fmt.Sprintf("parse ArgFilterRule failed, filter_str:%s", filter_str))
-        }
-        switch items[0] {
-        case "eq", "equal":
-            arg_filter.Filter_type = EQUAL_FILTER
-            arg_filter.Num_val = util.StrToNum64(items[1])
-        case "gt", "greater":
-            arg_filter.Filter_type = GREATER_FILTER
-            arg_filter.Num_val = util.StrToNum64(items[1])
-        case "lt", "less":
-            arg_filter.Filter_type = LESS_FILTER
-            arg_filter.Num_val = util.StrToNum64(items[1])
-        case "w", "white":
-            arg_filter.Filter_type = WHITELIST_FILTER
-            str_old := []byte(items[1])
-            if len(str_old) > 256 {
-                panic(fmt.Sprintf("string is to long, max length is 256"))
-            }
-            arg_filter.Str_len = uint32(len(str_old))
-            copy(arg_filter.Str_val[:], str_old)
-        case "b", "black":
-            arg_filter.Filter_type = BLACKLIST_FILTER
-            str_old := []byte(items[1])
-            if len(str_old) > 256 {
-                panic(fmt.Sprintf("string is to long, max length is 256"))
-            }
-            arg_filter.Str_len = uint32(len(str_old))
-            copy(arg_filter.Str_val[:], str_old)
-        default:
-            panic(fmt.Sprintf("parse ArgFilterRule failed, filter_str:%s", filter_str))
-        }
-        this.ArgFilterRule = append(this.ArgFilterRule, arg_filter)
     }
 }
 

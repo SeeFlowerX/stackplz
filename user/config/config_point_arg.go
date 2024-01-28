@@ -131,7 +131,7 @@ func (this *PointArg) GetOpList() []uint32 {
 		op_list = append(op_list, argtype.OPC_MOVE_REG_VALUE.Index)
 	}
 
-	if this.TypeIndex == POINTER {
+	if this.TypeIndex != STRING && this.TypeIndex != STD_STRING {
 		for _, v := range this.FilterIndexList {
 			filter_op := argtype.OPC_FILTER_VALUE.NewValue(uint64(v))
 			op_list = append(op_list, filter_op.Index)

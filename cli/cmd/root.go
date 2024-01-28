@@ -179,6 +179,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         return nil
     }
 
+    gconfig.ParseArgFilter()
+
     mconfig.Parse_Idlist("UidWhitelist", gconfig.Uid)
     mconfig.Parse_Idlist("UidBlacklist", gconfig.NoUid)
     mconfig.Parse_Idlist("PidWhitelist", gconfig.Pid)
@@ -187,8 +189,6 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     mconfig.Parse_Idlist("TidBlacklist", gconfig.NoTid)
     mconfig.Parse_Namelist("TNameWhitelist", gconfig.TName)
     mconfig.Parse_Namelist("TNameBlacklist", gconfig.NoTName)
-
-    mconfig.Parse_ArgFilter(gconfig.ArgFilter)
 
     pis := util.Get_PackageInfos()
     // 根据 pid 解析进程架构、获取库文件搜索路径
@@ -269,7 +269,19 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
 
     mconfig.InitCommonConfig(gconfig)
 
-    // 1. hook uprobe
+    // 1. load config file
+    if len(gconfig.ConfigFiles) == 0 {
+        config_syscall_aarch64 := "user/config/config_syscall_aarch64.json"
+        err = assets.RestoreAsset(exec_path, config_syscall_aarch64)
+        if err != nil {
+            panic(err)
+        }
+        gconfig.ConfigFiles = append(gconfig.ConfigFiles, config_syscall_aarch64)
+    }
+
+    mconfig.LoadConfig(gconfig)
+
+    // 2. hook uprobe
     if len(gconfig.HookPoint) > 0 {
         err = gconfig.Parse_Libinfo(gconfig.Library, mconfig.StackUprobeConf)
         if err != nil {
@@ -279,28 +291,14 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         if err != nil {
             return err
         }
-        u_syscall := mconfig.StackUprobeConf.GetSyscall()
+        u_syscall := mconfig.StackUprobeConf.GetSyscall(mconfig)
         if u_syscall != "" {
-            gconfig.SysCall = u_syscall
+            gconfig.SysCall += "," + u_syscall
         }
     }
 
-    // 3. hook config
-    if len(gconfig.ConfigFiles) == 0 {
-        config_syscall_aarch64 := "user/config/config_syscall_aarch64.json"
-        err = assets.RestoreAsset(exec_path, config_syscall_aarch64)
-        if err != nil {
-            panic(err)
-        }
-        gconfig.ConfigFiles = append(gconfig.ConfigFiles, config_syscall_aarch64)
-    }
-    if len(gconfig.HookPoint) == 0 {
-        mconfig.LoadConfig(gconfig)
-    }
-
-    // 2. hook syscall
-    mconfig.SysCallConf.Parse_SysWhitelist(gconfig)
-    mconfig.SysCallConf.Parse_SysBlacklist(gconfig.NoSysCall)
+    // 3. hook syscall
+    mconfig.SysCallConf.Parse_Syscall(gconfig)
 
     // 4. watch breakpoint
     var brk_base uint64 = 0x0
@@ -625,6 +623,7 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.NoTName, "no-tname", "", "thread name black list")
     rootCmd.PersistentFlags().StringArrayVarP(&gconfig.ArgFilter, "filter", "f", []string{}, "arg filter rule")
 
+    rootCmd.PersistentFlags().BoolVar(&gconfig.AutoResume, "auto", false, "auto resume when use --kill SIGSTOP")
     rootCmd.PersistentFlags().StringVar(&gconfig.KillSignal, "kill", "", "send signal when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
     rootCmd.PersistentFlags().StringVar(&gconfig.TKillSignal, "tkill", "", "send signal to thread when hit uprobe hook, e.g. SIGSTOP/SIGABRT/SIGTRAP/...")
     rootCmd.PersistentFlags().BoolVar(&gconfig.Rpc, "rpc", false, "enable rpc")

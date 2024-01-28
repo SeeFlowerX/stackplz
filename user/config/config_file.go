@@ -144,7 +144,7 @@ func (this *ParamConfig) GetPointArg(arg_index, point_type uint32) *PointArg {
 
 	// 设置过滤规则 先解析规则 然后取到规则索引
 	for _, v := range this.Filter {
-		point_arg.AddFilterIndex(GetFilterIndex(v))
+		point_arg.AddFilterIndex(AddFilter(v))
 	}
 
 	// ./stackplz -n com.termux -l libtest.so -w 0x16254[buf:64:sp+0x20-0x8.+8.-4+0x16]

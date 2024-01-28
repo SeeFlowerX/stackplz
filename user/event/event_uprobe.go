@@ -74,6 +74,9 @@ func (this *UprobeEvent) ParseContext() (err error) {
     if err != nil {
         panic(fmt.Sprintf("ParseContextStack err:%v", err))
     }
+    if this.mconf.AutoResume {
+        LetItResume(this.Pid)
+    }
     return nil
 }
 

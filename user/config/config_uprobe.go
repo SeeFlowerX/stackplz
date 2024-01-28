@@ -22,13 +22,6 @@ type UprobeArgs struct {
 	KillSignal   uint32
 }
 
-func (this *UprobeArgs) ToSyscall() bool {
-	if this.BindSyscall {
-		RegisterUserDefine(this.Name, this.PointArgs, this.ExitRead)
-	}
-	return this.BindSyscall
-}
-
 func (this *UprobeArgs) GetConfig() UprobePointOpKeyConfig {
 	config := UprobePointOpKeyConfig{}
 	config.Signal = this.KillSignal

@@ -32,6 +32,7 @@ type GlobalConfig struct {
     StackSize   uint32
     ShowRegs    bool
     GetOff      bool
+    AutoResume  bool
     KillSignal  string
     TKillSignal string
     Rpc         bool
@@ -77,6 +78,12 @@ func NewGlobalConfig() *GlobalConfig {
     }
     config.LibraryDirs = append(config.LibraryDirs, lib_search_path...)
     return config
+}
+
+func (this *GlobalConfig) ParseArgFilter() {
+    for _, arg_filter := range this.ArgFilter {
+        AddFilter(arg_filter)
+    }
 }
 
 func (this *GlobalConfig) FindLibInApk(library string, sconfig *StackUprobeConfig) (err error) {

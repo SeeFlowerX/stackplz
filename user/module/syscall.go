@@ -9,6 +9,7 @@ import (
     "math"
     "path/filepath"
     "stackplz/assets"
+    "stackplz/user/argtype"
     "stackplz/user/config"
     "stackplz/user/event"
     "stackplz/user/util"
@@ -327,12 +328,7 @@ func (this *MSyscall) update_arg_filter() {
     // 对于返回值以特定字符串开头的进行过滤 如果要对非首个字符串参数做过滤 那么通过 | 标识占位
     // ./stackplz -n com.termux -s "openat:f0.f2,readlinkat:|f1" -f w:/data -f w:/apex -f w:/dev
 
-    filters := this.mconf.ArgFilterRule
-    if len(this.mconf.ArgFilterRule) == 0 {
-        filters = config.GetFilters()
-    }
-
-    for _, filter := range filters {
+    for _, filter := range config.GetFilters() {
         filter_key := uint64(filter.Filter_index)
         filter_value := filter.ToEbpfValue()
         err = bpf_map.Update(unsafe.Pointer(&filter_key), unsafe.Pointer(&filter_value), ebpf.UpdateAny)
@@ -351,13 +347,7 @@ func (this *MSyscall) update_sysenter_point_args() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
-    var syscall_Points []*config.SyscallPoint
-    if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
-        syscall_Points = config.GetAllPoints()
-    } else {
-        syscall_Points = this.mconf.SysCallConf.PointArgs
-    }
-    for _, syscall_point := range syscall_Points {
+    for _, syscall_point := range this.mconf.SysCallConf.PointArgs {
         point_config := syscall_point.GetEnterConfig()
         // syscall 已经通过了测试 暂时不需要
         // point_config.MaxOpCount = this.mconf.MaxOp
@@ -377,13 +367,7 @@ func (this *MSyscall) update_sysexit_point_args() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
-    var syscall_Points []*config.SyscallPoint
-    if this.mconf.SysCallConf.TraceMode == config.TRACE_ALL {
-        syscall_Points = config.GetAllPoints()
-    } else {
-        syscall_Points = this.mconf.SysCallConf.PointArgs
-    }
-    for _, syscall_point := range syscall_Points {
+    for _, syscall_point := range this.mconf.SysCallConf.PointArgs {
         point_config := syscall_point.GetExitConfig()
         // syscall 已经通过了测试 暂时不需要
         // point_config.MaxOpCount = this.mconf.MaxOp
@@ -403,7 +387,7 @@ func (this *MSyscall) update_op_list() {
     if err != nil {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
-    for op_key, op_config := range config.GetALLOpList() {
+    for op_key, op_config := range argtype.GetALLOpList() {
         err := bpf_map.Update(unsafe.Pointer(&op_key), unsafe.Pointer(&op_config), ebpf.UpdateAny)
         if err != nil {
             panic(fmt.Sprintf("update [%s] failed, err:%v", map_name, err))

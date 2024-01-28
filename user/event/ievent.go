@@ -204,6 +204,20 @@ func DelStopped(pid uint32) {
     delete(stopped_pid_list, pid)
 }
 
+func LetItResume(stopped_pid uint32) {
+    err := syscall.Kill(int(stopped_pid), syscall.SIGCONT)
+    if err != nil {
+        if err == syscall.ESRCH {
+            fmt.Printf("No such process -> %d\n", stopped_pid)
+            DelStopped(stopped_pid)
+        } else {
+            fmt.Printf("LetItResume err:%v\n", err)
+            DelStopped(stopped_pid)
+        }
+    }
+    fmt.Printf("Let %d Resume\n", stopped_pid)
+}
+
 func LetItRun() {
     fmt.Printf("------LetItRun------\n")
     for stopped_pid := range stopped_pid_list {

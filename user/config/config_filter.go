@@ -50,6 +50,10 @@ func (this *ArgFilter) Match(name string) bool {
 	return name == fmt.Sprintf("f%d", this.Filter_index-1)
 }
 
+func (this *ArgFilter) IsStr() bool {
+	return this.Filter_type == WHITELIST_FILTER || this.Filter_type == BLACKLIST_FILTER
+}
+
 func (this *ArgFilter) ToEbpfValue() EArgFilter {
 	t := EArgFilter{}
 	t.Filter_type = this.Filter_type
@@ -72,6 +76,20 @@ type FilterHelper struct {
 
 func (this *FilterHelper) GetFilters() []ArgFilter {
 	return this.filters
+}
+
+func (this *FilterHelper) GetFilterByName(filter_name string) ArgFilter {
+	for _, f := range this.filters {
+		if f.Match(filter_name) {
+			return f
+		}
+	}
+	panic(fmt.Sprintf("%s not match any filter", filter_name))
+}
+
+func (this *FilterHelper) GetFilterIndex(filter string) uint32 {
+	arg_filter := this.GetFilterByName(filter)
+	return arg_filter.Filter_index
 }
 
 func (this *FilterHelper) AddFilter(filter string) uint32 {
@@ -127,9 +145,17 @@ func NewFilterHelper() *FilterHelper {
 var filter_helper = NewFilterHelper()
 
 func GetFilterIndex(filter string) uint32 {
+	return filter_helper.GetFilterIndex(filter)
+}
+
+func AddFilter(filter string) uint32 {
 	return filter_helper.AddFilter(filter)
 }
 
 func GetFilters() []ArgFilter {
 	return filter_helper.GetFilters()
+}
+
+func GetFilterByName(name string) ArgFilter {
+	return filter_helper.GetFilterByName(name)
 }
