@@ -304,7 +304,7 @@ func init() {
 	R(45, "truncate", A("path", STRING), A("length", INT))
 	R(46, "ftruncate", A("fd", INT), A("length", INT))
 	R(47, "fallocate", A("fd", INT), A("mode", INT), A("offset", INT), A("len", INT))
-	R(48, "faccessat", A("dirfd", INT), A("pathname", STRING), A("flags", INT_FCNTL_FLAGS), A("mode", INT))
+	R(48, "faccessat", A("dirfd", INT), A("pathname", STRING), A("mode", INT), A("flags", INT_FCNTL_FLAGS))
 	R(49, "chdir", A("path", STRING))
 	R(50, "fchdir", A("fd", INT))
 	R(51, "chroot", A("path", STRING))
