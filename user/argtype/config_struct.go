@@ -684,7 +684,7 @@ func (this *Arg_Msghdr) Format() string {
 	fields = append(fields, fmt.Sprintf("iovlen=0x%x", this.Iovlen))
 	fields = append(fields, fmt.Sprintf("*control=0x%x", this.Control))
 	fields = append(fields, fmt.Sprintf("controllen=0x%x", this.Controllen))
-	fields = append(fields, fmt.Sprintf("flags=0x%x", this.Flags))
+	fields = append(fields, fmt.Sprintf("flags=0x%x%s", this.Flags, MsgFlagsConfig.Parse(this.Flags)))
 	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
 }
 
@@ -696,7 +696,7 @@ func (this *Arg_Msghdr) FormatFull(iov_fmt, control_fmt string) string {
 	fields = append(fields, fmt.Sprintf("iovlen=0x%x", this.Iovlen))
 	fields = append(fields, fmt.Sprintf("*control=0x%x%s", this.Control, control_fmt))
 	fields = append(fields, fmt.Sprintf("controllen=0x%x", this.Controllen))
-	fields = append(fields, fmt.Sprintf("flags=0x%x", this.Flags))
+	fields = append(fields, fmt.Sprintf("flags=0x%x%s", this.Flags, MsgFlagsConfig.Parse(this.Flags)))
 	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
 }
 

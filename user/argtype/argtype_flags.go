@@ -80,6 +80,18 @@ var ProtFlags []*FlagOp = []*FlagOp{
 	{"PROT_GROWSUP", int32(0x02000000)},
 }
 
+var AccessFlags []*FlagOp = []*FlagOp{
+	{"F_OK", int32(0x0)},
+	{"X_OK", int32(0x1)},
+	{"W_OK", int32(0x2)},
+	{"R_OK", int32(0x4)},
+}
+
+var InotifyFlags []*FlagOp = []*FlagOp{
+	{"IN_CLOEXEC", int32(02000000)},
+	{"IN_NONBLOCK", int32(00004000)},
+}
+
 var FileFlags []*FlagOp = []*FlagOp{
 	// https://cs.android.com/android/kernel/superproject/+/common-android-mainline:common/include/uapi/asm-generic/fcntl.h
 	{"O_ACCMODE", int32(00000003)},
@@ -187,6 +199,8 @@ var StatxFlags []*FlagOp = []*FlagOp{
 	{"AT_RECURSIVE", int32(0x8000)},
 }
 
+var InotifyFlagsConfig = &FlagsConfig{"inotify", FORMAT_HEX, InotifyFlags}
+var AccessFlagsConfig = &FlagsConfig{"access", FORMAT_HEX, AccessFlags}
 var MMapFlagsConfig = &FlagsConfig{"mmap", FORMAT_HEX, MMapFlags}
 var FileFlagsConfig = &FlagsConfig{"file", FORMAT_HEX, FileFlags}
 var ProtFlagsConfig = &FlagsConfig{"prot", FORMAT_HEX, ProtFlags}
