@@ -108,7 +108,7 @@ var FileFlags []*FlagOp = []*FlagOp{
 	{"O_LARGEFILE", int32(00400000)},
 }
 
-var MapFlags []*FlagOp = []*FlagOp{
+var MMapFlags []*FlagOp = []*FlagOp{
 	{"MAP_SHARED", int32(0x01)},
 	{"MAP_PRIVATE", int32(0x02)},
 	{"MAP_SHARED_VALIDATE", int32(0x03)},
@@ -124,7 +124,7 @@ var MapFlags []*FlagOp = []*FlagOp{
 	{"MAP_UNINITIALIZED", int32(0x4000000)},
 }
 
-var MreapFlags []*FlagOp = []*FlagOp{
+var MremapFlags []*FlagOp = []*FlagOp{
 	{"MREMAP_MAYMOVE", 1},
 	{"MREMAP_FIXED", 2},
 	{"MREMAP_DONTUNMAP", 4},
@@ -187,13 +187,13 @@ var StatxFlags []*FlagOp = []*FlagOp{
 	{"AT_RECURSIVE", int32(0x8000)},
 }
 
-var MapFlagsConfig = &FlagsConfig{"map", FORMAT_HEX, MapFlags}
+var MMapFlagsConfig = &FlagsConfig{"mmap", FORMAT_HEX, MMapFlags}
 var FileFlagsConfig = &FlagsConfig{"file", FORMAT_HEX, FileFlags}
 var ProtFlagsConfig = &FlagsConfig{"prot", FORMAT_HEX, ProtFlags}
 var FcntlFlagsConfig = &FlagsConfig{"stat", FORMAT_HEX, FcntlFlags}
 var StatxFlagsConfig = &FlagsConfig{"statx", FORMAT_HEX, StatxFlags}
 var UnlinkFlagsConfig = &FlagsConfig{"unlink", FORMAT_HEX, UnlinkFlags}
-var MreapFlagsConfig = &FlagsConfig{"mreap", FORMAT_HEX, MreapFlags}
+var MremapFlagsConfig = &FlagsConfig{"mremap", FORMAT_HEX, MremapFlags}
 var MsgFlagsConfig = &FlagsConfig{"msg", FORMAT_HEX, MsgFlags}
 var SocketFlagsConfig = &FlagsConfig{"socket", FORMAT_HEX, SocketFlags}
 var PermissionFlagsConfig = &FlagsConfig{"permission", FORMAT_OCT, PermissionFlags}
