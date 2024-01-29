@@ -610,6 +610,7 @@ func init() {
     // 考虑到外部库更新 每个版本首次运行前 都应该执行一次
     rootCmd.PersistentFlags().BoolVar(&gconfig.Prepare, "prepare", false, "prepare libs")
     // 过滤设定
+    rootCmd.PersistentFlags().StringVar(&gconfig.TragetArch, "arch", "aarch64", "targe arch, aarch64 or aarch32")
     rootCmd.PersistentFlags().StringVarP(&gconfig.Name, "name", "n", "", "must set uid or package name")
 
     rootCmd.PersistentFlags().StringVarP(&gconfig.Uid, "uid", "u", "", "uid white list")

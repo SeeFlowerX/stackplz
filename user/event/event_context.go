@@ -18,7 +18,14 @@ import (
 
 type LibArg struct {
     Abi       uint64
-    Regs      [33]uint64
+    Regs      [common.REG_ARM64_MAX]uint64
+    StackSize uint64
+    DynSize   uint64
+}
+
+type LibArgArm struct {
+    Abi       uint64
+    Regs      [common.REG_ARM_MAX]uint64
     StackSize uint64
     DynSize   uint64
 }
@@ -28,9 +35,26 @@ type UnwindOption struct {
     ShowPC  bool
 }
 
+type UnwindBufComm struct {
+    Mask      uint32
+    Abi       uint64
+    Regs      []uint64
+    StackSize uint64
+    Data      []byte
+    DynSize   uint64
+}
+
 type UnwindBuf struct {
     Abi       uint64
-    Regs      [33]uint64
+    Regs      [common.REG_ARM64_MAX]uint64
+    StackSize uint64
+    Data      []byte
+    DynSize   uint64
+}
+
+type UnwindBufArm struct {
+    Abi       uint64
+    Regs      [common.REG_ARM_MAX]uint64
     StackSize uint64
     Data      []byte
     DynSize   uint64
@@ -70,7 +94,12 @@ func (this *UnwindBuf) ParseContext(buf *bytes.Buffer) (err error) {
 
 type RegsBuf struct {
     Abi  uint64
-    Regs [33]uint64
+    Regs [common.REG_ARM64_MAX]uint64
+}
+
+type RegsBufArm struct {
+    Abi  uint64
+    Regs [common.REG_ARM_MAX]uint64
 }
 
 func (this *RegsBuf) ParseContext(buf *bytes.Buffer) (err error) {
@@ -293,7 +322,10 @@ func (this *ContextEvent) ParseContextStack() (err error) {
             return nil
         }
         opt := &UnwindOption{}
-        opt.RegMask = (1 << 33) - 1
+        opt.RegMask = (1 << common.REG_ARM64_MAX) - 1
+        if this.mconf.Is32Bit {
+            opt.RegMask = (1 << common.REG_ARM_MAX) - 1
+        }
         opt.ShowPC = this.mconf.ShowPC
         this.Stackinfo = ParseStack(content, opt, this.UnwindBuffer)
     } else if this.rec.ExtraOptions.ShowRegs {

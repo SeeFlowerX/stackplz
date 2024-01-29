@@ -15,6 +15,7 @@ import (
 type GlobalConfig struct {
     Prepare     bool
     ExecPath    string
+    TragetArch  string
     Name        string
     Uid         string
     NoUid       string

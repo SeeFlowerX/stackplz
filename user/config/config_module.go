@@ -637,7 +637,7 @@ func (this *SyscallConfig) Parse_Syscall(gconfig *GlobalConfig) {
             continue
         }
         if slices.Contains(this.SysWhitelist, point.Nr) {
-            panic(fmt.Sprintf("nr:%d duplicate, bug ?", point.Nr))
+            panic(fmt.Sprintf("nr:%d name:%s duplicate, bug ?", point.Nr, syscall_name))
         }
         this.SysWhitelist = append(this.SysWhitelist, point.Nr)
         // 应用规则
@@ -766,7 +766,14 @@ func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {
     this.ShowRegs = gconfig.ShowRegs
     this.GetOff = gconfig.GetOff
     this.Debug = gconfig.Debug
-    this.Is32Bit = false
+    switch gconfig.TragetArch {
+    case "aarch64":
+        this.Is32Bit = false
+    case "aarch32":
+        this.Is32Bit = true
+    default:
+        panic(fmt.Sprintf("arch %s not supported", gconfig.TragetArch))
+    }
     this.Color = gconfig.Color
     this.FmtJson = gconfig.FmtJson
     this.RegName = gconfig.RegName

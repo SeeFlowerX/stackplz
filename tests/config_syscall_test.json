@@ -2727,8 +2727,7 @@
             "params":[
                 {"name": "ctx_id", "type": "ptr"},
                 {"name": "min_nr", "type": "uint64"},
-                {"name": 
-            "nr", "type": "uint64"},
+                {"name": "nr", "type": "uint64"},
                 {"name": "events", "type": "ptr"},
                 {"name": "timeout", "type": "timespec"},
                 {"name": "usig", "type": "ptr"},

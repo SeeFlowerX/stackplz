@@ -192,7 +192,7 @@ func NextTypeIndex() uint32 {
 func GetArgType(type_index uint32) IArgType {
 	p, ok := arg_types[type_index]
 	if !ok {
-		return LazyRegister(type_index)
+		panic(fmt.Sprintf("GetArgType for type_index:%d failed", type_index))
 	}
 	return p
 }
@@ -207,76 +207,6 @@ func GetArgTypeByName(name string) IArgType {
 		}
 	}
 	panic(fmt.Sprintf("GetArgType failed, name=%s not exists", name))
-}
-
-func LazyRegister(type_index uint32) IArgType {
-	// 所谓 lazy 也就是用到的时候再注册
-	// 当然这是对复杂类型来说的 基础类型会提前准备好
-	switch type_index {
-	case INT_ARRAY_1:
-		return r_PRE_ARRAY(GetArgType(INT), INT_ARRAY_1, 1)
-	case INT_ARRAY_2:
-		return r_PRE_ARRAY(GetArgType(INT), INT_ARRAY_2, 2)
-	case UINT_ARRAY_1:
-		return r_PRE_ARRAY(GetArgType(UINT), UINT_ARRAY_1, 1)
-	case INT_PTR:
-		return R_POINTER(GetArgType(INT), true)
-	case UINT_PTR:
-		return R_POINTER(GetArgType(UINT), true)
-	// case STRING:
-	// 	return r_STRING()
-	case STD_STRING:
-		return r_STD_STRING()
-	case STRING_ARRAY:
-		return r_STRING_ARRAY()
-	// case BUFFER:
-	// 	return r_BUFFER()
-	case STACK_T:
-		return r_STACK_T()
-	case TIMESPEC:
-		// return r_TIMESPEC()
-		return PRE_R_STRUCT("timespec", TIMESPEC, &Arg_Timespec{})
-	case SIGSET:
-		return r_SIGSET()
-	case SIGINFO:
-		return r_SIGINFO()
-	case SIGACTION:
-		return PRE_R_STRUCT("sigaction", SIGACTION, &Arg_Sigaction{})
-	case EPOLLEVENT:
-		return r_EPOLLEVENT()
-	case POLLFD:
-		return r_POLLFD()
-	case LINUX_DIRENT64:
-		return r_DIRENT()
-	case ITTMERSPEC:
-		return r_ITTMERSPEC()
-	case RUSAGE:
-		return r_RUSAGE()
-	case UTSNAME:
-		return r_UTSNAME()
-	case TIMEVAL:
-		return r_TIMEVAL()
-	case TIMEZONE:
-		return r_TIMEZONE()
-	case SYSINFO:
-		return r_SYSINFO()
-	case STAT:
-		return r_STAT()
-	case STATFS:
-		return r_STATFS()
-	case MSGHDR:
-		return r_MSGHDR()
-	case IOVEC:
-		return r_IOVEC()
-	case IOVEC_X2:
-		return r_IOVEC_X2()
-	case SOCKADDR:
-		return r_SOCKADDR()
-	case BUFFER_X2:
-		return r_BUFFER_X2()
-	default:
-		panic(fmt.Sprintf("LazyRegister for type_index:%d failed", type_index))
-	}
 }
 
 func PreRegister() {

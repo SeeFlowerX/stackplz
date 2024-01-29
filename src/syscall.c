@@ -106,17 +106,19 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     // 先获取 lr sp pc 并发送 这样可以尽早计算调用来源情况
     // READ_KERN 好像有问题
     u64 lr = 0;
+    u64 sp = 0;
     if(filter->is_32bit) {
         bpf_probe_read_kernel(&lr, sizeof(lr), &regs->regs[14]);
         save_to_submit_buf(p.event, (void *) &lr, sizeof(u64), 1);
+        bpf_probe_read_kernel(&sp, sizeof(sp), &regs->regs[13]);
+        save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 2);
     }
     else {
         bpf_probe_read_kernel(&lr, sizeof(lr), &regs->regs[30]);
         save_to_submit_buf(p.event, (void *) &lr, sizeof(u64), 1);
+        bpf_probe_read_kernel(&sp, sizeof(sp), &regs->sp);
+        save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 2);
     }
-    u64 sp = 0;
-    bpf_probe_read_kernel(&sp, sizeof(sp), &regs->sp);
-    save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 2);
     u64 pc = 0;
     bpf_probe_read_kernel(&pc, sizeof(pc), &regs->pc);
     save_to_submit_buf(p.event, (void *) &pc, sizeof(u64), 3);

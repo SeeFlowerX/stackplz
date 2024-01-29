@@ -50,17 +50,19 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) 
 
     save_to_submit_buf(p.event, (void *) &point_key, sizeof(u32), 0);
     u64 lr = 0;
+    u64 sp = 0;
     if(filter->is_32bit) {
         bpf_probe_read_kernel(&lr, sizeof(lr), &ctx->regs[14]);
         save_to_submit_buf(p.event, (void *) &lr, sizeof(u64), 1);
+        bpf_probe_read_kernel(&sp, sizeof(sp), &ctx->regs[13]);
+        save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 2);
     }
     else {
         bpf_probe_read_kernel(&lr, sizeof(lr), &ctx->regs[30]);
         save_to_submit_buf(p.event, (void *) &lr, sizeof(u64), 1);
+        bpf_probe_read_kernel(&sp, sizeof(sp), &ctx->sp);
+        save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 2);
     }
-    u64 sp = 0;
-    bpf_probe_read_kernel(&sp, sizeof(sp), &ctx->sp);
-    save_to_submit_buf(p.event, (void *) &sp, sizeof(u64), 2);
     u64 pc = 0;
     bpf_probe_read_kernel(&pc, sizeof(pc), &ctx->pc);
     save_to_submit_buf(p.event, (void *) &pc, sizeof(u64), 3);
