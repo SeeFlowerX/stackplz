@@ -13,7 +13,7 @@ import "C"
 var LibPath string
 
 func ParseStack(map_buffer string, opt *UnwindOption, ubuf *UnwindBuf) string {
-	stack_str := C.get_stack(C.CString(LibPath), C.CString(map_buffer), unsafe.Pointer(opt), unsafe.Pointer(ubuf.GetLibArg()), unsafe.Pointer(&ubuf.Data[0]))
+	stack_str := C.get_stack(C.CString(LibPath), C.CString(map_buffer), unsafe.Pointer(opt), unsafe.Pointer(&ubuf.Regs[0]), unsafe.Pointer(&ubuf.Data[0]))
 	// char* 转到 go 的 string
 	return C.GoString(stack_str)
 }

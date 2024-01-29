@@ -3,40 +3,51 @@ package event
 import (
     "bytes"
     "encoding/binary"
-    "encoding/json"
     "errors"
     "fmt"
     "stackplz/user/common"
     "stackplz/user/config"
     "stackplz/user/util"
-    "strconv"
     "strings"
     "syscall"
 
     "golang.org/x/sys/unix"
 )
 
-type LibArg struct {
-    Abi       uint64
-    Regs      [common.REG_ARM64_MAX]uint64
-    StackSize uint64
-    DynSize   uint64
-}
+const (
+    PERF_SAMPLE_REGS_ABI_NONE uint64 = iota
+    PERF_SAMPLE_REGS_ABI_32
+    PERF_SAMPLE_REGS_ABI_64
+)
 
-type LibArgArm struct {
-    Abi       uint64
-    Regs      [common.REG_ARM_MAX]uint64
-    StackSize uint64
-    DynSize   uint64
+func ReadRegs(abi uint64, buf *bytes.Buffer) []uint64 {
+    switch abi {
+    case PERF_SAMPLE_REGS_ABI_32:
+        regs := make([]uint64, common.REG_ARM_MAX)
+        if err := binary.Read(buf, binary.LittleEndian, &regs); err != nil {
+            panic(err)
+        }
+        return regs
+    case PERF_SAMPLE_REGS_ABI_64:
+        regs := make([]uint64, common.REG_ARM64_MAX)
+        if err := binary.Read(buf, binary.LittleEndian, &regs); err != nil {
+            panic(err)
+        }
+        return regs
+    default:
+        panic(fmt.Sprintf("abi %d not support", abi))
+    }
 }
 
 type UnwindOption struct {
-    RegMask uint64
-    ShowPC  bool
+    Abi       uint64
+    StackSize uint64
+    DynSize   uint64
+    RegMask   uint64
+    ShowPC    bool
 }
 
-type UnwindBufComm struct {
-    Mask      uint32
+type UnwindBuf struct {
     Abi       uint64
     Regs      []uint64
     StackSize uint64
@@ -44,48 +55,19 @@ type UnwindBufComm struct {
     DynSize   uint64
 }
 
-type UnwindBuf struct {
-    Abi       uint64
-    Regs      [common.REG_ARM64_MAX]uint64
-    StackSize uint64
-    Data      []byte
-    DynSize   uint64
-}
-
-type UnwindBufArm struct {
-    Abi       uint64
-    Regs      [common.REG_ARM_MAX]uint64
-    StackSize uint64
-    Data      []byte
-    DynSize   uint64
-}
-
-func (this *UnwindBuf) GetLibArg() *LibArg {
-    arg := &LibArg{}
-    arg.Abi = this.Abi
-    arg.Regs = this.Regs
-    arg.StackSize = this.StackSize
-    arg.DynSize = this.DynSize
-    return arg
-}
-
 func (this *UnwindBuf) ParseContext(buf *bytes.Buffer) (err error) {
     if err = binary.Read(buf, binary.LittleEndian, &this.Abi); err != nil {
         return err
     }
-    if err = binary.Read(buf, binary.LittleEndian, &this.Regs); err != nil {
-        return err
-    }
+    this.Regs = ReadRegs(this.Abi, buf)
     if err = binary.Read(buf, binary.LittleEndian, &this.StackSize); err != nil {
         return err
     }
-
     stack_data := make([]byte, this.StackSize)
     if err = binary.Read(buf, binary.LittleEndian, &stack_data); err != nil {
         return err
     }
     this.Data = stack_data
-
     if err = binary.Read(buf, binary.LittleEndian, &this.DynSize); err != nil {
         return err
     }
@@ -94,21 +76,14 @@ func (this *UnwindBuf) ParseContext(buf *bytes.Buffer) (err error) {
 
 type RegsBuf struct {
     Abi  uint64
-    Regs [common.REG_ARM64_MAX]uint64
-}
-
-type RegsBufArm struct {
-    Abi  uint64
-    Regs [common.REG_ARM_MAX]uint64
+    Regs []uint64
 }
 
 func (this *RegsBuf) ParseContext(buf *bytes.Buffer) (err error) {
     if err = binary.Read(buf, binary.LittleEndian, &this.Abi); err != nil {
         return err
     }
-    if err = binary.Read(buf, binary.LittleEndian, &this.Regs); err != nil {
-        return err
-    }
+    this.Regs = ReadRegs(this.Abi, buf)
     return nil
 }
 
@@ -231,60 +206,64 @@ func (this *ContextEvent) Clone() IEventStruct {
     return event
 }
 
+func (this *ContextEvent) GetRegsString() string {
+    result := []string{}
+    if this.mconf.Is32Bit {
+        if this.rec.ExtraOptions.UnwindStack {
+            for reg_index, reg_value := range this.UnwindBuffer.Regs {
+                result = append(result, fmt.Sprintf("%s=0x%x", common.RegsArmIdxMap[uint32(reg_index)], reg_value))
+            }
+        } else {
+            for reg_index, reg_value := range this.RegsBuffer.Regs {
+                result = append(result, fmt.Sprintf("%s=0x%x", common.RegsArmIdxMap[uint32(reg_index)], reg_value))
+            }
+        }
+    } else {
+        if this.rec.ExtraOptions.UnwindStack {
+            for reg_index, reg_value := range this.UnwindBuffer.Regs {
+                result = append(result, fmt.Sprintf("%s=0x%x", common.RegsIdxMap[uint32(reg_index)], reg_value))
+            }
+        } else {
+            for reg_index, reg_value := range this.RegsBuffer.Regs {
+                result = append(result, fmt.Sprintf("%s=0x%x", common.RegsIdxMap[uint32(reg_index)], reg_value))
+            }
+        }
+    }
+    return "[" + strings.Join(result, ",") + "]"
+}
+
+func (this *ContextEvent) GetRegValue(reg_name string) uint64 {
+    if this.mconf.Is32Bit {
+        if this.rec.ExtraOptions.UnwindStack {
+            return this.UnwindBuffer.Regs[common.RegsArmNameMap[reg_name]]
+        } else {
+            return this.RegsBuffer.Regs[common.RegsArmNameMap[reg_name]]
+        }
+    } else {
+        if this.rec.ExtraOptions.UnwindStack {
+            return this.UnwindBuffer.Regs[common.RegsNameMap[reg_name]]
+        } else {
+            return this.RegsBuffer.Regs[common.RegsNameMap[reg_name]]
+        }
+    }
+}
+
 func (this *ContextEvent) GetStackTrace(s string) string {
     if this.mconf.RegName != "" {
-        // 如果设置了寄存器名字 那么尝试从获取到的寄存器数据中取值计算偏移
-        // 当然前提是取了寄存器数据
-        var tmp_regs [33]uint64
-        if this.rec.ExtraOptions.UnwindStack {
-            tmp_regs = this.UnwindBuffer.Regs
-        } else {
-            tmp_regs = this.RegsBuffer.Regs
-        }
-        has_reg_value := false
-        var regvalue uint64
-        if strings.HasPrefix(this.mconf.RegName, "x") {
-            parts := strings.SplitN(this.mconf.RegName, "x", 2)
-            regno, _ := strconv.ParseUint(parts[1], 10, 32)
-            if regno >= 0 && regno <= uint64(common.REG_ARM64_X29) {
-                // 取到对应的寄存器值
-                regvalue = tmp_regs[regno]
-                has_reg_value = true
-            }
-        } else if this.mconf.RegName == "lr" {
-            regvalue = tmp_regs[common.REG_ARM64_LR]
-            has_reg_value = true
-        }
-        if has_reg_value {
-            // maps_helper 的结构复杂 并且存在锁限制 不如直接读maps来的快
-            // info := maps_helper.GetOffset(this.Pid, regvalue)
-            // s += fmt.Sprintf(", Reg %s(%s)", this.mconf.RegName, info)
-            info, err := util.ParseReg(this.Pid, regvalue)
+        reg_info := []string{}
+        for _, reg_name := range strings.Split(this.mconf.RegName, ",") {
+            reg_value := this.GetRegValue(reg_name)
+            info, err := util.ParseReg(this.Pid, reg_value)
             if err != nil {
-                fmt.Printf("ParseReg for %s=0x%x failed", this.mconf.RegName, regvalue)
+                fmt.Printf("ParseReg for %s=0x%x failed", reg_name, reg_value)
             } else {
-                s += fmt.Sprintf(", Reg %s(%s)", this.mconf.RegName, info)
+                reg_info = append(reg_info, fmt.Sprintf("%s(0x%x %s)", reg_name, reg_value, info))
             }
         }
-    } else if this.rec.ExtraOptions.ShowRegs {
-        var tmp_regs [33]uint64
-        if this.rec.ExtraOptions.UnwindStack {
-            tmp_regs = this.UnwindBuffer.Regs
-        } else {
-            tmp_regs = this.RegsBuffer.Regs
-        }
-        regs := make(map[string]string)
-        for regno := 0; regno <= int(common.REG_ARM64_X29); regno++ {
-            regs[fmt.Sprintf("x%d", regno)] = fmt.Sprintf("0x%x", tmp_regs[regno])
-        }
-        regs["lr"] = fmt.Sprintf("0x%x", tmp_regs[common.REG_ARM64_LR])
-        regs["sp"] = fmt.Sprintf("0x%x", tmp_regs[common.REG_ARM64_SP])
-        regs["pc"] = fmt.Sprintf("0x%x", tmp_regs[common.REG_ARM64_PC])
-        regs_info, err := json.Marshal(regs)
-        if err != nil {
-            regs_info = make([]byte, 0)
-        }
-        s += ", Regs:\n" + string(regs_info)
+        s += fmt.Sprintf(", RegsInfo:\n%s", strings.Join(reg_info, "\n"))
+    }
+    if this.rec.ExtraOptions.ShowRegs {
+        s += ", Regs:\n" + this.GetRegsString()
     }
     if this.Stackinfo != "" {
         if this.rec.ExtraOptions.ShowRegs {
@@ -294,6 +273,19 @@ func (this *ContextEvent) GetStackTrace(s string) string {
         }
     }
     return s
+}
+
+func (this *ContextEvent) GetOpt() *UnwindOption {
+    opt := &UnwindOption{}
+    opt.RegMask = (1 << common.REG_ARM64_MAX) - 1
+    if this.mconf.Is32Bit {
+        opt.RegMask = (1 << common.REG_ARM_MAX) - 1
+    }
+    opt.ShowPC = this.mconf.ShowPC
+    opt.Abi = this.UnwindBuffer.Abi
+    opt.StackSize = this.UnwindBuffer.StackSize
+    opt.DynSize = this.UnwindBuffer.DynSize
+    return opt
 }
 
 func (this *ContextEvent) ParseContextStack() (err error) {
@@ -321,13 +313,7 @@ func (this *ContextEvent) ParseContextStack() (err error) {
             }
             return nil
         }
-        opt := &UnwindOption{}
-        opt.RegMask = (1 << common.REG_ARM64_MAX) - 1
-        if this.mconf.Is32Bit {
-            opt.RegMask = (1 << common.REG_ARM_MAX) - 1
-        }
-        opt.ShowPC = this.mconf.ShowPC
-        this.Stackinfo = ParseStack(content, opt, this.UnwindBuffer)
+        this.Stackinfo = ParseStack(content, this.GetOpt(), this.UnwindBuffer)
     } else if this.rec.ExtraOptions.ShowRegs {
         err = this.RegsBuffer.ParseContext(this.buf)
         if err != nil {

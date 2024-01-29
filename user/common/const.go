@@ -28,9 +28,45 @@ const (
 	REG_ARM_LR
 	REG_ARM_PC
 	REG_ARM_MAX
-	REG_ARM_INDEX
-	REG_ARM_ABS
 )
+
+var RegsArmIdxMap map[uint32]string = map[uint32]string{
+	REG_ARM_R0:  "r0",
+	REG_ARM_R1:  "r1",
+	REG_ARM_R2:  "r2",
+	REG_ARM_R3:  "r3",
+	REG_ARM_R4:  "r4",
+	REG_ARM_R5:  "r5",
+	REG_ARM_R6:  "r6",
+	REG_ARM_R7:  "r7",
+	REG_ARM_R8:  "r8",
+	REG_ARM_R9:  "r9",
+	REG_ARM_R10: "r10",
+	REG_ARM_FP:  "fp",
+	REG_ARM_IP:  "ip",
+	REG_ARM_SP:  "sp",
+	REG_ARM_LR:  "lr",
+	REG_ARM_PC:  "pc",
+}
+
+var RegsArmNameMap map[string]uint32 = map[string]uint32{
+	"r0":  REG_ARM_R0,
+	"r1":  REG_ARM_R1,
+	"r2":  REG_ARM_R2,
+	"r3":  REG_ARM_R3,
+	"r4":  REG_ARM_R4,
+	"r5":  REG_ARM_R5,
+	"r6":  REG_ARM_R6,
+	"r7":  REG_ARM_R7,
+	"r8":  REG_ARM_R8,
+	"r9":  REG_ARM_R9,
+	"r10": REG_ARM_R10,
+	"fp":  REG_ARM_FP,
+	"ip":  REG_ARM_IP,
+	"sp":  REG_ARM_SP,
+	"lr":  REG_ARM_LR,
+	"pc":  REG_ARM_PC,
+}
 
 const (
 	REG_ARM64_X0 uint32 = iota
@@ -67,11 +103,9 @@ const (
 	REG_ARM64_SP
 	REG_ARM64_PC
 	REG_ARM64_MAX
-	REG_ARM64_INDEX
-	REG_ARM64_ABS
 )
 
-var RegsMagicMap map[string]uint32 = map[string]uint32{
+var RegsNameMap map[string]uint32 = map[string]uint32{
 	"x0":  REG_ARM64_X0,
 	"x1":  REG_ARM64_X1,
 	"x2":  REG_ARM64_X2,
@@ -107,8 +141,44 @@ var RegsMagicMap map[string]uint32 = map[string]uint32{
 	"pc":  REG_ARM64_PC,
 }
 
+var RegsIdxMap map[uint32]string = map[uint32]string{
+	REG_ARM64_X0:  "x0",
+	REG_ARM64_X1:  "x1",
+	REG_ARM64_X2:  "x2",
+	REG_ARM64_X3:  "x3",
+	REG_ARM64_X4:  "x4",
+	REG_ARM64_X5:  "x5",
+	REG_ARM64_X6:  "x6",
+	REG_ARM64_X7:  "x7",
+	REG_ARM64_X8:  "x8",
+	REG_ARM64_X9:  "x9",
+	REG_ARM64_X10: "x10",
+	REG_ARM64_X11: "x11",
+	REG_ARM64_X12: "x12",
+	REG_ARM64_X13: "x13",
+	REG_ARM64_X14: "x14",
+	REG_ARM64_X15: "x15",
+	REG_ARM64_X16: "x16",
+	REG_ARM64_X17: "x17",
+	REG_ARM64_X18: "x18",
+	REG_ARM64_X19: "x19",
+	REG_ARM64_X20: "x20",
+	REG_ARM64_X21: "x21",
+	REG_ARM64_X22: "x22",
+	REG_ARM64_X23: "x23",
+	REG_ARM64_X24: "x24",
+	REG_ARM64_X25: "x25",
+	REG_ARM64_X26: "x26",
+	REG_ARM64_X27: "x27",
+	REG_ARM64_X28: "x28",
+	REG_ARM64_X29: "x29",
+	REG_ARM64_LR:  "lr",
+	REG_ARM64_SP:  "sp",
+	REG_ARM64_PC:  "pc",
+}
+
 func GetRegIndex(reg string) uint32 {
-	value, ok := RegsMagicMap[reg]
+	value, ok := RegsNameMap[reg]
 	if !ok {
 		panic(fmt.Sprintf("ParseAsReg failed =>%s<=", reg))
 	}
@@ -116,7 +186,7 @@ func GetRegIndex(reg string) uint32 {
 }
 
 func GetRegName(index uint32) string {
-	for k, v := range RegsMagicMap {
+	for k, v := range RegsNameMap {
 		if v == index {
 			return k
 		}
