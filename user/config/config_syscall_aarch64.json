@@ -1940,7 +1940,7 @@
             "params":[
                 {"name": "sockfd", "type": "int"},
                 {"name": "addr", "type": "sockaddr"},
-                {"name": "addrlen", "type": "uint32"},
+                {"name": "addrlen", "type": "*socklen_t"},
                 {"name": "ret", "type": "int"}
             ]
         },
@@ -1960,7 +1960,7 @@
             "params":[
                 {"name": "sockfd", "type": "int"},
                 {"name": "addr", "type": "sockaddr", "more": "exit"},
-                {"name": "addrlen", "type": "uint32"},
+                {"name": "addrlen", "type": "*socklen_t"},
                 {"name": "ret", "type": "int"}
             ]
         },
@@ -1970,7 +1970,7 @@
             "params":[
                 {"name": "sockfd", "type": "int"},
                 {"name": "addr", "type": "sockaddr", "more": "exit"},
-                {"name": "addrlen", "type": "uint32"},
+                {"name": "addrlen", "type": "*socklen_t"},
                 {"name": "ret", "type": "int"}
             ]
         },
@@ -1995,6 +1995,8 @@
                 {"name": "*buf", "type": "buf", "size": "x2", "more": "exit"},
                 {"name": "len", "type": "size_t"},
                 {"name": "flags", "type": "int", "format": "msg_flags"},
+                {"name": "addr", "type": "sockaddr"},
+                {"name": "addrlen", "type": "*socklen_t"},
                 {"name": "ret", "type": "int"}
             ]
         },
@@ -2361,7 +2363,7 @@
             "params":[
                 {"name": "sockfd", "type": "int"},
                 {"name": "addr", "type": "sockaddr"},
-                {"name": "addrlen", "type": "int"},
+                {"name": "addrlen", "type": "*socklen_t"},
                 {"name": "flags", "type": "int"},
                 {"name": "ret", "type": "int"}
             ]
