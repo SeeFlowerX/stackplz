@@ -559,6 +559,12 @@ func (this *SyscallConfig) Parse_SyscallNames(text string) []string {
             syscall_items = append(syscall_items, []string{"getsockname", "getpeername", "setsockopt", "getsockopt"}...)
             syscall_items = append(syscall_items, []string{"sendto", "recvfrom", "sendmsg", "recvmsg"}...)
             syscall_items = append(syscall_items, []string{"shutdown", "recvmmsg", "sendmmsg", "accept4"}...)
+        case "%read":
+            syscall_items = append(syscall_items, []string{"read", "readv"}...)
+            syscall_items = append(syscall_items, []string{"pread64", "preadv", "pread2"}...)
+        case "%write":
+            syscall_items = append(syscall_items, []string{"write", "writev"}...)
+            syscall_items = append(syscall_items, []string{"pwrite64", "pwritev", "pwritev2"}...)
         case "%signal":
             syscall_items = append(syscall_items, []string{"sigaltstack"}...)
             syscall_items = append(syscall_items, []string{"rt_sigsuspend", "rt_sigaction", "rt_sigprocmask", "rt_sigpending"}...)
