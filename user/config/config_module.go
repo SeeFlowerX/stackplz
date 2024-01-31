@@ -555,10 +555,13 @@ func (this *SyscallConfig) Parse_SyscallNames(text string) []string {
             syscall_items = append(syscall_items, []string{"pidfd_send_signal", "pidfd_open", "pidfd_getfd"}...)
         case "%net":
             syscall_items = append(syscall_items, []string{"socket", "socketpair"}...)
-            syscall_items = append(syscall_items, []string{"bind", "listen", "accept", "connect"}...)
+            syscall_items = append(syscall_items, []string{"bind", "listen", "accept", "accept4", "connect"}...)
             syscall_items = append(syscall_items, []string{"getsockname", "getpeername", "setsockopt", "getsockopt"}...)
-            syscall_items = append(syscall_items, []string{"sendto", "recvfrom", "sendmsg", "recvmsg"}...)
-            syscall_items = append(syscall_items, []string{"shutdown", "recvmmsg", "sendmmsg", "accept4"}...)
+            syscall_items = append(syscall_items, []string{"shutdown"}...)
+        case "%send":
+            syscall_items = append(syscall_items, []string{"sendto", "sendmsg", "sendmmsg"}...)
+        case "%recv":
+            syscall_items = append(syscall_items, []string{"recvfrom", "recvmsg", "recvmmsg"}...)
         case "%read":
             syscall_items = append(syscall_items, []string{"read", "readv"}...)
             syscall_items = append(syscall_items, []string{"pread64", "preadv", "pread2"}...)
@@ -669,6 +672,9 @@ func (this *SyscallConfig) Parse_Syscall(gconfig *GlobalConfig) {
         } else {
             // 命令行上有多个规则组 那么分别应用于每个参数
             for group_index, filter_group := range filter_groups {
+                if filter_group == "" {
+                    continue
+                }
                 filter_names := strings.Split(filter_group, ".")
                 for _, filter_name := range filter_names {
                     filter := GetFilterByName(filter_name)
