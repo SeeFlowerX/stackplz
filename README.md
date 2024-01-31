@@ -241,10 +241,17 @@ cat /proc/kallsyms  | grep "T sys_"
     - pidfd_send_signal,pidfd_open,pidfd_getfd
 - %net
     - socket,socketpair
-    - bind,listen,accept,connect
+    - bind,listen,accept,accept4,connect
     - getsockname,getpeername,setsockopt,getsockopt
-    - sendto,recvfrom,sendmsg,recvmsg
-    - shutdown,recvmmsg,sendmmsg,accept4
+    - shutdown
+- %send
+    - sendto,sendmsg,sendmmsg
+- %recv
+    - recvfrom,recvmsg,recvmmsg
+- %read
+    - read,readv,pread64,preadv,pread2
+- %write
+    - write,writev,pwrite64,pwritev,pwrite2
 - %signal
     - sigaltstack
     - rt_sigsuspend,rt_sigaction,rt_sigprocmask,rt_sigpending
