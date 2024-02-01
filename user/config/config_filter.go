@@ -1,6 +1,8 @@
 package config
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"stackplz/user/common"
 	"stackplz/user/util"
@@ -104,6 +106,20 @@ func (this *FilterHelper) AddFilter(filter string) uint32 {
 		panic(fmt.Sprintf("AddFilter failed, filter:%s", filter))
 	}
 	switch items[0] {
+	case "bx", "bufhex":
+		arg_filter.Filter_type = WHITELIST_FILTER
+		str_old, err := hex.DecodeString(items[1])
+		if err != nil {
+			panic(fmt.Sprintf("hex string to bytes failed => %s", items[1]))
+		}
+		if len(str_old) > 8 {
+			panic(fmt.Sprintf("hex string is to long, max bytes length is 8"))
+		}
+		arg_filter.Str_len = (8 - uint32(len(str_old))) * 8
+		arg_filter.Num_val = util.StrToNum64("0x" + items[1])
+		data := make([]byte, 8)
+		binary.BigEndian.PutUint64(data, arg_filter.Num_val)
+		arg_filter.Num_val = binary.LittleEndian.Uint64(data) >> arg_filter.Str_len
 	case "eq", "equal":
 		arg_filter.Filter_type = EQUAL_FILTER
 		arg_filter.Num_val = util.StrToNum64(items[1])

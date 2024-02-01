@@ -281,6 +281,12 @@ LR比较，需要提前计算用于比较的值：
 ./stackplz -n com.chinarainbow.tft -w memcpy[ptr,ptr,int,ptr.f0:lr] -f eq:0x748a484d2c --stack --kill SIGSTOP
 ```
 
+引入buffer数据比较，`bx/bufhex`，可以进行最多8字节的比较
+
+```bash
+./stackplz -n com.netease.cloudmusic -w sendto[int,buf.f0:x2,int] -f bx:73ea68 -o tmp.log --dumphex --color --stack
+```
+
 3.11 支持远程硬件断点，frida联动
 
 - server 监听命令 ./stackplz --rpc --stack

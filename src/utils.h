@@ -204,6 +204,21 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 }
                 break;
             }
+            case OP_FILTER_BUFFER: {
+                arg_filter_t* filter = bpf_map_lookup_elem(&arg_filter, &op->value);
+                if (unlikely(filter == NULL)) return 0;
+                if (filter->filter_type == WHITELIST_FILTER) {
+                    op_ctx->apply_filter = 1;
+                    // 等同于读取8个字节 过滤8字节基本上够用了
+                    u64 ptr = op_ctx->read_addr & 0xffffffffffff;
+                    bpf_probe_read_user(&ptr, sizeof(ptr), (void*) ptr);
+                    // str_len = (8 - 要比较的字节数) * 8
+                    if (filter->num_val == (ptr & (0xffffffffffffffff >> filter->str_len))) {
+                        op_ctx->match_whitelist = 1;
+                    }
+                }
+                break;
+            }
             case OP_FILTER_STRING: {
                 // 这里会受到循环次数的限制
                 // 实测 384 可以 512 不行 除非有什么更好的优化方法

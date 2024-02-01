@@ -141,15 +141,24 @@ func (this *PointArg) GetOpList() []uint32 {
 	if this.ReadMore() {
 		for _, op_key := range argtype.GetOpKeyList(this.TypeIndex) {
 			op_list = append(op_list, op_key)
-			if this.TypeIndex == STRING || this.TypeIndex == STD_STRING {
-				for _, v := range this.FilterIndexList {
-					filter_op := argtype.OPC_FILTER_STRING.NewValue(uint64(v))
-					op_list = append(op_list, filter_op.Index)
-				}
+		}
+		if this.TypeIndex == STRING || this.TypeIndex == STD_STRING {
+			for _, v := range this.FilterIndexList {
+				filter_op := argtype.OPC_FILTER_STRING.NewValue(uint64(v))
+				op_list = append(op_list, filter_op.Index)
+			}
+		} else if this.IsBuffer() {
+			for _, v := range this.FilterIndexList {
+				filter_op := argtype.OPC_FILTER_BUFFER.NewValue(uint64(v))
+				op_list = append(op_list, filter_op.Index)
 			}
 		}
 	}
 	return op_list
+}
+
+func (this *PointArg) IsBuffer() bool {
+	return argtype.GetArgType(this.TypeIndex).GetParentIndex() == BUFFER
 }
 
 func (this *PointArg) Clone() *PointArg {
