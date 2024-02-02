@@ -107,7 +107,11 @@ func (this *Arg_buffer) HexFormat(color bool) string {
 	} else {
 		hexdump = util.HexDumpPure(this.ArgPayload)
 	}
-	return fmt.Sprintf("(\n%s)", hexdump)
+	// 使用 --color 时即使为空也会写颜色占位符 所以用原始数据长度做判断
+	if len(this.ArgPayload) > 0 {
+		return fmt.Sprintf("(\n%s)", hexdump)
+	}
+	return "()"
 }
 
 func (this *Arg_buffer) MarshalJSON() ([]byte, error) {
