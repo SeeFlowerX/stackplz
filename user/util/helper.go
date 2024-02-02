@@ -335,20 +335,20 @@ func dumpByteSlice(b []byte, perfix string) *bytes.Buffer {
 		// 序号列
 		if i%CHUNK_SIZE == 0 {
 			bb.WriteString(perfix)
-			bb.WriteString(fmt.Sprintf("%04d", i))
+			bb.WriteString(fmt.Sprintf("%04x ", i))
 		}
 
 		// 长度的一半，则输出4个空格
-		if i%CHUNK_SIZE_HALF == 0 {
-			bb.WriteString("    ")
-		} else if i%(CHUNK_SIZE_HALF/2) == 0 {
-			bb.WriteString("  ")
-		}
+		// if i%CHUNK_SIZE_HALF == 0 {
+		// 	bb.WriteString("  ")
+		// } else if i%(CHUNK_SIZE_HALF/2) == 0 {
+		// 	bb.WriteString(" ")
+		// }
 
 		if i < len(b) {
 			bb.WriteString(fmt.Sprintf(" %02X", b[i]))
 		} else {
-			bb.WriteString("  ")
+			bb.WriteString("   ")
 		}
 
 		// 非ASCII 改为 .
@@ -362,7 +362,7 @@ func dumpByteSlice(b []byte, perfix string) *bytes.Buffer {
 
 		// 如果到达size长度，则换行
 		if i%CHUNK_SIZE == (CHUNK_SIZE - 1) {
-			bb.WriteString(fmt.Sprintf("    %s\n", string(a[:])))
+			bb.WriteString(fmt.Sprintf("  |%s|\n", string(a[:])))
 		}
 	}
 	return bb
