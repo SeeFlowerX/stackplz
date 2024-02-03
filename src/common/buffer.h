@@ -68,8 +68,11 @@ static __always_inline int save_bytes_to_buf(event_data_t *event, void *ptr, u32
 
     // Read bytes into buffer
     if (size > 0) {
+        if (size != MAX_BYTES_ARR_SIZE) {
+            size = size & (MAX_BYTES_ARR_SIZE - 1);
+        }
         if (bpf_probe_read(&(event->args[event->buf_off + 1 + sizeof(int)]),
-                        size & (MAX_BYTES_ARR_SIZE - 1),
+                        size,
                         ptr) == 0) {
             // We update buf_off only if all writes were successful
             event->buf_off += size + 1 + sizeof(int);
