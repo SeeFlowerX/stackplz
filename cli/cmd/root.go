@@ -147,11 +147,10 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 获取一次 后面用得到 免去重复获取
     exec_path = path.Dir(exec_path)
     gconfig.ExecPath = exec_path
-    err = assets.RestoreAssets(exec_path, "preload_libs")
-    if err != nil {
-        return fmt.Errorf("RestoreAssets preload_libs failed, %v", err)
-    }
 
+    if err = gconfig.RestoreAssets(); err != nil {
+        return err
+    }
     gconfig.InitLibraryDirs()
 
     if gconfig.Rpc {

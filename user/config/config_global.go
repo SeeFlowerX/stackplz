@@ -7,6 +7,7 @@ import (
     "io"
     "os"
     "path/filepath"
+    "stackplz/assets"
     "strings"
 
     "golang.org/x/exp/slices"
@@ -70,6 +71,31 @@ func NewGlobalConfig() *GlobalConfig {
     return &GlobalConfig{}
 }
 
+func (this *GlobalConfig) RestoreAssets() error {
+    check_list := []string{"libstackplz.so", "libunwindstack.so"}
+    for _, check_file := range check_list {
+        check_path := "preload_libs" + "/" + check_file
+        check_info, err := os.Stat(this.ExecPath + "/" + check_path)
+        if err != nil {
+            if os.IsNotExist(err) {
+                err = assets.RestoreAssets(this.ExecPath, "preload_libs")
+                if err != nil {
+                    return fmt.Errorf("RestoreAssets preload_libs failed, %v", err)
+                }
+                return nil
+            }
+        }
+        info, err := assets.AssetInfo(check_path)
+        if info.Size() != check_info.Size() {
+            err = assets.RestoreAssets(this.ExecPath, "preload_libs")
+            if err != nil {
+                return fmt.Errorf("RestoreAssets preload_libs failed, %v", err)
+            }
+            return nil
+        }
+    }
+    return nil
+}
 func (this *GlobalConfig) InitLibraryDirs() {
     // 设置常见的系统库路径 注意要检查是不是符号链接
     this.LibraryDirs = []string{}
