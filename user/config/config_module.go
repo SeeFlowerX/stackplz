@@ -781,7 +781,7 @@ func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {
     switch gconfig.TragetArch {
     case "aarch64":
         this.Is32Bit = false
-    case "aarch32":
+    case "arm", "aarch32":
         this.Is32Bit = true
     default:
         panic(fmt.Sprintf("arch %s not supported", gconfig.TragetArch))

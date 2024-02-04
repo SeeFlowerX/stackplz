@@ -147,32 +147,12 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 获取一次 后面用得到 免去重复获取
     exec_path = path.Dir(exec_path)
     gconfig.ExecPath = exec_path
-    _, err = os.Stat(exec_path + "/" + "preload_libs")
-    var has_restore bool = false
+    err = assets.RestoreAssets(exec_path, "preload_libs")
     if err != nil {
-        if os.IsNotExist(err) {
-            // 路径不存在就自动释放
-            err = assets.RestoreAssets(exec_path, "preload_libs")
-            if err != nil {
-                return fmt.Errorf("RestoreAssets preload_libs failed, %v", err)
-            }
-            has_restore = true
-        } else {
-            // 未知异常 比如权限问题 那么直接结束
-            return err
-        }
+        return fmt.Errorf("RestoreAssets preload_libs failed, %v", err)
     }
-    if gconfig.Prepare {
-        // 认为是需要重新释放一次
-        if !has_restore {
-            err = assets.RestoreAssets(exec_path, "preload_libs")
-            if err != nil {
-                return fmt.Errorf("RestoreAssets preload_libs failed, %v", err)
-            }
-        }
-        fmt.Println("RestoreAssets preload_libs success")
-        os.Exit(0)
-    }
+
+    gconfig.InitLibraryDirs()
 
     if gconfig.Rpc {
         fmt.Printf("rpc mode, listen path:%s\n", gconfig.RpcPath)
@@ -607,10 +587,8 @@ func Execute() {
 
 func init() {
     cobra.EnablePrefixMatching = false
-    // 考虑到外部库更新 每个版本首次运行前 都应该执行一次
-    rootCmd.PersistentFlags().BoolVar(&gconfig.Prepare, "prepare", false, "prepare libs")
     // 过滤设定
-    rootCmd.PersistentFlags().StringVar(&gconfig.TragetArch, "arch", "aarch64", "targe arch, aarch64 or aarch32")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.TragetArch, "arch", "a", "aarch64", "targe arch, aarch64, arm/aarch32")
     rootCmd.PersistentFlags().StringVarP(&gconfig.Name, "name", "n", "", "must set uid or package name")
 
     rootCmd.PersistentFlags().StringVarP(&gconfig.Uid, "uid", "u", "", "uid white list")

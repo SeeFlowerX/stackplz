@@ -13,7 +13,6 @@ import (
 )
 
 type GlobalConfig struct {
-    Prepare     bool
     ExecPath    string
     TragetArch  string
     Name        string
@@ -68,17 +67,35 @@ type GlobalConfig struct {
 }
 
 func NewGlobalConfig() *GlobalConfig {
-    config := &GlobalConfig{}
+    return &GlobalConfig{}
+}
+
+func (this *GlobalConfig) InitLibraryDirs() {
     // 设置常见的系统库路径 注意要检查是不是符号链接
-    lib_search_path := []string{
-        "/system/lib64",
-        "/apex/com.android.art/lib64",
-        "/apex/com.android.conscrypt/lib64",
-        "/apex/com.android.runtime/bin",
-        "/apex/com.android.runtime/lib64/bionic",
+    this.LibraryDirs = []string{}
+    switch this.TragetArch {
+    case "aarch64":
+        lib_search_path := []string{
+            "/system/lib64",
+            "/apex/com.android.art/lib64",
+            "/apex/com.android.conscrypt/lib64",
+            "/apex/com.android.runtime/bin",
+            "/apex/com.android.runtime/lib64/bionic",
+        }
+        this.LibraryDirs = append(this.LibraryDirs, lib_search_path...)
+    case "arm", "aarch32":
+        // 实测 arm uprobe 存在无法解决的问题
+        // lib_search_path := []string{
+        //     "/system/lib",
+        //     "/apex/com.android.art/lib",
+        //     "/apex/com.android.conscrypt/lib",
+        //     "/apex/com.android.runtime/bin",
+        //     "/apex/com.android.runtime/lib/bionic",
+        // }
+        // this.LibraryDirs = append(this.LibraryDirs, lib_search_path...)
+    default:
+        panic(fmt.Sprintf("arch %s not supported", this.TragetArch))
     }
-    config.LibraryDirs = append(config.LibraryDirs, lib_search_path...)
-    return config
 }
 
 func (this *GlobalConfig) ParseArgFilter() {
