@@ -168,6 +168,10 @@ func (this *PointArg) Clone() *PointArg {
 	p.TypeIndex = this.TypeIndex
 	p.PointType = this.PointType
 	p.FilterIndexList = this.FilterIndexList
+	// 这里的修复可能带来 bug 有待测试
+	for _, v := range this.ExtraOpList {
+		p.ExtraOpList = append(p.ExtraOpList, v)
+	}
 	return &p
 }
 
