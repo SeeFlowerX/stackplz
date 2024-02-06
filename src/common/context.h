@@ -42,13 +42,15 @@ static __always_inline int init_program_data(program_data_t *p, void *ctx)
     // allow caller to specify a stack/map based event_data_t pointer
     if (p->event == NULL) {
         p->event = bpf_map_lookup_elem(&event_data_map, &zero);
-        if (unlikely(p->event == NULL))
+        if (unlikely(p->event == NULL)) {
             return 0;
+        }
     }
 
     p->config = bpf_map_lookup_elem(&base_config, &zero);
-    if (unlikely(p->config == NULL))
+    if (unlikely(p->config == NULL)){
         return 0;
+    }
 
     p->event->task = (struct task_struct *) bpf_get_current_task();
     ret = init_context(ctx, &p->event->context, p->event->task);
