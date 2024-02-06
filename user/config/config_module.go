@@ -176,7 +176,8 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
         // 这个设定用于指示是否进一步读取和解析
         point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     default:
-        err = errors.New(fmt.Sprintf("unsupported type:%s", items[0]))
+        point_arg.SetTypeByName(items[0])
+        point_arg.SetGroupType(EBPF_UPROBE_ENTER)
     }
     if err != nil {
         return err
