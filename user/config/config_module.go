@@ -467,7 +467,7 @@ func (this *SyscallConfig) UpdateSyscallPoint(uprobe_point *UprobeArgs) bool {
         if uprobe_point.ExitRead {
             b_p.SetPointType(EBPF_SYS_ALL)
         } else {
-            b_p.SetPointType(EBPF_SYS_EXIT)
+            b_p.SetPointType(EBPF_SYS_ENTER)
         }
         b_point_args = append(b_point_args, b_p)
     }
