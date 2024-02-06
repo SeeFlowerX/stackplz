@@ -262,11 +262,11 @@ func (this *ContextEvent) GetStackTrace(s string) string {
         }
         s += fmt.Sprintf(", RegsInfo:\n%s", strings.Join(reg_info, "\n"))
     }
-    if this.rec.ExtraOptions.ShowRegs {
+    if this.mconf.ShowRegs {
         s += ", Regs:\n" + this.GetRegsString()
     }
     if this.Stackinfo != "" {
-        if this.rec.ExtraOptions.ShowRegs {
+        if this.mconf.ShowRegs {
             s += fmt.Sprintf("\nBacktrace:\n%s", this.Stackinfo)
         } else {
             s += fmt.Sprintf(", Backtrace:\n%s", this.Stackinfo)
