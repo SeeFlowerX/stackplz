@@ -226,6 +226,7 @@ typedef struct op_config {
 } op_config_t;
 
 typedef struct point_args {
+    // u32 enter_key;
     u32 signal;
     u32 op_count;
     u32 op_key_list[MAX_OP_COUNT];

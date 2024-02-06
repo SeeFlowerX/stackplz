@@ -49,6 +49,23 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) 
     common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
     if (unlikely(filter == NULL)) return 0;
 
+    // if (point_args->enter_key == 0) {
+    //     /* pass */
+    // } else if (point_args->enter_key == point_key + 1) {
+    //     // 保存寄存器
+    //     args_t saved_regs = {};
+    //     saved_regs.args[0] = READ_KERN(ctx->regs[0]);
+    //     save_args(&saved_regs, UPROBE_ENTER + point_key + 1);
+    // } else {
+    //     // 加载寄存器
+    //     args_t saved_regs;
+    //     if (load_args(&saved_regs, UPROBE_ENTER + point_args->enter_key) != 0) {
+    //         return 0;
+    //     }
+    //     // 清理map中的寄存器
+    //     del_args(UPROBE_ENTER + point_args->enter_key);
+    // }
+
     save_to_submit_buf(p.event, (void *) &point_key, sizeof(u32), 0);
     u64 lr = 0;
     u64 sp = 0;

@@ -351,6 +351,15 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
             exit_read = true
             bind_syscall = true
         }
+
+        var exit_offset uint64 = 0x0
+        items := strings.Split(config_str, "]")
+        if len(items) == 2 {
+            config_str = items[0] + "]"
+            exit_read = true
+            exit_offset = util.StrToNum64(items[1])
+        }
+
         reg := regexp.MustCompile(`(\w+)(\+0x[[:xdigit:]]+)?(\[.+?\])?`)
         match := reg.FindStringSubmatch(config_str)
 
@@ -358,6 +367,7 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
             hook_point := &UprobeArgs{}
             hook_point.BindSyscall = bind_syscall
             hook_point.ExitRead = exit_read
+            hook_point.ExitOffset = exit_offset
             hook_point.Index = uint32(point_index)
             hook_point.Offset = 0x0
             hook_point.LibPath = this.LibPath
@@ -400,6 +410,13 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
             this.Points = append(this.Points, hook_point)
         } else {
             return errors.New(fmt.Sprintf("parse for %s failed", config_str))
+        }
+    }
+    point_count := len(this.Points)
+    for point_idx := 0; point_idx < point_count; point_idx++ {
+        point := this.Points[point_idx]
+        if point.ExitOffset != 0x0 {
+            this.Points = append(this.Points, point.GetExitPoint(len(this.Points)))
         }
     }
     return nil

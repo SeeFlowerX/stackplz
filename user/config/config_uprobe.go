@@ -12,14 +12,29 @@ type UprobeArgs struct {
 	RealFilePath string
 	Name         string
 	Symbol       string
-	SymOffset    uint64
 	Offset       uint64
 	NonElfOffset uint64
 	ArgsStr      string
 	PointArgs    []*PointArg
 	BindSyscall  bool
 	ExitRead     bool
+	ExitOffset   uint64
 	KillSignal   uint32
+}
+
+func (this *UprobeArgs) GetExitPoint(index int) *UprobeArgs {
+	point := &UprobeArgs{}
+	point.Index = uint32(index)
+	point.LibPath = this.LibPath
+	point.RealFilePath = this.RealFilePath
+	point.Name = this.Name
+	point.Symbol = this.Symbol
+	point.Offset = this.ExitOffset
+	point.NonElfOffset = this.NonElfOffset
+	point.ArgsStr = this.ArgsStr
+	point.PointArgs = this.PointArgs
+	point.KillSignal = this.KillSignal
+	return point
 }
 
 func (this *UprobeArgs) GetConfig() UprobePointOpKeyConfig {
