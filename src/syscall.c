@@ -91,14 +91,15 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     if (unlikely(sysno_blacklist_value != NULL)) return 0;
 
     // 保存寄存器应该放到所有过滤完成之后
-    args_t saved_regs = {};
-    saved_regs.args[0] = READ_KERN(regs->regs[0]);
-    saved_regs.args[1] = READ_KERN(regs->regs[1]);
-    saved_regs.args[2] = READ_KERN(regs->regs[2]);
-    saved_regs.args[3] = READ_KERN(regs->regs[3]);
-    saved_regs.args[4] = READ_KERN(regs->regs[4]);
-    saved_regs.args[5] = READ_KERN(regs->regs[5]);
-    save_args(&saved_regs, SYSCALL_ENTER);
+    ctx_regs_t saved_regs = {};
+    for (int i = 0; i < 31; i++) {
+        saved_regs.regs[i] = READ_KERN(regs->regs[i]);
+    }
+    saved_regs.sp = READ_KERN(regs->sp);
+    saved_regs.pc = READ_KERN(regs->pc);
+
+    save_regs(&saved_regs, SYSCALL_ENTER);
+
 
     // event->context 已经有进程的信息了
     save_to_submit_buf(p.event, (void *) &sysno, sizeof(u32), 0);
@@ -129,16 +130,16 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     if (unlikely(op_ctx == NULL)) return 0;
     __builtin_memset((void *)op_ctx, 0, sizeof(op_ctx));
 
-    op_ctx->reg_0 = saved_regs.args[0];
+    op_ctx->reg_0 = saved_regs.regs[0];
     op_ctx->save_index = 4;
     op_ctx->op_key_index = 0;
 
-    read_args(&p, point_args, op_ctx, regs);
+    read_args(&p, point_args, op_ctx, &saved_regs);
     
     if (op_ctx->skip_flag) {
         op_ctx->skip_flag = 0;
         saved_regs.flag = 1;
-        save_args(&saved_regs, SYSCALL_ENTER);
+        save_regs(&saved_regs, SYSCALL_ENTER);
         return 0;
     }
 
@@ -176,11 +177,11 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
     if (unlikely(filter == NULL)) return 0;
 
-    args_t saved_regs;
-    if (load_args(&saved_regs, SYSCALL_ENTER) != 0) {
+    ctx_regs_t saved_regs = {};
+    if (load_regs(&saved_regs, SYSCALL_ENTER) != 0) {
         return 0;
     }
-    del_args(SYSCALL_ENTER);
+    del_regs(SYSCALL_ENTER);
     if (saved_regs.flag == 1) {
         return 0;
     }
@@ -205,11 +206,11 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     if (unlikely(op_ctx == NULL)) return 0;
     __builtin_memset((void *)op_ctx, 0, sizeof(op_ctx));
 
-    op_ctx->reg_0 = saved_regs.args[0];
+    op_ctx->reg_0 = saved_regs.regs[0];
     op_ctx->save_index = 1;
     op_ctx->op_key_index = 0;
 
-    read_args(&p, point_args, op_ctx, regs);
+    read_args(&p, point_args, op_ctx, &saved_regs);
 
     if (op_ctx->skip_flag) {
         op_ctx->skip_flag = 0;

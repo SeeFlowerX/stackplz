@@ -32,12 +32,14 @@ func (this *BaseConfig) Info() string {
 }
 
 type SyscallPointOpKeyConfig struct {
+	EnterKey  uint32
 	Signal    uint32
 	OpCount   uint32
 	OpKeyList [SYSCALL_MAX_OP_COUNT]uint32
 }
 
 type UprobePointOpKeyConfig struct {
+	EnterKey  uint32
 	Signal    uint32
 	OpCount   uint32
 	OpKeyList [STACK_MAX_OP_COUNT]uint32

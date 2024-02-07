@@ -49,22 +49,26 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) 
     common_filter_t* filter = bpf_map_lookup_elem(&common_filter, &filter_key);
     if (unlikely(filter == NULL)) return 0;
 
-    // if (point_args->enter_key == 0) {
-    //     /* pass */
-    // } else if (point_args->enter_key == point_key + 1) {
-    //     // 保存寄存器
-    //     args_t saved_regs = {};
-    //     saved_regs.args[0] = READ_KERN(ctx->regs[0]);
-    //     save_args(&saved_regs, UPROBE_ENTER + point_key + 1);
-    // } else {
-    //     // 加载寄存器
-    //     args_t saved_regs;
-    //     if (load_args(&saved_regs, UPROBE_ENTER + point_args->enter_key) != 0) {
-    //         return 0;
-    //     }
-    //     // 清理map中的寄存器
-    //     del_args(UPROBE_ENTER + point_args->enter_key);
-    // }
+    ctx_regs_t saved_regs = {};
+    for (int i = 0; i < 31; i++) {
+        saved_regs.regs[i] = READ_KERN(ctx->regs[i]);
+    }
+    saved_regs.sp = READ_KERN(ctx->sp);
+    saved_regs.pc = READ_KERN(ctx->pc);
+
+    if (point_args->enter_key == 0) {
+        /* pass */
+    } else if (point_args->enter_key == point_key + 1) {
+        // 保存寄存器
+        save_regs(&saved_regs, UPROBE_ENTER + point_key + 1);
+    } else {
+        // 加载寄存器
+        if (load_regs(&saved_regs, UPROBE_ENTER + point_args->enter_key) != 0) {
+            return 0;
+        }
+        // 清理map中的寄存器
+        del_regs(UPROBE_ENTER + point_args->enter_key);
+    }
 
     save_to_submit_buf(p.event, (void *) &point_key, sizeof(u32), 0);
     u64 lr = 0;
@@ -94,7 +98,7 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) 
     op_ctx->save_index = 4;
     op_ctx->op_key_index = 0;
 
-    read_args(&p, point_args, op_ctx, ctx);
+    read_args(&p, point_args, op_ctx, &saved_regs);
 
     if (op_ctx->skip_flag) {
         op_ctx->skip_flag = 0;

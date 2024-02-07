@@ -12,10 +12,12 @@ typedef struct common_filter {
     u32 tsignal;
 } common_filter_t;
 
-typedef struct args {
-    unsigned long args[6];
-    u32 flag;
-} args_t;
+typedef struct ctx_regs {
+    u64 regs[31];
+    u64 sp;
+    u64 pc;
+    u64 flag;
+} ctx_regs_t;
 
 typedef struct thread_name {
     char name[16];
@@ -226,7 +228,7 @@ typedef struct op_config {
 } op_config_t;
 
 typedef struct point_args {
-    // u32 enter_key;
+    u32 enter_key;
     u32 signal;
     u32 op_count;
     u32 op_key_list[MAX_OP_COUNT];

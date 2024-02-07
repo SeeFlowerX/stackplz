@@ -26,7 +26,7 @@ typedef struct point_arg_t {
 
 // 使用 __noinline 一定程度上可以提升循环次数
 // 不过增加循环次数的时候 验证器耗时也会增加
-static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_ctx_t* op_ctx, struct pt_regs* regs) {
+static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_ctx_t* op_ctx, ctx_regs_t *ctx_regs) {
     int zero = 0;
     // op_config_t* op = NULL;
     op_config_t* op = bpf_map_lookup_elem(&op_list, &zero);
@@ -147,7 +147,7 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 if (op_ctx->reg_index == 0) {
                     op_ctx->reg_value = op_ctx->reg_0;
                 } else {
-                    op_ctx->reg_value = READ_KERN(regs->regs[op_ctx->reg_index]);
+                    op_ctx->reg_value = READ_KERN(ctx_regs->regs[op_ctx->reg_index]);
                 }
                 break;
             case OP_SAVE_REG:
