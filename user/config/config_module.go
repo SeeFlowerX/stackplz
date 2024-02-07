@@ -356,8 +356,10 @@ func (this *StackUprobeConfig) Parse_HookPoint(configs []string) (err error) {
         items := strings.Split(config_str, "]")
         if len(items) == 2 {
             config_str = items[0] + "]"
-            exit_read = true
-            exit_offset = util.StrToNum64(items[1])
+            if items[1] != "" {
+                exit_read = true
+                exit_offset = util.StrToNum64(items[1])
+            }
         }
 
         reg := regexp.MustCompile(`(\w+)(\+0x[[:xdigit:]]+)?(\[.+?\])?`)
