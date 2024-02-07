@@ -94,7 +94,7 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) 
     if (unlikely(op_ctx == NULL)) return 0;
     __builtin_memset((void *)op_ctx, 0, sizeof(op_ctx));
 
-    op_ctx->reg_0 = READ_KERN(ctx->regs[0]);
+    op_ctx->reg_0 = saved_regs.regs[0];
     op_ctx->save_index = 4;
     op_ctx->op_key_index = 0;
 
