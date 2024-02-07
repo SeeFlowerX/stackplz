@@ -188,6 +188,13 @@ cat /proc/kallsyms  | grep "T sys_"
 - 152 -> linker_ctor_function_t* init_array_;
 - 160 -> size_t init_array_count_;
 
+在指定偏移处做退出读取，退出偏移即`RET`指令的偏移，示例如下
+
+```bash
+./stackplz -n com.termux -w gettimeofday[timeval,timezone]0x4B320
+./stackplz -n com.termux -w 0x9D150[int,buf:x2,int]0x9D164 --dumphex --color
+```
+
 3.8 按分组批量追踪进程
 
 追踪全部APP类型的进程，但是排除一个特定的uid：
