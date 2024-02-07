@@ -8,6 +8,7 @@ import (
 
 type UprobeArgs struct {
 	Index        uint32
+	EnterKey     uint32
 	LibPath      string
 	RealFilePath string
 	Name         string
@@ -23,12 +24,16 @@ type UprobeArgs struct {
 }
 
 func (this *UprobeArgs) GetExitPoint(index int) *UprobeArgs {
+	// 这样标记为需要保存这个位置的寄存器
+	this.EnterKey = this.Index + 1
 	point := &UprobeArgs{}
 	point.Index = uint32(index)
+	// 这样标记为需要从这里取出寄存器
+	point.EnterKey = this.EnterKey
 	point.LibPath = this.LibPath
 	point.RealFilePath = this.RealFilePath
-	point.Name = this.Name
-	point.Symbol = this.Symbol
+	point.Name = fmt.Sprintf("0x%x", this.ExitOffset)
+	point.Symbol = ""
 	point.Offset = this.ExitOffset
 	point.NonElfOffset = this.NonElfOffset
 	point.ArgsStr = this.ArgsStr
@@ -39,6 +44,7 @@ func (this *UprobeArgs) GetExitPoint(index int) *UprobeArgs {
 
 func (this *UprobeArgs) GetConfig() UprobePointOpKeyConfig {
 	config := UprobePointOpKeyConfig{}
+	config.EnterKey = this.EnterKey
 	config.Signal = this.KillSignal
 	for _, point_arg := range this.PointArgs {
 		config.AddPointArg(point_arg)
