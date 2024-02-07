@@ -301,6 +301,9 @@ func (this *ContextEvent) ParseContextStack() (err error) {
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
         content, err := util.ReadMapsByPid(this.Pid)
         if err != nil || this.mconf.ManualStack {
+            if err == nil {
+                maps_helper.TryManualUpdateMaps(this.Pid, []byte(content))
+            }
             // 直接读取 maps 失败 那么从 mmap2 事件中获取
             // 根据测试结果 有这样的情况 -> 即 fork 产生的子进程 那么应该查找其父进程 mmap2 事件
             maps_helper.SetLogger(this.logger)
@@ -313,6 +316,8 @@ func (this *ContextEvent) ParseContextStack() (err error) {
             }
             return nil
         }
+        // 发现一个奇怪的问题 termux 按 tab 会访问两次 /dev/null
+        // 但是第一次的堆栈很大概率打印不了或者不完整 --mstack 正常
         this.Stackinfo = ParseStack(content, this.GetOpt(), this.UnwindBuffer)
     } else if this.rec.ExtraOptions.ShowRegs {
         err = this.RegsBuffer.ParseContext(this.buf)

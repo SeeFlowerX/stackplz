@@ -240,12 +240,22 @@ func (this *MapsHelper) GetStack(pid uint32, ubuf *UnwindBuf) (info string, err 
     // return this.GetOffset(pid, addr), nil
 }
 
+func (this *MapsHelper) TryManualUpdateMaps(pid uint32, content []byte) error {
+    maps_lock.Lock()
+    defer maps_lock.Unlock()
+    return this.ParseMapsContent(pid, content, true)
+}
+
 func (this *MapsHelper) ParseMaps(pid uint32, del_old bool) error {
     filename := fmt.Sprintf("/proc/%d/maps", pid)
     content, err := ioutil.ReadFile(filename)
     if err != nil {
         return fmt.Errorf("Error when opening file:%v", err)
     }
+    return this.ParseMapsContent(pid, content, del_old)
+}
+
+func (this *MapsHelper) ParseMapsContent(pid uint32, content []byte, del_old bool) error {
     var (
         seg_start  uint64
         seg_end    uint64
