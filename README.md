@@ -46,7 +46,7 @@ su
 chmod +x /data/local/tmp/stackplz
 ```
 
-2. 每次使用新版本时需要释放库文件，请使用下面的命令
+2. v3.0.1之前，使用不同版本时，需要释放库文件，请使用下面的命令
 
 ```bash
 cd /data/local/tmp && ./stackplz --prepare
