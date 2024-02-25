@@ -25,6 +25,7 @@ type GlobalConfig struct {
     NoTid       string
     TName       string
     NoTName     string
+    FullTName   bool
     ArgFilter   []string
     Color       bool
     FmtJson     bool

@@ -335,10 +335,17 @@ LR比较，需要提前计算用于比较的值：
 - `--dumphex`表示将数据打印为hexdump，否则将记录为`ascii + hex`的形式
 - 输出到日志文件添加`-o/--out tmp.log`，只输出到日志，不输出到终端再加一个`--quiet`即可
 
-**注意**，默认屏蔽下列线程，原因是它们属于渲染相关的线程，会触发大量的syscall调用
+**注意**，默认屏蔽下列线程，原因是它们属于渲染或后台相关的线程，会触发大量的syscall调用
 
-如果有需求追踪下列线程，请手动修改源码去除限制，重新编译使用
+如果有需求追踪下列线程，请添加`--full-tname`使用，或者手动修改`DefaultThreadBlacklist`函数
 
+- Profile Saver
+- Runtime worker
+- ReferenceQueueD
+- FinalizerDaemon
+- FinalizerWatchd
+- HeapTaskDaemon
+- perfetto_hprof_
 - RenderThread
 - FinalizerDaemon
 - RxCachedThreadS

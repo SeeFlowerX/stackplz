@@ -744,6 +744,7 @@ type ModuleConfig struct {
     TidBlacklist   []uint32
     TNameWhitelist []string
     TNameBlacklist []string
+    FullTName      bool
 
     TraceGroup  uint32
     AutoResume  bool
@@ -783,6 +784,35 @@ func NewModuleConfig() *ModuleConfig {
     config.TraceGroup = util.GROUP_NONE
     // 虽然会通过全局配置进程覆盖 但是还是做好在初始化时就进行默认赋值
     return config
+}
+
+func (this *ModuleConfig) DefaultThreadBlacklist() []string {
+    // 通常情况下不希望追踪下面这些线程
+    var thread_blacklist []string = []string{
+        "Profile Saver",
+        "Runtime worker",
+        "ReferenceQueueD",
+        "FinalizerDaemon",
+        "FinalizerWatchd",
+        "HeapTaskDaemon",
+        "perfetto_hprof_",
+        // "Jit thread pool",
+        "RenderThread",
+        "FinalizerDaemon",
+        "RxCachedThreadS",
+        "mali-cmar-backe",
+        "mali-utility-wo",
+        "mali-mem-purge",
+        "mali-hist-dump",
+        "mali-event-hand",
+        "hwuiTask0",
+        "hwuiTask1",
+        "NDK MediaCodec_",
+    }
+    if this.FullTName {
+        return []string{}
+    }
+    return thread_blacklist
 }
 
 func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {

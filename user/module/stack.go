@@ -273,29 +273,7 @@ func (this *MStack) update_thread_filter() {
         panic(fmt.Sprintf("find [%s] failed, err:%v", map_name, err))
     }
 
-    var thread_blacklist []string = []string{
-        "Profile Saver",
-        "Runtime worker",
-        "ReferenceQueueD",
-        "FinalizerDaemon",
-        "FinalizerWatchd",
-        "HeapTaskDaemon",
-        "perfetto_hprof_",
-        // "Jit thread pool",
-        "RenderThread",
-        "FinalizerDaemon",
-        "RxCachedThreadS",
-        "mali-cmar-backe",
-        "mali-utility-wo",
-        "mali-mem-purge",
-        "mali-hist-dump",
-        "mali-event-hand",
-        "hwuiTask0",
-        "hwuiTask1",
-        "NDK MediaCodec_",
-    }
-
-    for _, v := range thread_blacklist {
+    for _, v := range this.mconf.DefaultThreadBlacklist() {
         if len(v) > 16 {
             panic(fmt.Sprintf("[%s] thread name max len is 16", v))
         }
