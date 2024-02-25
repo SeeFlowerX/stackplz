@@ -41,7 +41,7 @@ chmod +x /data/local/tmp/stackplz
 cd /data/local/tmp && ./stackplz --prepare
 ```
 
-2. 选项说明
+## 2. 选项说明
 
 stackplz的所有可用选项，可以通过`./stackplz --help`查看
 
@@ -126,13 +126,14 @@ stackplz的所有可用选项，可以通过`./stackplz --help`查看
     - 增大该数值可以减少数据丢失，如果太大会出现了失败的错误，请停止重新设置一个数值，通常建议不超过32M
 - `-c/--config` 配置文件模式
     - 配置文件具体使用方式请查看[配置文件文档](./docs/CONFIG.md)
+- `--full-tname` 默认对于一些高频调用syscall的系统线程进行了屏蔽，启用该选项后将解除屏蔽
 - `-l/--lib` 动态库名或者动态库完整路径，配合`-w/--point`选项使用
 - `-o/--out` 日志文件名，默认`stackplz_tmp.log`
 - `--dump` 即dump模式，hook获取到的数据不会被解析，仅保存到单个文件
 - `--parse` 即针对dump得到的文件进行解析，可能比较耗时，可能存在bug
 - `--stack-size` 堆栈大小，默认8192字节，基本够用，最大65528
 
-3. 命令演示
+## 3. 命令演示
 
 3.1 **追踪syscall**
 
