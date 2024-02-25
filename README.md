@@ -292,13 +292,7 @@ cat /proc/kallsyms  | grep "T sys_"
 ./stackplz -n com.starbucks.cn,iso --syscall openat -o tmp.log
 ```
 
-可选的进程分组如下：
-
-- root
-- system
-- shell
-- app
-- iso
+可选的进程分组：root system shell app iso
 
 3.9 按分组批量追踪syscall
 
