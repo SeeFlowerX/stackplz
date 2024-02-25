@@ -1,37 +1,26 @@
 # stackplz
 
-stackplz是一款基于eBPF的堆栈追踪工具，仅适用于Android平台（开发板+Docker也支持）
+stackplz是一款基于eBPF的堆栈追踪工具，目前仅适用于Android平台
 
 特性：
 
-- 支持arm64 syscall trace，可以打印参数、调用栈、寄存器
-    - 参数结果包括详细的结构体信息，类似于strace
+- 支持arm64 syscall trace，可以打印参数(包括详细的结构体信息)、调用栈、寄存器
 - 支持对64位用户态动态库进行uprobe hook，可以打印参数、调用栈、寄存器
-- 支持硬件断点功能，可以打印调用栈、寄存器
-- 支持按线程名黑名单、白名单过滤
-- 支持pid和tid的黑名单、白名单过滤
+- 支持硬件断点功能，可以打印调用栈、寄存器，并且提供了frida rpc调用
+- 支持进程号、线程号、线程名的黑白名单过滤
 - 支持追踪fork产生的进程
 
 要求：
 
-- root权限，系统内核版本5.10+（可在设置中查看或执行`uname -r`查看）
+- root权限，系统内核版本5.10+（可执行`uname -r`查看）
+- 对于4.1x的内核，内核开启了CONFIG_HAVE_HW_BREAKPOINT，硬件断点功能同样可以使用
 
-常有人问什么设备适合，推荐如下（偏贵的设备就不推荐了）：
+不仅仅是真机，这些环境下也可以使用：
 
-| 型号 | 代号 | 版本 | 说明 | 推荐度 |
-| :- | :- | :- | :- | :- |
-| Pixel 6 | oriole | 5.10 | 官方出品 | ** |
-| Redmi Note 11T Pro | xaga | 5.10 | 略过时 | ** |
-| Redmi Note 12R | sky | 5.10 | 性价比 | *** |
-| Redmi Note 12 | topaz | 5.15 | 4G海外版 | * |
-| Redmi Note 12 Turbo | marble | 5.10 | 略贵 | * |
-| Redmi Note 13 | gold | 5.10 | 新出不贵 | ** |
-
-其他环境方案：
-
-- arm开发板刷安卓，5.10+内核
-- arm开发板 + Docker + ReDroid，5.10+内核
-- M1/M2 + 安卓官方arm64模拟器，5.10+内核
+- arm开发板刷安卓镜像
+- arm开发板/云服务器 + Docker + ReDroid
+- Apple M系列设备 + 安卓官方arm64模拟器
+- 有root权限，内核版本5.10+的云真机也可以
 
 # 使用
 
@@ -46,13 +35,104 @@ su
 chmod +x /data/local/tmp/stackplz
 ```
 
-2. v3.0.1之前，使用不同版本时，需要释放库文件，请使用下面的命令
+注意：**v3.0.1**之前，使用不同版本时，需要释放库文件，请使用下面的命令
 
 ```bash
 cd /data/local/tmp && ./stackplz --prepare
 ```
 
-3. 命令示意
+2. 选项说明
+
+stackplz的所有可用选项，可以通过`./stackplz --help`查看
+
+2.1 **用于对目标进程/线程进行过滤的选项**
+
+注意：如果存在多个目标，使用逗号隔开；`--no-xxx`意为黑名单
+
+| 选项 | 黑名单选项 | 说明 |
+| :- | :- | :- |
+| -n/--name|  | APP包名，分组名(root/system/shell/app/iso) |
+| -u/--uid | --no-uid | 目标uid |
+| -p/--pid | --no-pid | 目标pid |
+| -t/--tid | --no-tid | 目标tid |
+| --tname | --no-tname | 目标线程名，注意最多16字节 |
+
+2.2 **syscall/uprobe hook选项**
+
+- -s/--syscall name/group
+
+即syscall hook，后跟系统调用号对应的名字，或者分组，对应的黑名单选项`--no-syscall`
+
+- -w/--point symbol/offset[type,type,...]
+
+即uprobe hook，必须配合`-l/--lib`使用，具体用法参考后面的命令演示
+
+2.3 **硬件断点相关选项**
+
+| 选项 | 默认值 | 说明 |
+| :- | :-: | :- |
+| --brk | | 要下断的地址 |
+| --brk-len | 4 | 断点长度 |
+| --brk-lib | | 目标库，使用该选项时--brk为相对偏移 |
+| --brk-pid | -1 | 目标进程pid，通常不建议设置该选项 |
+
+2.4 **发送信号选项**
+
+即`--kill SIGSTOP/SIGABRT/SIGTRAP/...`，只能设置一个，效果是在命中hook时向目标进程发送信号
+
+2.5 **参数过滤选项**
+
+即`-f/--filter`，该选项用于设定参数的过滤规则
+
+| 规则 | 示例 | 说明 |
+| :- | :- | :- |
+| w/white | w:/sbin/su | 字符串白名单，过滤以`/sbin/su`开头的内容，最多256字节 |
+| b/black | b:/sbin/su | 字符串黑名单，过滤以`/sbin/su`开头的内容，最多256字节 |
+| bx/bufhex | bx:73ea68 | buffer数据白名单，过滤16进制以`73ea68`开头的内容，最多比较8字节 |
+| eq/equal | eq:0x748a484d2c | 寄存器值白名单，过滤寄存器值等于`0x748a484d2c`的内容 |
+
+2.6 **部分布尔类型选项**
+
+| 选项 | 说明 |
+| :- | :- |
+| --auto | 该选项需要配合--kill SIGSTOP使用，效果是自动恢复被挂起的进程 |
+| --btf | 显式声明当前环境的内核开启了CONFIG_DEBUG_INFO_BTF |
+| --color | 该选项需要配合--dumphex使用，效果是在终端显示颜色 |
+| --dumphex | 启用该选项后，对于buf类型数据将输出为hexdump，风格与CyberChef保持一致 |
+| --getoff | 输出PC和LR的偏移信息，注意使用该选项会导致性能降低 |
+| --json | 将日志输出为json格式 |
+| --mstack | 简易实现堆栈回溯，没有符号信息 |
+| --nocheck | 禁用bpf特性检查，没有`/proc/config.gz`或者是其他路径时使用 |
+| --quiet | 不在终端输出日志 |
+| --regs | 输出全部寄存器 |
+| --showpc | 输出堆栈原始PC值 |
+| --showtime | 输出自开机以来的时间，单位ns |
+| --showuid | 输出记录的uid |
+| --stack | 输出堆栈 |
+
+2.7 **rpc选项**
+
+主要用于frida联动，远程下硬件断点
+
+- server 监听命令 ./stackplz --rpc --stack
+- client frida脚本参考 [frida_hw_brk.js](./frida_hw_brk.js)
+- 端口可以通过`--rpc-path`修改，默认`127.0.0.1:41718`
+- 用其他方式发socket联动也可以，自行实现
+
+2.8 **杂项选项**
+
+- `-a/--arch` 目标进程架构，默认aarch64，计划为aarch32 syscall trace提供支持
+- `-b/--buffer` perf缓冲区大小，默认8，即8M
+    - 增大该数值可以减少数据丢失，如果太大会出现了失败的错误，请停止重新设置一个数值，通常建议不超过32M
+- `-c/--config` 配置文件模式
+    - 配置文件具体使用方式请查看[配置文件文档](./docs/CONFIG.md)
+- `-l/--lib` 动态库名或者动态库完整路径，配合`-w/--point`选项使用
+- `-o/--out` 日志文件名，默认`stackplz_tmp.log`
+- `--dump` 即dump模式，hook获取到的数据不会被解析，仅保存到单个文件
+- `--parse` 即针对dump得到的文件进行解析，可能比较耗时，可能存在bug
+- `--stack-size` 堆栈大小，默认8192字节，基本够用，最大65528
+
+3. 命令演示
 
 3.1 **追踪syscall**
 
@@ -109,6 +189,8 @@ cd /data/local/tmp && ./stackplz --prepare
 ```bash
 kill -SIGCONT 4326
 ```
+
+v3.0.0版本起，可以在终端输入c后回车恢复进程运行
 
 3.5 **硬件断点**示例如下，支持的断点类型：`r,w,rw,x`
 
@@ -226,53 +308,14 @@ cat /proc/kallsyms  | grep "T sys_"
 可选的syscall分组如下：
 
 - all
-    - trace all syscall
-- %attr
-    - setxattr,lsetxattr,fsetxattr
-    - getxattr,lgetxattr,fgetxattr
-    - listxattr,llistxattr,flistxattr
-    - removexattr,lremovexattr,fremovexattr
-- %file
-    - openat,openat2,faccessat,faccessat2,mknodat,mkdirat
-    - unlinkat,symlinkat,linkat,renameat,renameat2,readlinkat
-    - chdir,fchdir,chroot,fchmod,fchmodat,fchownat,fchown
-- %exec
-    - execve,execveat
-- %clone
-    - clone,clone3
-- %process
-    - clone,clone3
-    - execve,execveat
-    - wait4,waitid
-    - exit,exit_group,rt_sigqueueinfo
-    - pidfd_send_signal,pidfd_open,pidfd_getfd
-- %net
-    - socket,socketpair
-    - bind,listen,accept,accept4,connect
-    - getsockname,getpeername,setsockopt,getsockopt
-    - shutdown
-- %send
-    - sendto,sendmsg,sendmmsg
-- %recv
-    - recvfrom,recvmsg,recvmmsg
-- %read
-    - read,readv,pread64,preadv,pread2
-- %write
-    - write,writev,pwrite64,pwritev,pwrite2
+- %attr %file
+- %exec %clone %process
+- %net %send %recv %read %write
 - %signal
-    - sigaltstack
-    - rt_sigsuspend,rt_sigaction,rt_sigprocmask,rt_sigpending
-    - rt_sigtimedwait,rt_sigqueueinfo,rt_sigreturn,rt_tgsigqueueinfo
-- %kill
-    - kill,tkill,tgkill
-- %exit
-    - exit,exit_group
-- %dup
-    - dup,dup3
-- %epoll
-    - epoll_create1,epoll_ctl,epoll_pwait,epoll_pwait2
-- %stat
-    - statfs,fstatfs,newfstatat,fstat,statx
+- %kill %exit %dup
+- %epoll %stat
+
+具体分组情况请查看[Parse_SyscallNames](./user/config/config_module.go)
 
 3.10 应用过滤规则
 
@@ -293,17 +336,6 @@ LR比较，需要提前计算用于比较的值：
 ```bash
 ./stackplz -n com.netease.cloudmusic -w sendto[int,buf.f0:x2,int] -f bx:73ea68 -o tmp.log --dumphex --color --stack
 ```
-
-3.11 支持远程硬件断点，frida联动
-
-- server 监听命令 ./stackplz --rpc --stack
-- client frida脚本参考 [frida_hw_brk.js](./frida_hw_brk.js)
-- 端口可以通过`--rpc-path`修改，默认`127.0.0.1:41718`
-- 用其他发socket也可以，自行实现
-
-3.12 `-c/--config`配置文件
-
-配置文件具体使用方式请查看[配置文件文档](./docs/CONFIG.md)：
 
 ---
 
