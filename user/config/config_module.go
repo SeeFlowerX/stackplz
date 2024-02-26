@@ -584,7 +584,7 @@ func (this *SyscallConfig) Parse_SyscallNames(text string) []string {
             syscall_items = append(syscall_items, []string{"recvfrom", "recvmsg", "recvmmsg"}...)
         case "%read":
             syscall_items = append(syscall_items, []string{"read", "readv"}...)
-            syscall_items = append(syscall_items, []string{"pread64", "preadv", "pread2"}...)
+            syscall_items = append(syscall_items, []string{"pread64", "preadv", "preadv2"}...)
         case "%write":
             syscall_items = append(syscall_items, []string{"write", "writev"}...)
             syscall_items = append(syscall_items, []string{"pwrite64", "pwritev", "pwritev2"}...)
