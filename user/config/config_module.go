@@ -436,6 +436,8 @@ type SyscallConfig struct {
     PointArgs    []*SyscallPoint
     SysWhitelist []uint32
     SysBlacklist []uint32
+    DumpHex      bool
+    Color        bool
 }
 
 func (this *SyscallConfig) SetDebug(debug bool) {
@@ -444,6 +446,14 @@ func (this *SyscallConfig) SetDebug(debug bool) {
 
 func (this *SyscallConfig) SetLogger(logger *log.Logger) {
     this.logger = logger
+}
+
+func (this *SyscallConfig) SetDumpHex(dump_hex bool) {
+    this.DumpHex = dump_hex
+}
+
+func (this *SyscallConfig) SetColor(color bool) {
+    this.Color = color
 }
 
 func (this *SyscallConfig) GetSyscallPointByNR(nr uint32) *SyscallPoint {
@@ -521,6 +531,9 @@ func (this *SyscallConfig) Parse_FileConfig(config *SyscallFileConfig) (err erro
                 panic(fmt.Sprintf("unknown point_type:%s", param.More))
             }
             point_arg := param.GetPointArg(uint32(arg_index), point_type)
+
+            point_arg.SetDumpHex(this.DumpHex)
+            point_arg.SetColor(this.Color)
 
             a_p := point_arg.Clone()
             a_p.SetGroupType(EBPF_SYS_ENTER)
@@ -855,6 +868,8 @@ func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {
     this.SysCallConf = &SyscallConfig{}
     this.SysCallConf.SetDebug(this.Debug)
     this.SysCallConf.SetLogger(this.logger)
+    this.SysCallConf.SetDumpHex(this.DumpHex)
+    this.SysCallConf.SetColor(this.Color)
 }
 
 func (this *ModuleConfig) LoadConfig(gconfig *GlobalConfig) {

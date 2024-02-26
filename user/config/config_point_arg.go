@@ -28,6 +28,14 @@ func (this *PointArg) SetTypeIndex(type_index uint32) {
 	this.TypeIndex = type_index
 }
 
+func (this *PointArg) SetDumpHex(dump_hex bool) {
+	argtype.GetArgType(this.TypeIndex).SetDumpHex(dump_hex)
+}
+
+func (this *PointArg) SetColor(color bool) {
+	argtype.GetArgType(this.TypeIndex).SetColor(color)
+}
+
 func (this *PointArg) SetFlagsFormat(format string) {
 	var p argtype.IArgType
 	switch format {
