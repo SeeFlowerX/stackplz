@@ -245,6 +245,8 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
             mconfig.PkgNamelist = append(mconfig.PkgNamelist, pkg_name)
         }
     }
+    // 对于执行stackplz前处于运行状态的进程 保存maps
+    util.SaveMaps(mconfig.PidWhitelist)
     // 后面更新map的时候不影响 列表不去重也行
 
     mconfig.InitCommonConfig(gconfig)

@@ -457,3 +457,17 @@ func RunCommand(executable string, args ...string) (string, error) {
 	}
 	return strings.TrimSpace(string(bytes)), nil
 }
+
+func SaveMaps(pid_list []uint32) error {
+	for _, pid := range pid_list {
+		filename := fmt.Sprintf("/proc/%d/maps", pid)
+		content, err := ioutil.ReadFile(filename)
+		if err != nil {
+			return fmt.Errorf("Error when opening file:%v", err)
+		}
+		maps_filename := fmt.Sprintf("maps_%d.txt", pid)
+		ioutil.WriteFile(maps_filename, content, 0644)
+		fmt.Printf("[*] save maps to %s\n", maps_filename)
+	}
+	return nil
+}
