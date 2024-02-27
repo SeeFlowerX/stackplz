@@ -318,7 +318,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
                 return errors.New(fmt.Sprintf("parse BrkType for %s failed, choose:r,w,x,rw", infos[1]))
             }
         } else {
-            mconfig.BrkType = util.HW_BREAKPOINT_X
+            return errors.New("BrkType not set, choose:r,w,x,rw")
         }
         addr, err := strconv.ParseUint(strings.TrimPrefix(infos[0], "0x"), 16, 64)
         if err != nil {
