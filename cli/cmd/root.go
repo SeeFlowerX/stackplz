@@ -347,7 +347,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
         } else {
             mconfig.BrkKernel = false
         }
-        logger.Printf("set breakpoint at kernel:%t, addr:0x%x", mconfig.BrkKernel, mconfig.BrkAddr)
+        logger.Printf("set breakpoint at kernel:%t, addr:0x%x, type:%d", mconfig.BrkKernel, mconfig.BrkAddr, mconfig.BrkType)
     }
     if !enable_hook {
         logger.Fatal("hook nothing, plz set -w/--point or -s/--syscall or --brk")
