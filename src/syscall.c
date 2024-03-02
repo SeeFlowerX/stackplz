@@ -60,6 +60,20 @@ int tracepoint__sched__sched_process_fork(struct bpf_raw_tracepoint_args *ctx)
 
 SEC("raw_tracepoint/sys_enter")
 int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
+
+    struct task_struct *task = NULL;
+    task = (struct task_struct *)bpf_get_current_task();
+    if (!task)
+        return 0;
+    u64 flags = BPF_CORE_READ(task, thread_info.flags);
+    if (flags == NULL || flags == 0)
+    {
+        return 0;
+    }
+    bool is32 = (flags >> 22) & 1 != 0;
+    if (is32)
+        return 0;
+
     program_data_t p = {};
     if (!init_program_data(&p, ctx))
         return 0;
