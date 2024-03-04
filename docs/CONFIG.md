@@ -231,8 +231,8 @@ uprobe和syscall的配置文件略有差异，具体请看下面的例子
                 {"name": "sockfd", "type": "int"},
                 {"name": "addr", "type": "sockaddr"},
                 {"name": "addrlen", "type": "uint32"},
-                {"name": "v4_fliter", "type": "buf", "size":"4", "reg": "x1", "read_op": "x1+0x4", "filter": ["addr:110.253.189.208"]},
-                {"name": "v6_fliter", "type": "buf", "size":"4", "reg": "x1", "read_op": "x1+0x14", "filter": ["addr:203.119.217.116"]},
+                {"name": "v4_fliter", "type": "buf", "size":"4", "reg": "x1", "read_op": "x1+0x4", "filter": ["addr:1.2.3.4"]},
+                {"name": "v6_fliter", "type": "buf", "size":"4", "reg": "x1", "read_op": "x1+0x14", "filter": ["addr:1.1.1.1"]},
                 {"name": "ret", "type": "int"}
             ]
         }
