@@ -7,7 +7,8 @@ async function SetHWBrk(brk_addr, brk_type) {
         let size_len = 4;
 
         let brk_options = {
-            brk_pid: Process.id,
+            // brk_pid: Process.id,
+            brk_pid: -1,
             brk_len: 4,
             brk_type: brk_type,
             brk_addr: brk_addr,

@@ -285,10 +285,14 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 4. watch breakpoint
     var brk_base uint64 = 0x0
     if gconfig.BrkLib != "" {
-        if gconfig.BrkPid <= 0 {
-            return errors.New("must set --brk-pid when use --brk-lib option")
+        if gconfig.Pid == "" {
+            return errors.New("must set --pid when use --brk-lib option")
         }
-        lib_info, err := event.FindLibInMaps(uint32(gconfig.BrkPid), gconfig.BrkLib)
+        value, err := strconv.ParseUint(gconfig.Pid, 10, 32)
+        if err != nil {
+            panic(err)
+        }
+        lib_info, err := event.FindLibInMaps(uint32(value), gconfig.BrkLib)
         if err != nil {
             return err
         }
@@ -612,8 +616,8 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.RpcPath, "rpc-path", "127.0.0.1:41718", "rpc path, default 127.0.0.1:41718")
     // 硬件断点设定
     rootCmd.PersistentFlags().StringVar(&gconfig.BrkAddr, "brk", "", "set hardware breakpoint address")
-    rootCmd.PersistentFlags().IntVar(&gconfig.BrkPid, "brk-pid", -1, "set hardware breakpoint pid")
-    rootCmd.PersistentFlags().StringVar(&gconfig.BrkLib, "brk-lib", "", "as library base address")
+    rootCmd.PersistentFlags().IntVar(&gconfig.BrkPid, "brk-pid", -1, "set hardware breakpoint pid, just keep default")
+    rootCmd.PersistentFlags().StringVar(&gconfig.BrkLib, "brk-lib", "", "as library base address, work with -p/--pid option")
     rootCmd.PersistentFlags().Uint64Var(&gconfig.BrkLen, "brk-len", 4, "hardware breakpoint length, default 4, support [1, 8]")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
@@ -629,7 +633,7 @@ func init() {
     rootCmd.PersistentFlags().BoolVarP(&gconfig.Quiet, "quiet", "q", false, "wont logging to terminal when used")
     rootCmd.PersistentFlags().BoolVar(&gconfig.Color, "color", false, "enable color for log file")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.FmtJson, "json", "j", false, "log event as json format")
-    rootCmd.PersistentFlags().StringVarP(&gconfig.LogFile, "out", "o", "stackplz_tmp.log", "save the log to file")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.LogFile, "out", "o", "", "save the log to file")
     // 适合收集大量数据 减少数据丢失
     rootCmd.PersistentFlags().StringVar(&gconfig.DumpFile, "dump", "", "save perf data to file")
     rootCmd.PersistentFlags().StringVar(&gconfig.ParseFile, "parse", "", "parse perf data as json or readable format")

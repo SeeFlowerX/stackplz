@@ -56,7 +56,11 @@ func (this *BrkEvent) ParseEvent() (IEventStruct, error) {
     if err := this.ParseContext(); err != nil {
         panic(fmt.Sprintf("SyscallEvent.ParseContext() err:%v", err))
     }
-    this.Check()
+    if !this.Check() {
+        // 当明确设置 --brk-pid 的时候
+        // 仅输出事件 pid 与 --brk-pid 一致的事件
+        return nil, nil
+    }
     return this, nil
 }
 
@@ -104,10 +108,19 @@ func (this *BrkEvent) ParseContextStack() {
         if err != nil {
             panic(fmt.Sprintf("UnwindStack ParseContext failed, err:%v", err))
         }
-        // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
-        // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
+        if this.mconf.ManualStack {
+            CacheMaps(this.Pid)
+            maps_helper.SetLogger(this.logger)
+            info, err := maps_helper.GetStack(this.GetPid(), this.UnwindBuffer)
+            if err != nil {
+                this.logger.Printf("Error when GetStack:%v", err)
+            } else {
+                this.Stackinfo = info
+            }
+            return
+        }
         content, err := util.ReadMapsByPid(this.GetPid())
-        if err != nil || this.mconf.ManualStack {
+        if err != nil {
             // 直接读取 maps 失败 那么从 mmap2 事件中获取
             // 根据测试结果 有这样的情况 -> 即 fork 产生的子进程 那么应该查找其父进程 mmap2 事件
             maps_helper.SetLogger(this.logger)

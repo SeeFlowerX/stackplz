@@ -49,7 +49,9 @@ type BrkOptionsRaw struct {
 }
 
 func BrkIt(opts *BrkOptions) {
-	event.CacheMaps(uint32(opts.BrkPid))
+	if opts.BrkPid != -1 {
+		event.CacheMaps(uint32(opts.BrkPid))
+	}
 	mod := module.GetModuleByName(module.MODULE_NAME_BRK)
 	var mconfig = config.NewModuleConfig()
 	mconfig.Debug = Gconfig.Debug

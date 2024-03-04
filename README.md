@@ -71,6 +71,7 @@ stackplz的所有可用选项，可以通过`./stackplz --help`查看
 
 | 选项 | 默认值 | 说明 |
 | :- | :-: | :- |
+| --pid | | 目标进程pid，与--brk-lib搭配使用计算断点地址 |
 | --brk | | 要下断的地址 |
 | --brk-len | 4 | 断点长度 |
 | --brk-lib | | 目标库，使用该选项时--brk为相对偏移 |
@@ -128,7 +129,7 @@ stackplz的所有可用选项，可以通过`./stackplz --help`查看
     - 配置文件具体使用方式请查看[配置文件文档](./docs/CONFIG.md)
 - `--full-tname` 默认对于一些高频调用syscall的系统线程进行了屏蔽，启用该选项后将解除屏蔽
 - `-l/--lib` 动态库名或者动态库完整路径，配合`-w/--point`选项使用
-- `-o/--out` 日志文件名，默认`stackplz_tmp.log`
+- `-o/--out` 日志文件名，默认不生成日志文件
 - `--dump` 即dump模式，hook获取到的数据不会被解析，仅保存到单个文件
 - `--parse` 即针对dump得到的文件进行解析，可能比较耗时，可能存在bug
 - `--stack-size` 堆栈大小，默认8192字节，基本够用，最大65528
@@ -168,15 +169,7 @@ stackplz的所有可用选项，可以通过`./stackplz --help`查看
 
 ![](./images/Snipaste_2023-07-22_21-21-33.png)
 
-3.3 通过**指定包名**，对`libnative-lib.so`的`_Z5func1v`符号处下执行断点，并打印堆栈
-
-```bash
-./stackplz --brk-pid `pidof com.sfx.ebpf` --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
-```
-
-![](./images/Snipaste_2023-09-08_17-08-42.png)
-
-3.4 在命中uprobe hook时发送信号
+3.3 在命中uprobe hook时发送信号
 
 有时候希望在经过特定点位的时候停止进程，以便于dump内存，那么可以使用`--kill`来发送信号，示例：
 
@@ -193,19 +186,21 @@ kill -SIGCONT 4326
 
 v3.0.0版本起，可以在终端输入c后回车恢复进程运行
 
-3.5 **硬件断点**示例如下，支持的断点类型：`r,w,rw,x`
+3.4 **硬件断点**示例如下，支持的断点类型：`r,w,rw,x`
 
 pid + 绝对地址
 
 ```bash
-./stackplz --brk-pid `pidof com.sfx.ebpf` --brk 0x70ddfd63f0:x --stack
+./stackplz --pid `pidof com.sfx.ebpf` --brk 0x70ddfd63f0:x --stack
 ```
 
 pid + 偏移 + 库文件
 
 ```bash
-./stackplz --brk-pid `pidof com.sfx.ebpf` --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
+./stackplz --pid `pidof com.sfx.ebpf` --brk 0xf3a4:x --brk-lib libnative-lib.so --stack
 ```
+
+![](./images/Snipaste_2024-03-04_21-51-12.png)
 
 对内核中的函数下硬件断点：
 
@@ -214,13 +209,11 @@ pid + 偏移 + 库文件
 ```bash
 echo 1 > /proc/sys/kernel/kptr_restrict
 cat /proc/kallsyms  | grep "T sys_"
-./stackplz --brk 0xffffff93c5beb634:x --brk-pid `pidof com.sfx.ebpf` --stack
-./stackplz --brk 0xffffffc0003654dc:x --brk-pid `pidof com.sfx.ebpf` --regs
+./stackplz --brk 0xffffff93c5beb634:x --pid `pidof com.sfx.ebpf` --stack
+./stackplz --brk 0xffffffc0003654dc:x --pid `pidof com.sfx.ebpf` --regs
 ```
 
-某些时候确信数据被访问了，但是上面的命令还是没有输出，请尝试省略`--brk-pid`选项，即使用默认值`-1`
-
-3.6 以寄存器的值作为大小读取数据、或者指定大小
+3.5 以寄存器的值作为大小读取数据、或者指定大小
 
 ```bash
 ./stackplz --name com.sfx.ebpf -w write[int,buf:x2,int]
@@ -278,7 +271,7 @@ cat /proc/kallsyms  | grep "T sys_"
 ./stackplz -n com.termux -w 0x9D150[int,buf:x2,int]0x9D164 --dumphex --color
 ```
 
-3.8 按分组批量追踪进程
+3.6 按分组批量追踪进程
 
 追踪全部APP类型的进程，但是排除一个特定的uid：
 
@@ -294,7 +287,7 @@ cat /proc/kallsyms  | grep "T sys_"
 
 可选的进程分组：root system shell app iso
 
-3.9 按分组批量追踪syscall
+3.7 按分组批量追踪syscall
 
 ```bash
 ./stackplz -n com.xingin.xhs -s %file,%net --no-syscall openat,recvfrom
@@ -312,7 +305,7 @@ cat /proc/kallsyms  | grep "T sys_"
 
 具体分组情况请查看[Parse_SyscallNames](./user/config/config_module.go)
 
-3.10 应用过滤规则
+3.8 应用过滤规则
 
 黑白名单：
 
@@ -357,9 +350,9 @@ LR比较，需要提前计算用于比较的值：
     - --syscall openat
 - 特别的，指定为`all`表示追踪全部syscall
     - --syscall all
-- **特别说明**，很多结果是`0xffffff9c`这样的结果，其实是`int`，但是目前没有专门转换
+- **特别说明**，如果期望将`0xffffff9c`这样的结果输出为负数，请明确指定类型为`int`
 - 注意，本项目中syscall的返回值通常是**errno**，与libc的函数返回结果不一定一致
-- `--dumphex`表示将数据打印为hexdump，否则将记录为`ascii + hex`的形式
+- `--dumphex`表示将数据打印为hexdump，否则将记录为`ascii + hex`的形式，另外可添加`--color`选项
 - 输出到日志文件添加`-o/--out tmp.log`，只输出到日志，不输出到终端再加一个`--quiet`即可
 
 **注意**，默认屏蔽下列线程，原因是它们属于渲染或后台相关的线程，会触发大量的syscall调用
@@ -409,7 +402,7 @@ LR比较，需要提前计算用于比较的值：
 ./stackplz -n com.starbucks.cn -b 32 --syscall all -o tmp.log
 ```
 
-一味增大缓冲区大小也可能带来新的问题，比如分配失败，这个时候建议尽可能清理正在运行的进程
+增大缓冲区大小也可能带来新的问题，比如分配失败，这个时候建议尽可能清理正在运行的进程
 
 > failed to create perf ring for CPU 0: can't mmap: cannot allocate memory
 
@@ -434,10 +427,6 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
   6253: 000000000007bcf8    68 FUNC    GLOBAL DEFAULT   14 __strchr_chk
   6853: 00000000000b9f00    32 GNU_IFUNC GLOBAL DEFAULT   14 strchrnul
 ```
-
-如图，可以看到直接调用了`__strchr_aarch64`而不是经过`strchr`再去调用`__strchr_aarch64`
-
-![](./images/Snipaste_2022-11-13_14-19-38.png)
 
 # 文章
 
