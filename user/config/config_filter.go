@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"net"
 	"stackplz/user/common"
 	"stackplz/user/util"
 	"strings"
@@ -106,6 +107,18 @@ func (this *FilterHelper) AddFilter(filter string) uint32 {
 		panic(fmt.Sprintf("AddFilter failed, filter:%s", filter))
 	}
 	switch items[0] {
+	case "addr":
+		// 这里可以再变通下 不一定要完整的ip
+		arg_filter.Filter_type = WHITELIST_FILTER
+		ipv4_addr := net.ParseIP(items[1]).To4()
+		if len(ipv4_addr) > 8 {
+			panic(fmt.Sprintf("addr string is to long, max bytes length is 8"))
+		}
+		arg_filter.Str_len = (8 - uint32(len(ipv4_addr))) * 8
+		arg_filter.Num_val = uint64(binary.BigEndian.Uint32(ipv4_addr))
+		data := make([]byte, 8)
+		binary.BigEndian.PutUint64(data, arg_filter.Num_val)
+		arg_filter.Num_val = binary.LittleEndian.Uint64(data) >> arg_filter.Str_len
 	case "bx", "bufhex":
 		arg_filter.Filter_type = WHITELIST_FILTER
 		str_old, err := hex.DecodeString(items[1])

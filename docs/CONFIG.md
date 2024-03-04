@@ -207,3 +207,60 @@ uprobe和syscall的配置文件略有差异，具体请看下面的例子
     ]
 }
 ```
+
+## 其他
+
+**1. 过滤向特定ip发起的connect调用**
+
+```bash
+./stackplz -n package_name -c tests/config_syscall_connect_filter.json -s connect --color --stack -o tmp.log
+```
+
+对于这种情况，将其转换为对addr参数，即sockaddr类型，特定偏移处读取ip的数据，比较二进制数据
+
+由于存在family为ipv6但是实际ip为ipv4的情况，因此准备两个过滤条件
+
+```json
+{
+    "type": "syscall",
+    "points": [
+        {
+            "nr": 203, 
+            "name": "connect",
+            "params":[
+                {"name": "sockfd", "type": "int"},
+                {"name": "addr", "type": "sockaddr"},
+                {"name": "addrlen", "type": "uint32"},
+                {"name": "v4_fliter", "type": "buf", "size":"4", "reg": "x1", "read_op": "x1+0x4", "filter": ["addr:110.253.189.208"]},
+                {"name": "v6_fliter", "type": "buf", "size":"4", "reg": "x1", "read_op": "x1+0x14", "filter": ["addr:203.119.217.116"]},
+                {"name": "ret", "type": "int"}
+            ]
+        }
+    ]
+}
+```
+
+**2. 过滤AF_INET和AF_INET6的connect调用**
+
+```bash
+./stackplz -n package_name -c tests/config_syscall_connect_filter2.json -s connect -o tmp.log
+```
+
+```json
+{
+    "type": "syscall",
+    "points": [
+        {
+            "nr": 203, 
+            "name": "connect",
+            "params":[
+                {"name": "sockfd", "type": "int"},
+                {"name": "addr", "type": "sockaddr"},
+                {"name": "addrlen", "type": "uint32"},
+                {"name": "net_fliter", "type": "buf", "size":"1", "reg": "x1", "filter": ["bx:02", "bx:0a"]},
+                {"name": "ret", "type": "int"}
+            ]
+        }
+    ]
+}
+```

@@ -1,0 +1,16 @@
+{
+    "type": "syscall",
+    "points": [
+        {
+            "nr": 203, 
+            "name": "connect",
+            "params":[
+                {"name": "sockfd", "type": "int"},
+                {"name": "addr", "type": "sockaddr"},
+                {"name": "addrlen", "type": "uint32"},
+                {"name": "net_fliter", "type": "buf", "size":"1", "reg": "x1", "filter": ["bx:02", "bx:0a"]},
+                {"name": "ret", "type": "int"}
+            ]
+        }
+    ]
+}
