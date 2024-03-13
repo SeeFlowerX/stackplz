@@ -258,7 +258,10 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 ptr = ptr & 0xffffffffffff;
                 int status = save_str_to_buf(p->event, (void*) ptr, op_ctx->save_index);
                 if (status == 0) {
-                    save_bytes_to_buf(p->event, 0, 0, op_ctx->save_index);
+                    // save_str_to_buf 中应当将 bpf_probe_read_str 返回 0 时视为字符串为空
+                    // 地址异常时 bpf_probe_read_str 返回为负数 此时将认为字符串数组读取结束
+                    // 这里需要为字符串数组的读取设定一个标志 和空字符串的情况区分开
+                    save_bytes_to_buf(p->event, 0, STRARR_MAGIC_LEN, op_ctx->save_index);
                     // 为读取字符串数组设计的
                     op_ctx->loop_count = op_ctx->break_count;
                 }

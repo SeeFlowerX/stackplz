@@ -94,6 +94,9 @@ func parse_STRING_ARRAY(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more 
 		if err := binary.Read(buf, binary.LittleEndian, &arg_str); err != nil {
 			panic(err)
 		}
+		if arg_str.Len == STRARR_MAGIC_LEN {
+			break
+		}
 		payload := make([]byte, arg_str.Len)
 		if err := binary.Read(buf, binary.LittleEndian, &payload); err != nil {
 			panic(err)

@@ -9,6 +9,7 @@ const SYSCALL_MAX_OP_COUNT = 256
 const STACK_MAX_OP_COUNT = 64
 const MAX_STRCMP_LEN = 256
 const MAX_BUF_READ_SIZE = 4096
+const STRARR_MAGIC_LEN = 0xffff0000
 
 const (
 	REG_ARM_R0 uint32 = iota

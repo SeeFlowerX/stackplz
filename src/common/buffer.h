@@ -179,7 +179,7 @@ static __always_inline int save_str_to_buf(event_data_t *event, void *ptr, u8 in
     // Read into buffer
     int sz =
         bpf_probe_read_str(&(event->args[event->buf_off + 1 + sizeof(int)]), MAX_STRING_SIZE, ptr);
-    if (sz > 0) {
+    if (sz >= 0) {
         barrier();
         // Satisfy verifier for probe read
         if (event->buf_off > ARGS_BUF_SIZE - (MAX_STRING_SIZE + 1 + sizeof(int)))

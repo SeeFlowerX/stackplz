@@ -7,6 +7,7 @@
 #define MAX_PATH_COMPONENTS   48
 #define MAX_LOOP_COUNT 32
 #define MAX_STRCMP_LEN 256
+#define STRARR_MAGIC_LEN 0xffff0000
 
 #if defined(__MODULE_STACK)
     #define MAX_OP_COUNT 64
