@@ -155,12 +155,13 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 op_ctx->save_index += 1;
                 break;
             case OP_READ_POINTER:
+                //  对于 arm 这里应该是 4 字节
                 if (op->pre_code == OP_ADD_OFFSET) {
-                    bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)(op_ctx->read_addr + op->value));
+                    bpf_probe_read_user(&op_ctx->pointer_value, 4, (void*)(op_ctx->read_addr + op->value));
                 } else if (op->pre_code == OP_SUB_OFFSET) {
-                    bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)(op_ctx->read_addr - op->value));
+                    bpf_probe_read_user(&op_ctx->pointer_value, 4, (void*)(op_ctx->read_addr - op->value));
                 } else {
-                    bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)op_ctx->read_addr);
+                    bpf_probe_read_user(&op_ctx->pointer_value, 4, (void*)op_ctx->read_addr);
                 }
                 break;
             case OP_SAVE_POINTER:
@@ -251,7 +252,7 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
             case OP_SAVE_PTR_STRING:
             {
                 u64 ptr = op_ctx->read_addr & 0xffffffffffff;
-                bpf_probe_read_user(&ptr, sizeof(ptr), (void*) ptr);
+                bpf_probe_read_user(&ptr, 4, (void*) ptr);
                 save_to_submit_buf(p->event, (void *)&ptr, sizeof(ptr), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 // 每次取出后使用前都要 fix 很坑

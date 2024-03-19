@@ -71,7 +71,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
         return 0;
     }
     bool is32 = (flags >> 22) & 1 != 0;
-    if (is32)
+    if (!is32)
         return 0;
 
     program_data_t p = {};

@@ -5,8 +5,7 @@ CMD_BPFTOOL ?= bpftool
 ASSETS_PATH ?= user/assets
 
 DEBUG_PRINT ?=
-ARCH = arm64
-LINUX_ARCH = arm64
+LINUX_ARCH = arm
 ifeq ($(DEBUG),1)
 DEBUG_PRINT := -DDEBUG_PRINT
 endif
@@ -21,7 +20,7 @@ clean:
 	$(CMD_RM) -f user/assets/*.d
 	$(CMD_RM) -f user/assets/*.o
 	# $(CMD_RM) -f assets/ebpf_probe.go
-	$(CMD_RM) -f bin/stackplz
+	$(CMD_RM) -f bin/stackplz_arm
 
 .PHONY: ebpf_stack
 ebpf_stack:
@@ -84,4 +83,4 @@ assets:
 
 .PHONY: build
 build:
-	GOARCH=arm64 GOOS=android CGO_ENABLED=1 CC=aarch64-linux-android29-clang $(CMD_GO) build -ldflags "-w -s -extldflags '-Wl,--hash-style=sysv'" -o bin/stackplz .
+	GOARCH=arm64 GOOS=android CGO_ENABLED=1 CC=aarch64-linux-android29-clang $(CMD_GO) build -ldflags "-w -s -extldflags '-Wl,--hash-style=sysv'" -o bin/stackplz_arm .

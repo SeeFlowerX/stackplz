@@ -1,0 +1,3929 @@
+{
+    "type": "syscall",
+    "points": [
+        {
+            "name": "restart_syscall",
+            "nr": 0,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "exit",
+            "nr": 1,
+            "params": [
+                {"name": "error_code", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fork",
+            "nr": 2,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "read",
+            "nr": 3,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "*buf", "type": "buf", "size": "r2", "more": "exit"},
+                {"name": "count", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "write",
+            "nr": 4,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "*buf", "type": "buf", "size": "r2"},
+                {"name": "count", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "open",
+            "nr": 5,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "flags", "type": "int"},
+                {"name": "mode", "type": "uint16"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "close",
+            "nr": 6,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "creat",
+            "nr": 8,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "mode", "type": "uint16"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "link",
+            "nr": 9,
+            "params": [
+                {"name": "*oldname", "type": "str"},
+                {"name": "*newname", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "unlink",
+            "nr": 10,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "execve",
+            "nr": 11,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "*argv", "type": "string_array"},
+                {"name": "*envp", "type": "string_array"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "chdir",
+            "nr": 12,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mknod",
+            "nr": 14,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "mode", "type": "uint16"},
+                {"name": "dev", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "chmod",
+            "nr": 15,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "mode", "type": "uint16"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "lchown16",
+            "nr": 16,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "user", "type": "int"},
+                {"name": "group", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "lseek",
+            "nr": 19,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "offset", "type": "int"},
+                {"name": "whence", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getpid",
+            "nr": 20,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mount",
+            "nr": 21,
+            "params": [
+                {"name": "*dev_name", "type": "str"},
+                {"name": "*dir_name", "type": "str"},
+                {"name": "*type", "type": "str"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "*data", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setuid16",
+            "nr": 23,
+            "params": [
+                {"name": "uid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getuid16",
+            "nr": 24,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "ptrace",
+            "nr": 26,
+            "params": [
+                {"name": "request", "type": "int32"},
+                {"name": "pid", "type": "int32"},
+                {"name": "addr", "type": "int32"},
+                {"name": "data", "type": "int32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pause",
+            "nr": 29,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "access",
+            "nr": 33,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "mode", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "nice",
+            "nr": 34,
+            "params": [
+                {"name": "increment", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sync",
+            "nr": 36,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "kill",
+            "nr": 37,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "sig", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rename",
+            "nr": 38,
+            "params": [
+                {"name": "*oldname", "type": "str"},
+                {"name": "*newname", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mkdir",
+            "nr": 39,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "mode", "type": "uint16"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rmdir",
+            "nr": 40,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "dup",
+            "nr": 41,
+            "params": [
+                {"name": "fildes", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pipe",
+            "nr": 42,
+            "params": [
+                {"name": "*fildes", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "times",
+            "nr": 43,
+            "params": [
+                {"name": "*tbuf", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "brk",
+            "nr": 45,
+            "params": [
+                {"name": "brk", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setgid16",
+            "nr": 46,
+            "params": [
+                {"name": "gid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getgid16",
+            "nr": 47,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "geteuid16",
+            "nr": 49,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getegid16",
+            "nr": 50,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "acct",
+            "nr": 51,
+            "params": [
+                {"name": "*name", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "umount",
+            "nr": 52,
+            "params": [
+                {"name": "*name", "type": "str"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "ioctl",
+            "nr": 54,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "cmd", "type": "uint"},
+                {"name": "arg", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fcntl",
+            "nr": 55,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "cmd", "type": "uint"},
+                {"name": "arg", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setpgid",
+            "nr": 57,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "pgid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "umask",
+            "nr": 60,
+            "params": [
+                {"name": "mask", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "chroot",
+            "nr": 61,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "ustat",
+            "nr": 62,
+            "params": [
+                {"name": "dev", "type": "uint"},
+                {"name": "*u", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "dup2",
+            "nr": 63,
+            "params": [
+                {"name": "oldfd", "type": "uint"},
+                {"name": "newfd", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getppid",
+            "nr": 64,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getpgrp",
+            "nr": 65,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setsid",
+            "nr": 66,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sigaction",
+            "nr": 67,
+            "params": [
+                {"name": "sig", "type": "int"},
+                {"name": "*act", "type": "sigaction"},
+                {"name": "*oact", "type": "sigaction"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setreuid16",
+            "nr": 70,
+            "params": [
+                {"name": "ruid", "type": "int"},
+                {"name": "euid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setregid16",
+            "nr": 71,
+            "params": [
+                {"name": "rgid", "type": "int"},
+                {"name": "egid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sigsuspend",
+            "nr": 72,
+            "params": [
+                {"name": "unused1", "type": "int"},
+                {"name": "unused2", "type": "int"},
+                {"name": "mask", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sigpending",
+            "nr": 73,
+            "params": [
+                {"name": "*set32", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sethostname",
+            "nr": 74,
+            "params": [
+                {"name": "*name", "type": "str"},
+                {"name": "len", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setrlimit",
+            "nr": 75,
+            "params": [
+                {"name": "resource", "type": "uint"},
+                {"name": "*rlim", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getrusage",
+            "nr": 77,
+            "params": [
+                {"name": "who", "type": "int"},
+                {"name": "*ru", "type": "rusage"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "gettimeofday",
+            "nr": 78,
+            "params": [
+                {"name": "*tv", "type": "timeval"},
+                {"name": "*tz", "type": "timezone"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "settimeofday",
+            "nr": 79,
+            "params": [
+                {"name": "*tv", "type": "timeval"},
+                {"name": "*tz", "type": "timezone"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getgroups16",
+            "nr": 80,
+            "params": [
+                {"name": "gidsetsize", "type": "int"},
+                {"name": "*grouplist", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setgroups16",
+            "nr": 81,
+            "params": [
+                {"name": "gidsetsize", "type": "int"},
+                {"name": "*grouplist", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "symlink",
+            "nr": 83,
+            "params": [
+                {"name": "*oldname", "type": "str"},
+                {"name": "*newname", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "readlink",
+            "nr": 85,
+            "params": [
+                {"name": "*path", "type": "str"},
+                {"name": "*buf", "type": "str"},
+                {"name": "bufsiz", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "uselib",
+            "nr": 86,
+            "params": [
+                {"name": "*library", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "swapon",
+            "nr": 87,
+            "params": [
+                {"name": "*specialfile", "type": "str"},
+                {"name": "swap_flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "reboot",
+            "nr": 88,
+            "params": [
+                {"name": "magic1", "type": "int"},
+                {"name": "magic2", "type": "int"},
+                {"name": "cmd", "type": "uint"},
+                {"name": "*arg", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "munmap",
+            "nr": 91,
+            "params": [
+                {"name": "addr", "type": "uint32"},
+                {"name": "len", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "truncate",
+            "nr": 92,
+            "params": [
+                {"name": "*path", "type": "str"},
+                {"name": "length", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "ftruncate",
+            "nr": 93,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "length", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fchmod",
+            "nr": 94,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "mode", "type": "uint16"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fchown16",
+            "nr": 95,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "user", "type": "int"},
+                {"name": "group", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getpriority",
+            "nr": 96,
+            "params": [
+                {"name": "which", "type": "int"},
+                {"name": "who", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setpriority",
+            "nr": 97,
+            "params": [
+                {"name": "which", "type": "int"},
+                {"name": "who", "type": "int"},
+                {"name": "niceval", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "statfs",
+            "nr": 99,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "*buf", "type": "statfs"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fstatfs",
+            "nr": 100,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "*buf", "type": "statfs"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "syslog",
+            "nr": 103,
+            "params": [
+                {"name": "type", "type": "int"},
+                {"name": "*buf", "type": "str"},
+                {"name": "len", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setitimer",
+            "nr": 104,
+            "params": [
+                {"name": "which", "type": "int"},
+                {"name": "*value", "type": "ptr"},
+                {"name": "*ovalue", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getitimer",
+            "nr": 105,
+            "params": [
+                {"name": "which", "type": "int"},
+                {"name": "*value", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "newstat",
+            "nr": 106,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "*statbuf", "type": "stat"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "newlstat",
+            "nr": 107,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "*statbuf", "type": "stat"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "newfstat",
+            "nr": 108,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "*statbuf", "type": "stat"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "vhangup",
+            "nr": 111,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "wait4",
+            "nr": 114,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "*stat_addr", "type": "uint"},
+                {"name": "options", "type": "int"},
+                {"name": "*ru", "type": "rusage"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "swapoff",
+            "nr": 115,
+            "params": [
+                {"name": "*specialfile", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sysinfo",
+            "nr": 116,
+            "params": [
+                {"name": "*info", "type": "sysinfo"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fsync",
+            "nr": 118,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sigreturn",
+            "nr": 119,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clone",
+            "nr": 120,
+            "params": [
+                {"name": "clone_flags", "type": "uint32"},
+                {"name": "newsp", "type": "uint32"},
+                {"name": "*parent_tidptr", "type": "int"},
+                {"name": "tls", "type": "uint32"},
+                {"name": "*child_tidptr", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setdomainname",
+            "nr": 121,
+            "params": [
+                {"name": "*name", "type": "str"},
+                {"name": "len", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "newuname",
+            "nr": 122,
+            "params": [
+                {"name": "*name", "type": "utsname", "more": "exit"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "adjtimex",
+            "nr": 124,
+            "params": [
+                {"name": "*utp", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mprotect",
+            "nr": 125,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "len", "type": "size_t"},
+                {"name": "prot", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sigprocmask",
+            "nr": 126,
+            "params": [
+                {"name": "how", "type": "int"},
+                {"name": "*nset", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "*oset", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "init_module",
+            "nr": 128,
+            "params": [
+                {"name": "*umod", "type": "ptr"},
+                {"name": "len", "type": "uint32"},
+                {"name": "*uargs", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "delete_module",
+            "nr": 129,
+            "params": [
+                {"name": "*name_user", "type": "str"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "quotactl",
+            "nr": 131,
+            "params": [
+                {"name": "cmd", "type": "uint"},
+                {"name": "*special", "type": "str"},
+                {"name": "id", "type": "int"},
+                {"name": "*addr", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getpgid",
+            "nr": 132,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fchdir",
+            "nr": 133,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sysfs",
+            "nr": 135,
+            "params": [
+                {"name": "option", "type": "int"},
+                {"name": "arg1", "type": "uint32"},
+                {"name": "arg2", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "personality",
+            "nr": 136,
+            "params": [
+                {"name": "personality", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setfsuid16",
+            "nr": 138,
+            "params": [
+                {"name": "uid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setfsgid16",
+            "nr": 139,
+            "params": [
+                {"name": "gid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "llseek",
+            "nr": 140,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "offset_high", "type": "uint32"},
+                {"name": "offset_low", "type": "uint32"},
+                {"name": "*result", "type": "int"},
+                {"name": "whence", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getdents",
+            "nr": 141,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "*dirent", "type": "dirent"},
+                {"name": "count", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "select",
+            "nr": 142,
+            "params": [
+                {"name": "n", "type": "int"},
+                {"name": "*inp", "type": "uint32"},
+                {"name": "*outp", "type": "uint32"},
+                {"name": "*exp", "type": "uint32"},
+                {"name": "*tvp", "type": "timeval"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "flock",
+            "nr": 143,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "cmd", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "msync",
+            "nr": 144,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "readv",
+            "nr": 145,
+            "params": [
+                {"name": "fd", "type": "uint32"},
+                {"name": "*vec", "type": "iovec", "size": "r2", "more": "exit"},
+                {"name": "vlen", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "writev",
+            "nr": 146,
+            "params": [
+                {"name": "fd", "type": "uint32"},
+                {"name": "*vec", "type": "iovec", "size": "r2"},
+                {"name": "vlen", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getsid",
+            "nr": 147,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fdatasync",
+            "nr": 148,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mlock",
+            "nr": 150,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "len", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "munlock",
+            "nr": 151,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "len", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mlockall",
+            "nr": 152,
+            "params": [
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "munlockall",
+            "nr": 153,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_setparam",
+            "nr": 154,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "*param", "type": "*int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_getparam",
+            "nr": 155,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "*param", "type": "*int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_setscheduler",
+            "nr": 156,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "policy", "type": "int"},
+                {"name": "*param", "type": "*int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_getscheduler",
+            "nr": 157,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_yield",
+            "nr": 158,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_get_priority_max",
+            "nr": 159,
+            "params": [
+                {"name": "policy", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_get_priority_min",
+            "nr": 160,
+            "params": [
+                {"name": "policy", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_rr_get_interval",
+            "nr": 161,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "*interval", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "nanosleep",
+            "nr": 162,
+            "params": [
+                {"name": "*rqtp", "type": "timespec"},
+                {"name": "*rmtp", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mremap",
+            "nr": 163,
+            "params": [
+                {"name": "addr", "type": "uint32"},
+                {"name": "old_len", "type": "uint32"},
+                {"name": "new_len", "type": "uint32"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "new_addr", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setresuid16",
+            "nr": 164,
+            "params": [
+                {"name": "ruid", "type": "int"},
+                {"name": "euid", "type": "int"},
+                {"name": "suid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getresuid16",
+            "nr": 165,
+            "params": [
+                {"name": "*ruidp", "type": "int"},
+                {"name": "*euidp", "type": "int"},
+                {"name": "*suidp", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "poll",
+            "nr": 168,
+            "params": [
+                {"name": "*ufds", "type": "pollfd"},
+                {"name": "nfds", "type": "uint"},
+                {"name": "timeout_msecs", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setresgid16",
+            "nr": 170,
+            "params": [
+                {"name": "rgid", "type": "int"},
+                {"name": "egid", "type": "int"},
+                {"name": "sgid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getresgid16",
+            "nr": 171,
+            "params": [
+                {"name": "*rgidp", "type": "int"},
+                {"name": "*egidp", "type": "int"},
+                {"name": "*sgidp", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "prctl",
+            "nr": 172,
+            "params": [
+                {"name": "option", "type": "int"},
+                {"name": "arg2", "type": "uint32"},
+                {"name": "arg3", "type": "uint32"},
+                {"name": "arg4", "type": "uint32"},
+                {"name": "arg5", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rt_sigreturn",
+            "nr": 173,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rt_sigaction",
+            "nr": 174,
+            "params": [
+                {"name": "sig", "type": "int"},
+                {"name": "*act", "type": "sigaction"},
+                {"name": "*oact", "type": "sigaction"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rt_sigprocmask",
+            "nr": 175,
+            "params": [
+                {"name": "how", "type": "int"},
+                {"name": "*nset", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "*oset", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rt_sigpending",
+            "nr": 176,
+            "params": [
+                {"name": "*uset", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rt_sigtimedwait",
+            "nr": 177,
+            "params": [
+                {"name": "*uthese", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "*uinfo", "type": "siginfo"},
+                {"name": "*uts", "type": "timespec"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rt_sigqueueinfo",
+            "nr": 178,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "sig", "type": "int"},
+                {"name": "*uinfo", "type": "siginfo"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rt_sigsuspend",
+            "nr": 179,
+            "params": [
+                {"name": "*unewset", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pread64",
+            "nr": 180,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "*buf", "type": "str"},
+                {"name": "count", "type": "size_t"},
+                {"name": "__pad", "type": "uint32"},
+                {"name": "pos_lo", "type": "uint32"},
+                {"name": "pos_hi", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pwrite64",
+            "nr": 181,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "*buf", "type": "str"},
+                {"name": "count", "type": "size_t"},
+                {"name": "__pad", "type": "uint32"},
+                {"name": "pos_lo", "type": "uint32"},
+                {"name": "pos_hi", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "chown16",
+            "nr": 182,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "user", "type": "int"},
+                {"name": "group", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getcwd",
+            "nr": 183,
+            "params": [
+                {"name": "*buf", "type": "str"},
+                {"name": "size", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "capget",
+            "nr": 184,
+            "params": [
+                {"name": "header", "type": "ptr"},
+                {"name": "dataptr", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "capset",
+            "nr": 185,
+            "params": [
+                {"name": "header", "type": "ptr"},
+                {"name": "data", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sigaltstack",
+            "nr": 186,
+            "params": [
+                {"name": "*uss_ptr", "type": "stack_t"},
+                {"name": "*uoss_ptr", "type": "stack_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sendfile",
+            "nr": 187,
+            "params": [
+                {"name": "out_fd", "type": "int"},
+                {"name": "in_fd", "type": "int"},
+                {"name": "*offset", "type": "int"},
+                {"name": "count", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "vfork",
+            "nr": 190,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getrlimit",
+            "nr": 191,
+            "params": [
+                {"name": "resource", "type": "uint"},
+                {"name": "*rlim", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mmap2",
+            "nr": 192,
+            "params": [
+                {"name": "addr", "type": "uint32"},
+                {"name": "len", "type": "uint32"},
+                {"name": "prot", "type": "uint32"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "fd", "type": "uint32"},
+                {"name": "off_4k", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "truncate64",
+            "nr": 193,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "__pad", "type": "uint32"},
+                {"name": "length_lo", "type": "uint32"},
+                {"name": "length_hi", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "ftruncate64",
+            "nr": 194,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "__pad", "type": "uint32"},
+                {"name": "length_lo", "type": "uint32"},
+                {"name": "length_hi", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "stat64",
+            "nr": 195,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "*statbuf", "type": "stat"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "lstat64",
+            "nr": 196,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "*statbuf", "type": "stat"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fstat64",
+            "nr": 197,
+            "params": [
+                {"name": "fd", "type": "uint32"},
+                {"name": "*statbuf", "type": "stat"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "lchown",
+            "nr": 198,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "user", "type": "int"},
+                {"name": "group", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getuid",
+            "nr": 199,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getgid",
+            "nr": 200,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "geteuid",
+            "nr": 201,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getegid",
+            "nr": 202,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setreuid",
+            "nr": 203,
+            "params": [
+                {"name": "ruid", "type": "int"},
+                {"name": "euid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setregid",
+            "nr": 204,
+            "params": [
+                {"name": "rgid", "type": "int"},
+                {"name": "egid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getgroups",
+            "nr": 205,
+            "params": [
+                {"name": "gidsetsize", "type": "int"},
+                {"name": "*grouplist", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setgroups",
+            "nr": 206,
+            "params": [
+                {"name": "gidsetsize", "type": "int"},
+                {"name": "*grouplist", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fchown",
+            "nr": 207,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "user", "type": "int"},
+                {"name": "group", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setresuid",
+            "nr": 208,
+            "params": [
+                {"name": "ruid", "type": "int"},
+                {"name": "euid", "type": "int"},
+                {"name": "suid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getresuid",
+            "nr": 209,
+            "params": [
+                {"name": "*ruidp", "type": "int"},
+                {"name": "*euidp", "type": "int"},
+                {"name": "*suidp", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setresgid",
+            "nr": 210,
+            "params": [
+                {"name": "rgid", "type": "int"},
+                {"name": "egid", "type": "int"},
+                {"name": "sgid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getresgid",
+            "nr": 211,
+            "params": [
+                {"name": "*rgidp", "type": "int"},
+                {"name": "*egidp", "type": "int"},
+                {"name": "*sgidp", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "chown",
+            "nr": 212,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "user", "type": "int"},
+                {"name": "group", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setuid",
+            "nr": 213,
+            "params": [
+                {"name": "uid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setgid",
+            "nr": 214,
+            "params": [
+                {"name": "gid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setfsuid",
+            "nr": 215,
+            "params": [
+                {"name": "uid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setfsgid",
+            "nr": 216,
+            "params": [
+                {"name": "gid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getdents64",
+            "nr": 217,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "*dirent", "type": "dirent"},
+                {"name": "count", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pivot_root",
+            "nr": 218,
+            "params": [
+                {"name": "*new_root", "type": "str"},
+                {"name": "*put_old", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mincore",
+            "nr": 219,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "len", "type": "size_t"},
+                {"name": "*vec", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "madvise",
+            "nr": 220,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "len_in", "type": "size_t"},
+                {"name": "behavior", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fcntl64",
+            "nr": 221,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "cmd", "type": "uint"},
+                {"name": "arg", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "gettid",
+            "nr": 224,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "readahead",
+            "nr": 225,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "__pad", "type": "uint32"},
+                {"name": "offset_lo", "type": "uint32"},
+                {"name": "offset_hi", "type": "uint32"},
+                {"name": "count", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setxattr",
+            "nr": 226,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "*name", "type": "str"},
+                {"name": "*value", "type": "ptr"},
+                {"name": "size", "type": "size_t"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "lsetxattr",
+            "nr": 227,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "*name", "type": "str"},
+                {"name": "*value", "type": "ptr"},
+                {"name": "size", "type": "size_t"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fsetxattr",
+            "nr": 228,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*name", "type": "str"},
+                {"name": "*value", "type": "ptr"},
+                {"name": "size", "type": "size_t"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getxattr",
+            "nr": 229,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "*name", "type": "str"},
+                {"name": "*value", "type": "ptr"},
+                {"name": "size", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "lgetxattr",
+            "nr": 230,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "*name", "type": "str"},
+                {"name": "*value", "type": "ptr"},
+                {"name": "size", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fgetxattr",
+            "nr": 231,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*name", "type": "str"},
+                {"name": "*value", "type": "ptr"},
+                {"name": "size", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "listxattr",
+            "nr": 232,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "*list", "type": "str"},
+                {"name": "size", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "llistxattr",
+            "nr": 233,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "*list", "type": "str"},
+                {"name": "size", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "flistxattr",
+            "nr": 234,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*list", "type": "str"},
+                {"name": "size", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "removexattr",
+            "nr": 235,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "*name", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "lremovexattr",
+            "nr": 236,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "*name", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fremovexattr",
+            "nr": 237,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*name", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "tkill",
+            "nr": 238,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "sig", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sendfile64",
+            "nr": 239,
+            "params": [
+                {"name": "out_fd", "type": "int"},
+                {"name": "in_fd", "type": "int"},
+                {"name": "*offset", "type": "int"},
+                {"name": "count", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "futex",
+            "nr": 240,
+            "params": [
+                {"name": "*uaddr", "type": "uint32"},
+                {"name": "op", "type": "int"},
+                {"name": "val", "type": "uint32"},
+                {"name": "*utime", "type": "timespec"},
+                {"name": "*uaddr2", "type": "uint32"},
+                {"name": "val3", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_setaffinity",
+            "nr": 241,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "len", "type": "uint"},
+                {"name": "*user_mask_ptr", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_getaffinity",
+            "nr": 242,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "len", "type": "uint"},
+                {"name": "*user_mask_ptr", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "io_setup",
+            "nr": 243,
+            "params": [
+                {"name": "nr_events", "type": "uint"},
+                {"name": "*ctx32p", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "io_destroy",
+            "nr": 244,
+            "params": [
+                {"name": "ctx", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "io_getevents",
+            "nr": 245,
+            "params": [
+                {"name": "ctx_id", "type": "uint32"},
+                {"name": "min_nr", "type": "int32"},
+                {"name": "nr", "type": "int32"},
+                {"name": "*events", "type": "ptr"},
+                {"name": "*timeout", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "io_submit",
+            "nr": 246,
+            "params": [
+                {"name": "ctx_id", "type": "ptr"},
+                {"name": "nr", "type": "int"},
+                {"name": "*iocbpp", "type": "string_array"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "io_cancel",
+            "nr": 247,
+            "params": [
+                {"name": "ctx_id", "type": "ptr"},
+                {"name": "*iocb", "type": "ptr"},
+                {"name": "*result", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "exit_group",
+            "nr": 248,
+            "params": [
+                {"name": "error_code", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "epoll_create",
+            "nr": 250,
+            "params": [
+                {"name": "size", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "epoll_ctl",
+            "nr": 251,
+            "params": [
+                {"name": "epfd", "type": "int"},
+                {"name": "op", "type": "int"},
+                {"name": "fd", "type": "int"},
+                {"name": "*event", "type": "epoll_event"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "epoll_wait",
+            "nr": 252,
+            "params": [
+                {"name": "epfd", "type": "int"},
+                {"name": "*events", "type": "epoll_event"},
+                {"name": "maxevents", "type": "int"},
+                {"name": "timeout", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "remap_file_pages",
+            "nr": 253,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "size", "type": "uint32"},
+                {"name": "prot", "type": "uint32"},
+                {"name": "pgoff", "type": "uint32"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "set_tid_address",
+            "nr": 256,
+            "params": [
+                {"name": "*tidptr", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timer_create",
+            "nr": 257,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "*timer_event_spec", "type": "ptr"},
+                {"name": "*created_timer_id", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timer_settime",
+            "nr": 258,
+            "params": [
+                {"name": "timer_id", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "*new", "type": "ptr"},
+                {"name": "*old", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timer_gettime",
+            "nr": 259,
+            "params": [
+                {"name": "timer_id", "type": "int"},
+                {"name": "*setting", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timer_getoverrun",
+            "nr": 260,
+            "params": [
+                {"name": "timer_id", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timer_delete",
+            "nr": 261,
+            "params": [
+                {"name": "timer_id", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clock_settime",
+            "nr": 262,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "*tp", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clock_gettime",
+            "nr": 263,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "*tp", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clock_getres",
+            "nr": 264,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "*tp", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clock_nanosleep",
+            "nr": 265,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "*rqtp", "type": "timespec"},
+                {"name": "*rmtp", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "statfs64",
+            "nr": 266,
+            "params": [
+                {"name": "*pathname", "type": "str"},
+                {"name": "sz", "type": "size_t"},
+                {"name": "*buf", "type": "statfs"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fstatfs64",
+            "nr": 267,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "sz", "type": "size_t"},
+                {"name": "*buf", "type": "statfs"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "tgkill",
+            "nr": 268,
+            "params": [
+                {"name": "tgid", "type": "int"},
+                {"name": "pid", "type": "int"},
+                {"name": "sig", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "utimes",
+            "nr": 269,
+            "params": [
+                {"name": "*filename", "type": "str"},
+                {"name": "*t", "type": "timeval"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fadvise64_64",
+            "nr": 270,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "advice", "type": "int"},
+                {"name": "offset_lo", "type": "uint32"},
+                {"name": "offset_hi", "type": "uint32"},
+                {"name": "len_lo", "type": "uint32"},
+                {"name": "len_hi", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pciconfig_read",
+            "nr": 272,
+            "params": [
+                {"name": "bus", "type": "uint32"},
+                {"name": "dfn", "type": "uint32"},
+                {"name": "off", "type": "uint32"},
+                {"name": "len", "type": "uint32"},
+                {"name": "*buf", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pciconfig_write",
+            "nr": 273,
+            "params": [
+                {"name": "bus", "type": "uint32"},
+                {"name": "dfn", "type": "uint32"},
+                {"name": "off", "type": "uint32"},
+                {"name": "len", "type": "uint32"},
+                {"name": "*buf", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mq_open",
+            "nr": 274,
+            "params": [
+                {"name": "*u_name", "type": "str"},
+                {"name": "oflag", "type": "int"},
+                {"name": "mode", "type": "int16"},
+                {"name": "*u_attr", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mq_unlink",
+            "nr": 275,
+            "params": [
+                {"name": "*u_name", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mq_timedsend",
+            "nr": 276,
+            "params": [
+                {"name": "mqdes", "type": "int"},
+                {"name": "*u_msg_ptr", "type": "str"},
+                {"name": "msg_len", "type": "uint"},
+                {"name": "msg_prio", "type": "uint"},
+                {"name": "*u_abs_timeout", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mq_timedreceive",
+            "nr": 277,
+            "params": [
+                {"name": "mqdes", "type": "int"},
+                {"name": "*u_msg_ptr", "type": "str"},
+                {"name": "msg_len", "type": "uint"},
+                {"name": "*u_msg_prio", "type": "uint"},
+                {"name": "*u_abs_timeout", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mq_notify",
+            "nr": 278,
+            "params": [
+                {"name": "mqdes", "type": "int"},
+                {"name": "*u_notification", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mq_getsetattr",
+            "nr": 279,
+            "params": [
+                {"name": "mqdes", "type": "int"},
+                {"name": "*u_mqstat", "type": "ptr"},
+                {"name": "*u_omqstat", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "waitid",
+            "nr": 280,
+            "params": [
+                {"name": "which", "type": "int"},
+                {"name": "pid", "type": "int"},
+                {"name": "*infop", "type": "siginfo"},
+                {"name": "options", "type": "int"},
+                {"name": "*uru", "type": "rusage"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "socket",
+            "nr": 281,
+            "params": [
+                {"name": "family", "type": "int"},
+                {"name": "type", "type": "int"},
+                {"name": "protocol", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "bind",
+            "nr": 282,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*umyaddr", "type": "sockaddr"},
+                {"name": "addrlen", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "connect",
+            "nr": 283,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*uservaddr", "type": "sockaddr"},
+                {"name": "addrlen", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "listen",
+            "nr": 284,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "backlog", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "accept",
+            "nr": 285,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*upeer_sockaddr", "type": "sockaddr"},
+                {"name": "*upeer_addrlen", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getsockname",
+            "nr": 286,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*usockaddr", "type": "sockaddr"},
+                {"name": "*usockaddr_len", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getpeername",
+            "nr": 287,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*usockaddr", "type": "sockaddr"},
+                {"name": "*usockaddr_len", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "socketpair",
+            "nr": 288,
+            "params": [
+                {"name": "family", "type": "int"},
+                {"name": "type", "type": "int"},
+                {"name": "protocol", "type": "int"},
+                {"name": "*usockvec", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "send",
+            "nr": 289,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*buff", "type": "ptr"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sendto",
+            "nr": 290,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*buff", "type": "ptr"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "uint"},
+                {"name": "*addr", "type": "sockaddr"},
+                {"name": "addr_len", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "recv",
+            "nr": 291,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*buf", "type": "ptr"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "recvfrom",
+            "nr": 292,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*buf", "type": "ptr"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "uint"},
+                {"name": "*addr", "type": "sockaddr"},
+                {"name": "*addrlen", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "shutdown",
+            "nr": 293,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "how", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setsockopt",
+            "nr": 294,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "level", "type": "int"},
+                {"name": "optname", "type": "int"},
+                {"name": "*optval", "type": "str"},
+                {"name": "optlen", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getsockopt",
+            "nr": 295,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "level", "type": "int"},
+                {"name": "optname", "type": "int"},
+                {"name": "*optval", "type": "str"},
+                {"name": "*optlen", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sendmsg",
+            "nr": 296,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*msg", "type": "msghdr"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "recvmsg",
+            "nr": 297,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*msg", "type": "msghdr"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "semop",
+            "nr": 298,
+            "params": [
+                {"name": "semid", "type": "int"},
+                {"name": "*tsops", "type": "ptr"},
+                {"name": "nsops", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "semget",
+            "nr": 299,
+            "params": [
+                {"name": "key", "type": "int"},
+                {"name": "nsems", "type": "int"},
+                {"name": "semflg", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "semctl",
+            "nr": 300,
+            "params": [
+                {"name": "semid", "type": "int"},
+                {"name": "semnum", "type": "int"},
+                {"name": "cmd", "type": "int"},
+                {"name": "arg", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "msgsnd",
+            "nr": 301,
+            "params": [
+                {"name": "msqid", "type": "int"},
+                {"name": "msgp", "type": "string_array"},
+                {"name": "msgsz", "type": "ssize_t"},
+                {"name": "msgflg", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "msgrcv",
+            "nr": 302,
+            "params": [
+                {"name": "msqid", "type": "int"},
+                {"name": "msgp", "type": "string_array"},
+                {"name": "msgsz", "type": "ssize_t"},
+                {"name": "msgtyp", "type": "int32"},
+                {"name": "msgflg", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "msgget",
+            "nr": 303,
+            "params": [
+                {"name": "key", "type": "int"},
+                {"name": "msgflg", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "msgctl",
+            "nr": 304,
+            "params": [
+                {"name": "msqid", "type": "int"},
+                {"name": "cmd", "type": "int"},
+                {"name": "*uptr", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "shmat",
+            "nr": 305,
+            "params": [
+                {"name": "shmid", "type": "int"},
+                {"name": "shmaddr", "type": "string_array"},
+                {"name": "shmflg", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "shmdt",
+            "nr": 306,
+            "params": [
+                {"name": "*shmaddr", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "shmget",
+            "nr": 307,
+            "params": [
+                {"name": "key", "type": "int"},
+                {"name": "size", "type": "size_t"},
+                {"name": "shmflg", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "shmctl",
+            "nr": 308,
+            "params": [
+                {"name": "shmid", "type": "int"},
+                {"name": "cmd", "type": "int"},
+                {"name": "*uptr", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "add_key",
+            "nr": 309,
+            "params": [
+                {"name": "*_type", "type": "str"},
+                {"name": "*_description", "type": "str"},
+                {"name": "*_payload", "type": "ptr"},
+                {"name": "plen", "type": "size_t"},
+                {"name": "ringid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "request_key",
+            "nr": 310,
+            "params": [
+                {"name": "*_type", "type": "str"},
+                {"name": "*_description", "type": "str"},
+                {"name": "*_callout_info", "type": "str"},
+                {"name": "destringid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "keyctl",
+            "nr": 311,
+            "params": [
+                {"name": "option", "type": "uint32"},
+                {"name": "arg2", "type": "uint32"},
+                {"name": "arg3", "type": "uint32"},
+                {"name": "arg4", "type": "uint32"},
+                {"name": "arg5", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "semtimedop",
+            "nr": 312,
+            "params": [
+                {"name": "semid", "type": "int"},
+                {"name": "*tsems", "type": "ptr"},
+                {"name": "nsops", "type": "uint"},
+                {"name": "*timeout", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "ioprio_set",
+            "nr": 314,
+            "params": [
+                {"name": "which", "type": "int"},
+                {"name": "who", "type": "int"},
+                {"name": "ioprio", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "ioprio_get",
+            "nr": 315,
+            "params": [
+                {"name": "which", "type": "int"},
+                {"name": "who", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "inotify_init",
+            "nr": 316,
+            "params": [
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "inotify_add_watch",
+            "nr": 317,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*pathname", "type": "str"},
+                {"name": "mask", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "inotify_rm_watch",
+            "nr": 318,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "wd", "type": "int32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mbind",
+            "nr": 319,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "len", "type": "uint32"},
+                {"name": "mode", "type": "uint32"},
+                {"name": "*nmask", "type": "uint32"},
+                {"name": "maxnode", "type": "uint32"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "get_mempolicy",
+            "nr": 320,
+            "params": [
+                {"name": "*policy", "type": "int"},
+                {"name": "*nmask", "type": "uint32"},
+                {"name": "maxnode", "type": "uint32"},
+                {"name": "addr", "type": "uint32"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "set_mempolicy",
+            "nr": 321,
+            "params": [
+                {"name": "mode", "type": "int"},
+                {"name": "*nmask", "type": "uint32"},
+                {"name": "maxnode", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "openat",
+            "nr": 322,
+            "params": [
+                {"name": "dirfd", "type": "int"},
+                {"name": "*pathname", "type": "str"},
+                {"name": "flags", "type": "int", "format": "file_flags"},
+                {"name": "mode", "type": "int16", "format": "perm_flags"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mkdirat",
+            "nr": 323,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*pathname", "type": "str"},
+                {"name": "mode", "type": "uint16"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mknodat",
+            "nr": 324,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*filename", "type": "str"},
+                {"name": "mode", "type": "uint16"},
+                {"name": "dev", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fchownat",
+            "nr": 325,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*filename", "type": "str"},
+                {"name": "user", "type": "int"},
+                {"name": "group", "type": "int"},
+                {"name": "flag", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "futimesat",
+            "nr": 326,
+            "params": [
+                {"name": "dfd", "type": "uint"},
+                {"name": "*filename", "type": "str"},
+                {"name": "*t", "type": "timeval"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fstatat64",
+            "nr": 327,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*filename", "type": "str"},
+                {"name": "*statbuf", "type": "stat"},
+                {"name": "flag", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "unlinkat",
+            "nr": 328,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*pathname", "type": "str"},
+                {"name": "flag", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "renameat",
+            "nr": 329,
+            "params": [
+                {"name": "olddfd", "type": "int"},
+                {"name": "*oldname", "type": "str"},
+                {"name": "newdfd", "type": "int"},
+                {"name": "*newname", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "linkat",
+            "nr": 330,
+            "params": [
+                {"name": "olddfd", "type": "int"},
+                {"name": "*oldname", "type": "str"},
+                {"name": "newdfd", "type": "int"},
+                {"name": "*newname", "type": "str"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "symlinkat",
+            "nr": 331,
+            "params": [
+                {"name": "*oldname", "type": "str"},
+                {"name": "newdfd", "type": "int"},
+                {"name": "*newname", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "readlinkat",
+            "nr": 332,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*pathname", "type": "str"},
+                {"name": "*buf", "type": "str", "more": "exit"},
+                {"name": "bufsiz", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fchmodat",
+            "nr": 333,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*filename", "type": "str"},
+                {"name": "mode", "type": "uint16"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "faccessat",
+            "nr": 334,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*filename", "type": "str"},
+                {"name": "mode", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pselect6",
+            "nr": 335,
+            "params": [
+                {"name": "n", "type": "int"},
+                {"name": "*inp", "type": "uint32"},
+                {"name": "*outp", "type": "uint32"},
+                {"name": "*exp", "type": "uint32"},
+                {"name": "*tsp", "type": "timespec"},
+                {"name": "*sig", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "ppoll",
+            "nr": 336,
+            "params": [
+                {"name": "*ufds", "type": "pollfd"},
+                {"name": "nfds", "type": "uint"},
+                {"name": "*tsp", "type": "timespec"},
+                {"name": "*sigmask", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "unshare",
+            "nr": 337,
+            "params": [
+                {"name": "unshare_flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "set_robust_list",
+            "nr": 338,
+            "params": [
+                {"name": "*head", "type": "ptr"},
+                {"name": "len", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "get_robust_list",
+            "nr": 339,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "*head_ptr", "type": "string_array"},
+                {"name": "*len_ptr", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "splice",
+            "nr": 340,
+            "params": [
+                {"name": "fd_in", "type": "int"},
+                {"name": "*off_in", "type": "int"},
+                {"name": "fd_out", "type": "int"},
+                {"name": "*off_out", "type": "int"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sync_file_range2",
+            "nr": 341,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "flags", "type": "uint"},
+                {"name": "offset_lo", "type": "uint32"},
+                {"name": "offset_hi", "type": "uint32"},
+                {"name": "nbytes_lo", "type": "uint32"},
+                {"name": "nbytes_hi", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "tee",
+            "nr": 342,
+            "params": [
+                {"name": "fdin", "type": "int"},
+                {"name": "fdout", "type": "int"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "vmsplice",
+            "nr": 343,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*uiov", "type": "iovec", "size": "r2"},
+                {"name": "nr_segs", "type": "uint32"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "move_pages",
+            "nr": 344,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "nr_pages", "type": "uint32"},
+                {"name": "*pages", "type": "ptr"},
+                {"name": "*nodes", "type": "int"},
+                {"name": "*status", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getcpu",
+            "nr": 345,
+            "params": [
+                {"name": "*cpup", "type": "uint"},
+                {"name": "*nodep", "type": "uint"},
+                {"name": "*unused", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "epoll_pwait",
+            "nr": 346,
+            "params": [
+                {"name": "epfd", "type": "int"},
+                {"name": "*events", "type": "epoll_event"},
+                {"name": "maxevents", "type": "int"},
+                {"name": "timeout", "type": "int"},
+                {"name": "*sigmask", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "kexec_load",
+            "nr": 347,
+            "params": [
+                {"name": "entry", "type": "uint32"},
+                {"name": "nr_segments", "type": "uint32"},
+                {"name": "*segments", "type": "ptr"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "utimensat",
+            "nr": 348,
+            "params": [
+                {"name": "dfd", "type": "uint"},
+                {"name": "*filename", "type": "str"},
+                {"name": "*t", "type": "timespec"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "signalfd",
+            "nr": 349,
+            "params": [
+                {"name": "ufd", "type": "int"},
+                {"name": "*user_mask", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timerfd_create",
+            "nr": 350,
+            "params": [
+                {"name": "clockid", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "eventfd",
+            "nr": 351,
+            "params": [
+                {"name": "count", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fallocate",
+            "nr": 352,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "mode", "type": "int"},
+                {"name": "offset_lo", "type": "uint32"},
+                {"name": "offset_hi", "type": "uint32"},
+                {"name": "len_lo", "type": "uint32"},
+                {"name": "len_hi", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timerfd_settime",
+            "nr": 353,
+            "params": [
+                {"name": "ufd", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "*utmr", "type": "ptr"},
+                {"name": "*otmr", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timerfd_gettime",
+            "nr": 354,
+            "params": [
+                {"name": "ufd", "type": "int"},
+                {"name": "*otmr", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "signalfd4",
+            "nr": 355,
+            "params": [
+                {"name": "ufd", "type": "int"},
+                {"name": "*user_mask", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "eventfd2",
+            "nr": 356,
+            "params": [
+                {"name": "count", "type": "uint"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "epoll_create1",
+            "nr": 357,
+            "params": [
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "dup3",
+            "nr": 358,
+            "params": [
+                {"name": "oldfd", "type": "uint"},
+                {"name": "newfd", "type": "uint"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pipe2",
+            "nr": 359,
+            "params": [
+                {"name": "*fildes", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "inotify_init1",
+            "nr": 360,
+            "params": [
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "preadv",
+            "nr": 361,
+            "params": [
+                {"name": "fd", "type": "uint32"},
+                {"name": "*iov", "type": "iovec", "size": "r2", "more": "exit"},
+                {"name": "vlen", "type": "uint32"},
+                {"name": "pos_low", "type": "uint32"},
+                {"name": "pos_high", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pwritev",
+            "nr": 362,
+            "params": [
+                {"name": "fd", "type": "uint32"},
+                {"name": "*vec", "type": "iovec", "size": "r2"},
+                {"name": "vlen", "type": "uint32"},
+                {"name": "pos_low", "type": "uint32"},
+                {"name": "pos_high", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rt_tgsigqueueinfo",
+            "nr": 363,
+            "params": [
+                {"name": "tgid", "type": "int"},
+                {"name": "pid", "type": "int"},
+                {"name": "sig", "type": "int"},
+                {"name": "*uinfo", "type": "siginfo"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "perf_event_open",
+            "nr": 364,
+            "params": [
+                {"name": "*attr_uptr", "type": "ptr"},
+                {"name": "pid", "type": "int"},
+                {"name": "cpu", "type": "int"},
+                {"name": "group_fd", "type": "int"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "recvmmsg",
+            "nr": 365,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*mmsg", "type": "msghdr"},
+                {"name": "vlen", "type": "uint"},
+                {"name": "flags", "type": "uint"},
+                {"name": "*timeout", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "accept4",
+            "nr": 366,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*upeer_sockaddr", "type": "sockaddr"},
+                {"name": "*upeer_addrlen", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fanotify_init",
+            "nr": 367,
+            "params": [
+                {"name": "flags", "type": "uint"},
+                {"name": "event_f_flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fanotify_mark",
+            "nr": 368,
+            "params": [
+                {"name": "fanotify_fd", "type": "int"},
+                {"name": "flags", "type": "uint"},
+                {"name": "mask_lo", "type": "uint32"},
+                {"name": "mask_hi", "type": "uint32"},
+                {"name": "dfd", "type": "int"},
+                {"name": "*pathname", "type": "str"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "prlimit64",
+            "nr": 369,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "resource", "type": "uint"},
+                {"name": "*new_rlim", "type": "ptr"},
+                {"name": "*old_rlim", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "name_to_handle_at",
+            "nr": 370,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*name", "type": "str"},
+                {"name": "*handle", "type": "ptr"},
+                {"name": "*mnt_id", "type": "int"},
+                {"name": "flag", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "open_by_handle_at",
+            "nr": 371,
+            "params": [
+                {"name": "mountdirfd", "type": "int"},
+                {"name": "*handle", "type": "ptr"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clock_adjtime",
+            "nr": 372,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "*utp", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "syncfs",
+            "nr": 373,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sendmmsg",
+            "nr": 374,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*mmsg", "type": "msghdr"},
+                {"name": "vlen", "type": "uint"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "setns",
+            "nr": 375,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "process_vm_readv",
+            "nr": 376,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "*lvec", "type": "iovec", "size": "r2", "more": "exit"},
+                {"name": "liovcnt", "type": "uint32"},
+                {"name": "*rvec", "type": "ptr"},
+                {"name": "riovcnt", "type": "uint32"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "process_vm_writev",
+            "nr": 377,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "*lvec", "type": "iovec", "size": "r2"},
+                {"name": "liovcnt", "type": "uint32"},
+                {"name": "*rvec", "type": "ptr", "more": "exit"},
+                {"name": "riovcnt", "type": "uint32"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "kcmp",
+            "nr": 378,
+            "params": [
+                {"name": "pid1", "type": "int"},
+                {"name": "pid2", "type": "int"},
+                {"name": "type", "type": "int"},
+                {"name": "idx1", "type": "uint32"},
+                {"name": "idx2", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "finit_module",
+            "nr": 379,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*uargs", "type": "str"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_setattr",
+            "nr": 380,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "*uattr", "type": "ptr"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_getattr",
+            "nr": 381,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "*uattr", "type": "ptr"},
+                {"name": "usize", "type": "uint"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "renameat2",
+            "nr": 382,
+            "params": [
+                {"name": "olddfd", "type": "int"},
+                {"name": "*oldname", "type": "str"},
+                {"name": "newdfd", "type": "int"},
+                {"name": "*newname", "type": "str"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "seccomp",
+            "nr": 383,
+            "params": [
+                {"name": "op", "type": "uint"},
+                {"name": "flags", "type": "uint"},
+                {"name": "*uargs", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "getrandom",
+            "nr": 384,
+            "params": [
+                {"name": "*ubuf", "type": "str"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "memfd_create",
+            "nr": 385,
+            "params": [
+                {"name": "*uname", "type": "str"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "bpf",
+            "nr": 386,
+            "params": [
+                {"name": "cmd", "type": "int"},
+                {"name": "*uattr", "type": "ptr"},
+                {"name": "size", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "execveat",
+            "nr": 387,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*filename", "type": "str"},
+                {"name": "*argv", "type": "string_array"},
+                {"name": "*envp", "type": "string_array"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "userfaultfd",
+            "nr": 388,
+            "params": [
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "membarrier",
+            "nr": 389,
+            "params": [
+                {"name": "cmd", "type": "int"},
+                {"name": "flags", "type": "uint"},
+                {"name": "cpu_id", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mlock2",
+            "nr": 390,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "copy_file_range",
+            "nr": 391,
+            "params": [
+                {"name": "fd_in", "type": "int"},
+                {"name": "*off_in", "type": "int"},
+                {"name": "fd_out", "type": "int"},
+                {"name": "*off_out", "type": "int"},
+                {"name": "len", "type": "size_t"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "preadv2",
+            "nr": 392,
+            "params": [
+                {"name": "fd", "type": "uint32"},
+                {"name": "*vec", "type": "ptr"},
+                {"name": "vlen", "type": "uint32"},
+                {"name": "pos_low", "type": "uint32"},
+                {"name": "pos_high", "type": "uint32"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pwritev2",
+            "nr": 393,
+            "params": [
+                {"name": "fd", "type": "uint32"},
+                {"name": "*vec", "type": "ptr"},
+                {"name": "vlen", "type": "uint32"},
+                {"name": "pos_low", "type": "uint32"},
+                {"name": "pos_high", "type": "uint32"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pkey_mprotect",
+            "nr": 394,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "len", "type": "size_t"},
+                {"name": "prot", "type": "uint32"},
+                {"name": "pkey", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pkey_alloc",
+            "nr": 395,
+            "params": [
+                {"name": "flags", "type": "uint32"},
+                {"name": "init_val", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pkey_free",
+            "nr": 396,
+            "params": [
+                {"name": "pkey", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "statx",
+            "nr": 397,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*filename", "type": "str"},
+                {"name": "flags", "type": "uint"},
+                {"name": "mask", "type": "uint"},
+                {"name": "*buffer", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rseq",
+            "nr": 398,
+            "params": [
+                {"name": "*rseq", "type": "ptr"},
+                {"name": "rseq_len", "type": "uint32"},
+                {"name": "flags", "type": "int"},
+                {"name": "sig", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "io_pgetevents",
+            "nr": 399,
+            "params": [
+                {"name": "ctx_id", "type": "ptr"},
+                {"name": "min_nr", "type": "int32"},
+                {"name": "nr", "type": "int32"},
+                {"name": "*events", "type": "ptr"},
+                {"name": "*timeout", "type": "timespec"},
+                {"name": "*usig", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "migrate_pages",
+            "nr": 400,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "maxnode", "type": "uint32"},
+                {"name": "*old_nodes", "type": "uint32"},
+                {"name": "*new_nodes", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "kexec_file_load",
+            "nr": 401,
+            "params": [
+                {"name": "kernel_fd", "type": "int"},
+                {"name": "initrd_fd", "type": "int"},
+                {"name": "cmdline_len", "type": "uint32"},
+                {"name": "*cmdline_ptr", "type": "str"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clock_gettime64",
+            "nr": 403,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "*tp", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clock_settime64",
+            "nr": 404,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "*tp", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clock_adjtime64",
+            "nr": 405,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "*utx", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clock_getres_time64",
+            "nr": 406,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "*tp", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clock_nanosleep_time64",
+            "nr": 407,
+            "params": [
+                {"name": "which_clock", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "*rqtp", "type": "timespec"},
+                {"name": "*rmtp", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timer_gettime64",
+            "nr": 408,
+            "params": [
+                {"name": "timer_id", "type": "int"},
+                {"name": "*setting", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timer_settime64",
+            "nr": 409,
+            "params": [
+                {"name": "timer_id", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "*new_setting", "type": "ptr"},
+                {"name": "*old_setting", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timerfd_gettime64",
+            "nr": 410,
+            "params": [
+                {"name": "ufd", "type": "int"},
+                {"name": "*otmr", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "timerfd_settime64",
+            "nr": 411,
+            "params": [
+                {"name": "ufd", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "*utmr", "type": "ptr"},
+                {"name": "*otmr", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "utimensat_time64",
+            "nr": 412,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*filename", "type": "str"},
+                {"name": "*utimes", "type": "timespec"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pselect6_time64",
+            "nr": 413,
+            "params": [
+                {"name": "n", "type": "int"},
+                {"name": "*inp", "type": "uint32"},
+                {"name": "*outp", "type": "uint32"},
+                {"name": "*exp", "type": "uint32"},
+                {"name": "*tsp", "type": "timespec"},
+                {"name": "*sig", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "ppoll_time64",
+            "nr": 414,
+            "params": [
+                {"name": "*ufds", "type": "pollfd"},
+                {"name": "nfds", "type": "uint"},
+                {"name": "*tsp", "type": "timespec"},
+                {"name": "*sigmask", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "io_pgetevents_time64",
+            "nr": 416,
+            "params": [
+                {"name": "ctx_id", "type": "ptr"},
+                {"name": "min_nr", "type": "int32"},
+                {"name": "nr", "type": "int32"},
+                {"name": "*events", "type": "ptr"},
+                {"name": "*timeout", "type": "timespec"},
+                {"name": "*usig", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "recvmmsg_time64",
+            "nr": 417,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "*mmsg", "type": "msghdr"},
+                {"name": "vlen", "type": "uint"},
+                {"name": "flags", "type": "uint"},
+                {"name": "*timeout", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mq_timedsend_time64",
+            "nr": 418,
+            "params": [
+                {"name": "mqdes", "type": "int"},
+                {"name": "*u_msg_ptr", "type": "str"},
+                {"name": "msg_len", "type": "size_t"},
+                {"name": "msg_prio", "type": "uint"},
+                {"name": "*u_abs_timeout", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mq_timedreceive_time64",
+            "nr": 419,
+            "params": [
+                {"name": "mqdes", "type": "int"},
+                {"name": "*u_msg_ptr", "type": "str"},
+                {"name": "msg_len", "type": "size_t"},
+                {"name": "*u_msg_prio", "type": "uint"},
+                {"name": "*u_abs_timeout", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "semtimedop_time64",
+            "nr": 420,
+            "params": [
+                {"name": "semid", "type": "int"},
+                {"name": "*tsops", "type": "ptr"},
+                {"name": "nsops", "type": "uint"},
+                {"name": "*timeout", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "rt_sigtimedwait_time64",
+            "nr": 421,
+            "params": [
+                {"name": "*uthese", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "*uinfo", "type": "siginfo"},
+                {"name": "*uts", "type": "timespec"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "futex_time64",
+            "nr": 422,
+            "params": [
+                {"name": "*uaddr", "type": "uint32"},
+                {"name": "op", "type": "int"},
+                {"name": "val", "type": "uint32"},
+                {"name": "*utime", "type": "timespec"},
+                {"name": "*uaddr2", "type": "uint32"},
+                {"name": "val3", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "sched_rr_get_interval_time64",
+            "nr": 423,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "*interval", "type": "timespec"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pidfd_send_signal",
+            "nr": 424,
+            "params": [
+                {"name": "pidfd", "type": "int"},
+                {"name": "sig", "type": "int"},
+                {"name": "*info", "type": "siginfo"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "io_uring_setup",
+            "nr": 425,
+            "params": [
+                {"name": "entries", "type": "uint32"},
+                {"name": "*params", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "io_uring_enter",
+            "nr": 426,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "to_submit", "type": "uint32"},
+                {"name": "min_complete", "type": "uint32"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "*argp", "type": "ptr"},
+                {"name": "argsz", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "io_uring_register",
+            "nr": 427,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "opcode", "type": "uint"},
+                {"name": "*arg", "type": "ptr"},
+                {"name": "nr_args", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "open_tree",
+            "nr": 428,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*filename", "type": "str"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "move_mount",
+            "nr": 429,
+            "params": [
+                {"name": "from_dfd", "type": "int"},
+                {"name": "*from_pathname", "type": "str"},
+                {"name": "to_dfd", "type": "int"},
+                {"name": "*to_pathname", "type": "str"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fsopen",
+            "nr": 430,
+            "params": [
+                {"name": "*_fs_name", "type": "str"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fsconfig",
+            "nr": 431,
+            "params": [
+                {"name": "fd", "type": "int"},
+                {"name": "cmd", "type": "uint"},
+                {"name": "*_key", "type": "str"},
+                {"name": "*_value", "type": "ptr"},
+                {"name": "aux", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fsmount",
+            "nr": 432,
+            "params": [
+                {"name": "fs_fd", "type": "int"},
+                {"name": "flags", "type": "uint"},
+                {"name": "attr_flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "fspick",
+            "nr": 433,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*path", "type": "str"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pidfd_open",
+            "nr": 434,
+            "params": [
+                {"name": "pid", "type": "int"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "clone3",
+            "nr": 435,
+            "params": [
+                {"name": "*uargs", "type": "ptr"},
+                {"name": "size", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "close_range",
+            "nr": 436,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "max_fd", "type": "uint"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "openat2",
+            "nr": 437,
+            "params": [
+                {"name": "dirfd", "type": "int"},
+                {"name": "*pathname", "type": "str"},
+                {"name": "how", "type": "ptr"},
+                {"name": "usize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "pidfd_getfd",
+            "nr": 438,
+            "params": [
+                {"name": "pidfd", "type": "int"},
+                {"name": "fd", "type": "int"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "faccessat2",
+            "nr": 439,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*filename", "type": "str"},
+                {"name": "mode", "type": "int"},
+                {"name": "flags", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "process_madvise",
+            "nr": 440,
+            "params": [
+                {"name": "pidfd", "type": "int"},
+                {"name": "*vec", "type": "ptr"},
+                {"name": "vlen", "type": "size_t"},
+                {"name": "behavior", "type": "int"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "epoll_pwait2",
+            "nr": 441,
+            "params": [
+                {"name": "epfd", "type": "int"},
+                {"name": "*events", "type": "epoll_event"},
+                {"name": "maxevents", "type": "int"},
+                {"name": "*timeout", "type": "timespec"},
+                {"name": "*sigmask", "type": "uint_arr", "format": "hex", "size": "1"},
+                {"name": "sigsetsize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "mount_setattr",
+            "nr": 442,
+            "params": [
+                {"name": "dfd", "type": "int"},
+                {"name": "*path", "type": "str"},
+                {"name": "flags", "type": "uint"},
+                {"name": "*uattr", "type": "ptr"},
+                {"name": "usize", "type": "size_t"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "quotactl_fd",
+            "nr": 443,
+            "params": [
+                {"name": "fd", "type": "uint"},
+                {"name": "cmd", "type": "uint"},
+                {"name": "id", "type": "int"},
+                {"name": "*addr", "type": "ptr"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "landlock_create_ruleset",
+            "nr": 444,
+            "params": [
+                {"name": "attr", "type": "ptr"},
+                {"name": "size", "type": "size_t"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "landlock_add_rule",
+            "nr": 445,
+            "params": [
+                {"name": "ruleset_fd", "type": "int"},
+                {"name": "rule_type", "type": "int"},
+                {"name": "rule_attr", "type": "ptr"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "landlock_restrict_self",
+            "nr": 446,
+            "params": [
+                {"name": "ruleset_fd", "type": "int"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "process_mrelease",
+            "nr": 448,
+            "params": [
+                {"name": "pidfd", "type": "int"},
+                {"name": "flags", "type": "uint"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "futex_waitv",
+            "nr": 449,
+            "params": [
+                {"name": "*waiters", "type": "ptr"},
+                {"name": "nr_futexes", "type": "uint"},
+                {"name": "flags", "type": "uint"},
+                {"name": "*timeout", "type": "timespec"},
+                {"name": "clockid", "type": "int"},
+                {"name": "ret", "type": "int"}
+            ]
+        },
+        {
+            "name": "set_mempolicy_home_node",
+            "nr": 450,
+            "params": [
+                {"name": "start", "type": "uint32"},
+                {"name": "len", "type": "uint32"},
+                {"name": "home_node", "type": "uint32"},
+                {"name": "flags", "type": "uint32"},
+                {"name": "ret", "type": "int"}
+            ]
+        }
+    ]
+}

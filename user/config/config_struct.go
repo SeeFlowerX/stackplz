@@ -266,7 +266,6 @@ func (this *Arg_Stat_t) Format() string {
 	fields = append(fields, fmt.Sprintf("atim={tv_sec=%d, tv_nsec=%d}", this.Atim.Sec, this.Atim.Nsec))
 	fields = append(fields, fmt.Sprintf("mtim={tv_sec=%d, tv_nsec=%d}", this.Mtim.Sec, this.Mtim.Nsec))
 	fields = append(fields, fmt.Sprintf("ctim={tv_sec=%d, tv_nsec=%d}", this.Ctim.Sec, this.Ctim.Nsec))
-	fields = append(fields, fmt.Sprintf("x__glibc_reserved=0x%x,0x%x", this.X__glibc_reserved[0], this.X__glibc_reserved[1]))
 	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 
@@ -296,17 +295,17 @@ func (this *Arg_Statfs_t) Format() string {
 type Arg_Utsname struct {
 	Index uint8
 	Len   uint32
-	syscall.Utsname
+	util.UtsnameArm
 }
 
 func (this *Arg_Utsname) Format() string {
 	var fields []string
-	fields = append(fields, fmt.Sprintf("sysname=%s", util.B2S(this.Sysname[:])))
-	fields = append(fields, fmt.Sprintf("nodename=%s", util.B2S(this.Nodename[:])))
-	fields = append(fields, fmt.Sprintf("release=%s", util.B2S(this.Release[:])))
-	fields = append(fields, fmt.Sprintf("version=%s", util.B2S(this.Version[:])))
-	fields = append(fields, fmt.Sprintf("machine=%s", util.B2S(this.Machine[:])))
-	fields = append(fields, fmt.Sprintf("domainname=%s", util.B2S(this.Domainname[:])))
+	fields = append(fields, fmt.Sprintf("sysname=%s", util.UB2S(this.Sysname[:])))
+	fields = append(fields, fmt.Sprintf("nodename=%s", util.UB2S(this.Nodename[:])))
+	fields = append(fields, fmt.Sprintf("release=%s", util.UB2S(this.Release[:])))
+	fields = append(fields, fmt.Sprintf("version=%s", util.UB2S(this.Version[:])))
+	fields = append(fields, fmt.Sprintf("machine=%s", util.UB2S(this.Machine[:])))
+	fields = append(fields, fmt.Sprintf("domainname=%s", util.UB2S(this.Domainname[:])))
 	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
 }
 

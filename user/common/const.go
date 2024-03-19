@@ -179,7 +179,7 @@ var RegsIdxMap map[uint32]string = map[uint32]string{
 }
 
 func GetRegIndex(reg string) uint32 {
-	value, ok := RegsNameMap[reg]
+	value, ok := RegsArmNameMap[reg]
 	if !ok {
 		panic(fmt.Sprintf("ParseAsReg failed =>%s<=", reg))
 	}
@@ -187,7 +187,7 @@ func GetRegIndex(reg string) uint32 {
 }
 
 func GetRegName(index uint32) string {
-	for k, v := range RegsNameMap {
+	for k, v := range RegsArmNameMap {
 		if v == index {
 			return k
 		}

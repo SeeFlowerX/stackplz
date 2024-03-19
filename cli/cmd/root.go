@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -253,7 +252,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
 
     // 1. load config file
     if len(gconfig.ConfigFiles) == 0 {
-        config_syscall_aarch64 := "user/config/config_syscall_aarch64.json"
+        config_syscall_aarch64 := "user/config/config_syscall_aarch32.json"
         err = assets.RestoreAsset(exec_path, config_syscall_aarch64)
         if err != nil {
             panic(err)
@@ -594,7 +593,7 @@ func Execute() {
 func init() {
     cobra.EnablePrefixMatching = false
     // 过滤设定
-    rootCmd.PersistentFlags().StringVarP(&gconfig.TragetArch, "arch", "a", "aarch64", "targe arch, aarch64, arm/aarch32")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.TragetArch, "arch", "a", "arm", "targe arch, aarch64, arm/aarch32")
     rootCmd.PersistentFlags().StringVarP(&gconfig.Name, "name", "n", "", "must set uid or package name")
 
     rootCmd.PersistentFlags().StringVarP(&gconfig.Uid, "uid", "u", "", "uid white list")
