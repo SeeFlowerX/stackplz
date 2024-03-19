@@ -16,6 +16,7 @@ import (
 type GlobalConfig struct {
     ExecPath    string
     TragetArch  string
+    SdkInt      uint32
     Name        string
     Uid         string
     NoUid       string
@@ -73,26 +74,22 @@ func NewGlobalConfig() *GlobalConfig {
 }
 
 func (this *GlobalConfig) RestoreAssets() error {
-    check_list := []string{"libstackplz.so", "libunwindstack.so"}
-    for _, check_file := range check_list {
-        check_path := "preload_libs" + "/" + check_file
-        check_info, err := os.Stat(this.ExecPath + "/" + check_path)
+    lib_path := "preload_libs/libstackplz.so"
+    if this.SdkInt == 0 {
+        this.SdkInt = 29
+    }
+    // sdk int 小于 30 的使用安卓10对应的版本
+    if this.SdkInt <= 29 {
+        lib_path = "preload_libs/libstackplz10.so"
+    }
+    err := assets.RestoreAsset(this.ExecPath, lib_path)
+    if err != nil {
+        return fmt.Errorf("RestoreAsset %s failed, %v", lib_path, err)
+    }
+    if this.SdkInt <= 29 {
+        err = os.Rename(lib_path, "preload_libs/libstackplz.so")
         if err != nil {
-            if os.IsNotExist(err) {
-                err = assets.RestoreAssets(this.ExecPath, "preload_libs")
-                if err != nil {
-                    return fmt.Errorf("RestoreAssets preload_libs failed, %v", err)
-                }
-                return nil
-            }
-        }
-        info, err := assets.AssetInfo(check_path)
-        if info.Size() != check_info.Size() {
-            err = assets.RestoreAssets(this.ExecPath, "preload_libs")
-            if err != nil {
-                return fmt.Errorf("RestoreAssets preload_libs failed, %v", err)
-            }
-            return nil
+            return fmt.Errorf("rename %s failed, %v", lib_path, err)
         }
     }
     return nil

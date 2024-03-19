@@ -147,6 +147,9 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     // 获取一次 后面用得到 免去重复获取
     exec_path = path.Dir(exec_path)
     gconfig.ExecPath = exec_path
+    if gconfig.SdkInt == 0 {
+        gconfig.SdkInt = GetSdkInt()
+    }
 
     if err = gconfig.RestoreAssets(); err != nil {
         return err
@@ -579,6 +582,23 @@ func FindPidByName(name string) []uint32 {
     return pid_list
 }
 
+func GetSdkInt() uint32 {
+    var sdk_int uint32 = 29
+    content, err := util.RunCommand("getprop", "ro.build.version.sdk")
+    if err != nil {
+        Logger.Printf("exec failed -> getprop ro.build.version.sdk")
+        return sdk_int
+    }
+    if string(content) == "" {
+        return sdk_int
+    }
+    value, err := strconv.Atoi(string(content))
+    if err != nil {
+        return sdk_int
+    }
+    return uint32(value)
+}
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
@@ -594,7 +614,8 @@ func Execute() {
 func init() {
     cobra.EnablePrefixMatching = false
     // 过滤设定
-    rootCmd.PersistentFlags().StringVarP(&gconfig.TragetArch, "arch", "a", "aarch64", "targe arch, aarch64, arm/aarch32")
+    rootCmd.PersistentFlags().StringVarP(&gconfig.TragetArch, "arch", "a", "aarch64", "target arch, aarch64, arm/aarch32")
+    rootCmd.PersistentFlags().Uint32Var(&gconfig.SdkInt, "sdk-int", 0, "android os sdk int, optional")
     rootCmd.PersistentFlags().StringVarP(&gconfig.Name, "name", "n", "", "must set uid or package name")
 
     rootCmd.PersistentFlags().StringVarP(&gconfig.Uid, "uid", "u", "", "uid white list")

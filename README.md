@@ -390,7 +390,7 @@ LR比较，需要提前计算用于比较的值：
 
 1. `preload_libs`里面的库怎么编译的？
 
-参见：[unwinddaemon](https://github.com/SeeFlowerX/unwinddaemon)
+参见：[unwinddaemon](https://github.com/SeeFlowerX/unwinddaemon)，注意v3.0.3之后采用了新的编译方案
 
 2. perf event ring buffer full, dropped 9 samples
 
