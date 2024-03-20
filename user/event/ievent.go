@@ -25,6 +25,14 @@ const (
     HW_BREAKPOINT
 )
 
+type ArgFormatter interface {
+    Format() string
+}
+
+type ArgHexFormatter interface {
+    HexFormat() string
+}
+
 type IEventStruct interface {
     String() string
     Clone() IEventStruct
@@ -46,7 +54,7 @@ type CommonEvent struct {
     buf    *bytes.Buffer
 }
 
-func (this *CommonEvent) ParseArgStruct(buf *bytes.Buffer, arg config.ArgFormatter) string {
+func (this *CommonEvent) ParseArgStruct(buf *bytes.Buffer, arg ArgFormatter) string {
     if err := binary.Read(buf, binary.LittleEndian, arg); err != nil {
         this.logger.Printf("CommonEvent RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
         time.Sleep(5 * 100 * time.Millisecond)
@@ -55,7 +63,7 @@ func (this *CommonEvent) ParseArgStruct(buf *bytes.Buffer, arg config.ArgFormatt
     return arg.Format()
 }
 
-func (this *CommonEvent) ParseArgStructHex(buf *bytes.Buffer, arg config.ArgHexFormatter) string {
+func (this *CommonEvent) ParseArgStructHex(buf *bytes.Buffer, arg ArgHexFormatter) string {
     if err := binary.Read(buf, binary.LittleEndian, arg); err != nil {
         this.logger.Printf("CommonEvent RawSample:\n%s", util.HexDump(this.rec.RawSample, util.COLORRED))
         time.Sleep(5 * 100 * time.Millisecond)

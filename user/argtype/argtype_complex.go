@@ -261,7 +261,7 @@ func parse_UTSNAME(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool)
 	}
 	if (ctx).(*ARG_STRUCT).GetStructLen(buf) != 0 {
 		var arg Arg_Utsname
-		if err := binary.Read(buf, binary.LittleEndian, &arg.UtsnameArm); err != nil {
+		if err := binary.Read(buf, binary.LittleEndian, &arg.Utsname); err != nil {
 			panic(err)
 		}
 		return fmt.Sprintf("0x%x%s", ptr, arg.Format())
@@ -271,7 +271,7 @@ func parse_UTSNAME(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool)
 
 func r_UTSNAME() IArgType {
 	at := RegisterNew("utsname", STRUCT)
-	at.SetSize(uint32(unsafe.Sizeof(util.UtsnameArm{})))
+	at.SetSize(uint32(unsafe.Sizeof(Utsname{})))
 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.GetSize())))
 	at.AddOp(OPC_SAVE_STRUCT)
 	at.SetParseCB(parse_UTSNAME)
@@ -456,7 +456,7 @@ func parse_TIMESPEC(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool
 	}
 	if (ctx).(*ARG_STRUCT).GetStructLen(buf) != 0 {
 		var arg Arg_Timespec
-		if err := binary.Read(buf, binary.LittleEndian, &arg.TimespecArm); err != nil {
+		if err := binary.Read(buf, binary.LittleEndian, &arg.Timespec); err != nil {
 			panic(err)
 		}
 		return fmt.Sprintf("0x%x%s", ptr, arg.Format())
@@ -466,7 +466,7 @@ func parse_TIMESPEC(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool
 
 func r_TIMESPEC() IArgType {
 	at := RegisterNew("timespec", STRUCT)
-	at.SetSize(uint32(unsafe.Sizeof(util.TimespecArm{})))
+	at.SetSize(uint32(unsafe.Sizeof(Timespec{})))
 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.GetSize())))
 	at.AddOp(OPC_SAVE_STRUCT)
 	at.SetParseCB(parse_TIMESPEC)

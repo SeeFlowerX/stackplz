@@ -218,7 +218,7 @@ func (this *Arg_Sigaction) MarshalJSON() ([]byte, error) {
 
 type Arg_Timespec struct {
 	Arg_struct
-	util.TimespecArm
+	Timespec
 }
 
 func (this *Arg_Timespec) Clone() IParseStruct {
@@ -227,11 +227,11 @@ func (this *Arg_Timespec) Clone() IParseStruct {
 }
 
 func (this *Arg_Timespec) GetSize() uint32 {
-	return uint32(unsafe.Sizeof(this.TimespecArm))
+	return uint32(unsafe.Sizeof(this.Timespec))
 }
 
 func (this *Arg_Timespec) GetStruct() any {
-	return &this.TimespecArm
+	return &this.Timespec
 }
 
 func (this *Arg_Timespec) HexFormat(color bool) string {
@@ -243,19 +243,6 @@ func (this *Arg_Timespec) Format() string {
 	fields = append(fields, fmt.Sprintf("sec=%d", this.Sec))
 	fields = append(fields, fmt.Sprintf("nsec=%d", this.Nsec))
 	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
-}
-
-func (this *Arg_Timespec) MarshalJSON() ([]byte, error) {
-	type ArgStructAlias Arg_struct
-	return json.Marshal(&struct {
-		*ArgStructAlias
-		Sec  int32 `json:"sec"`
-		Nsec int32 `json:"nsec"`
-	}{
-		ArgStructAlias: (*ArgStructAlias)(&this.Arg_struct),
-		Sec:            this.Sec,
-		Nsec:           this.Nsec,
-	})
 }
 
 type Pollfd struct {
@@ -479,18 +466,7 @@ func (this *Arg_Statfs_t) Format() string {
 type Arg_Utsname struct {
 	Index uint8
 	Len   uint32
-	util.UtsnameArm
-}
-
-func (this *Arg_Utsname) Format() string {
-	var fields []string
-	fields = append(fields, fmt.Sprintf("sysname=%s", util.UB2S(this.Sysname[:])))
-	fields = append(fields, fmt.Sprintf("nodename=%s", util.UB2S(this.Nodename[:])))
-	fields = append(fields, fmt.Sprintf("release=%s", util.UB2S(this.Release[:])))
-	fields = append(fields, fmt.Sprintf("version=%s", util.UB2S(this.Version[:])))
-	fields = append(fields, fmt.Sprintf("machine=%s", util.UB2S(this.Machine[:])))
-	fields = append(fields, fmt.Sprintf("domainname=%s", util.UB2S(this.Domainname[:])))
-	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+	Utsname
 }
 
 type Arg_RawSockaddrUnix struct {
