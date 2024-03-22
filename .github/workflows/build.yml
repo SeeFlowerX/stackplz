@@ -42,10 +42,17 @@ jobs:
     - name: Build
       run: |
         export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+        make clean && BUILD_TAGS=forarm make
         make clean && make
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3
       with:
-        name: stackplz
-        path: bin/stackplz
+        name: stackplz_arm
+        path: bin/stackplz_arm
+
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: stackplz_arm64
+        path: bin/stackplz_arm64
