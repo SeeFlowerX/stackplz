@@ -218,7 +218,7 @@ func (this *Arg_Sigaction) MarshalJSON() ([]byte, error) {
 
 type Arg_Timespec struct {
 	Arg_struct
-	syscall.Timespec
+	Timespec
 }
 
 func (this *Arg_Timespec) Clone() IParseStruct {
@@ -243,19 +243,6 @@ func (this *Arg_Timespec) Format() string {
 	fields = append(fields, fmt.Sprintf("sec=%d", this.Sec))
 	fields = append(fields, fmt.Sprintf("nsec=%d", this.Nsec))
 	return fmt.Sprintf("(%s)", strings.Join(fields, ", "))
-}
-
-func (this *Arg_Timespec) MarshalJSON() ([]byte, error) {
-	type ArgStructAlias Arg_struct
-	return json.Marshal(&struct {
-		*ArgStructAlias
-		Sec  int64 `json:"sec"`
-		Nsec int64 `json:"nsec"`
-	}{
-		ArgStructAlias: (*ArgStructAlias)(&this.Arg_struct),
-		Sec:            this.Sec,
-		Nsec:           this.Nsec,
-	})
 }
 
 type Pollfd struct {
@@ -479,18 +466,7 @@ func (this *Arg_Statfs_t) Format() string {
 type Arg_Utsname struct {
 	Index uint8
 	Len   uint32
-	syscall.Utsname
-}
-
-func (this *Arg_Utsname) Format() string {
-	var fields []string
-	fields = append(fields, fmt.Sprintf("sysname=%s", util.B2S(this.Sysname[:])))
-	fields = append(fields, fmt.Sprintf("nodename=%s", util.B2S(this.Nodename[:])))
-	fields = append(fields, fmt.Sprintf("release=%s", util.B2S(this.Release[:])))
-	fields = append(fields, fmt.Sprintf("version=%s", util.B2S(this.Version[:])))
-	fields = append(fields, fmt.Sprintf("machine=%s", util.B2S(this.Machine[:])))
-	fields = append(fields, fmt.Sprintf("domainname=%s", util.B2S(this.Domainname[:])))
-	return fmt.Sprintf("{%s}", strings.Join(fields, ", "))
+	Utsname
 }
 
 type Arg_RawSockaddrUnix struct {

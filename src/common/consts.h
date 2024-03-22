@@ -17,6 +17,15 @@
     #define MAX_OP_COUNT 512
 #endif
 
+// arch/arm64/include/asm/thread_info.h
+#define _TIF_32BIT       (1 << 22)
+
+#if defined(__TARGET_ARCH_arm)
+    #define PTR_SIZE 4
+#else
+    #define PTR_SIZE 8
+#endif
+
 // clang-format off
 #define MAX_PERCPU_BUFSIZE (1 << 15)  // set by the kernel as an upper bound
 #define PATH_MAX    4096

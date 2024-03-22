@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -256,12 +255,13 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
 
     // 1. load config file
     if len(gconfig.ConfigFiles) == 0 {
-        config_syscall_aarch64 := "user/config/config_syscall_aarch64.json"
-        err = assets.RestoreAsset(exec_path, config_syscall_aarch64)
+        syscall_config_file := gconfig.GetSyscallConfigFile()
+        Logger.Printf("config file -> %s", syscall_config_file)
+        err = assets.RestoreAsset(exec_path, syscall_config_file)
         if err != nil {
             panic(err)
         }
-        gconfig.ConfigFiles = append(gconfig.ConfigFiles, config_syscall_aarch64)
+        gconfig.ConfigFiles = append(gconfig.ConfigFiles, syscall_config_file)
     }
 
     mconfig.LoadConfig(gconfig)
@@ -614,7 +614,6 @@ func Execute() {
 func init() {
     cobra.EnablePrefixMatching = false
     // 过滤设定
-    rootCmd.PersistentFlags().StringVarP(&gconfig.TragetArch, "arch", "a", "aarch64", "target arch, aarch64, arm/aarch32")
     rootCmd.PersistentFlags().Uint32Var(&gconfig.SdkInt, "sdk-int", 0, "android os sdk int, optional")
     rootCmd.PersistentFlags().StringVarP(&gconfig.Name, "name", "n", "", "must set uid or package name")
 

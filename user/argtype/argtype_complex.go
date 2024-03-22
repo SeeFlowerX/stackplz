@@ -271,7 +271,7 @@ func parse_UTSNAME(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool)
 
 func r_UTSNAME() IArgType {
 	at := RegisterNew("utsname", STRUCT)
-	at.SetSize(uint32(unsafe.Sizeof(syscall.Utsname{})))
+	at.SetSize(uint32(unsafe.Sizeof(Utsname{})))
 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.GetSize())))
 	at.AddOp(OPC_SAVE_STRUCT)
 	at.SetParseCB(parse_UTSNAME)
@@ -401,7 +401,7 @@ func r_BUFFER_X2() IArgType {
 	at := RegisterNew("buffer_x2", BUFFER)
 	at.CleanOpList()
 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(MAX_BUF_READ_SIZE)))
-	at.AddOp(BuildReadRegLen(uint64(REG_ARM64_X2)))
+	at.AddOp(BuildReadRegLen(2))
 	at.AddOp(OPC_SAVE_STRUCT)
 	return at
 }
@@ -466,7 +466,7 @@ func parse_TIMESPEC(ctx IArgType, ptr uint64, buf *bytes.Buffer, parse_more bool
 
 func r_TIMESPEC() IArgType {
 	at := RegisterNew("timespec", STRUCT)
-	at.SetSize(uint32(unsafe.Sizeof(syscall.Timespec{})))
+	at.SetSize(uint32(unsafe.Sizeof(Timespec{})))
 	at.AddOp(OPC_SET_READ_LEN.NewValue(uint64(at.GetSize())))
 	at.AddOp(OPC_SAVE_STRUCT)
 	at.SetParseCB(parse_TIMESPEC)
@@ -725,7 +725,7 @@ func r_IOVEC() IArgType {
 func r_IOVEC_X2() IArgType {
 	t := syscall.Iovec{}
 	at := RegisterNew("iovec_x2", STRUCT)
-	op := BuildReadRegBreakCount(uint64(REG_ARM64_X2))
+	op := BuildReadRegBreakCount(2)
 	at.AddOp(OPM.AddOp(op))
 	at.AddOp(OPC_SAVE_REG)
 	at.AddOp(OPC_FOR_BREAK)

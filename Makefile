@@ -5,10 +5,16 @@ CMD_BPFTOOL ?= bpftool
 ASSETS_PATH ?= user/assets
 
 DEBUG_PRINT ?=
-ARCH = arm64
 LINUX_ARCH = arm64
 ifeq ($(DEBUG),1)
 DEBUG_PRINT := -DDEBUG_PRINT
+endif
+
+BUILD_TAGS ?=
+TARGET_ARCH = $(LINUX_ARCH)
+ifeq ($(BUILD_TAGS),forarm)
+BUILD_TAGS := -tags forarm
+TARGET_ARCH = arm
 endif
 
 .PHONY: all
@@ -21,12 +27,12 @@ clean:
 	$(CMD_RM) -f user/assets/*.d
 	$(CMD_RM) -f user/assets/*.o
 	# $(CMD_RM) -f assets/ebpf_probe.go
-	$(CMD_RM) -f bin/stackplz
+	$(CMD_RM) -f bin/stackplz_$(TARGET_ARCH)
 
 .PHONY: ebpf_stack
 ebpf_stack:
 	clang \
-	-D__TARGET_ARCH_$(LINUX_ARCH) \
+	-D__TARGET_ARCH_$(TARGET_ARCH) \
 	-D__MODULE_STACK \
 	--target=bpf \
 	-c \
@@ -43,7 +49,7 @@ ebpf_stack:
 .PHONY: ebpf_syscall
 ebpf_syscall:
 	clang \
-	-D__TARGET_ARCH_$(LINUX_ARCH) \
+	-D__TARGET_ARCH_$(TARGET_ARCH) \
 	-D__MODULE_SYSCALL \
 	--target=bpf \
 	-c \
@@ -60,7 +66,7 @@ ebpf_syscall:
 .PHONY: ebpf_perf_mmap
 ebpf_perf_mmap:
 	clang \
-	-D__TARGET_ARCH_$(LINUX_ARCH) \
+	-D__TARGET_ARCH_$(TARGET_ARCH) \
 	--target=bpf \
 	-c \
 	-nostdlibinc \
@@ -84,4 +90,4 @@ assets:
 
 .PHONY: build
 build:
-	GOARCH=arm64 GOOS=android CGO_ENABLED=1 CC=aarch64-linux-android29-clang $(CMD_GO) build -ldflags "-w -s -extldflags '-Wl,--hash-style=sysv'" -o bin/stackplz .
+	GOARCH=arm64 GOOS=android CGO_ENABLED=1 CC=aarch64-linux-android29-clang $(CMD_GO) build $(BUILD_TAGS) -ldflags "-w -s -extldflags '-Wl,--hash-style=sysv'" -o bin/stackplz_$(TARGET_ARCH) .

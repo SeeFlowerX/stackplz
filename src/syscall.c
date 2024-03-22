@@ -61,17 +61,15 @@ int tracepoint__sched__sched_process_fork(struct bpf_raw_tracepoint_args *ctx)
 SEC("raw_tracepoint/sys_enter")
 int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
-    struct task_struct *task = NULL;
-    task = (struct task_struct *)bpf_get_current_task();
-    if (!task)
-        return 0;
-    u64 flags = BPF_CORE_READ(task, thread_info.flags);
-    if (flags == NULL || flags == 0)
-    {
-        return 0;
-    }
-    bool is32 = (flags >> 22) & 1 != 0;
+    struct task_struct *task = (struct task_struct *) bpf_get_current_task();
+    if (unlikely(task == NULL)) return 0;
+
+    bool is32 = BPF_CORE_READ(task, thread_info.flags) & _TIF_32BIT;
+#if defined(__TARGET_ARCH_arm)
+    if (!is32)
+#else
     if (is32)
+#endif
         return 0;
 
     program_data_t p = {};
@@ -172,6 +170,17 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
 
 SEC("raw_tracepoint/sys_exit")
 int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
+
+    struct task_struct *task = (struct task_struct *) bpf_get_current_task();
+    if (unlikely(task == NULL)) return 0;
+
+    bool is32 = BPF_CORE_READ(task, thread_info.flags) & _TIF_32BIT;
+#if defined(__TARGET_ARCH_arm)
+    if (!is32)
+#else
+    if (is32)
+#endif
+        return 0;
 
     program_data_t p = {};
     if (!init_program_data(&p, ctx))

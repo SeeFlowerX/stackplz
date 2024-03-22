@@ -841,14 +841,7 @@ func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {
     this.ShowRegs = gconfig.ShowRegs
     this.GetOff = gconfig.GetOff
     this.Debug = gconfig.Debug
-    switch gconfig.TragetArch {
-    case "aarch64":
-        this.Is32Bit = false
-    case "arm", "aarch32":
-        this.Is32Bit = true
-    default:
-        panic(fmt.Sprintf("arch %s not supported", gconfig.TragetArch))
-    }
+    this.Is32Bit = gconfig.Is32Bit()
     this.Color = gconfig.Color
     this.FmtJson = gconfig.FmtJson
     this.RegName = gconfig.RegName

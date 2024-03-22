@@ -270,6 +270,14 @@ func B2S(bs []int8) string {
 	return B2STrim(ba)
 }
 
+func UB2S(bs []uint8) string {
+	ba := make([]byte, 0, len(bs))
+	for _, b := range bs {
+		ba = append(ba, byte(b))
+	}
+	return B2STrim(ba)
+}
+
 func I2B(bs []int8) []byte {
 	ba := make([]byte, 0, len(bs))
 	for _, b := range bs {

@@ -1,7 +1,5 @@
 package common
 
-import "fmt"
-
 const MAX_IOV_COUNT = 6
 const MAX_LOOP_COUNT = 32
 const MAX_OP_COUNT = 512
@@ -176,23 +174,6 @@ var RegsIdxMap map[uint32]string = map[uint32]string{
 	REG_ARM64_LR:  "lr",
 	REG_ARM64_SP:  "sp",
 	REG_ARM64_PC:  "pc",
-}
-
-func GetRegIndex(reg string) uint32 {
-	value, ok := RegsNameMap[reg]
-	if !ok {
-		panic(fmt.Sprintf("ParseAsReg failed =>%s<=", reg))
-	}
-	return value
-}
-
-func GetRegName(index uint32) string {
-	for k, v := range RegsNameMap {
-		if v == index {
-			return k
-		}
-	}
-	panic(fmt.Sprintf("GetRegName failed =>%d<=", index))
 }
 
 const (

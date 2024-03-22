@@ -156,11 +156,11 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 break;
             case OP_READ_POINTER:
                 if (op->pre_code == OP_ADD_OFFSET) {
-                    bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)(op_ctx->read_addr + op->value));
+                    bpf_probe_read_user(&op_ctx->pointer_value, PTR_SIZE, (void*)(op_ctx->read_addr + op->value));
                 } else if (op->pre_code == OP_SUB_OFFSET) {
-                    bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)(op_ctx->read_addr - op->value));
+                    bpf_probe_read_user(&op_ctx->pointer_value, PTR_SIZE, (void*)(op_ctx->read_addr - op->value));
                 } else {
-                    bpf_probe_read_user(&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), (void*)op_ctx->read_addr);
+                    bpf_probe_read_user(&op_ctx->pointer_value, PTR_SIZE, (void*)op_ctx->read_addr);
                 }
                 break;
             case OP_SAVE_POINTER:
@@ -251,7 +251,7 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
             case OP_SAVE_PTR_STRING:
             {
                 u64 ptr = op_ctx->read_addr & 0xffffffffffff;
-                bpf_probe_read_user(&ptr, sizeof(ptr), (void*) ptr);
+                bpf_probe_read_user(&ptr, PTR_SIZE, (void*) ptr);
                 save_to_submit_buf(p->event, (void *)&ptr, sizeof(ptr), op_ctx->save_index);
                 op_ctx->save_index += 1;
                 // 每次取出后使用前都要 fix 很坑
@@ -277,7 +277,7 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                 if ((value & 1) == 0) {
                     ptr += 1;
                 } else {
-                    ptr += 8 * 2;
+                    ptr += PTR_SIZE * 2;
                     bpf_probe_read_user(&ptr, sizeof(ptr), (void*) ptr);
                 }
                 op_ctx->read_addr = ptr;
