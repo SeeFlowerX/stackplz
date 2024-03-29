@@ -18,6 +18,12 @@ func ParseStack(map_buffer string, opt *UnwindOption, ubuf *UnwindBuf) string {
 	return C.GoString(stack_str)
 }
 
+func ParseStackV2(pid uint32, opt *UnwindOption, ubuf *UnwindBuf) string {
+	stack_str := C.get_stackv2(C.CString(LibPath), C.int(pid), unsafe.Pointer(opt), unsafe.Pointer(&ubuf.Regs[0]), unsafe.Pointer(&ubuf.Data[0]))
+	// char* 转到 go 的 string
+	return C.GoString(stack_str)
+}
+
 func init() {
 	exec_path, err := os.Executable()
 	if err != nil {

@@ -299,6 +299,12 @@ func (this *ContextEvent) ParseContextStack() (err error) {
         }
         // 立刻获取堆栈信息 对于某些hook点前后可能导致maps发生变化的 堆栈可能不准确
         // 这里后续可以调整为只dlopen一次 拿到要调用函数的handle 不要重复dlopen
+
+        if this.mconf.JavaStack {
+            this.Stackinfo = ParseStackV2(this.Pid, this.GetOpt(), this.UnwindBuffer)
+            return nil
+        }
+
         content, err := util.ReadMapsByPid(this.Pid)
         if err != nil || this.mconf.ManualStack {
             if err == nil {

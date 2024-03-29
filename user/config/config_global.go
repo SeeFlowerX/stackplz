@@ -30,6 +30,7 @@ type GlobalConfig struct {
     Color       bool
     FmtJson     bool
     UnwindStack bool
+    JavaStack   bool
     ManualStack bool
     StackSize   uint32
     ShowRegs    bool

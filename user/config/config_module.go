@@ -764,6 +764,7 @@ type ModuleConfig struct {
     KillSignal  uint32
     TKillSignal uint32
     UnwindStack bool
+    JavaStack   bool
     ManualStack bool
     StackSize   uint32
     ShowRegs    bool
@@ -833,6 +834,7 @@ func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {
     this.MaxOp = gconfig.MaxOp
     this.Buffer = gconfig.Buffer
     this.UnwindStack = gconfig.UnwindStack
+    this.JavaStack = gconfig.JavaStack
     this.ManualStack = gconfig.ManualStack
     if gconfig.StackSize&7 != 0 {
         panic(fmt.Sprintf("dump stack size %d is not 8-byte aligned.", gconfig.StackSize))

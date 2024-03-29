@@ -643,6 +643,7 @@ func init() {
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     rootCmd.PersistentFlags().Uint32Var(&gconfig.MaxOp, "maxop", 64, "max operation count for uprobe, at least 192 for string array")
     // 堆栈输出设定
+    rootCmd.PersistentFlags().BoolVar(&gconfig.JavaStack, "jstack", false, "try parse java stack")
     rootCmd.PersistentFlags().BoolVar(&gconfig.ManualStack, "mstack", false, "manual parse stack")
     rootCmd.PersistentFlags().BoolVar(&gconfig.UnwindStack, "stack", false, "enable unwindstack")
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.StackSize, "stack-size", "", 8192, "stack dump size, default 8192 bytes, max 65528 bytes")
