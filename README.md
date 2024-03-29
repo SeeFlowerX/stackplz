@@ -81,6 +81,8 @@ stackplz的所有可用选项，可以通过`./stackplz --help`查看
 
 即`--kill SIGSTOP/SIGABRT/SIGTRAP/...`，只能设置一个，效果是在命中hook时向目标进程发送信号
 
+注意：对于syscall来说，发送信号的时机位于syscall执行完成之后，所以对于exit/exit_group等syscall可能无法实现预期效果
+
 2.5 **参数过滤选项**
 
 即`-f/--filter`，该选项用于设定参数的过滤规则
@@ -102,6 +104,7 @@ stackplz的所有可用选项，可以通过`./stackplz --help`查看
 | --dumphex | 启用该选项后，对于buf类型数据将输出为hexdump，风格与CyberChef保持一致 |
 | --getoff | 输出PC和LR的偏移信息，注意使用该选项会导致性能降低 |
 | --json | 将日志输出为json格式 |
+| --jstack | 配合--kill SIGSTOP使用，可对堆栈中的jar/vdex进行解析 |
 | --mstack | 简易实现堆栈回溯，没有符号信息 |
 | --nocheck | 禁用bpf特性检查，没有`/proc/config.gz`或者是其他路径时使用 |
 | --quiet | 不在终端输出日志 |
@@ -323,6 +326,14 @@ LR比较，需要提前计算用于比较的值：
 
 ```bash
 ./stackplz -n com.netease.cloudmusic -w sendto[int,buf.f0:x2,int] -f bx:73ea68 -o tmp.log --dumphex --color --stack
+```
+
+3.9 尝试输出更详细的java堆栈
+
+注意：`--jstack`必需搭配`--kill SIGSTOP`使用，应用被挂起后可按c回车恢复运行
+
+```bash
+./stackplz_arm64 -n com.wsy.crashcatcher -w raise --stack --jstack --showpc --kill SIGSTOP
 ```
 
 ---
