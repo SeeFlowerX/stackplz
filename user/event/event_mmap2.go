@@ -197,7 +197,7 @@ func (this *MapsHelper) GetStack(pid uint32, ubuf *UnwindBuf) (info string, err 
     // perf_output_sample_ustack dump获取到的栈空间数据 起始地址就是 sp
     stack_buf := bytes.NewReader(ubuf.Data[:])
     fp := ubuf.Regs[common.REG_ARM64_X29]
-    // lr := ubuf.Regs[common.REG_ARM64_LR]
+    lr := ubuf.Regs[common.REG_ARM64_LR]
     sp := ubuf.Regs[common.REG_ARM64_SP]
     pc := ubuf.Regs[common.REG_ARM64_PC]
     // 栈解析结果
@@ -205,6 +205,7 @@ func (this *MapsHelper) GetStack(pid uint32, ubuf *UnwindBuf) (info string, err 
     var stack_infos []string
     // stack_arr = append(stack_arr, pc)
     stack_infos = append(stack_infos, this.GetRegionInfo(pid_maps, pc))
+    stack_infos = append(stack_infos, this.GetRegionInfo(pid_maps, lr))
     // 奇怪 这里竟然没有 sp 所在的map信息
     // sp_region := this.GetRegion(pid_maps, sp)
     // this.logger.Printf("start:0x%x end:0x%x name:%s\n", sp_region.BaseAddr, sp_region.EndAddr, sp_region.LibName)
