@@ -1,5 +1,7 @@
 # stackplz
 
+[wbstack/watch breakpoint stack/stackplz plus](https://blog.seeflower.dev/archives/339/)
+
 stackplz是一款基于eBPF的堆栈追踪工具，目前仅适用于Android平台
 
 特性：
@@ -460,3 +462,23 @@ coral:/data/local/tmp # readelf -s /apex/com.android.runtime/lib64/bionic/libc.s
 - [Simpleperf](https://android.googlesource.com/platform/system/extras/+/master/simpleperf/doc/README.md)
 - [Tracee](https://github.com/aquasecurity/tracee)
 - [bpftrace](https://github.com/iovisor/bpftrace)
+
+---
+
+# wbstack
+
+```bash
+./wbstack_arm64 -p `pidof com.sfx.ebpf` --brk 0x6dd9d563a4:x --stack
+```
+
+```bash
+./wbstack_arm64 -p `pidof com.sfx.ebpf` --brk 0x6dd9d563a4:x -w 0x0[str,ptr,buf:32:x0] --color --dumphex
+```
+
+```bash
+./wbstack_arm64 -p `pidof com.sfx.ebpf` --brk 0xF3A4:x --brk-lib libnative-lib.so -w 0x0[str,ptr,buf:32:x0] --color --dumphex --stack
+```
+
+```bash
+./wbstack_arm64 -p `pidof com.sfx.ebpf` --brk 0xF3A4:x --brk-lib libnative-lib.so -w 0x0[str,ptr,buf:32:x0] --color --dumphex --stack --jstack --kill SIGSTOP
+```
