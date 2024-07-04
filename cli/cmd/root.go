@@ -349,7 +349,7 @@ func persistentPreRunEFunc(command *cobra.Command, args []string) error {
     }
     if mconfig.BrkAddr > 0 {
         enable_hook = true
-        if mconfig.BrkAddr&0xffffff0000000000 > 0 {
+        if mconfig.BrkAddr&0xffff000000000000 > 0 {
             mconfig.BrkKernel = true
         } else {
             mconfig.BrkKernel = false
