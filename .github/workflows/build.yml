@@ -12,6 +12,10 @@ on:
     branches: 
       - master
       - dev
+  workflow_dispatch:
+    inputs:
+      config:
+        type: 'nothing'
 
 jobs:
   build:
