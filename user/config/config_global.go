@@ -58,6 +58,7 @@ type GlobalConfig struct {
     RegName     string
     DumpRet     bool
     DumpHex     bool
+    DumpBase64  bool
     ShowPC      bool
     ShowTime    bool
     ShowUid     bool

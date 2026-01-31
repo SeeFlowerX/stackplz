@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"stackplz/user/util"
@@ -50,6 +51,7 @@ type IParseStruct interface {
 	GetArgStruct() *Arg_struct
 	Format() string
 	HexFormat(bool) string
+	HexToBase64Format() string
 }
 
 // 结构体类型
@@ -115,6 +117,10 @@ func (this *Arg_buffer) HexFormat(color bool) string {
 	return "()"
 }
 
+func (this *Arg_buffer) HexToBase64Format() string {
+	return fmt.Sprintf(" (base64:%s)", base64.StdEncoding.EncodeToString(this.ArgPayload))
+}
+
 func (this *Arg_buffer) MarshalJSON() ([]byte, error) {
 	type ArgStructAlias Arg_struct
 	return json.Marshal(&struct {
@@ -140,6 +146,10 @@ func (this *Arg_string) Clone() IParseStruct {
 }
 
 func (this *Arg_string) HexFormat(color bool) string {
+	return this.Format()
+}
+
+func (this *Arg_string) HexToBase64Format() string {
 	return this.Format()
 }
 
@@ -190,6 +200,10 @@ func (this *Arg_string16) HexFormat(color bool) string {
 	return this.Format()
 }
 
+func (this *Arg_string16) HexToBase64Format() string {
+	return this.Format()
+}
+
 func (this *Arg_string16) Format() string {
 	// UTF‑16LE → UTF‑8
 	s := utf16leToUtf8(this.ArgPayload)
@@ -234,6 +248,10 @@ func (this *Arg_Sigaction) GetStruct() any {
 }
 
 func (this *Arg_Sigaction) HexFormat(color bool) string {
+	return this.Format()
+}
+
+func (this *Arg_Sigaction) HexToBase64Format() string {
 	return this.Format()
 }
 
@@ -285,6 +303,10 @@ func (this *Arg_Timespec) GetStruct() any {
 }
 
 func (this *Arg_Timespec) HexFormat(color bool) string {
+	return this.Format()
+}
+
+func (this *Arg_Timespec) HexToBase64Format() string {
 	return this.Format()
 }
 

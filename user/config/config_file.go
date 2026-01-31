@@ -129,6 +129,8 @@ func (this *ParamConfig) GetPointArg(arg_index, point_type uint32) *PointArg {
 	}
 
 	switch this.Format {
+	case "base64":
+		point_arg.SetDumpBase64(true)
 	case "hex":
 		point_arg.SetHexFormat()
 	case "hexdump":

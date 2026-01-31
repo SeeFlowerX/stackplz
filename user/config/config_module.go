@@ -27,6 +27,7 @@ type StackUprobeConfig struct {
     NonElfOffset uint64
     Points       []*UprobeArgs
     DumpHex      bool
+    DumpBase64   bool
     Color        bool
 }
 
@@ -177,6 +178,7 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
             }
         }
         at.SetDumpHex(this.DumpHex)
+        at.SetDumpBase64(this.DumpBase64)
         at.SetColor(this.Color)
         point_arg.SetTypeIndex(at.GetTypeIndex())
         // 这个设定用于指示是否进一步读取和解析
@@ -264,6 +266,10 @@ func (this *StackUprobeConfig) IsEnable() bool {
 
 func (this *StackUprobeConfig) SetDumpHex(dump_hex bool) {
     this.DumpHex = dump_hex
+}
+
+func (this *StackUprobeConfig) SetDumpBase64(dump_base64 bool) {
+	this.DumpBase64 = dump_base64
 }
 
 func (this *StackUprobeConfig) SetColor(color bool) {
@@ -443,6 +449,7 @@ type SyscallConfig struct {
     SysWhitelist []uint32
     SysBlacklist []uint32
     DumpHex      bool
+    DumpBase64   bool
     Color        bool
 }
 
@@ -456,6 +463,10 @@ func (this *SyscallConfig) SetLogger(logger *log.Logger) {
 
 func (this *SyscallConfig) SetDumpHex(dump_hex bool) {
     this.DumpHex = dump_hex
+}
+
+func (this *SyscallConfig) SetDumpBase64(dump_base64 bool) {
+	this.DumpBase64 = dump_base64
 }
 
 func (this *SyscallConfig) SetColor(color bool) {
@@ -539,6 +550,7 @@ func (this *SyscallConfig) Parse_FileConfig(config *SyscallFileConfig) (err erro
             point_arg := param.GetPointArg(uint32(arg_index), point_type)
 
             point_arg.SetDumpHex(this.DumpHex)
+            point_arg.SetDumpBase64(this.DumpBase64)
             point_arg.SetColor(this.Color)
 
             a_p := point_arg.Clone()
@@ -789,6 +801,7 @@ type ModuleConfig struct {
     DumpHandle  *os.File
     FmtJson     bool
     DumpHex     bool
+    DumpBase64  bool
     ShowPC      bool
     ShowTime    bool
     ShowUid     bool
@@ -854,6 +867,7 @@ func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {
     this.FmtJson = gconfig.FmtJson
     this.RegName = gconfig.RegName
     this.DumpHex = gconfig.DumpHex
+    this.DumpBase64 = gconfig.DumpBase64
     this.ShowPC = gconfig.ShowPC
     this.ShowTime = gconfig.ShowTime
     this.ShowUid = gconfig.ShowUid
@@ -864,12 +878,14 @@ func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {
 
     this.StackUprobeConf = &StackUprobeConfig{}
     this.StackUprobeConf.SetDumpHex(this.DumpHex)
+    this.StackUprobeConf.SetDumpBase64((this.DumpBase64))
     this.StackUprobeConf.SetColor(this.Color)
 
     this.SysCallConf = &SyscallConfig{}
     this.SysCallConf.SetDebug(this.Debug)
     this.SysCallConf.SetLogger(this.logger)
     this.SysCallConf.SetDumpHex(this.DumpHex)
+    this.SysCallConf.SetDumpBase64((this.DumpBase64))
     this.SysCallConf.SetColor(this.Color)
 }
 
