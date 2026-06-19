@@ -797,6 +797,7 @@ type ModuleConfig struct {
     BrkLen      uint64
     BrkType     uint32
     BrkKernel   bool
+    BrkPointConf *BrkPointConfig
     Color       bool
     DumpHandle  *os.File
     FmtJson     bool
@@ -880,6 +881,14 @@ func (this *ModuleConfig) InitCommonConfig(gconfig *GlobalConfig) {
     this.StackUprobeConf.SetDumpHex(this.DumpHex)
     this.StackUprobeConf.SetDumpBase64((this.DumpBase64))
     this.StackUprobeConf.SetColor(this.Color)
+
+    this.BrkPointConf = &BrkPointConfig{}
+    this.BrkPointConf.SetDumpHex(this.DumpHex)
+    this.BrkPointConf.SetDumpBase64(this.DumpBase64)
+    this.BrkPointConf.SetColor(this.Color)
+    if err := this.BrkPointConf.Parse_BrkPoint(gconfig.BrkPoint); err != nil {
+        panic(err)
+    }
 
     this.SysCallConf = &SyscallConfig{}
     this.SysCallConf.SetDebug(this.Debug)

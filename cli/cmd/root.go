@@ -640,6 +640,7 @@ func init() {
     rootCmd.PersistentFlags().IntVar(&gconfig.BrkPid, "brk-pid", -1, "set hardware breakpoint pid, just keep default")
     rootCmd.PersistentFlags().StringVar(&gconfig.BrkLib, "brk-lib", "", "as library base address, work with -p/--pid option")
     rootCmd.PersistentFlags().Uint64Var(&gconfig.BrkLen, "brk-len", 4, "hardware breakpoint length, default 4, support [1, 8]")
+    rootCmd.PersistentFlags().StringArrayVar(&gconfig.BrkPoint, "brk-point", []string{}, "read args when hardware breakpoint hits, e.g. buf:128:x0 or [int:x1,buf:64:x0+8]")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     rootCmd.PersistentFlags().Uint32Var(&gconfig.MaxOp, "maxop", 64, "max operation count for uprobe, at least 192 for string array")

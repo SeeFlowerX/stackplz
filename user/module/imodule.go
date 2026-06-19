@@ -197,6 +197,9 @@ func (this *Module) getExtraOptions(em *ebpf.Map) perf.ExtraPerfOptions {
     } else {
         ShowRegs = this.mconf.ShowRegs
     }
+    if this.mconf.BrkPointConf != nil && this.mconf.BrkPointConf.IsEnable() {
+        ShowRegs = true
+    }
     BrkPid := this.mconf.BrkPid
     // 对内核地址断点的时候无法指定pid为用户进程的pid
     if this.mconf.BrkKernel {
