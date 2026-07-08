@@ -48,6 +48,7 @@ type GlobalConfig struct {
     BrkAddr     string
     BrkLib      string
     BrkLen      uint64
+    BrkPoint    []string
     LogFile     string
     DumpFile    string
     ParseFile   string
@@ -58,6 +59,7 @@ type GlobalConfig struct {
     RegName     string
     DumpRet     bool
     DumpHex     bool
+    DumpBase64  bool
     ShowPC      bool
     ShowTime    bool
     ShowUid     bool

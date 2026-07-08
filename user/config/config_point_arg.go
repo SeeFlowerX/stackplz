@@ -32,6 +32,10 @@ func (this *PointArg) SetDumpHex(dump_hex bool) {
 	argtype.GetArgType(this.TypeIndex).SetDumpHex(dump_hex)
 }
 
+func (this *PointArg) SetDumpBase64(dump_base64 bool) {
+	argtype.GetArgType(this.TypeIndex).SetDumpBase64(dump_base64)
+}
+
 func (this *PointArg) SetColor(color bool) {
 	argtype.GetArgType(this.TypeIndex).SetColor(color)
 }

@@ -1,0 +1,18 @@
+{
+    "type": "uprobe",
+    "library": "libtest.so",
+    "points": [
+        {
+            "name": "testBytesBase64",
+            "params": [
+                {
+                    "name": "buf_bytes",
+                    "type": "buf",
+                    "reg": "x0",
+                    "size": "x1",
+                    "format": "base64"
+                }
+            ]
+        }
+    ]
+}

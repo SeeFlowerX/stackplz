@@ -62,11 +62,19 @@ func BrkIt(opts *BrkOptions) {
 	mconfig.StackSize = Gconfig.StackSize
 	mconfig.ShowRegs = Gconfig.ShowRegs
 	mconfig.GetOff = Gconfig.GetOff
+	mconfig.Is32Bit = Gconfig.Is32Bit()
 	mconfig.BrkPid = opts.BrkPid
 	mconfig.BrkAddr = opts.BrkAddr
 	mconfig.BrkLen = opts.BrkLen
 	mconfig.BrkType = opts.BrkType
 	mconfig.BrkKernel = false
+	mconfig.BrkPointConf = &config.BrkPointConfig{}
+	mconfig.BrkPointConf.SetDumpHex(Gconfig.DumpHex)
+	mconfig.BrkPointConf.SetDumpBase64(Gconfig.DumpBase64)
+	mconfig.BrkPointConf.SetColor(Gconfig.Color)
+	if err := mconfig.BrkPointConf.Parse_BrkPoint(Gconfig.BrkPoint); err != nil {
+		panic(err)
+	}
 	mod.Init(Ctx, Logger, mconfig)
 	err := mod.Run()
 	if err != nil {

@@ -14,10 +14,14 @@ type BrkEvent struct {
     ContextEvent
     EventAddr uint64
     UUID      string
+    ArgStr    string
 }
 
 func (this *BrkEvent) String() (s string) {
     s = fmt.Sprintf("[%s] event_addr:0x%x hit_count:%d", this.GetUUID(), this.EventAddr, hit_count)
+    if this.ArgStr != "" {
+        s += " args" + this.ArgStr
+    }
     s = this.GetStackTrace(s)
     return s
 }
@@ -80,8 +84,17 @@ func (this *BrkEvent) ParseContext() (err error) {
         return err
     }
     this.ParseContextStack()
+    this.ParseBrkArgs()
 
     return nil
+}
+
+func (this *BrkEvent) ParseBrkArgs() {
+    if this.mconf.BrkPointConf == nil || !this.mconf.BrkPointConf.IsEnable() {
+        return
+    }
+    reader := newBrkArgReader(this.GetPid(), this)
+    this.ArgStr = reader.formatArgs(this.mconf.BrkPointConf.PointArgs)
 }
 
 func (this *BrkEvent) Clone() IEventStruct {

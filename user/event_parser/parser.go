@@ -75,7 +75,7 @@ func (this *EventParser) ParseDump(dump_name string) {
 
 		rec.ExtraOptions = &perf.ExtraPerfOptions{
 			UnwindStack:       this.mconf.UnwindStack,
-			ShowRegs:          this.mconf.ShowRegs,
+			ShowRegs:          this.mconf.ShowRegs || (this.mconf.BrkPointConf != nil && this.mconf.BrkPointConf.IsEnable()),
 			BrkAddr:           this.mconf.BrkAddr,
 			BrkLen:            this.mconf.BrkLen,
 			BrkType:           this.mconf.BrkType,

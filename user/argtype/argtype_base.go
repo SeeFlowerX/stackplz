@@ -587,6 +587,9 @@ func (this *ARG_BUFFER) ParseArg(ptr uint64, buf *bytes.Buffer, parse_more, fmt_
 		(this.ParseImpl).(IArgBuffer).SetArgPayload(payload)
 	}
 	if !fmt_json {
+		if this.DumpBase64 {
+			return fmt.Sprintf("0x%x%s", ptr, this.ParseImpl.HexToBase64Format())
+		}
 		if this.DumpHex {
 			return fmt.Sprintf("0x%x%s", ptr, this.ParseImpl.HexFormat(this.Color))
 		}

@@ -25,8 +25,10 @@ type IArgType interface {
 	GetTypeIndex() uint32
 	SetParentIndex(uint32)
 	SetDumpHex(bool)
+	SetDumpBase64(bool)
 	SetColor(bool)
 	GetDumpHex() bool
+	GetDumpBase64() bool
 	GetColor() bool
 	GetParentIndex() uint32
 	GetSize() uint32
@@ -54,6 +56,7 @@ type ArgType struct {
 	ParseCB   ParseFN
 	ParseImpl IParseStruct
 	DumpHex   bool
+	DumpBase64 bool
 	Color     bool
 }
 
@@ -77,6 +80,7 @@ func (this *ArgType) Clone() IArgType {
 	at.ParseCB = this.ParseCB
 	at.ParseImpl = this.ParseImpl
 	at.DumpHex = this.DumpHex
+	at.DumpBase64 = this.DumpBase64
 	at.Color = this.Color
 	return &at
 }
@@ -105,12 +109,20 @@ func (this *ArgType) SetDumpHex(dump_hex bool) {
 	this.DumpHex = dump_hex
 }
 
+func (this *ArgType) SetDumpBase64(dump_base64 bool) {
+	this.DumpBase64 = dump_base64
+}
+
 func (this *ArgType) SetColor(color bool) {
 	this.Color = color
 }
 
 func (this *ArgType) GetDumpHex() bool {
 	return this.DumpHex
+}
+
+func (this *ArgType) GetDumpBase64() bool {
+	return this.DumpBase64
 }
 
 func (this *ArgType) GetColor() bool {
