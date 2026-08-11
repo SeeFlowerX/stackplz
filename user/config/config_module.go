@@ -207,55 +207,7 @@ func (this *StackUprobeConfig) ParseArgType(arg_str string, point_arg *PointArg)
     // 4. 在上一步结果上 -4+0x16
     // 5. 以上一步结果作为读取地址 读取 64 字节数据
     if read_op_str != "" {
-        // 即一系列 加、减、取指针 操作作为要读取类型的地址 通过以下规则来转换
-        has_first_op := false
-        for ptr_idx, op_str := range strings.Split(read_op_str, ".") {
-            if ptr_idx > 0 {
-                point_arg.AddExtraOp(argtype.OPC_READ_POINTER)
-                point_arg.AddExtraOp(argtype.OPC_MOVE_POINTER_VALUE)
-            }
-            if op_str == "" {
-                continue
-            }
-            v := op_str + "+"
-            last_op := ""
-            for {
-                i := strings.IndexAny(v, "+-")
-                if i < 0 {
-                    break
-                }
-                op := string(v[i])
-                token := string(v[0:i])
-                v = v[i+1:]
-                if token != "" {
-                    if value, err := strconv.ParseUint(token, 0, 64); err == nil {
-                        if !has_first_op {
-                            panic(fmt.Sprintf("first op must be reg"))
-                        }
-                        if last_op == "-" {
-                            point_arg.AddExtraOp(argtype.OPC_SUB_OFFSET.NewValue(value))
-                        } else {
-                            point_arg.AddExtraOp(argtype.OPC_ADD_OFFSET.NewValue(value))
-                        }
-                    } else {
-                        reg_index := GetRegIndex(token)
-                        point_arg.AddExtraOp(argtype.Add_READ_MOVE_REG(uint64(reg_index)))
-                        if has_first_op {
-                            if last_op == "-" {
-                                point_arg.AddExtraOp(argtype.OPC_SUB_REG)
-                            } else {
-                                point_arg.AddExtraOp(argtype.OPC_ADD_REG)
-                            }
-                        }
-                        if !has_first_op {
-                            has_first_op = true
-                        }
-                    }
-                }
-                last_op = op
-            }
-        }
-        point_arg.AddExtraOp(argtype.OPC_SAVE_ADDR)
+        addReadOp(point_arg, read_op_str)
     }
     return err
 }

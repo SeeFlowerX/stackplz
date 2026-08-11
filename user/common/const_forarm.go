@@ -5,6 +5,8 @@ package common
 
 import "fmt"
 
+const NativePointerSize = 4
+
 func GetRegIndex(reg string) uint32 {
 	value, ok := RegsArmNameMap[reg]
 	if !ok {

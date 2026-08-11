@@ -640,7 +640,7 @@ func init() {
     rootCmd.PersistentFlags().IntVar(&gconfig.BrkPid, "brk-pid", -1, "set hardware breakpoint pid, just keep default")
     rootCmd.PersistentFlags().StringVar(&gconfig.BrkLib, "brk-lib", "", "as library base address, work with -p/--pid option")
     rootCmd.PersistentFlags().Uint64Var(&gconfig.BrkLen, "brk-len", 4, "hardware breakpoint length, default 4, support [1, 8]")
-    rootCmd.PersistentFlags().StringArrayVar(&gconfig.BrkPoint, "brk-point", []string{}, "read args when hardware breakpoint hits, e.g. buf:128:x0 or [int:x1,buf:64:x0+8]")
+    rootCmd.PersistentFlags().StringArrayVar(&gconfig.BrkPoint, "brk-point", []string{}, "read args when hardware breakpoint hits, e.g. buf:128:x0 or [int:x1,buf:64:x0+8.ptr32+0x10]")
     // 缓冲区大小设定 单位M
     rootCmd.PersistentFlags().Uint32VarP(&gconfig.Buffer, "buffer", "b", 8, "perf cache buffer size, default 8M")
     rootCmd.PersistentFlags().Uint32Var(&gconfig.MaxOp, "maxop", 64, "max operation count for uprobe, at least 192 for string array")
@@ -662,7 +662,7 @@ func init() {
     rootCmd.PersistentFlags().StringVar(&gconfig.ParseFile, "parse", "", "parse perf data as json or readable format")
     // 常规ELF库hook设定
     rootCmd.PersistentFlags().StringVarP(&gconfig.Library, "lib", "l", "libc.so", "lib name or lib full path, default is libc.so")
-    rootCmd.PersistentFlags().StringArrayVarP(&gconfig.HookPoint, "point", "w", []string{}, "hook point config, e.g. strstr+0x0[str,str] write[int,buf:128,int]")
+    rootCmd.PersistentFlags().StringArrayVarP(&gconfig.HookPoint, "point", "w", []string{}, "hook point config, e.g. strstr+0x0[str,str] write[int,buf:128:x0+0x8.ptr32+0x10]")
     rootCmd.PersistentFlags().StringVar(&gconfig.RegName, "reg", "", "get the offset of reg")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.DumpRet, "dumpret", "", false, "dump ret offset for symbol")
     rootCmd.PersistentFlags().BoolVarP(&gconfig.DumpHex, "dumphex", "", false, "dump buffer as hex")

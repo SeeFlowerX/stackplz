@@ -163,6 +163,32 @@ static __noinline u32 read_args(program_data_t* p, point_args_t* point_args, op_
                     bpf_probe_read_user(&op_ctx->pointer_value, PTR_SIZE, (void*)op_ctx->read_addr);
                 }
                 break;
+            case OP_READ_POINTER32:
+            {
+                u32 ptr = 0;
+                if (op->pre_code == OP_ADD_OFFSET) {
+                    bpf_probe_read_user(&ptr, sizeof(ptr), (void*)(op_ctx->read_addr + op->value));
+                } else if (op->pre_code == OP_SUB_OFFSET) {
+                    bpf_probe_read_user(&ptr, sizeof(ptr), (void*)(op_ctx->read_addr - op->value));
+                } else {
+                    bpf_probe_read_user(&ptr, sizeof(ptr), (void*)op_ctx->read_addr);
+                }
+                op_ctx->pointer_value = ptr;
+                break;
+            }
+            case OP_READ_POINTER64:
+            {
+                u64 ptr = 0;
+                if (op->pre_code == OP_ADD_OFFSET) {
+                    bpf_probe_read_user(&ptr, sizeof(ptr), (void*)(op_ctx->read_addr + op->value));
+                } else if (op->pre_code == OP_SUB_OFFSET) {
+                    bpf_probe_read_user(&ptr, sizeof(ptr), (void*)(op_ctx->read_addr - op->value));
+                } else {
+                    bpf_probe_read_user(&ptr, sizeof(ptr), (void*)op_ctx->read_addr);
+                }
+                op_ctx->pointer_value = ptr;
+                break;
+            }
             case OP_SAVE_POINTER:
                 save_to_submit_buf(p->event, (void *)&op_ctx->pointer_value, sizeof(op_ctx->pointer_value), op_ctx->save_index);
                 op_ctx->save_index += 1;

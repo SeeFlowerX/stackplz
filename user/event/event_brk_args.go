@@ -198,7 +198,23 @@ func (this *brkArgReader) runOp(ctx *brkOpCtx, op *argtype.OpConfig, code uint32
 		} else if op.PreCode == argtype.OP_SUB_OFFSET {
 			addr -= op.Value
 		}
-		ctx.pointerValue = this.readPointer(addr)
+		ctx.pointerValue = this.readPointerWidth(addr, common.NativePointerSize)
+	case argtype.OP_READ_POINTER32:
+		addr := ctx.readAddr
+		if op.PreCode == argtype.OP_ADD_OFFSET {
+			addr += op.Value
+		} else if op.PreCode == argtype.OP_SUB_OFFSET {
+			addr -= op.Value
+		}
+		ctx.pointerValue = this.readPointerWidth(addr, 4)
+	case argtype.OP_READ_POINTER64:
+		addr := ctx.readAddr
+		if op.PreCode == argtype.OP_ADD_OFFSET {
+			addr += op.Value
+		} else if op.PreCode == argtype.OP_SUB_OFFSET {
+			addr -= op.Value
+		}
+		ctx.pointerValue = this.readPointerWidth(addr, 8)
 	case argtype.OP_SAVE_POINTER:
 		ctx.saveValue(ctx.pointerValue)
 	case argtype.OP_SAVE_STRUCT:
@@ -296,10 +312,10 @@ func (this *brkArgReader) regValue(regIndex uint32) uint64 {
 }
 
 func (this *brkArgReader) readPointer(addr uint64) uint64 {
-	ptrSize := uint32(8)
-	if this.event.mconf.Is32Bit {
-		ptrSize = 4
-	}
+	return this.readPointerWidth(addr, common.NativePointerSize)
+}
+
+func (this *brkArgReader) readPointerWidth(addr uint64, ptrSize uint32) uint64 {
 	payload, err := this.readMemory(fixUserAddr(addr), ptrSize)
 	if err != nil || uint32(len(payload)) != ptrSize {
 		return 0
