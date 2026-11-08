@@ -92,7 +92,7 @@ static __always_inline u32 probe_stack_warp(struct pt_regs* ctx, u32 point_key) 
     int ctx_index = 0;
     op_ctx_t* op_ctx = bpf_map_lookup_elem(&op_ctx_map, &ctx_index);
     if (unlikely(op_ctx == NULL)) return 0;
-    __builtin_memset((void *)op_ctx, 0, sizeof(op_ctx));
+    __builtin_memset((void *)op_ctx, 0, sizeof(*op_ctx));
 
     op_ctx->reg_0 = saved_regs.regs[0];
     op_ctx->save_index = 4;
