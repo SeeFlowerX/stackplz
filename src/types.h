@@ -25,7 +25,7 @@ typedef struct thread_name {
 
 
 typedef struct str_buf {
-    char str_val[256];
+    char str_val[256] __attribute__((aligned(8)));
 } str_buf_t;
 
 typedef struct arg_filter {
