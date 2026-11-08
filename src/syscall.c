@@ -140,7 +140,7 @@ int raw_syscalls_sys_enter(struct bpf_raw_tracepoint_args* ctx) {
     op_ctx_t* op_ctx = bpf_map_lookup_elem(&op_ctx_map, &ctx_index);
     // make ebpf verifier happy
     if (unlikely(op_ctx == NULL)) return 0;
-    __builtin_memset((void *)op_ctx, 0, sizeof(op_ctx));
+    __builtin_memset((void *)op_ctx, 0, sizeof(*op_ctx));
 
     op_ctx->reg_0 = saved_regs.regs[0];
     op_ctx->save_index = 4;
@@ -227,7 +227,7 @@ int raw_syscalls_sys_exit(struct bpf_raw_tracepoint_args* ctx) {
     int ctx_index = 1;
     op_ctx_t* op_ctx = bpf_map_lookup_elem(&op_ctx_map, &ctx_index);
     if (unlikely(op_ctx == NULL)) return 0;
-    __builtin_memset((void *)op_ctx, 0, sizeof(op_ctx));
+    __builtin_memset((void *)op_ctx, 0, sizeof(*op_ctx));
 
     op_ctx->reg_0 = saved_regs.regs[0];
     op_ctx->save_index = 1;
