@@ -1640,7 +1640,7 @@
             "params": [
                 {"name": "*pathname", "type": "str"},
                 {"name": "*name", "type": "str"},
-                {"name": "*value", "type": "ptr"},
+                {"name": "*value", "type": "buf", "size": "r3", "more": "enter"},
                 {"name": "size", "type": "size_t"},
                 {"name": "flags", "type": "int"},
                 {"name": "ret", "type": "int"}
@@ -1652,7 +1652,7 @@
             "params": [
                 {"name": "*pathname", "type": "str"},
                 {"name": "*name", "type": "str"},
-                {"name": "*value", "type": "ptr"},
+                {"name": "*value", "type": "buf", "size": "r3", "more": "enter"},
                 {"name": "size", "type": "size_t"},
                 {"name": "flags", "type": "int"},
                 {"name": "ret", "type": "int"}
@@ -1664,7 +1664,7 @@
             "params": [
                 {"name": "fd", "type": "int"},
                 {"name": "*name", "type": "str"},
-                {"name": "*value", "type": "ptr"},
+                {"name": "*value", "type": "buf", "size": "r3", "more": "enter"},
                 {"name": "size", "type": "size_t"},
                 {"name": "flags", "type": "int"},
                 {"name": "ret", "type": "int"}
